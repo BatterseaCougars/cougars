@@ -115,13 +115,20 @@ def _extract_assignment(players, assigned_vars, teams):
 
 def _rank_weights(indices, players):
     """
-    Assign integer rank weights to players at the given indices, sorted by rating
-    descending. Rank 0 = best. Returns a dict {index: rank}.
-    When players share an equal rating they get the same rank (dense ranking).
+    Assign integer weights to players at the given indices for the rank-balance
+    objective. The best-rated player gets the highest weight (= n_unique) and
+    the worst-rated gets weight 1. Dense ranking handles ties.
+
+    Using inverted weights (best = heavy) is critical: the LP objective
+    minimises deviation of each team's weight-sum from the ideal.  If the best
+    player had weight 0 (raw rank) they would contribute nothing and the LP
+    would be free to stack all elite players on one team.
     """
     sorted_ratings = sorted({players[i]['rating'] for i in indices}, reverse=True)
+    n = len(sorted_ratings)
     rating_to_rank = {r: k for k, r in enumerate(sorted_ratings)}
-    return {i: rating_to_rank[players[i]['rating']] for i in indices}
+    # weight = n - rank  →  best player (rank 0) → n,  worst (rank n-1) → 1
+    return {i: n - rating_to_rank[players[i]['rating']] for i in indices}
 
 
 def _build_prob(players, teams, d_idx, f_idx, cougar_idx, n_players):
