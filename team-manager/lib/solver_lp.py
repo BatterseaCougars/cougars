@@ -183,6 +183,35 @@ def _build_prob(players, teams, d_idx, f_idx, cougar_idx, n_players):
         if len(f_idx) >= n_teams:
             prob += lpSum(assigned[i][t] for i in f_idx) >= 1
 
+    # --- Hard cross-position constraint ---
+    # The top-rated forward(s) and the top-rated defender(s) must not share
+    # a team.  This prevents a "superstar first line" (e.g. F90 + D80) that
+    # dominates every other team.  The guard ensures the constraint is only
+    # added when there are enough top players to distribute one per team.
+    if f_idx and d_idx:
+        rw_f_all = _rank_weights(f_idx, players)
+        rw_d_all = _rank_weights(d_idx, players)
+        top_f_players = [i for i in f_idx if rw_f_all[i] == max(rw_f_all.values())]
+        top_d_players = [j for j in d_idx if rw_d_all[j] == max(rw_d_all.values())]
+        if len(top_f_players) + len(top_d_players) <= n_teams:
+            for i in top_f_players:
+                for j in top_d_players:
+                    for t in teams:
+                        prob += assigned[i][t] + assigned[j][t] <= 1
+
+    # Spread tied top players across teams: if there are k top-rated players
+    # in a position group (all sharing the same max rating) and k <= n_teams,
+    # each team gets at most 1 of them.
+    for pos_idx in (f_idx, d_idx):
+        if not pos_idx:
+            continue
+        rw_pos = _rank_weights(pos_idx, players)
+        max_w = max(rw_pos.values())
+        top_players = [i for i in pos_idx if rw_pos[i] == max_w]
+        if 2 <= len(top_players) <= n_teams:
+            for t in teams:
+                prob += lpSum(assigned[i][t] for i in top_players) <= 1
+
     # --- Rank-balance objective ---
     # Assign each forward and each defender a rank (0 = best) within their
     # position group. For each team, compute the sum of ranks received by its
@@ -195,8 +224,17 @@ def _build_prob(players, teams, d_idx, f_idx, cougar_idx, n_players):
     #
     # |x - ideal| is linearised as: pos + neg = abs_dev,
     # x - ideal = pos - neg, pos >= 0, neg >= 0.
+    #
+    # Additionally we penalise having the best player in each position group
+    # concentrated on one team.  For each team t we track:
+    #   top_t  >= weight_i * x_i_t   for all i in the position group
+    # so top_t equals the weight of the strongest player assigned to team t.
+    # We then add  TOP_WEIGHT * (max_top - min_top)  to the objective, which
+    # reinforces the snake-draft-style spread of elite players.
+    TOP_WEIGHT = 50
 
     rank_balance_terms = []
+    top_vars_per_pos: dict = {}
 
     for pos_indices, pos_label in [(f_idx, 'F'), (d_idx, 'D')]:
         if not pos_indices:
@@ -212,6 +250,35 @@ def _build_prob(players, teams, d_idx, f_idx, cougar_idx, n_players):
             neg_v = LpVariable(f"rbal_neg_{pos_label}_{t}", lowBound=0)
             prob += rank_sum_t - ideal == pos_v - neg_v
             rank_balance_terms += [pos_v, neg_v]
+
+        # Top-player spread: best player on each team should be equally strong.
+        top_vars = []
+        for t in teams:
+            top_t = LpVariable(f"top_{pos_label}_{t}", lowBound=0)
+            for i in pos_indices:
+                prob += top_t >= rw[i] * assigned[i][t]
+            top_vars.append(top_t)
+        max_top = LpVariable(f"max_top_{pos_label}", lowBound=0)
+        min_top = LpVariable(f"min_top_{pos_label}", lowBound=0)
+        for tv in top_vars:
+            prob += tv <= max_top
+            prob += tv >= min_top
+        rank_balance_terms.append(TOP_WEIGHT * (max_top - min_top))
+
+        top_vars_per_pos[pos_label] = top_vars
+
+    # Top-LINE spread: the combined strength of the best F + best D on each
+    # team should be as equal as possible (soft reinforcement of the hard
+    # constraint above for cases where the hard constraint doesn't apply).
+    if 'F' in top_vars_per_pos and 'D' in top_vars_per_pos:
+        top_line = [top_vars_per_pos['F'][t] + top_vars_per_pos['D'][t] for t in teams]
+        max_top_line = LpVariable("max_top_line", lowBound=0)
+        min_top_line = LpVariable("min_top_line", lowBound=0)
+        for tl in top_line:
+            prob += tl <= max_top_line
+            prob += tl >= min_top_line
+        rank_balance_terms.append(TOP_WEIGHT * (max_top_line - min_top_line))
+
 
     return prob, assigned, is_cougar_team, cougar_placed, cougar_count, max_size, min_size, max_def, min_def, rank_balance_terms
 

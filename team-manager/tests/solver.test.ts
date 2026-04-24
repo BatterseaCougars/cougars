@@ -363,3 +363,310 @@ describe('April 24 session (20 players)', () => {
     expect(spread, `avg rating spread was ${spread.toFixed(1)}`).toBeLessThanOrEqual(20);
   });
 });
+
+// ╔══════════════════════════════════════════════════════════════════════════╗
+// ║  Boundary & edge-case tests                                             ║
+// ╚══════════════════════════════════════════════════════════════════════════╝
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function makePlayers(specs: { pos: string; rating: number; cougar?: boolean }[]) {
+  return specs.map((s, i) => ({
+    id: `b${i + 1}`,
+    name: `P${i + 1}`,
+    position: s.pos,
+    rating: s.rating,
+    cougar: s.cougar ?? false,
+  }));
+}
+
+function teamStats(result: SolverPlayer[]) {
+  const map: Record<string, SolverPlayer[]> = {};
+  for (const p of result) {
+    (map[p.team] ??= []).push(p);
+  }
+  const avgs = Object.values(map).map(
+    (ps) => ps.reduce((s, p) => s + p.rating, 0) / ps.length,
+  );
+  return {
+    teams: map,
+    n: Object.keys(map).length,
+    sizes: Object.values(map).map((ps) => ps.length).sort((a, b) => a - b),
+    avgSpread: Math.max(...avgs) - Math.min(...avgs),
+    topF: (team: SolverPlayer[]) => Math.max(...team.filter(p => p.position === 'F').map(p => p.rating), 0),
+    topD: (team: SolverPlayer[]) => Math.max(...team.filter(p => p.position === 'D').map(p => p.rating), 0),
+  };
+}
+
+// ── Boundary 1: minimum viable session (6 players, 2 teams) ─────────────────
+describe('Boundary: 6 players (minimum, 2 teams)', () => {
+  // Exactly MIN_TEAM_SIZE * 2 = 6 players
+  const players = makePlayers([
+    { pos: 'F', rating: 90 }, { pos: 'D', rating: 80 },
+    { pos: 'F', rating: 70 }, { pos: 'D', rating: 60 },
+    { pos: 'F', rating: 50 }, { pos: 'F', rating: 40 },
+  ]);
+  let result: SolverPlayer[];
+  beforeAll(() => { result = runSolver(players); });
+
+  it('assigns all 6 players', () => expect(result).toHaveLength(6));
+  it('produces 2 teams', () => expect(teamStats(result).n).toBe(2));
+  it('each team has exactly 3 players', () => {
+    expect(teamStats(result).sizes).toEqual([3, 3]);
+  });
+  it('top F and top D are on different teams', () => {
+    const f90 = result.find(p => p.rating === 90)!.team;
+    const d80 = result.find(p => p.rating === 80)!.team;
+    expect(f90).not.toBe(d80);
+  });
+});
+
+// ── Boundary 2: 14 players (largest 2-team session) ──────────────────────────
+describe('Boundary: 14 players (largest 2-team session)', () => {
+  const players = makePlayers([
+    { pos: 'F', rating: 95 }, { pos: 'D', rating: 85 },
+    { pos: 'F', rating: 80 }, { pos: 'D', rating: 75 },
+    { pos: 'F', rating: 70 }, { pos: 'F', rating: 65 },
+    { pos: 'F', rating: 60 }, { pos: 'D', rating: 55 },
+    { pos: 'F', rating: 50 }, { pos: 'F', rating: 45 },
+    { pos: 'D', rating: 40 }, { pos: 'F', rating: 35 },
+    { pos: 'F', rating: 30 }, { pos: 'F', rating: 20 },
+  ]);
+  let result: SolverPlayer[];
+  beforeAll(() => { result = runSolver(players); });
+
+  it('assigns all 14 players', () => expect(result).toHaveLength(14));
+  it('produces 2 teams', () => expect(teamStats(result).n).toBe(2));
+  it('teams differ by at most 1 player', () => {
+    const s = teamStats(result).sizes;
+    expect(s[1] - s[0]).toBeLessThanOrEqual(1);
+  });
+  it('top F and top D on different teams', () => {
+    const f95 = result.find(p => p.rating === 95)!.team;
+    const d85 = result.find(p => p.rating === 85)!.team;
+    expect(f95).not.toBe(d85);
+  });
+  it('avg rating spread <= 15', () => {
+    expect(teamStats(result).avgSpread).toBeLessThanOrEqual(15);
+  });
+});
+
+// ── Boundary 3: 15 players (smallest 3-team session) ─────────────────────────
+describe('Boundary: 15 players (smallest 3-team session)', () => {
+  const players = makePlayers([
+    { pos: 'F', rating: 90 }, { pos: 'D', rating: 80 }, { pos: 'D', rating: 75 },
+    { pos: 'F', rating: 70 }, { pos: 'F', rating: 70 }, { pos: 'D', rating: 65 },
+    { pos: 'F', rating: 60 }, { pos: 'F', rating: 60 }, { pos: 'F', rating: 55 },
+    { pos: 'F', rating: 50 }, { pos: 'F', rating: 45 }, { pos: 'F', rating: 40 },
+    { pos: 'F', rating: 35 }, { pos: 'F', rating: 30 }, { pos: 'F', rating: 20 },
+  ]);
+  let result: SolverPlayer[];
+  beforeAll(() => { result = runSolver(players); });
+
+  it('assigns all 15 players', () => expect(result).toHaveLength(15));
+  it('produces 3 teams of 5', () => {
+    expect(teamStats(result).n).toBe(3);
+    expect(teamStats(result).sizes).toEqual([5, 5, 5]);
+  });
+  it('top F not on same team as top D', () => {
+    const f90 = result.find(p => p.rating === 90)!.team;
+    const d80 = result.find(p => p.rating === 80)!.team;
+    expect(f90).not.toBe(d80);
+  });
+  it('avg rating spread <= 20', () => {
+    expect(teamStats(result).avgSpread).toBeLessThanOrEqual(20);
+  });
+});
+
+// ── Boundary 4: all identical ratings ────────────────────────────────────────
+describe('Boundary: all players have identical rating (60)', () => {
+  const players = makePlayers([
+    { pos: 'F', rating: 60 }, { pos: 'D', rating: 60 }, { pos: 'F', rating: 60 },
+    { pos: 'D', rating: 60 }, { pos: 'F', rating: 60 }, { pos: 'F', rating: 60 },
+    { pos: 'F', rating: 60 }, { pos: 'D', rating: 60 }, { pos: 'F', rating: 60 },
+  ]);
+  let result: SolverPlayer[];
+  beforeAll(() => { result = runSolver(players); });
+
+  it('assigns all 9 players', () => expect(result).toHaveLength(9));
+  it('produces 2 teams', () => expect(teamStats(result).n).toBe(2));
+  it('avg rating spread is 0', () => {
+    expect(teamStats(result).avgSpread).toBe(0);
+  });
+});
+
+// ── Boundary 5: heavily skewed ratings (1 elite, rest low) ───────────────────
+describe('Boundary: 1 elite player (rating 100), rest rating 10', () => {
+  const players = makePlayers([
+    { pos: 'F', rating: 100 },
+    ...Array.from({ length: 8 }, (_, i) => ({ pos: i % 2 === 0 ? 'F' : 'D', rating: 10 })) as { pos: string; rating: number }[],
+  ]);
+  let result: SolverPlayer[];
+  beforeAll(() => { result = runSolver(players); });
+
+  it('assigns all 9 players', () => expect(result).toHaveLength(9));
+  it('produces 2 teams', () => expect(teamStats(result).n).toBe(2));
+  it('elite player is assigned to exactly one team', () => {
+    const elite = result.filter(p => p.rating === 100);
+    expect(elite).toHaveLength(1);
+  });
+});
+
+// ── Boundary 6: no defenders ──────────────────────────────────────────────────
+describe('Boundary: all forwards (no defenders)', () => {
+  const players = makePlayers(
+    Array.from({ length: 9 }, (_, i) => ({ pos: 'F', rating: 90 - i * 8 })),
+  );
+  let result: SolverPlayer[];
+  beforeAll(() => { result = runSolver(players); });
+
+  it('assigns all 9 players', () => expect(result).toHaveLength(9));
+  it('produces 2 teams', () => expect(teamStats(result).n).toBe(2));
+  it('top F on one of two teams', () => {
+    expect(result.find(p => p.rating === 90)).toBeDefined();
+  });
+});
+
+// ── Boundary 7: all defenders ─────────────────────────────────────────────────
+describe('Boundary: all defenders (no forwards)', () => {
+  const players = makePlayers(
+    Array.from({ length: 9 }, (_, i) => ({ pos: 'D', rating: 85 - i * 7 })),
+  );
+  let result: SolverPlayer[];
+  beforeAll(() => { result = runSolver(players); });
+
+  it('assigns all 9 players', () => expect(result).toHaveLength(9));
+  it('produces 2 teams', () => expect(teamStats(result).n).toBe(2));
+});
+
+// ── Boundary 8: 4-team session (24 players) ───────────────────────────────────
+describe('Boundary: 24 players (4 teams)', () => {
+  // 16 F + 8 D — one elite F, one elite D, rest spread
+  const specs = [
+    { pos: 'F', rating: 95 }, { pos: 'D', rating: 90 },
+    { pos: 'F', rating: 80 }, { pos: 'D', rating: 80 },
+    { pos: 'F', rating: 75 }, { pos: 'D', rating: 75 },
+    { pos: 'F', rating: 70 }, { pos: 'D', rating: 70 },
+    { pos: 'F', rating: 70 }, { pos: 'D', rating: 65 },
+    { pos: 'F', rating: 65 }, { pos: 'D', rating: 60 },
+    { pos: 'F', rating: 60 }, { pos: 'D', rating: 55 },
+    { pos: 'F', rating: 55 }, { pos: 'D', rating: 50 },
+    { pos: 'F', rating: 50 }, { pos: 'F', rating: 45 },
+    { pos: 'F', rating: 40 }, { pos: 'F', rating: 35 },
+    { pos: 'F', rating: 30 }, { pos: 'F', rating: 25 },
+    { pos: 'F', rating: 20 }, { pos: 'F', rating: 15 },
+  ];
+  const players = makePlayers(specs);
+  let result: SolverPlayer[];
+  beforeAll(() => { result = runSolver(players); });
+
+  it('assigns all 24 players', () => expect(result).toHaveLength(24));
+  it('produces 4 teams', () => expect(teamStats(result).n).toBe(4));
+  it('each team has 6 players', () => {
+    expect(teamStats(result).sizes).toEqual([6, 6, 6, 6]);
+  });
+  it('each team has at least 1 F and 1 D', () => {
+    const { teams } = teamStats(result);
+    for (const [name, ps] of Object.entries(teams)) {
+      expect(ps.some(p => p.position === 'F'), `${name} has no F`).toBe(true);
+      expect(ps.some(p => p.position === 'D'), `${name} has no D`).toBe(true);
+    }
+  });
+  it('top F and top D on different teams', () => {
+    const f95 = result.find(p => p.rating === 95 && p.position === 'F')!.team;
+    const d90 = result.find(p => p.rating === 90 && p.position === 'D')!.team;
+    expect(f95).not.toBe(d90);
+  });
+  it('avg rating spread <= 20', () => {
+    expect(teamStats(result).avgSpread).toBeLessThanOrEqual(20);
+  });
+});
+
+// ── Boundary 9: LP threshold (29 players — last to use LP) ───────────────────
+describe('Boundary: 29 players (last LP session, 5 teams)', () => {
+  const specs = Array.from({ length: 29 }, (_, i) => ({
+    pos: i % 5 === 0 ? 'D' : 'F',
+    rating: Math.max(10, 90 - i * 2),
+  }));
+  const players = makePlayers(specs);
+  let result: SolverPlayer[];
+  beforeAll(() => { result = runSolver(players); });
+
+  it('assigns all 29 players', () => expect(result).toHaveLength(29));
+  it('produces 5 teams', () => expect(teamStats(result).n).toBe(5));
+  it('no team has more than 7 players', () => {
+    const { sizes } = teamStats(result);
+    expect(Math.max(...sizes)).toBeLessThanOrEqual(7);
+  });
+  it('avg rating spread <= 20', () => {
+    expect(teamStats(result).avgSpread).toBeLessThanOrEqual(20);
+  });
+});
+
+// ── Boundary 10: heuristic threshold (30 players — first heuristic session) ──
+describe('Boundary: 30 players (first heuristic session, 5 teams)', () => {
+  const specs = Array.from({ length: 30 }, (_, i) => ({
+    pos: i % 5 === 0 ? 'D' : 'F',
+    rating: Math.max(10, 90 - Math.floor(i * 2.5)),
+  }));
+  const players = makePlayers(specs);
+  let result: SolverPlayer[];
+  beforeAll(() => { result = runSolver(players); });
+
+  it('assigns all 30 players', () => expect(result).toHaveLength(30));
+  it('produces 5 teams', () => expect(teamStats(result).n).toBe(5));
+  it('no team has more than 7 players', () => {
+    const { sizes } = teamStats(result);
+    expect(Math.max(...sizes)).toBeLessThanOrEqual(7);
+  });
+  it('avg rating spread <= 25 (heuristic is less precise)', () => {
+    expect(teamStats(result).avgSpread).toBeLessThanOrEqual(25);
+  });
+});
+
+// ── Boundary 11: tied top players (3 F all rating 90) ────────────────────────
+describe('Boundary: 3 tied top-rated forwards (all F 90) across 3 teams', () => {
+  const players = makePlayers([
+    { pos: 'F', rating: 90 }, { pos: 'F', rating: 90 }, { pos: 'F', rating: 90 },
+    { pos: 'D', rating: 80 }, { pos: 'D', rating: 75 }, { pos: 'D', rating: 70 },
+    { pos: 'F', rating: 60 }, { pos: 'F', rating: 50 }, { pos: 'F', rating: 50 },
+    { pos: 'F', rating: 40 }, { pos: 'F', rating: 35 }, { pos: 'F', rating: 30 },
+    { pos: 'F', rating: 25 }, { pos: 'F', rating: 20 }, { pos: 'F', rating: 15 },
+  ]);
+  let result: SolverPlayer[];
+  beforeAll(() => { result = runSolver(players); });
+
+  it('assigns all 15 players', () => expect(result).toHaveLength(15));
+  it('produces 3 teams', () => expect(teamStats(result).n).toBe(3));
+  it('each team gets exactly one F-90 player', () => {
+    const { teams } = teamStats(result);
+    for (const [name, ps] of Object.entries(teams)) {
+      const top90 = ps.filter(p => p.rating === 90 && p.position === 'F');
+      expect(top90, `${name} has ${top90.length} F-90 players`).toHaveLength(1);
+    }
+  });
+});
+
+// ── Boundary 12: many cougars (all players are cougars) ──────────────────────
+describe('Boundary: all 9 players are Cougars', () => {
+  const players = makePlayers(
+    Array.from({ length: 9 }, (_, i) => ({ pos: i < 3 ? 'D' : 'F', rating: 80 - i * 5, cougar: true })),
+  );
+  let result: SolverPlayer[];
+  beforeAll(() => { result = runSolver(players); });
+
+  it('assigns all 9 players', () => expect(result).toHaveLength(9));
+  it('produces 2 teams', () => expect(teamStats(result).n).toBe(2));
+  it('one team is named Cougars', () => {
+    expect(Object.keys(teamStats(result).teams)).toContain('Cougars');
+  });
+  it('Cougars team has more cougar players than the other team', () => {
+    const { teams } = teamStats(result);
+    const counts = Object.entries(teams).map(([name, ps]) => ({
+      name, count: ps.filter(p => p.cougar).length,
+    }));
+    const cougarTeam = counts.find(t => t.name === 'Cougars')!;
+    const maxOther = Math.max(...counts.filter(t => t.name !== 'Cougars').map(t => t.count));
+    expect(cougarTeam.count).toBeGreaterThanOrEqual(maxOther);
+  });
+});
