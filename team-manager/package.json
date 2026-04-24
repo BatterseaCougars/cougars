@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "clean": "rm -rf .next",
-    "test": "vitest run"
+    "test": "vitest run",
+    "deploy": "flyctl deploy"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

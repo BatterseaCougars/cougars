@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
 
     const stdout = execSync(`python3 "${SOLVER_PY}"`, {
       input: JSON.stringify(players),
-      timeout: 30_000,
+      timeout: 90_000,
     });
 
     type AssignedPlayer = SolverPlayer & { team: string };
@@ -82,6 +82,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ teams });
   } catch (e) {
     const message = e instanceof Error ? e.message : 'Solver error';
-    return NextResponse.json({ error: message }, { status: 500 });
+    const friendly = message.includes('ETIMEDOUT')
+      ? 'Team generation took too long. Please try again with fewer players or retry in a moment.'
+      : message;
+    return NextResponse.json({ error: friendly }, { status: 500 });
   }
 }

@@ -264,3 +264,102 @@ describe('March 20 session (21 players)', () => {
     expect(cougarCount).toBeGreaterThanOrEqual(maxOther);
   });
 });
+
+// ── Tests: April 24 session (20 players → 3 teams) ───────────────────────────
+
+/**
+ * Real session from 2026-04-24, anonymised. 20 players: 15 forwards, 5 defenders.
+ *
+ * The previous solver (total-rating objective) placed the three highest-rated
+ * players — F:90, D:80, D:80 — on the same team, producing a heavily
+ * unbalanced result. The rank-balance objective should spread them so that
+ * each of the three top-rated players lands on a different team.
+ *
+ * Player list (sorted by rating desc):
+ *   pid-001 F 90 | pid-002 D 80 | pid-003 D 80 | pid-004 F 75 | pid-005 D 75
+ *   pid-006..010 F 70x5 | pid-011 D 65 | pid-012 F 65 | pid-013 F 60
+ *   pid-014..015 F 50x2 | pid-016 D 45 | pid-017..018 F 45x2
+ *   pid-019 F 30 | pid-020 F 15
+ */
+const APR_24_PLAYERS = [
+  { id: 'pid-001', name: 'Player 1',  position: 'F', rating: 90, cougar: false },
+  { id: 'pid-002', name: 'Player 2',  position: 'D', rating: 80, cougar: false },
+  { id: 'pid-003', name: 'Player 3',  position: 'D', rating: 80, cougar: false },
+  { id: 'pid-004', name: 'Player 4',  position: 'F', rating: 75, cougar: false },
+  { id: 'pid-005', name: 'Player 5',  position: 'D', rating: 75, cougar: false },
+  { id: 'pid-006', name: 'Player 6',  position: 'F', rating: 70, cougar: false },
+  { id: 'pid-007', name: 'Player 7',  position: 'F', rating: 70, cougar: false },
+  { id: 'pid-008', name: 'Player 8',  position: 'F', rating: 70, cougar: false },
+  { id: 'pid-009', name: 'Player 9',  position: 'F', rating: 70, cougar: false },
+  { id: 'pid-010', name: 'Player 10', position: 'F', rating: 70, cougar: false },
+  { id: 'pid-011', name: 'Player 11', position: 'D', rating: 65, cougar: false },
+  { id: 'pid-012', name: 'Player 12', position: 'F', rating: 65, cougar: false },
+  { id: 'pid-013', name: 'Player 13', position: 'F', rating: 60, cougar: false },
+  { id: 'pid-014', name: 'Player 14', position: 'F', rating: 50, cougar: false },
+  { id: 'pid-015', name: 'Player 15', position: 'F', rating: 50, cougar: false },
+  { id: 'pid-016', name: 'Player 16', position: 'D', rating: 45, cougar: false },
+  { id: 'pid-017', name: 'Player 17', position: 'F', rating: 45, cougar: false },
+  { id: 'pid-018', name: 'Player 18', position: 'F', rating: 45, cougar: false },
+  { id: 'pid-019', name: 'Player 19', position: 'F', rating: 30, cougar: false },
+  { id: 'pid-020', name: 'Player 20', position: 'F', rating: 15, cougar: false },
+];
+
+describe('April 24 session (20 players)', () => {
+  let result: SolverPlayer[];
+
+  beforeAll(() => {
+    result = runSolver(APR_24_PLAYERS);
+  });
+
+  it('assigns all 20 players', () => {
+    expect(result).toHaveLength(20);
+  });
+
+  it('assigns each player exactly once', () => {
+    const ids = result.map((p) => p.id);
+    expect(new Set(ids).size).toBe(20);
+  });
+
+  it('produces exactly 3 teams', () => {
+    const teams = new Set(result.map((p) => p.team));
+    expect(teams.size).toBe(3);
+  });
+
+  it('each team has at least 1 forward and 1 defender', () => {
+    const teams = teamMap(result);
+    for (const [name, players] of Object.entries(teams)) {
+      expect(players.some((p) => p.position === 'F'), `${name} has no forward`).toBe(true);
+      expect(players.some((p) => p.position === 'D'), `${name} has no defender`).toBe(true);
+    }
+  });
+
+  it('the two highest-rated defenders (both D 80) are on different teams', () => {
+    // Regression: old solver placed both D-80 players + the F-90 player on
+    // the same team, making it far stronger than the others.
+    const topDefenders = result.filter((p) => p.position === 'D' && p.rating === 80);
+    expect(topDefenders).toHaveLength(2);
+    const [teamA, teamB] = topDefenders.map((p) => p.team);
+    expect(teamA, 'both D-80 defenders landed on the same team').not.toBe(teamB);
+  });
+
+  it('the top-3 rated players (F 90, D 80, D 80) are each on a different team', () => {
+    // With 3 teams the rank-balance objective should place exactly one of the
+    // three highest-rated players on each team.
+    const top3 = result.filter(
+      (p) => (p.position === 'F' && p.rating === 90) ||
+             (p.position === 'D' && p.rating === 80),
+    );
+    expect(top3).toHaveLength(3);
+    const teams = new Set(top3.map((p) => p.team));
+    expect(teams.size).toBe(3);
+  });
+
+  it('average rating per player is balanced across teams (max - min <= 20)', () => {
+    const teams = teamMap(result);
+    const avgs = Object.values(teams).map(
+      (players) => players.reduce((s, p) => s + p.rating, 0) / players.length,
+    );
+    const spread = Math.max(...avgs) - Math.min(...avgs);
+    expect(spread, `avg rating spread was ${spread.toFixed(1)}`).toBeLessThanOrEqual(20);
+  });
+});
