@@ -50,6 +50,8 @@ function HomeContent() {
   const [isAdmin,           setIsAdmin]           = useState(false);
   const [isAuthenticated,   setIsAuthenticated]   = useState(false);
   const [authChecked,       setAuthChecked]       = useState(false);
+  const [solverStrategy,    setSolverStrategy]    = useState<'lp' | 'lines'>('lp');
+  const [teamsStrategy,     setTeamsStrategy]     = useState<'lp' | 'lines'>('lp');
   const { data: sessions, error: sessionsError } = useSWR<Session[]>(authChecked && isAuthenticated ? '/api/sessions' : null, fetcher);
   const { data: players,  error: playersError  } = useSWR<Player[]>(authChecked && isAuthenticated ? '/api/players'  : null, fetcher);
   const [splashExiting,     setSplashExiting]     = useState(false);
@@ -262,11 +264,12 @@ function HomeContent() {
       const res = await fetch('/api/solve', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId: session.id }),
+        body: JSON.stringify({ sessionId: session.id, strategy: solverStrategy }),
       });
       if (!res.ok) { const e = await res.json(); throw new Error(e.error ?? `HTTP ${res.status}`); }
       const data = await res.json();
       setTeams(data.teams);
+      setTeamsStrategy(data.strategy ?? solverStrategy);
       setSolveKey((k) => k + 1);
       mutateStoredTeams();
       setTimeout(() => teamsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
@@ -380,6 +383,36 @@ function HomeContent() {
             >
               {generating ? 'Solving…' : 'Generate Teams'}
             </button>
+
+            {/* Strategy toggle — admin only, desktop */}
+            {isAdmin && (
+              <div className="hidden sm:flex items-center rounded-full bg-zinc-800 ring-1 ring-inset ring-white/10 overflow-hidden h-8 text-xs font-medium flex-shrink-0">
+                <button
+                  onClick={() => setSolverStrategy('lp')}
+                  title="LP solver (rank-balance)"
+                  className={[
+                    'px-3 h-full transition-colors',
+                    solverStrategy === 'lp'
+                      ? 'bg-zinc-600 text-white'
+                      : 'text-zinc-400 hover:text-zinc-200',
+                  ].join(' ')}
+                >
+                  LP
+                </button>
+                <button
+                  onClick={() => setSolverStrategy('lines')}
+                  title="Line solver (snake-draft trios)"
+                  className={[
+                    'px-3 h-full transition-colors',
+                    solverStrategy === 'lines'
+                      ? 'bg-zinc-600 text-white'
+                      : 'text-zinc-400 hover:text-zinc-200',
+                  ].join(' ')}
+                >
+                  Lines
+                </button>
+              </div>
+            )}
 
             {/* Admin — stays normal size */}
             <AdminButton isAdmin={isAdmin} onAdminChange={(v) => {
@@ -495,7 +528,16 @@ function HomeContent() {
 
         <div ref={teamsRef}>
           {(teams ?? airtableTeams)
-            ? <TeamsView
+            ? <>
+                {isAdmin && teams && (
+                  <div className="mb-3 flex items-center gap-2">
+                    <span className="text-xs text-zinc-500">Solver:</span>
+                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-300 ring-1 ring-inset ring-white/10">
+                      {teamsStrategy === 'lines' ? 'Lines (snake-draft trios)' : 'LP (rank-balance)'}
+                    </span>
+                  </div>
+                )}
+                <TeamsView
                 key={solveKey}
                 teams={(teams ?? airtableTeams)!}
                 isAdmin={isAdmin}
@@ -514,6 +556,7 @@ function HomeContent() {
                   }).catch(() => {});
                 }}
               />
+            </>
             : attendingIds.size > 0 && (
               <div className="mt-16 flex flex-col items-center py-10 text-center">
                 <p className="text-sm font-semibold text-zinc-500 mb-1.5">Teams not generated yet</p>

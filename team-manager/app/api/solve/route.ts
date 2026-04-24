@@ -5,7 +5,8 @@ import type { SolverPlayer, SolverTeam } from '@/lib/solver';
 import { fetchPlayers, fetchSessions, fetchTeams, deleteTeams, saveTeams } from '@/lib/airtable';
 import { requireAppAuth } from '@/lib/auth';
 
-const SOLVER_PY = path.join(process.cwd(), 'lib', 'solver_lp.py');
+const SOLVER_PY_LP    = path.join(process.cwd(), 'lib', 'solver_lp.py');
+const SOLVER_PY_LINES = path.join(process.cwd(), 'lib', 'solver_lines.py');
 
 export async function POST(req: NextRequest) {
   const deny = await requireAppAuth(req);
@@ -13,6 +14,7 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const sessionId: string | undefined = body.sessionId;
+    const strategy: string = body.strategy === 'lines' ? 'lines' : 'lp';
 
     if (!sessionId) {
       return NextResponse.json({ error: 'sessionId is required' }, { status: 400 });
@@ -43,7 +45,7 @@ export async function POST(req: NextRequest) {
     const existing = await fetchTeams(sessionId);
     await deleteTeams(existing.map((t) => t.id));
 
-    const stdout = execSync(`python3 "${SOLVER_PY}"`, {
+    const stdout = execSync(`python3 "${strategy === 'lines' ? SOLVER_PY_LINES : SOLVER_PY_LP}"`, {
       input: JSON.stringify(players),
       timeout: 90_000,
     });
@@ -79,7 +81,7 @@ export async function POST(req: NextRequest) {
     // Persist new teams to Airtable
     await saveTeams(sessionId, teams);
 
-    return NextResponse.json({ teams });
+    return NextResponse.json({ teams, strategy });
   } catch (e) {
     const message = e instanceof Error ? e.message : 'Solver error';
     const friendly = message.includes('ETIMEDOUT')
