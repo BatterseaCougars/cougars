@@ -373,6 +373,34 @@ html.is-scrollbar-dragging * {
   background: linear-gradient(to right, var(--red) 0.55rem, transparent 0.55rem), var(--label);
   rotate: 0.8deg;
 }
+/* Hover: one pass of bad VHS tracking, the label text splits red/cyan and settles */
+@media (prefers-reduced-motion: no-preference) {
+  .btn:hover,
+  .btn:focus-visible {
+    animation: vhs-tracking 0.4s steps(1, end);
+  }
+}
+@keyframes vhs-tracking {
+  0% {
+    text-shadow:
+      -3px 0 rgb(229 19 31 / 0.75),
+      3px 0 rgb(0 200 230 / 0.75);
+  }
+  25% {
+    text-shadow:
+      2px 0 rgb(229 19 31 / 0.75),
+      -2px 0 rgb(0 200 230 / 0.75);
+  }
+  50% {
+    text-shadow:
+      -1px 0 rgb(229 19 31 / 0.6),
+      1px 0 rgb(0 200 230 / 0.6);
+  }
+  75%,
+  100% {
+    text-shadow: none;
+  }
+}
 /* Claw marks: three tapered slashes ripped through the right end of the label */
 .btn--primary::after {
   content: "";
