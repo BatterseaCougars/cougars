@@ -27,7 +27,7 @@ To preview the design with sample events, videos, photos and players: `DEMO_CONT
 The site builds and runs **without Sanity**: until a Sanity project is configured, it uses the club copy in
 `apps/web/src/lib/sanity/fallback.ts` and shows empty states for videos, photos and events.
 
-With secrets (needs `BWS_ACCESS_TOKEN`, see [Secrets](#secrets)):
+With secrets (needs `COUGARS_LOCAL_BW_TOKEN`, see [Secrets](#secrets)):
 
 ```sh
 node scripts/env-pull.mjs --status          # list secret names (never values)
@@ -38,45 +38,55 @@ node scripts/env-pull.mjs -- npm run dev    # run with dev secrets injected
 
 Rules ([ADR 0002](docs/adr/0002-secrets-in-bitwarden.md), [ADR 0010](docs/adr/0010-two-environments.md)):
 
-- Every secret lives in **Bitwarden Secrets Manager** and nowhere else. GitHub holds only `BWS_ACCESS_TOKEN`
+- Every secret lives in **Bitwarden Secrets Manager** and nowhere else. GitHub holds only the Bitwarden tokens
   (one per GitHub environment). There are no secret files; `.env` is for local, non-secret overrides
   ([.env.example](.env.example)).
 - **Two environments.** Production (Cloudflare account **Cougars**) and dev (account **Cougars Dev**). Your
   machine, PR previews and `scripts/deploy-dev.sh` are dev.
 - **Naming:** `NAME` applies to both; `NAME__PRODUCTION` / `NAME__DEV` override it for one. Code reads `NAME`.
-  Production values sit in the Secrets Manager project `cougars`; dev and shared values in `cougars-dev`.
+  Production values sit in the Secrets Manager project `cougars`; dev and shared values in `cougars-dev`. Every
+  app shares these two projects ([ADR 0012](docs/adr/0012-secrets-manager-projects.md)); _Used by_ says which app
+  needs a secret.
 - **A token is named exactly like its secret** at the provider that issued it.
 - **Every secret has an entry below.** Adding one: create the token with its secret name, add it to Secrets
-  Manager, add it here.
+  Manager with `node scripts/secret-set.mjs NAME` (hidden prompt; it picks the project from the name), add it here.
 
-| Secret                                                                                | Project       | Issued by                  | Used by                           |
-| ------------------------------------------------------------------------------------- | ------------- | -------------------------- | --------------------------------- |
-| [`BWS_ACCESS_TOKEN`](#bws_access_token)                                               | (GitHub)      | Bitwarden machine accounts | CI, your shell                    |
-| [`CLOUDFLARE_API_TOKEN__PRODUCTION`](#cloudflare_api_token__production)               | `cougars`     | Cloudflare, Cougars        | Production deploys                |
-| [`CLOUDFLARE_ACCOUNT_ID__PRODUCTION`](#cloudflare_account_id__production)             | `cougars`     | Cloudflare, Cougars        | Production deploys                |
-| [`CLOUDFLARE_API_TOKEN__DEV`](#cloudflare_api_token__dev)                             | `cougars-dev` | Cloudflare, Cougars Dev    | PR previews, `deploy-dev.sh`      |
-| [`CLOUDFLARE_ACCOUNT_ID__DEV`](#cloudflare_account_id__dev)                           | `cougars-dev` | Cloudflare, Cougars Dev    | PR previews, `deploy-dev.sh`      |
-| [`SANITY_PROJECT_ID`](#sanity_project_id)                                             | `cougars-dev` | Sanity                     | Website build (both)              |
-| [`SANITY_API_TOKEN`](#sanity_api_token)                                               | `cougars-dev` | Sanity                     | Website build (both)              |
-| [`SANITY_DATASET__DEV`](#sanity_dataset__dev)                                         | `cougars-dev` | (a setting)                | Dev builds read the `dev` dataset |
-| [`SANITY_WEBHOOK_GITHUB_TOKEN__PRODUCTION`](#sanity_webhook_github_token__production) | `cougars`     | GitHub (fine-grained)      | Sanity's publish webhook          |
+| Secret                                                                                | Project       | Issued by                   | Used by                           |
+| ------------------------------------------------------------------------------------- | ------------- | --------------------------- | --------------------------------- |
+| [`BWS_ACCESS_TOKEN__PRODUCTION`](#bitwarden-tokens)                                   | (GitHub)      | Bitwarden, `cougars-ci`     | Production deploys                |
+| [`BWS_ACCESS_TOKEN__DEV`](#bitwarden-tokens)                                          | (GitHub)      | Bitwarden, `cougars-ci-dev` | PR previews                       |
+| [`COUGARS_LOCAL_BW_TOKEN`](#bitwarden-tokens)                                         | (your vault)  | Bitwarden, `cougars-local`  | Your machine                      |
+| [`CLOUDFLARE_API_TOKEN__PRODUCTION`](#cloudflare_api_token__production)               | `cougars`     | Cloudflare, Cougars         | Production deploys                |
+| [`CLOUDFLARE_ACCOUNT_ID__PRODUCTION`](#cloudflare_account_id__production)             | `cougars`     | Cloudflare, Cougars         | Production deploys                |
+| [`CLOUDFLARE_API_TOKEN__DEV`](#cloudflare_api_token__dev)                             | `cougars-dev` | Cloudflare, Cougars Dev     | PR previews, `deploy-dev.sh`      |
+| [`CLOUDFLARE_ACCOUNT_ID__DEV`](#cloudflare_account_id__dev)                           | `cougars-dev` | Cloudflare, Cougars Dev     | PR previews, `deploy-dev.sh`      |
+| [`SANITY_PROJECT_ID`](#sanity_project_id)                                             | `cougars-dev` | Sanity                      | Website build (both)              |
+| [`SANITY_API_TOKEN`](#sanity_api_token)                                               | `cougars-dev` | Sanity                      | Website build (both)              |
+| [`SANITY_DATASET__DEV`](#sanity_dataset__dev)                                         | `cougars-dev` | (a setting)                 | Dev builds read the `dev` dataset |
+| [`SANITY_WEBHOOK_GITHUB_TOKEN__PRODUCTION`](#sanity_webhook_github_token__production) | `cougars`     | GitHub (fine-grained)       | Sanity's publish webhook          |
 
-### `BWS_ACCESS_TOKEN`
+### Bitwarden tokens
 
-Lets CI (and you) read the other secrets. Each is an access token on a Bitwarden machine account, named
-`BWS_ACCESS_TOKEN`:
+They let CI (and you) read the other secrets. Each is the access token of one Bitwarden machine account, named
+like the secret that holds it:
 
-| Machine account  | Reads                                        | Stored in                                        |
-| ---------------- | -------------------------------------------- | ------------------------------------------------ |
-| `cougars-ci`     | `cougars`, `cougars-dev`                     | GitHub environment `production` (deploys `main`) |
-| `cougars-ci-dev` | `cougars-dev` only                           | GitHub environment `preview` (pull requests)     |
-| your own         | `cougars-dev` (and `cougars` if you need it) | your shell, exported for the session             |
+| Token                          | Machine account  | `cougars`       | `cougars-dev`   | Stored in                                            |
+| ------------------------------ | ---------------- | --------------- | --------------- | ---------------------------------------------------- |
+| `BWS_ACCESS_TOKEN__PRODUCTION` | `cougars-ci`     | Can read        | Can read        | GitHub environment `production` (deploys `main`)     |
+| `BWS_ACCESS_TOKEN__DEV`        | `cougars-ci-dev` | No access       | Can read        | GitHub environment `preview` (pull requests)         |
+| `COUGARS_LOCAL_BW_TOKEN`       | `cougars-local`  | Can read, write | Can read, write | your Password Manager vault; export it in your shell |
 
-- **Gets there by:** `deploy.yml` runs `scripts/env-pull.mjs --github-env --environment production|dev`, which
-  exports the rest (masked). Locally, `node scripts/env-pull.mjs -- <command>` (dev by default).
+Project access is set in Secrets Manager → **Machine accounts → _account_ → Projects**. CI is read-only: it never
+changes a secret. `cougars-local` can write, so you add secrets from the shell
+(`node scripts/secret-set.mjs NAME`).
+People (org members) get access to the projects they maintain; the free plan allows 2.
+
+- **Gets there by:** `deploy.yml` passes its environment's token to `bws` as `BWS_ACCESS_TOKEN` and runs
+  `scripts/env-pull.mjs --github-env --environment production|dev`, which exports the rest (masked). Locally,
+  `scripts/lib/bitwarden.mjs` uses `COUGARS_LOCAL_BW_TOKEN`: `node scripts/env-pull.mjs -- <command>`.
 - **Expires:** as set when created. Check each machine account's token list.
-- **Rotate:** new token on the machine account, `gh secret set BWS_ACCESS_TOKEN --env <environment>`, run a
-  deploy, revoke the old token.
+- **Rotate:** new token on the machine account, `gh secret set <name> --env <environment>` (or update your vault),
+  run a deploy, revoke the old token.
 
 ### `CLOUDFLARE_API_TOKEN__PRODUCTION`
 
@@ -143,14 +153,14 @@ Lets Sanity start a production rebuild when an editor presses Publish (`reposito
 
 ### Settings that aren't secret
 
-| Name                                    | Where                       | What                                                          |
-| --------------------------------------- | --------------------------- | ------------------------------------------------------------- |
-| `SITE_URL`                              | GitHub variable             | Production URL, once there is a domain                        |
-| `BWS_SERVER_URL`                        | GitHub variable, your shell | `https://vault.bitwarden.eu` if the vault is on the EU server |
-| `SANITY_DATASET`                        | Default `production`        | Overridden by `SANITY_DATASET__DEV` for dev                   |
-| `SANITY_STUDIO_PROJECT_ID` / `_DATASET` | Studio config defaults      | Which project and dataset the Studio edits                    |
-| `DEMO_CONTENT`                          | `.env`, dev builds          | Sample content + `noindex`; never set for production          |
-| `PUBLIC_BUILD_VERSION`                  | Set by CI                   | Shown in `<meta name="generator">`; checked by the smoke test |
+| Name                                    | Where                       | What                                                             |
+| --------------------------------------- | --------------------------- | ---------------------------------------------------------------- |
+| `SITE_URL`                              | GitHub variable             | Production URL, once there is a domain                           |
+| `BWS_SERVER_URL`                        | GitHub variable, your shell | `https://vault.bitwarden.eu` if the vault is on the EU server    |
+| `SANITY_DATASET`                        | Default `production`        | Overridden by `SANITY_DATASET__DEV` for dev                      |
+| `SANITY_STUDIO_PROJECT_ID` / `_DATASET` | Studio config defaults      | Which project and dataset the Studio edits                       |
+| `DEMO_CONTENT`                          | `.env`, GitHub variable     | Sample content + `noindex`; `true` on production only pre-launch |
+| `PUBLIC_BUILD_VERSION`                  | Set by CI                   | Shown in `<meta name="generator">`; checked by the smoke test    |
 
 ## Docs
 

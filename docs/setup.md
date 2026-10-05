@@ -49,16 +49,19 @@ Bitwarden secrets (step 3, in `cougars-dev`, shared by both environments): `SANI
    enough).
 2. Create two projects: **`cougars`** (production values, `NAME__PRODUCTION`) and **`cougars-dev`** (dev values,
    `NAME__DEV`, and shared plain `NAME`s). Add the secrets from steps 1, 2 and 5 with exactly those names.
-3. **Machine accounts**, each with an access token named `BWS_ACCESS_TOKEN`:
-   - `cougars-ci`: **read** on `cougars` and `cougars-dev`. Its token goes in GitHub environment `production`.
-   - `cougars-ci-dev`: **read** on `cougars-dev` only. Its token goes in GitHub environment `preview`.
-   - one for yourself: **read** on `cougars-dev` (add `cougars` only if you need production values).
+3. **Machine accounts**, each with one access token (names and the matrix are in
+   [README.md#bitwarden-tokens](../README.md#bitwarden-tokens)):
+   - `cougars-ci`: `cougars` and `cougars-dev`. Token `BWS_ACCESS_TOKEN__PRODUCTION`, in GitHub environment `production`.
+   - `cougars-ci-dev`: `cougars-dev` only. Token `BWS_ACCESS_TOKEN__DEV`, in GitHub environment `preview`.
+   - `cougars-ci` and `cougars-ci-dev` get **Can read** only.
+   - `cougars-local`: **Can read, write** on both, so you can add secrets from the shell. Token
+     `COUGARS_LOCAL_BW_TOKEN`, in your vault.
 4. If your vault is on the EU server (`vault.bitwarden.eu`), remember that for step 4.
 
 Locally, export your token in your shell. Don't save it in a file in the repo. Your machine is dev.
 
 ```sh
-export BWS_ACCESS_TOKEN=...            # add BWS_SERVER_URL=https://vault.bitwarden.eu for EU
+export COUGARS_LOCAL_BW_TOKEN=...      # add BWS_SERVER_URL=https://vault.bitwarden.eu for EU
 node scripts/env-pull.mjs --status     # lists secret names (dev)
 ```
 
@@ -67,8 +70,8 @@ node scripts/env-pull.mjs --status     # lists secret names (dev)
 In `das974/cougars` → **Settings**:
 
 1. **Environments**:
-   - `production`: deployment branches **`main` only**. Secret `BWS_ACCESS_TOKEN` = the `cougars-ci` token.
-   - `preview`: Secret `BWS_ACCESS_TOKEN` = the `cougars-ci-dev` token.
+   - `production`: deployment branches **`main` only**. Secret `BWS_ACCESS_TOKEN__PRODUCTION`.
+   - `preview`: Secret `BWS_ACCESS_TOKEN__DEV`.
    - No repository-level secrets.
 2. **Variables → Actions** (optional):
    - `BWS_SERVER_URL`: `https://vault.bitwarden.eu` if your vault is on the EU server.

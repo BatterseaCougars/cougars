@@ -12,7 +12,7 @@ a new ADR that supersedes it, never a quiet edit.
   paid Sanity features, card-payment providers) without asking. Check limits in docs/roadmap.md.
 - **Secrets live only in Bitwarden Secrets Manager** ([ADR 0002](docs/adr/0002-secrets-in-bitwarden.md)).
   Never print secret values, never write them to files (`.env`, `.dev.vars`), never commit them. `.env` is for
-  local non-secret overrides only. GitHub holds only `BWS_ACCESS_TOKEN`. Use
+  local non-secret overrides only. GitHub holds only the Bitwarden tokens (`BWS_ACCESS_TOKEN__PRODUCTION`, `__DEV`). Use
   `node scripts/env-pull.mjs --status` to see what exists (names only).
 - **Every secret is documented in [README.md#secrets](README.md#secrets)**, and a provider token is named
   exactly like its secret. Adding or renaming a secret means updating that section in the same change.

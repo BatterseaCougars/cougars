@@ -20,3 +20,4 @@ rule, a trade-off. Copy [template.md](template.md), take the next number, keep i
 | [0009](0009-site-design-direction.md)       | Site design: a Friday night, on carbon, one-page navigation              | Accepted           |
 | [0010](0010-two-environments.md)            | Two environments, production and dev, on two Cloudflare accounts         | Accepted           |
 | [0011](0011-no-news.md)                     | No news section                                                          | Accepted           |
+| [0012](0012-secrets-manager-projects.md)    | Two Secrets Manager projects, shared by every app                        | Accepted           |

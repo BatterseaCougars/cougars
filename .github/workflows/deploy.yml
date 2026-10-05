@@ -4,7 +4,7 @@ name: Deploy
 # main            -> production: worker `cougars`, Cougars account
 # sanity-publish  -> production rebuild after an editor publishes in the Studio
 # pull request    -> dev: a preview version of `cougars-dev`, Cougars Dev account, commented on the PR
-# Each GitHub environment holds its own BWS_ACCESS_TOKEN: `production` (main only) can read
+# Each GitHub environment holds its own Bitwarden token: `production` (main only) can read
 # production secrets; `preview` holds the dev token, which can't.
 on:
   push:
@@ -32,8 +32,9 @@ jobs:
     env:
       SITE_ENV: ${{ github.event_name == 'pull_request' && 'dev' || 'production' }}
       SITE_URL: ${{ github.event_name != 'pull_request' && vars.SITE_URL || '' }}
-      # Dev builds: sample content where Sanity's dev dataset is empty, and noindex
-      DEMO_CONTENT: ${{ github.event_name == 'pull_request' && 'true' || 'false' }}
+      # Dev builds: sample content where Sanity's dev dataset is empty, and noindex. Production too while the
+      # GitHub variable DEMO_CONTENT is `true` (until real content is in Sanity).
+      DEMO_CONTENT: ${{ github.event_name == 'pull_request' && 'true' || vars.DEMO_CONTENT || 'false' }}
       BWS_SERVER_URL: ${{ vars.BWS_SERVER_URL }}
     steps:
       - uses: actions/checkout@v4
@@ -47,7 +48,8 @@ jobs:
       - name: Load secrets from Bitwarden
         run: node scripts/env-pull.mjs --github-env --environment "$SITE_ENV"
         env:
-          BWS_ACCESS_TOKEN: ${{ secrets.BWS_ACCESS_TOKEN }}
+          # Each GitHub environment holds only its own: BWS_ACCESS_TOKEN__PRODUCTION or BWS_ACCESS_TOKEN__DEV
+          BWS_ACCESS_TOKEN: ${{ secrets.BWS_ACCESS_TOKEN__PRODUCTION || secrets.BWS_ACCESS_TOKEN__DEV }}
 
       - name: Build version
         run: echo "PUBLIC_BUILD_VERSION=$(date -u +%Y.%m.%d)+$(git rev-parse --short HEAD)" >> "$GITHUB_ENV"
