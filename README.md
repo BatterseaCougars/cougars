@@ -136,6 +136,9 @@ Lets the website build read content. One token reads both datasets.
 
 - **Issued by:** Sanity → API → Tokens, role **Viewer**. Token name: `SANITY_API_TOKEN`.
 - **Used by:** the website build (`apps/web/src/lib/sanity/client.ts`). Never sent to the browser.
+- **Gets there by:** CI pull, into the build only. The Worker's live photo pages
+  ([ADR 0016](docs/adr/0016-live-photo-gallery.md)) don't need it, because free-plan datasets are public. If a
+  dataset is ever made private, the Worker needs it too, as a Worker secret (`wrangler secret put SANITY_API_TOKEN`).
 - **Expires:** no.
 - **Rotate:** add a new Viewer token with the same name, update Secrets Manager, deploy, delete the old one.
 

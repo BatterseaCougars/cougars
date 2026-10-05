@@ -89,19 +89,26 @@ the first five appear on the homepage.
 
 You don't upload video files to the website. YouTube hosts them for free.
 
-## Add photos
+## Photos
 
-1. **Photos → +**. Give the album a title (e.g. "Summer social 2026"), then press **Generate** next to
-   _Web address_.
-2. Drag a whole batch of photos from your computer or phone onto the **Photos** box.
-3. Click a photo to add a caption and a short description (for people using screen readers). You can also drag
-   the circle to mark the important part of the picture, so crops keep it in view.
-4. **Publish**.
+Photos don't wait for the website to rebuild: an album is on the site **a few minutes after you press
+Publish**.
+
+1. **Photos → +**. Give the album a title (e.g. "Summer social 2026") and the date, then press **Generate** next
+   to _Web address_.
+2. Drag a batch of photos from your computer or phone onto the **Photos** box. Phone photos are fine as they
+   are: the website resizes them. Batches of 20 to 50 upload comfortably; add more by dragging again.
+3. Click each photo and give it a **caption** (shown under it) or a **description** (read out to people who
+   can't see it). One of the two is required, and a short caption is enough. You can also drag the circle to
+   mark the important part of the picture, so crops keep it in view.
+4. Optional: choose a **Cover photo**, the picture shown for the album on the Photos page. Leave it empty to
+   use the first photo. To reorder photos, drag them in the grid.
+5. **Publish**. To add photos later, open the album, drag them in and **Publish** again.
 
 ## Describe every photo
 
-Every photo needs a short description in _Describe the photo_, e.g. "Cougars celebrating a goal". The Studio
-won't publish a photo without one. It's read aloud to blind visitors and shown if the photo can't load.
+Every photo needs a short description in _Describe the photo_, e.g. "Cougars celebrating a goal" (in a photo
+album, a caption is enough). The Studio won't publish a photo without one. It's read aloud to blind visitors and shown if the photo can't load.
 
 ## Change club details
 

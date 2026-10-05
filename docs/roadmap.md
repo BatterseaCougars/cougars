@@ -169,9 +169,13 @@ Open questions: match length, tiebreak order, whether a draw scores 1 point, and
 | Cloudflare Workers        | 100k dynamic requests a day; static assets free and unlimited | Form posts, photo pages, live Kumite page |
 | D1                        | 5 GB storage, 5M rows read a day                              | Tiny                                      |
 | Cron Triggers             | Free                                                          | Monthly invoice run                       |
-| Sanity                    | Free plan, 20 seats (asset and CDN limits: check in M4)       | A handful of editors; live photo reads    |
+| Sanity                    | Free plan: 1M CDN, 250k API requests a month; see below       | A handful of editors; live photo reads    |
 | Bitwarden Secrets Manager | Free plan, 3 machine accounts                                 | 1                                         |
 | GitHub Actions            | 2,000 minutes a month (private repo)                          | About 2 minutes per deploy                |
 | YouTube / Gmail API       | Free                                                          | Free                                      |
+
+Sanity Free, checked on [sanity.io/pricing](https://www.sanity.io/pricing) on 2026-10-05: 20 seats, 2 datasets
+(public only), 10k documents, 1M API CDN requests and 250k API requests a month, 100 GB of assets, 100 GB of
+bandwidth a month. Photo pages read the API CDN live ([ADR 0016](adr/0016-live-photo-gallery.md)).
 
 The only planned cost is a domain, at about £10 a year.
