@@ -4,9 +4,18 @@ import PageHeader from "../components/PageHeader.astro";
 ---
 
 <Base title="Page not found">
-  <PageHeader eyebrow="404" title="Offside!" lede="That page doesn't exist. It may have moved, or the link is wrong.">
+  <PageHeader eyebrow="404" title="Page not found" lede="It may have moved, or the link is wrong.">
     <a class="btn" href="/">
-      Back to the homepage
+      Home
+    </a>
+    <a class="label link" href="/fridays/">
+      Fridays
+    </a>
+    <a class="label link" href="/kumite/">
+      Kumite
+    </a>
+    <a class="label link" href="/events/">
+      Events
     </a>
   </PageHeader>
 </Base>

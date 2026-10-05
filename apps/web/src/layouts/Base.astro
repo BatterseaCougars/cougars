@@ -1,6 +1,7 @@
 ---
 import "../styles/global.css";
 import { ClientRouter } from "astro:transitions";
+import { Font } from "astro:assets";
 import { getImage } from "astro:assets";
 import { PUBLIC_BUILD_VERSION } from "astro:env/client";
 import Header from "../components/Header.astro";
@@ -49,12 +50,17 @@ const canonical = new URL(Astro.url.pathname, Astro.site).href;
       try {
         const nav = performance.getEntriesByType("navigation")[0];
         if (nav && nav.type === "back_forward") document.documentElement.classList.add("navigation-restore");
-      } catch {}
+      } catch {
+        // Navigation Timing unavailable: animate as normal.
+      }
     </script>
+    <Font cssVariable="--font-sans" preload />
     <ClientRouter fallback="swap" />
   </head>
   <body>
-    <a class="skip visually-hidden" href="#main">Skip to content</a>
+    <a class="skip visually-hidden" href="#main">
+      Skip to content
+    </a>
     <Header />
     <main id="main">
       <slot />

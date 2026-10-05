@@ -9,18 +9,24 @@ const posts = await getPosts();
 const s = await getSettings();
 ---
 
-<Base title="News" description="News, match reports and announcements from the Battersea Cougars.">
+<Base title="News" description="News and announcements from the Battersea Cougars.">
   <PageHeader eyebrow="From the club" title="News" />
   <div class="wrap page-body">
     {posts.length ? (
       <div class="grid">
-        {posts.map((p) => (
-          <PostCard post={p} />
+        {posts.map((p, i) => (
+          <div data-reveal style={`--i:${i % 3}`}>
+            <PostCard post={p} />
+          </div>
         ))}
       </div>
     ) : (
-      <Empty title="No news yet">
-        Follow us on <a href={s.socials.instagram ?? "#"}>Instagram</a> for the latest.
+      <Empty>
+        No news yet. Follow us on{" "}
+        <a href={s.socials.instagram ?? "#"} rel="noopener" target="_blank">
+          Instagram
+        </a>{" "}
+        for the latest.
       </Empty>
     )}
   </div>

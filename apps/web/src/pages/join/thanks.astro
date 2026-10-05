@@ -7,14 +7,17 @@ const s = await getSettings();
 const slot = s.training[0];
 ---
 
-<Base title="Thanks!">
+<Base title="Thanks">
   <PageHeader
     eyebrow="Thanks"
     title="See you on court"
-    lede={`We've got your details and someone from the club will be in touch soon.${slot ? ` In the meantime, you're welcome to just turn up on a ${slot.day} at ${slot.start}.` : ""}`}
+    lede={`We've got your details and someone from the club will be in touch soon.${slot ? ` Sessions are every ${slot.day}, ${slot.start}–${slot.end} at ${s.venue.name}.` : ""}`}
   >
-    <a class="btn" href="/">
-      Back to the homepage
+    <a class="btn" href="/fridays/">
+      About Fridays
+    </a>
+    <a class="label link" href="/">
+      Home
     </a>
   </PageHeader>
 </Base>

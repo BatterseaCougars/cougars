@@ -1,0 +1,59 @@
+---
+import Base from "../../layouts/Base.astro";
+import PageHeader from "../../components/PageHeader.astro";
+import Empty from "../../components/Empty.astro";
+import { getAlbums, getSettings } from "../../lib/sanity/content";
+import { imageUrl, objectPosition } from "../../lib/sanity/images";
+import { formatDate } from "../../lib/dates";
+
+const albums = await getAlbums();
+const s = await getSettings();
+---
+
+<Base title="Photos" description="Photos from Cougars Friday sessions, the Kumite and socials.">
+  <PageHeader eyebrow="Gallery" title="Photos" />
+  <div class="wrap page-body">
+    {albums.length ? (
+      <div class="grid">
+        {albums.map((a, i) => (
+          <a class="card album" href={`/photos/${a.slug}/`} data-reveal style={`--i:${i % 3}`}>
+            <div class="media">
+              <img
+                src={imageUrl(a.cover, 800, 600)}
+                alt=""
+                loading="lazy"
+                style={`object-position:${objectPosition(a.cover)}`}
+              />
+            </div>
+            <p class="label">
+              {formatDate(a.date)} · {a.photos.length} photos
+            </p>
+            <h3>{a.title}</h3>
+          </a>
+        ))}
+      </div>
+    ) : (
+      <Empty>
+        No albums yet. See more on{" "}
+        <a href={s.socials.instagram ?? "#"} rel="noopener" target="_blank">
+          Instagram
+        </a>
+        .
+      </Empty>
+    )}
+  </div>
+</Base>
+
+<style>
+  .album img {
+    aspect-ratio: 4 / 3;
+    width: 100%;
+    object-fit: cover;
+  }
+  .album .label {
+    margin-top: 1.1rem;
+  }
+  .album h3 {
+    margin-top: 0.5rem;
+  }
+</style>

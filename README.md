@@ -22,6 +22,8 @@ npm run dev                # http://localhost:4500
 npm test
 ```
 
+To preview the design with sample events and news (dev server only): `DEMO_CONTENT=true npm run dev`.
+
 The site builds and runs **without Sanity**: until a Sanity project is configured, it uses the club copy in
 `apps/web/src/lib/sanity/fallback.ts` and shows empty states for news/videos/events/gallery.
 

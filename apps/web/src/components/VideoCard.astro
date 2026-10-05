@@ -13,7 +13,7 @@ const id = youtubeId(video.youtubeUrl);
 ---
 
 {id && (
-  <article class="card video">
+  <article class="video">
     <div class="player" data-embed={embedUrl(id)}>
       <img src={thumbnailUrl(id)} alt="" loading="lazy" width="480" height="360" />
       <button type="button" class="play" aria-label={`Play: ${video.title}`}>
@@ -24,18 +24,23 @@ const id = youtubeId(video.youtubeUrl);
       </button>
     </div>
     <div class="meta">
+      <p class="label">{formatDate(video.recordedOn)}</p>
       <h3>{video.title}</h3>
-      <p class="muted">{formatDate(video.recordedOn)}</p>
-      {video.description && <p>{video.description}</p>}
+      {video.description && <p class="muted">{video.description}</p>}
     </div>
   </article>
 )}
 
 <style>
+  .video {
+    border-top: 1px solid var(--line);
+    padding-top: 1.5rem;
+  }
   .player {
     position: relative;
     aspect-ratio: 16 / 9;
     background: #000;
+    overflow: clip;
   }
   .player img,
   .player :global(iframe) {
@@ -51,25 +56,33 @@ const id = youtubeId(video.youtubeUrl);
     inset: 0;
     display: grid;
     place-items: center;
-    background: linear-gradient(transparent 50%, rgb(0 0 0 / 0.5));
+    background: rgb(0 0 0 / 0.25);
     border: 0;
     cursor: pointer;
+    transition: background 0.35s var(--ease-smooth);
+  }
+  .play:hover {
+    background: rgb(0 0 0 / 0.05);
   }
   .play svg {
-    width: 4.25rem;
-    fill: var(--red);
-    transition: transform 0.15s;
+    width: 3.75rem;
+    fill: rgb(236 232 225 / 0.92);
+    transition: transform 0.35s var(--ease-smooth);
   }
-  .play:hover svg,
-  .play:focus-visible svg {
-    transform: scale(1.1);
+  .play svg path:last-child {
+    fill: var(--ink);
+  }
+  .play:hover svg {
+    transform: scale(1.06);
   }
   .meta {
-    padding: 1rem 1.15rem 0.5rem;
+    padding-top: 1.1rem;
   }
   .meta h3 {
-    font-size: 1.8rem;
-    margin-bottom: 0.2rem;
+    margin: 0.5rem 0 0.4rem;
+  }
+  .meta p {
+    margin: 0;
   }
 </style>
 

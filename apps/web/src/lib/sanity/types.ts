@@ -25,6 +25,7 @@ export interface SiteSettings {
   training: TrainingSlot[];
   kitNotes: string;
   feesText?: string | null;
+  kumite: { intro: string; format: string[]; awards: string[] };
   venue: { name: string; address: string; mapUrl: string };
   contactEmail: string;
   socials: { instagram?: string | null; facebook?: string | null; youtube?: string | null };

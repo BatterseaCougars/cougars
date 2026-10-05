@@ -6,9 +6,12 @@ import background from "../assets/cougars_background.png";
 import { getEvents, getSettings, upcoming } from "../lib/sanity/content";
 import { imageUrl, objectPosition } from "../lib/sanity/images";
 import { formatRange } from "../lib/dates";
+import EventList from "../components/EventList.astro";
 
 const s = await getSettings();
-const events = upcoming(await getEvents()).slice(0, 4);
+const all = upcoming(await getEvents());
+const kumite = all.find((e) => e.type === "kumite");
+const events = all.filter((e) => e !== kumite).slice(0, 4);
 const slot = s.training[0];
 const heroBg = s.heroImage
   ? imageUrl(s.heroImage, 2000, 1200)
@@ -20,7 +23,9 @@ const heroBg = s.heroImage
     <div class="hero-bg" aria-hidden="true"></div>
     <h1 class="visually-hidden">Battersea Cougars inline hockey club</h1>
     <Image class="hero-logo" src={logo} alt="Battersea Cougars" width={560} loading="eager" fetchpriority="high" />
-    <a class="scroll" href="#club" aria-label="Scroll to content"><span></span></a>
+    <a class="scroll" href="#club" aria-label="Scroll to content">
+      <span></span>
+    </a>
   </section>
 
   <section class="section wrap club" id="club">
@@ -29,30 +34,35 @@ const heroBg = s.heroImage
       <h2>{s.heroHeadline}</h2>
     </div>
     <div data-reveal style="--i:1">
-      {s.aboutBody.split(/\n{2,}/).map((para) => <p class="lede">{para}</p>)}
+      {s.aboutBody.split(/\n{2,}/).map((para) => (
+        <p class="lede">{para}</p>
+      ))}
     </div>
   </section>
 
-  <section class="section wrap fridays">
-    <p class="label" data-reveal>Come and play</p>
+  <section class="section wrap fridays" id="fridays">
+    <div class="section-head" data-reveal>
+      <p class="label">Every {slot?.day ?? "Friday"} · Regular club hockey</p>
+      <h2>Come and play</h2>
+    </div>
     <dl class="facts">
-      {
-        slot && (
-          <div data-reveal style="--i:1">
-            <dt class="label">When</dt>
-            <dd>
-              <span class="big">
-                {slot.day}s, {slot.start}–{slot.end}
-              </span>
-              {slot.description && <span class="muted">{slot.description}</span>}
-            </dd>
-          </div>
-        )
-      }
+      {slot && (
+        <div data-reveal style="--i:1">
+          <dt class="label">When</dt>
+          <dd>
+            <span class="big">
+              {slot.day}s, {slot.start}–{slot.end}
+            </span>
+            {slot.description && <span class="muted">{slot.description}</span>}
+          </dd>
+        </div>
+      )}
       <div data-reveal style="--i:2">
         <dt class="label">Where</dt>
         <dd>
-          <a class="big link" href={s.venue.mapUrl} rel="noopener" target="_blank">{s.venue.name}</a>
+          <a class="big link" href={s.venue.mapUrl} rel="noopener" target="_blank">
+            {s.venue.name} ↗
+          </a>
           <span class="muted">{s.venue.address}</span>
         </dd>
       </div>
@@ -64,36 +74,42 @@ const heroBg = s.heroImage
         </dd>
       </div>
     </dl>
-    <div data-reveal style="--i:4">
-      <a class="btn" href="/join/">Try a session</a>
+    <div class="actions" data-reveal style="--i:4">
+      <a class="btn" href="/join/">
+        Try a session
+      </a>
+      <a class="label link" href="/fridays/">
+        More about Fridays
+      </a>
     </div>
   </section>
 
-  {
-    events.length > 0 && (
-      <section class="section wrap">
-        <div class="events-head" data-reveal>
-          <p class="label">Coming up</p>
-          <a class="label link" href="/events/">
-            All events
-          </a>
-        </div>
-        <ul class="events">
-          {events.map((e, i) => (
-            <li data-reveal style={`--i:${i}`}>
-              <a href={`/events/${e.slug}/`}>
-                <span class="label">{formatRange(e.startsAt, e.endsAt)}</span>
-                <span class="big">{e.title}</span>
-                <span class="arrow" aria-hidden="true">
-                  →
-                </span>
-              </a>
-            </li>
-          ))}
-        </ul>
-      </section>
-    )
-  }
+  <section class="section wrap">
+    <a class="kumite" href="/kumite/" data-reveal>
+      <div>
+        <p class="label accent">Special event · Quarterly</p>
+        <h2>The Cougars Kumite</h2>
+        <p class="lede">{s.kumite.intro}</p>
+      </div>
+      <div class="kumite-side">
+        <p class="label">Next Kumite</p>
+        <p class="big">{kumite ? formatRange(kumite.startsAt, kumite.endsAt) : "Date to be announced"}</p>
+        <span class="label link">About the Kumite →</span>
+      </div>
+    </a>
+  </section>
+
+  {events.length > 0 && (
+    <section class="section wrap">
+      <div class="section-head row" data-reveal>
+        <p class="label">Coming up</p>
+        <a class="label link" href="/events/">
+          All events
+        </a>
+      </div>
+      <EventList events={events} />
+    </section>
+  )}
 </Base>
 
 <style>
@@ -194,7 +210,7 @@ const heroBg = s.heroImage
     gap: 2rem clamp(3rem, 8vw, 7rem);
   }
   .club h2 {
-    margin-top: 1.25rem;
+    margin-top: 1rem;
   }
   @media (max-width: 52rem) {
     .club {
@@ -205,8 +221,23 @@ const heroBg = s.heroImage
   .fridays {
     padding-top: 0;
   }
+  .section-head h2 {
+    margin-top: 1rem;
+  }
+  .section-head.row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 1.5rem;
+  }
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1.5rem 2.5rem;
+  }
   .facts {
-    margin: 2rem 0 3rem;
+    margin: 2.5rem 0 3rem;
     border-top: 1px solid var(--line);
   }
   .facts > div {
@@ -243,41 +274,59 @@ const heroBg = s.heroImage
     }
   }
 
-  .events-head {
-    display: flex;
-    justify-content: space-between;
-    padding-bottom: 1.25rem;
-    border-bottom: 1px solid var(--line);
-  }
-  .events {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-  }
-  .events a {
+  /* Kumite: the one framed, accented block on the page */
+  .kumite {
+    position: relative;
     display: grid;
-    grid-template-columns: 16rem 1fr auto;
-    align-items: baseline;
-    gap: 0.5rem 2rem;
-    padding: 1.6rem 0;
-    border-bottom: 1px solid var(--line);
-  }
-  .events .arrow {
-    color: var(--bone-3);
+    grid-template-columns: 1.6fr 1fr;
+    gap: 2.5rem clamp(2rem, 6vw, 5rem);
+    padding: clamp(2rem, 5vw, 4rem);
+    border: 1px solid rgb(200 50 59 / 0.45);
+    background: radial-gradient(80% 120% at 100% 0%, rgb(200 50 59 / 0.12), transparent 60%), var(--ink-2);
     transition:
-      transform 0.35s var(--ease-smooth),
-      color 0.35s;
+      border-color 0.4s var(--ease-smooth),
+      box-shadow 0.4s var(--ease-smooth);
   }
-  .events a:hover .arrow {
-    transform: translateX(4px);
+  .kumite:hover {
+    border-color: rgb(200 50 59 / 0.8);
+    box-shadow: 0 0 60px rgb(200 50 59 / 0.12);
+  }
+  .kumite h2 {
+    margin: 1rem 0 1.25rem;
+  }
+  .kumite .lede {
+    margin: 0;
+  }
+  .accent {
     color: var(--red);
   }
-  @media (max-width: 40rem) {
-    .events a {
-      grid-template-columns: 1fr auto;
+  .kumite-side {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    gap: 0.6rem;
+    padding-left: clamp(0rem, 3vw, 2.5rem);
+    border-left: 1px solid var(--line);
+  }
+  .kumite-side .big {
+    margin: 0 0 1rem;
+  }
+  .kumite-side .link {
+    align-self: start;
+    color: var(--bone);
+  }
+  .kumite:hover .kumite-side .link::after {
+    transform: scaleX(1);
+    transform-origin: left center;
+  }
+  @media (max-width: 52rem) {
+    .kumite {
+      grid-template-columns: 1fr;
     }
-    .events .label {
-      grid-column: 1 / -1;
+    .kumite-side {
+      padding: 1.5rem 0 0;
+      border-left: 0;
+      border-top: 1px solid var(--line);
     }
   }
 </style>

@@ -13,12 +13,12 @@ const slot = s.training[0];
   description="New to inline hockey? Kit is provided for your first session at Battersea Sports Centre."
 >
   <PageHeader
-    eyebrow="Join the Cougars"
+    eyebrow="Join the club"
     title="Try a session"
-    lede="Whether you've never stood on skates or you've played for years, there's a place for you. Tell us a little about yourself and we'll be in touch."
+    lede="Never played, or played for years: tell us a little about yourself and we'll be in touch."
   />
   <div class="wrap layout page-body">
-    <form method="post" action="/api/join" class="card form" novalidate>
+    <form method="post" action="/api/join" class="form" novalidate data-reveal>
       <p class="alert" role="alert" tabindex="-1" hidden></p>
       <input type="hidden" name="source" value="/join/" />
       <div class="hp" aria-hidden="true">
@@ -27,64 +27,78 @@ const slot = s.training[0];
         </label>
       </div>
 
-      <label>
-        <span>Your name *</span>
+      <label class="field">
+        <span class="label">Name</span>
         <input name="name" required maxlength="100" autocomplete="name" />
         <small class="err" data-for="name"></small>
       </label>
-      <label>
-        <span>Email *</span>
+      <label class="field">
+        <span class="label">Email</span>
         <input name="email" type="email" required maxlength="200" autocomplete="email" />
         <small class="err" data-for="email"></small>
       </label>
-      <label>
-        <span>
-          Phone <em>(optional, for WhatsApp)</em>
+      <label class="field">
+        <span class="label">
+          Phone <em>optional</em>
         </span>
         <input name="phone" type="tel" maxlength="40" autocomplete="tel" />
       </label>
-      <fieldset>
-        <legend>Have you played before?</legend>
-        {Object.entries(EXPERIENCE).map(([value, label]) => (
-          <label class="choice">
-            <input type="radio" name="experience" value={value} /> {label}
-          </label>
-        ))}
+      <fieldset class="field">
+        <legend class="label">Played before?</legend>
+        <div class="choices">
+          {Object.entries(EXPERIENCE).map(([value, label]) => (
+            <label class="choice">
+              <input type="radio" name="experience" value={value} />
+              <span>{label}</span>
+            </label>
+          ))}
+        </div>
       </fieldset>
-      <label>
-        <span>
-          Anything else? <em>(optional)</em>
+      <label class="field">
+        <span class="label">
+          Anything else <em>optional</em>
         </span>
-        <textarea name="message" rows="4" maxlength="2000"></textarea>
+        <textarea name="message" rows="3" maxlength="2000"></textarea>
       </label>
-      <button class="btn" type="submit">
-        Send
-      </button>
-      <p class="muted small">We'll only use your details to get in touch about the club.</p>
+      <div class="submit">
+        <button class="btn" type="submit">
+          Send
+        </button>
+        <p class="muted small">We only use your details to get in touch about the club.</p>
+      </div>
     </form>
 
-    <aside class="card info">
-      <h3>The details</h3>
+    <aside class="info" data-reveal style="--i:1">
       {slot && (
-        <p>
-          <strong>
+        <div>
+          <p class="label">When</p>
+          <p>
             {slot.day}s, {slot.start}–{slot.end}
-          </strong>
-          <br />
-          <span class="muted">{slot.description}</span>
-        </p>
+          </p>
+        </div>
       )}
-      <p>
-        <a href={s.venue.mapUrl} rel="noopener" target="_blank">
-          {s.venue.name}
-        </a>
-        <br />
-        <span class="muted">{s.venue.address}</span>
-      </p>
-      <p class="muted">{s.kitNotes}</p>
-      <p>
-        Prefer email? <a href={`mailto:${s.contactEmail}`}>{s.contactEmail}</a>
-      </p>
+      <div>
+        <p class="label">Where</p>
+        <p>
+          <a class="link" href={s.venue.mapUrl} rel="noopener" target="_blank">
+            {s.venue.name} ↗
+          </a>
+          <br />
+          <span class="muted">{s.venue.address}</span>
+        </p>
+      </div>
+      <div>
+        <p class="label">Kit</p>
+        <p class="muted">{s.kitNotes}</p>
+      </div>
+      <div>
+        <p class="label">Email</p>
+        <p>
+          <a class="link" href={`mailto:${s.contactEmail}`}>
+            {s.contactEmail}
+          </a>
+        </p>
+      </div>
     </aside>
   </div>
 </Base>
@@ -92,90 +106,127 @@ const slot = s.training[0];
 <style>
   .layout {
     display: grid;
-    grid-template-columns: 1.5fr 1fr;
-    gap: 1.5rem;
+    grid-template-columns: 1.6fr 1fr;
+    gap: 3rem clamp(3rem, 8vw, 7rem);
     align-items: start;
   }
-  @media (max-width: 48rem) {
+  @media (max-width: 52rem) {
     .layout {
       grid-template-columns: 1fr;
     }
   }
-  .form,
-  .info {
-    padding: clamp(1.25rem, 4vw, 2rem);
-  }
   .form {
     display: grid;
-    gap: 1.1rem;
+    gap: 2rem;
   }
-  label > span,
-  legend {
-    display: block;
-    font-weight: 600;
-    margin-bottom: 0.35rem;
+  .field {
+    display: grid;
+    gap: 0.5rem;
+    border: 0;
+    margin: 0;
+    padding: 0;
   }
   em {
-    font-weight: 400;
-    color: var(--bone-3);
     font-style: normal;
+    color: var(--bone-3);
+    opacity: 0.7;
+    margin-left: 0.4em;
   }
   input:not([type="radio"]),
   textarea {
     width: 100%;
-    padding: 0.75rem 0.9rem;
+    padding: 0.6rem 0;
     font: inherit;
+    font-size: 1.25rem;
+    letter-spacing: -0.01em;
     color: var(--bone);
-    background: var(--ink);
-    border: 1px solid var(--line-strong);
-    border-radius: 8px;
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid var(--line-strong);
+    border-radius: 0;
+    outline: none;
+    transition: border-color 0.3s var(--ease-smooth);
+  }
+  textarea {
+    resize: vertical;
   }
   input:focus,
   textarea:focus {
-    border-color: var(--red);
-    outline: none;
-    box-shadow: 0 0 0 3px rgb(209 51 60 / 0.3);
+    border-bottom-color: var(--bone);
   }
   [aria-invalid="true"] {
-    border-color: var(--red-hot) !important;
+    border-bottom-color: var(--red) !important;
   }
-  fieldset {
-    border: 0;
+  legend {
     padding: 0;
-    margin: 0;
+    margin-bottom: 0.75rem;
   }
-  .choice {
+  .choices {
     display: flex;
-    align-items: center;
+    flex-wrap: wrap;
     gap: 0.6rem;
-    padding: 0.35rem 0;
-    cursor: pointer;
   }
   .choice input {
-    accent-color: var(--red);
-    width: 1.15rem;
-    height: 1.15rem;
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .choice span {
+    display: inline-block;
+    padding: 0.6rem 1rem;
+    border: 1px solid var(--line-strong);
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition:
+      border-color 0.3s var(--ease-smooth),
+      background 0.3s var(--ease-smooth);
+  }
+  .choice span:hover {
+    border-color: var(--bone-3);
+  }
+  .choice input:checked + span {
+    border-color: var(--bone);
+    background: rgb(236 232 225 / 0.08);
+  }
+  .choice input:focus-visible + span {
+    outline: 1px solid var(--bone);
+    outline-offset: 3px;
   }
   .err {
-    color: var(--red-hot);
+    color: var(--red);
+    font-size: 0.8rem;
+  }
+  .err:empty {
+    display: none;
   }
   .alert {
     margin: 0;
-    padding: 0.75rem 1rem;
-    border-radius: 8px;
-    background: rgb(209 51 60 / 0.15);
-    border: 1px solid var(--red);
+    padding: 0.9rem 1rem;
+    border: 1px solid var(--red-soft);
+    background: rgb(200 50 59 / 0.08);
   }
-  .btn {
-    justify-self: start;
+  .submit {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1rem 2rem;
   }
   .small {
-    font-size: 0.85rem;
     margin: 0;
+    font-size: 0.85rem;
   }
   .hp {
     position: absolute;
     left: -9999px;
+  }
+  .info {
+    display: grid;
+    gap: 1.75rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--line);
+  }
+  .info p {
+    margin: 0.4rem 0 0;
   }
 </style>
 

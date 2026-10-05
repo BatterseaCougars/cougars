@@ -1,9 +1,8 @@
 ---
 import type { GetStaticPaths } from "astro";
 import Base from "../../layouts/Base.astro";
-import PageHeader from "../../components/PageHeader.astro";
 import { getPostPages } from "../../lib/sanity/content";
-import { imageSrcSet, imageUrl } from "../../lib/sanity/images";
+import { imageSrcSet, imageUrl, objectPosition } from "../../lib/sanity/images";
 import { renderPortableText } from "../../lib/portable-text";
 import { formatDate } from "../../lib/dates";
 import type { Post } from "../../lib/sanity/types";
@@ -12,32 +11,63 @@ export const getStaticPaths = (async () =>
   (await getPostPages()).map((post) => ({ params: { slug: post.slug }, props: { post } }))) satisfies GetStaticPaths;
 
 const { post } = Astro.props as { post: Post };
-const cover = imageUrl(post.cover, 1200, 630);
+const cover = imageUrl(post.cover, 1600, 900);
 ---
 
-<Base title={post.title} description={post.excerpt ?? undefined} image={cover}>
-  <PageHeader eyebrow={formatDate(post.publishedAt)} title={post.title} lede={post.excerpt} />
+<Base title={post.title} description={post.excerpt ?? undefined} image={imageUrl(post.cover, 1200, 630)}>
   <article class="wrap page-body">
+    <header class="head">
+      <a class="label link back" href="/news/" data-reveal>
+        ← News
+      </a>
+      <p class="label" data-reveal style="--i:1">
+        {formatDate(post.publishedAt)}
+      </p>
+      <h1 data-reveal style="--i:2">
+        {post.title}
+      </h1>
+      {post.excerpt && (
+        <p class="lede" data-reveal style="--i:3">
+          {post.excerpt}
+        </p>
+      )}
+    </header>
     {cover && (
       <img
         class="cover"
         src={cover}
-        srcset={imageSrcSet(post.cover, [640, 960, 1400], 1200 / 630)}
-        sizes="(max-width: 72rem) 100vw, 72rem"
+        srcset={imageSrcSet(post.cover, [800, 1200, 1600], 16 / 9)}
+        sizes="(max-width: 70rem) 100vw, 70rem"
         alt={post.cover?.alt ?? ""}
+        style={`object-position:${objectPosition(post.cover)}`}
+        data-reveal
       />
     )}
-    <div class="prose" set:html={renderPortableText(post.body)} />
-    <p>
-      <a href="/news/">← All news</a>
-    </p>
+    <div class="prose" set:html={renderPortableText(post.body)} data-reveal />
   </article>
 </Base>
 
 <style>
+  .head {
+    padding-top: calc(var(--header-h) + clamp(3rem, 8vw, 6rem));
+    padding-bottom: 3rem;
+  }
+  .back {
+    display: block;
+    width: fit-content;
+    margin-bottom: 3rem;
+  }
+  h1 {
+    margin: 1rem 0 0;
+    max-width: 20ch;
+  }
+  .lede {
+    margin: 1.5rem 0 0;
+  }
   .cover {
     width: 100%;
-    border-radius: 1rem;
-    margin-bottom: 2rem;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    margin-bottom: 3rem;
   }
 </style>

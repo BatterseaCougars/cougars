@@ -1,10 +1,11 @@
 ---
 const links = [
+  { href: "/fridays/", label: "Fridays" },
+  { href: "/kumite/", label: "Kumite" },
   { href: "/events/", label: "Events" },
   { href: "/videos/", label: "Videos" },
-  { href: "/gallery/", label: "Gallery" },
+  { href: "/photos/", label: "Photos" },
   { href: "/news/", label: "News" },
-  { href: "/join/", label: "Join" },
 ];
 const path = Astro.url.pathname;
 const current = (href: string) => (path.startsWith(href) ? "page" : undefined);
@@ -12,20 +13,23 @@ const current = (href: string) => (path.startsWith(href) ? "page" : undefined);
 
 <header class="header" data-header transition:name="site-header">
   <div class="bar">
-    <a href="/" class="brand">Battersea Cougars</a>
+    <a href="/" class="brand">
+      Battersea Cougars
+    </a>
 
     <nav class="nav" aria-label="Main">
       <ul>
-        {
-          links.map((l) => (
-            <li>
-              <a class="link" href={l.href} aria-current={current(l.href)}>
-                {l.label}
-              </a>
-            </li>
-          ))
-        }
+        {links.map((l) => (
+          <li>
+            <a class="link" href={l.href} aria-current={current(l.href)}>
+              {l.label}
+            </a>
+          </li>
+        ))}
       </ul>
+      <a class="btn join" href="/join/" aria-current={current("/join/")}>
+        Join
+      </a>
     </nav>
 
     <button class="menu-btn" type="button" aria-expanded="false" aria-controls="menu" data-menu-btn>
@@ -33,22 +37,28 @@ const current = (href: string) => (path.startsWith(href) ? "page" : undefined);
       <span class="icon" aria-hidden="true"></span>
     </button>
   </div>
-
-  <div class="menu" id="menu" data-menu hidden>
-    <ul>
-      <li style="--i:0"><a href="/">Home</a></li>
-      {
-        links.map((l, i) => (
-          <li style={`--i:${i + 1}`}>
-            <a href={l.href} aria-current={current(l.href)}>
-              {l.label}
-            </a>
-          </li>
-        ))
-      }
-    </ul>
-  </div>
 </header>
+
+<!-- Outside <header>: its backdrop-filter would otherwise trap this fixed overlay inside the bar. -->
+<div class="menu" id="menu" data-menu hidden>
+  <ul>
+    <li style="--i:0">
+      <a href="/">Home</a>
+    </li>
+    {links.map((l, i) => (
+      <li style={`--i:${i + 1}`}>
+        <a href={l.href} aria-current={current(l.href)}>
+          {l.label}
+        </a>
+      </li>
+    ))}
+    <li style={`--i:${links.length + 1}`}>
+      <a href="/join/" aria-current={current("/join/")}>
+        Join
+      </a>
+    </li>
+  </ul>
+</div>
 
 <style>
   .header {
@@ -79,6 +89,14 @@ const current = (href: string) => (path.startsWith(href) ? "page" : undefined);
     letter-spacing: -0.02em;
     line-height: 1;
   }
+  .nav {
+    display: flex;
+    align-items: center;
+    gap: 2.5rem;
+  }
+  .nav .join {
+    padding: 0.7rem 1.2rem;
+  }
   .nav ul {
     display: flex;
     gap: 2.25rem;
@@ -86,15 +104,15 @@ const current = (href: string) => (path.startsWith(href) ? "page" : undefined);
     margin: 0;
     padding: 0;
   }
-  .nav a {
+  .nav ul a {
     font-size: 0.7rem;
     font-weight: 500;
     letter-spacing: 0.22em;
     text-transform: uppercase;
     color: var(--bone-2);
   }
-  .nav a:hover,
-  .nav a[aria-current="page"] {
+  .nav ul a:hover,
+  .nav ul a[aria-current="page"] {
     color: var(--bone);
   }
 
@@ -142,7 +160,7 @@ const current = (href: string) => (path.startsWith(href) ? "page" : undefined);
   .menu {
     position: fixed;
     inset: 0;
-    z-index: 1;
+    z-index: 149;
     display: grid;
     place-items: center;
     background: rgb(11 11 12 / 0.92);
@@ -179,7 +197,7 @@ const current = (href: string) => (path.startsWith(href) ? "page" : undefined);
     color: var(--bone-3);
   }
 
-  @media (max-width: 48rem) {
+  @media (max-width: 60rem) {
     .nav {
       display: none;
     }

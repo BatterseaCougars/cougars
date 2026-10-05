@@ -1,0 +1,165 @@
+---
+import Base from "../layouts/Base.astro";
+import PageHeader from "../components/PageHeader.astro";
+import { getSettings } from "../lib/sanity/content";
+
+const s = await getSettings();
+const slot = s.training[0];
+const steps = [
+  {
+    title: "Get in touch",
+    text: "Tell us you're coming and we'll look out for you.",
+    href: "/join/",
+    cta: "Try a session",
+  },
+  {
+    title: "Turn up",
+    text: `${s.venue.name}, ${s.venue.address}${slot ? `. Get there a few minutes before ${slot.start} to kit up.` : "."}`,
+    href: s.venue.mapUrl,
+    cta: "Directions ↗",
+  },
+  { title: "Play", text: slot?.description ?? "All levels on one rink." },
+];
+---
+
+<Base
+  title="Fridays"
+  description={`Regular club inline hockey every ${slot?.day ?? "Friday"} at ${s.venue.name}. All levels, kit provided for your first session.`}
+>
+  <PageHeader
+    eyebrow="Regular club hockey"
+    title={slot ? `Every ${slot.day}, ${slot.start}–${slot.end}` : "Every Friday"}
+    lede="Our weekly session and the heart of the club. Everyone plays on the same rink, from first-timers to league players."
+  />
+
+  <div class="wrap page-body">
+    <dl class="facts">
+      <div data-reveal>
+        <dt class="label">Where</dt>
+        <dd>
+          <a class="big link" href={s.venue.mapUrl} rel="noopener" target="_blank">
+            {s.venue.name} ↗
+          </a>
+          <span class="muted">{s.venue.address}</span>
+        </dd>
+      </div>
+      <div data-reveal style="--i:1">
+        <dt class="label">Kit</dt>
+        <dd>
+          <span class="big">Helmet and gloves</span>
+          <span class="muted">{s.kitNotes}</span>
+        </dd>
+      </div>
+      {s.feesText && (
+        <div data-reveal style="--i:2">
+          <dt class="label">Cost</dt>
+          <dd>
+            <span class="big">{s.feesText}</span>
+          </dd>
+        </div>
+      )}
+      <div data-reveal style="--i:3">
+        <dt class="label">Level</dt>
+        <dd>
+          <span class="big">Everyone</span>
+          <span class="muted">
+            Never skated? Played for years? Same rink. It's non-contact, but hockey is physical.
+          </span>
+        </dd>
+      </div>
+    </dl>
+
+    <section class="first">
+      <p class="label" data-reveal>
+        Your first {slot?.day ?? "Friday"}
+      </p>
+      <ol class="steps">
+        {steps.map((step, i) => (
+          <li data-reveal style={`--i:${i}`}>
+            <span class="label">0{i + 1}</span>
+            <h3>{step.title}</h3>
+            <p class="muted">{step.text}</p>
+            {step.href && (
+              <a
+                class="label link"
+                href={step.href}
+                {...(step.href.startsWith("http") ? { rel: "noopener", target: "_blank" } : {})}
+              >
+                {step.cta}
+              </a>
+            )}
+          </li>
+        ))}
+      </ol>
+    </section>
+
+    <p class="aside muted" data-reveal>
+      Looking for the quarterly tournament? That's the{" "}
+      <a class="link" href="/kumite/">
+        Cougars Kumite
+      </a>
+      , a separate special event.
+    </p>
+  </div>
+</Base>
+
+<style>
+  .facts {
+    margin: 0 0 clamp(4rem, 9vw, 7rem);
+    border-top: 1px solid var(--line);
+  }
+  .facts > div {
+    display: grid;
+    grid-template-columns: 10rem 1fr;
+    gap: 0.5rem 2rem;
+    padding: 1.75rem 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .facts dt {
+    padding-top: 0.55rem;
+  }
+  .facts dd {
+    margin: 0;
+    display: grid;
+    gap: 0.4rem;
+  }
+  .facts .muted {
+    max-width: 36rem;
+  }
+  .big {
+    justify-self: start;
+    font-size: clamp(1.5rem, 2.4vw, 2rem);
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+  }
+  .steps {
+    list-style: none;
+    margin: 2rem 0 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2.5rem;
+  }
+  .steps li {
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--line);
+  }
+  .steps h3 {
+    margin: 1rem 0 0.75rem;
+  }
+  .aside {
+    margin: clamp(4rem, 9vw, 7rem) 0 0;
+  }
+  .aside a {
+    color: var(--bone);
+  }
+  @media (max-width: 48rem) {
+    .facts > div,
+    .steps {
+      grid-template-columns: 1fr;
+    }
+    .facts dt {
+      padding-top: 0;
+    }
+  }
+</style>

@@ -9,29 +9,31 @@ const videos = await getVideos();
 const s = await getSettings();
 ---
 
-<Base title="Videos" description="Highlights and full sessions from Friday night inline hockey at Battersea.">
-  <PageHeader eyebrow="Friday night puck" title="Videos" lede="Highlights and full games from our Friday sessions.">
+<Base title="Videos" description="Footage from Friday night inline hockey in Battersea.">
+  <PageHeader eyebrow="Footage" title="Videos" lede="Games and highlights from Friday sessions and the Kumite.">
     {s.socials.youtube && (
-      <a class="btn btn--ghost" href={s.socials.youtube} rel="noopener" target="_blank">
-        Our YouTube channel
+      <a class="btn" href={s.socials.youtube} rel="noopener" target="_blank">
+        YouTube channel ↗
       </a>
     )}
   </PageHeader>
   <div class="wrap page-body">
     {videos.length ? (
       <div class="grid videos">
-        {videos.map((v) => (
-          <VideoCard video={v} />
+        {videos.map((v, i) => (
+          <div data-reveal style={`--i:${i % 2}`}>
+            <VideoCard video={v} />
+          </div>
         ))}
       </div>
     ) : (
-      <Empty title="No videos yet">Footage from Friday sessions will appear here.</Empty>
+      <Empty>No videos yet. Footage from Friday sessions will appear here.</Empty>
     )}
   </div>
 </Base>
 
 <style>
   .videos {
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, 24rem), 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 28rem), 1fr));
   }
 </style>

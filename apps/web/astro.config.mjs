@@ -1,5 +1,5 @@
 // @ts-check
-import { defineConfig, envField } from "astro/config";
+import { defineConfig, envField, fontProviders } from "astro/config";
 import cloudflare from "@astrojs/cloudflare";
 import sitemap from "@astrojs/sitemap";
 
@@ -13,7 +13,8 @@ export default defineConfig({
   // (phase 3) uses its own signed cookie + D1.
   session: false,
   trailingSlash: "ignore",
-  integrations: [sitemap()],
+  redirects: { "/gallery": "/photos", "/gallery/[slug]": "/photos/[slug]" },
+  integrations: [sitemap({ filter: (page) => !page.includes("/join/thanks") })],
   adapter: cloudflare({
     // Resize local assets at build time with sharp; Sanity's CDN resizes CMS
     // images. Avoids the paid Cloudflare Images binding.
@@ -30,6 +31,26 @@ export default defineConfig({
       DEMO_CONTENT: envField.boolean({ context: "server", access: "public", default: false }),
     },
   },
+  // Self-hosted variable font, preloaded, with a metric-matched fallback so text
+  // doesn't jump when it loads (Astro Fonts API).
+  fonts: [
+    {
+      provider: fontProviders.local(),
+      name: "Inter Tight",
+      cssVariable: "--font-sans",
+      fallbacks: ["system-ui", "sans-serif"],
+      options: {
+        variants: [
+          {
+            src: ["./src/assets/fonts/InterTight-Variable.woff2"],
+            weight: "100 900",
+            style: "normal",
+            display: "swap",
+          },
+        ],
+      },
+    },
+  ],
   image: {
     remotePatterns: [{ protocol: "https", hostname: "cdn.sanity.io", pathname: "/images/**" }],
   },

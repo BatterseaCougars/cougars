@@ -25,6 +25,18 @@ export const FALLBACK_SETTINGS: SiteSettings = {
   kitNotes:
     "Helmet and gloves are mandatory. Full pads (knees, elbows, shins) recommended. Kit is provided for your first session.",
   feesText: null,
+  kumite: {
+    intro:
+      "Four times a year we hold the Kumite, our in-house tournament and a special event apart from regular Friday hockey. " +
+      "Everyone who signs up is drafted into balanced teams, every team plays every other team, and one team " +
+      "walks away as champions.",
+    format: [
+      "Players are drafted into balanced teams on the day",
+      "Full round robin: every team plays every team",
+      "One team finishes top of the table as champions",
+    ],
+    awards: ["Champions", "Top scorer", "Most assists", "Most points"],
+  },
   venue: {
     name: "Battersea Sports Centre",
     address: "London SW11 3AB",

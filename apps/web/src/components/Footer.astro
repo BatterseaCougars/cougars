@@ -14,47 +14,49 @@ const socials = [
 
 <footer class="footer">
   <div class="wrap">
-    {
-      sponsors.length > 0 && (
-        <ul class="sponsors">
-          {sponsors.map((sp) => (
-            <li>
-              <a href={sp.url ?? undefined} rel="noopener" target="_blank">
-                {sp.logo ? <img src={imageUrl(sp.logo, 240)} alt={sp.name} loading="lazy" /> : sp.name}
-              </a>
-            </li>
-          ))}
-        </ul>
-      )
-    }
+    {sponsors.length > 0 && (
+      <ul class="sponsors">
+        {sponsors.map((sp) => (
+          <li>
+            <a href={sp.url ?? undefined} rel="noopener" target="_blank">
+              {sp.logo ? <img src={imageUrl(sp.logo, 240)} alt={sp.name} loading="lazy" /> : sp.name}
+            </a>
+          </li>
+        ))}
+      </ul>
+    )}
     <div class="cols">
       <p class="brand">Battersea Cougars</p>
       <div>
-        {
-          slot && (
-            <p>
-              {slot.day}s {slot.start}–{slot.end}
-            </p>
-          )
-        }
+        {slot && (
+          <p>
+            {slot.day}s {slot.start}–{slot.end}
+          </p>
+        )}
         <p>
-          <a class="link" href={s.venue.mapUrl} rel="noopener" target="_blank">{s.venue.name}</a>
+          <a class="link" href={s.venue.mapUrl} rel="noopener" target="_blank">
+            {s.venue.name}
+          </a>
         </p>
       </div>
       <div>
-        <p><a class="link" href={`mailto:${s.contactEmail}`}>{s.contactEmail}</a></p>
+        <p>
+          <a class="link" href={`mailto:${s.contactEmail}`}>
+            {s.contactEmail}
+          </a>
+        </p>
         <p class="social">
-          {
-            socials.map((x) => (
-              <a class="link" href={x.href} rel="noopener" target="_blank">
-                {x.label}
-              </a>
-            ))
-          }
+          {socials.map((x) => (
+            <a class="link" href={x.href} rel="noopener" target="_blank">
+              {x.label}
+            </a>
+          ))}
         </p>
       </div>
     </div>
-    <p class="legal label">© {new Date().getFullYear()} Battersea Cougars Inline Hockey Club · Est. {s.founded}</p>
+    <p class="legal label">
+      © {new Date().getFullYear()} Battersea Cougars Inline Hockey Club · Est. {s.founded}
+    </p>
   </div>
 </footer>
 

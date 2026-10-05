@@ -2,7 +2,7 @@
 
 export const SETTINGS = /* groq */ `*[_id == "siteSettings"][0]{
   heroHeadline, heroSubheading, heroImage, aboutHeading, aboutBody, founded,
-  training[]{title, day, start, end, description}, kitNotes, feesText,
+  training[]{title, day, start, end, description}, kitNotes, feesText, kumite{intro, format, awards},
   venue{name, address, mapUrl}, contactEmail, socials
 }`;
 

@@ -1,0 +1,148 @@
+---
+import Base from "../layouts/Base.astro";
+import PageHeader from "../components/PageHeader.astro";
+import EventList from "../components/EventList.astro";
+import { getEvents, getSettings, upcoming } from "../lib/sanity/content";
+import { formatRange } from "../lib/dates";
+
+const s = await getSettings();
+const all = (await getEvents()).filter((e) => e.type === "kumite");
+const next = upcoming(all);
+const past = all.filter((e) => !next.includes(e)).reverse();
+const nextUp = next[0];
+---
+
+<Base
+  title="Cougars Kumite"
+  description="The Cougars Kumite: our quarterly in-house tournament. Drafted teams, a full round robin, one champion."
+>
+  <PageHeader eyebrow="Special event · Quarterly" title="The Cougars Kumite" lede={s.kumite.intro}>
+    <div class="next">
+      <span class="label">Next Kumite</span>
+      {nextUp ? (
+        <a class="link" href={`/events/${nextUp.slug}/`}>
+          {formatRange(nextUp.startsAt, nextUp.endsAt)}
+        </a>
+      ) : (
+        <span>Date to be announced</span>
+      )}
+    </div>
+  </PageHeader>
+
+  <div class="wrap page-body">
+    <div class="cols">
+      <section data-reveal>
+        <p class="label">How it works</p>
+        <ol class="list">
+          {s.kumite.format.map((line, i) => (
+            <li>
+              <span class="label">0{i + 1}</span>
+              {line}
+            </li>
+          ))}
+        </ol>
+      </section>
+      <section data-reveal style="--i:1">
+        <p class="label">Awards</p>
+        <ul class="list awards">
+          {s.kumite.awards.map((a) => (
+            <li>{a}</li>
+          ))}
+        </ul>
+      </section>
+    </div>
+
+    {next.length > 1 && (
+      <section class="block">
+        <p class="label" data-reveal>
+          Upcoming
+        </p>
+        <EventList events={next} />
+      </section>
+    )}
+
+    {past.length > 0 && (
+      <section class="block">
+        <p class="label" data-reveal>
+          Past Kumites
+        </p>
+        <EventList events={past} />
+      </section>
+    )}
+
+    <div class="cta" data-reveal>
+      <p class="muted">New to the club? Start with a regular Friday session.</p>
+      <a class="btn" href="/fridays/">
+        Fridays
+      </a>
+    </div>
+  </div>
+</Base>
+
+<style>
+  .next {
+    display: flex;
+    align-items: baseline;
+    gap: 1.25rem;
+    padding: 1rem 1.25rem;
+    border: 1px solid rgb(200 50 59 / 0.45);
+    font-size: 1.15rem;
+  }
+  .next .label {
+    color: var(--red);
+  }
+  .cols {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr;
+    gap: 3rem clamp(3rem, 8vw, 7rem);
+    padding-top: 2rem;
+    border-top: 1px solid var(--line);
+  }
+  .list {
+    list-style: none;
+    margin: 1.5rem 0 0;
+    padding: 0;
+  }
+  .list li {
+    display: flex;
+    gap: 1.25rem;
+    align-items: baseline;
+    padding: 1.1rem 0;
+    border-bottom: 1px solid var(--line);
+    font-size: clamp(1.15rem, 1.8vw, 1.45rem);
+    letter-spacing: -0.015em;
+  }
+  .awards li::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--red);
+    flex-shrink: 0;
+    translate: 0 -0.2em;
+  }
+  .block {
+    margin-top: clamp(4rem, 9vw, 6rem);
+  }
+  .block .label {
+    margin-bottom: 1.5rem;
+  }
+  .cta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+    margin-top: clamp(4rem, 9vw, 7rem);
+    padding-top: 2rem;
+    border-top: 1px solid var(--line);
+  }
+  .cta p {
+    margin: 0;
+  }
+  @media (max-width: 48rem) {
+    .cols {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

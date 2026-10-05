@@ -1,82 +1,51 @@
 ---
-import Rink from "./Rink.astro";
-
 interface Props {
   eyebrow?: string;
   title: string;
   lede?: string | null;
 }
 const { eyebrow, title, lede } = Astro.props;
-const words = title.split(/\s+/);
-// Put roughly half the words on each line for long titles.
-const lines = words.length > 3 ? [words.slice(0, Math.ceil(words.length / 2)), words.slice(Math.ceil(words.length / 2))] : [words];
 ---
 
-<header class="page-head">
-  <div class="rink" aria-hidden="true"><Rink /></div>
-  <div class="wrap inner">
-    {eyebrow && <p class="label enter">{eyebrow}</p>}
-    <h1 data-reveal="lines">
-      {lines.map((l) => <span class="line">{l.join(" ")}</span>)}
-    </h1>
-    {lede && <p class="lede" data-reveal style="--i:3">{lede}</p>}
-    <div class="extra" data-reveal style="--i:4"><slot /></div>
+<header class="page-head wrap">
+  {eyebrow && (
+    <p class="label" data-reveal>
+      {eyebrow}
+    </p>
+  )}
+  <h1 data-reveal style="--i:1">
+    {title}
+  </h1>
+  {lede && (
+    <p class="lede" data-reveal style="--i:2">
+      {lede}
+    </p>
+  )}
+  <div class="extra" data-reveal style="--i:3">
+    <slot />
   </div>
 </header>
 
 <style>
   .page-head {
-    position: relative;
-    overflow: clip;
-    padding: calc(var(--header-h) + clamp(3rem, 9vw, 7rem)) 0 clamp(2.5rem, 6vw, 4.5rem);
-    margin-bottom: clamp(2rem, 5vw, 4rem);
-    border-bottom: 1px solid var(--line);
-    background: radial-gradient(70% 90% at 0% 0%, rgb(209 51 60 / 0.16), transparent 70%);
-  }
-  .rink {
-    position: absolute;
-    right: -12%;
-    top: 10%;
-    width: min(70vw, 60rem);
-    opacity: 0.6;
-    pointer-events: none;
-    --rink-stroke: rgb(209 51 60 / 0.25);
-  }
-  .inner {
-    position: relative;
-  }
-  .label {
-    margin-bottom: 1.5rem;
+    padding-top: calc(var(--header-h) + clamp(4rem, 10vw, 8rem));
+    padding-bottom: clamp(3rem, 6vw, 4.5rem);
   }
   h1 {
-    font-size: clamp(3.5rem, 12vw, 12rem);
-    font-weight: 900;
-    line-height: 0.82;
-    letter-spacing: -0.02em;
-    max-width: 14ch;
+    margin-top: 1.25rem;
+    max-width: 18ch;
   }
   .lede {
-    margin-top: 2rem;
-  }
-  .extra:empty {
-    display: none;
+    margin: 1.5rem 0 0;
   }
   .extra {
-    margin-top: 2rem;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: 1rem 2rem;
+    margin-top: 2rem;
   }
-  @media (prefers-reduced-motion: no-preference) {
-    .enter {
-      opacity: 0;
-      animation: fade 0.8s var(--ease-out) 0.1s forwards;
-    }
-  }
-  @keyframes fade {
-    to {
-      opacity: 1;
-    }
+  .extra:empty {
+    display: none;
   }
 </style>

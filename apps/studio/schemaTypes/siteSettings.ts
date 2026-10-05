@@ -8,6 +8,7 @@ export const siteSettings = defineType({
   groups: [
     { name: "home", title: "Homepage", default: true },
     { name: "training", title: "Training" },
+    { name: "kumite", title: "Kumite" },
     { name: "contact", title: "Contact & social" },
   ],
   fields: [
@@ -78,6 +79,31 @@ export const siteSettings = defineType({
         defineField({ name: "name", type: "string" }),
         defineField({ name: "address", type: "string" }),
         defineField({ name: "mapUrl", title: "Google Maps link", type: "url" }),
+      ],
+    }),
+
+    defineField({
+      name: "kumite",
+      title: "Cougars Kumite",
+      type: "object",
+      group: "kumite",
+      description:
+        "Shown on the Kumite page and the homepage. Kumite dates are added as Events with type “Cougars Kumite”.",
+      fields: [
+        defineField({ name: "intro", title: "Introduction", type: "text", rows: 4 }),
+        defineField({
+          name: "format",
+          title: "How it works",
+          type: "array",
+          of: [defineArrayMember({ type: "string" })],
+          description: "One short line per point.",
+        }),
+        defineField({
+          name: "awards",
+          type: "array",
+          of: [defineArrayMember({ type: "string" })],
+          description: "e.g. Champions, Top scorer, Most assists.",
+        }),
       ],
     }),
 

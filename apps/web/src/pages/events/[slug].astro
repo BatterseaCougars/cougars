@@ -1,9 +1,8 @@
 ---
 import type { GetStaticPaths } from "astro";
 import Base from "../../layouts/Base.astro";
-import PageHeader from "../../components/PageHeader.astro";
 import { getEventPages } from "../../lib/sanity/content";
-import { imageUrl } from "../../lib/sanity/images";
+import { imageSrcSet, imageUrl, objectPosition } from "../../lib/sanity/images";
 import { renderPortableText } from "../../lib/portable-text";
 import { formatRange } from "../../lib/dates";
 import type { ClubEvent } from "../../lib/sanity/types";
@@ -15,69 +14,112 @@ export const getStaticPaths = (async () =>
   }))) satisfies GetStaticPaths;
 
 const { event } = Astro.props as { event: ClubEvent };
-const cover = imageUrl(event.cover, 1200, 630);
-const label = { training: "Training", social: "Social", tournament: "Tournament", kumite: "Cougars Kumite" }[
-  event.type
-];
+const cover = imageUrl(event.cover, 1600, 900);
+const TYPE = { training: "Training", social: "Social", tournament: "Tournament", kumite: "Special event · Kumite" };
+const body = renderPortableText(event.body);
 ---
 
-<Base title={event.title} description={event.summary ?? undefined} image={cover}>
-  <PageHeader eyebrow={label} title={event.title} lede={event.summary}>
-    <ul class="facts">
-      <li>
-        <strong>When</strong> {formatRange(event.startsAt, event.endsAt)}
-      </li>
-      {event.location && (
-        <li>
-          <strong>Where</strong> {event.location}
-        </li>
-      )}
-    </ul>
-    <div class="ctas">
-      {event.ctaUrl && (
-        <a class="btn" href={event.ctaUrl}>
-          {event.ctaLabel ?? "Sign up"}
-        </a>
-      )}
-      <a class="btn btn--ghost" href={`/events/${event.slug}.ics`}>
-        Add to calendar
-      </a>
-    </div>
-  </PageHeader>
+<Base title={event.title} description={event.summary ?? undefined} image={imageUrl(event.cover, 1200, 630)}>
   <article class="wrap page-body">
-    {cover && <img class="cover" src={cover} alt={event.cover?.alt ?? ""} />}
-    <div class="prose" set:html={renderPortableText(event.body)} />
-    <p>
-      <a href="/events/">← All events</a>
-    </p>
+    <header class="head">
+      <a class="label link back" href={event.type === "kumite" ? "/kumite/" : "/events/"} data-reveal>
+        ← {event.type === "kumite" ? "Kumite" : "Events"}
+      </a>
+      <p class:list={["label", { accent: event.type === "kumite" }]} data-reveal style="--i:1">
+        {TYPE[event.type]}
+      </p>
+      <h1 data-reveal style="--i:2">
+        {event.title}
+      </h1>
+      {event.summary && (
+        <p class="lede" data-reveal style="--i:3">
+          {event.summary}
+        </p>
+      )}
+    </header>
+
+    <dl class="facts" data-reveal style="--i:4">
+      <div>
+        <dt class="label">When</dt>
+        <dd>{formatRange(event.startsAt, event.endsAt)}</dd>
+      </div>
+      {event.location && (
+        <div>
+          <dt class="label">Where</dt>
+          <dd>{event.location}</dd>
+        </div>
+      )}
+      <div class="actions">
+        {event.ctaUrl && (
+          <a class="btn" href={event.ctaUrl}>
+            {event.ctaLabel ?? "Sign up"}
+          </a>
+        )}
+        <a class="btn" href={`/events/${event.slug}.ics`}>
+          Add to calendar
+        </a>
+      </div>
+    </dl>
+
+    {cover && (
+      <img
+        class="cover"
+        src={cover}
+        srcset={imageSrcSet(event.cover, [800, 1200, 1600], 16 / 9)}
+        sizes="(max-width: 70rem) 100vw, 70rem"
+        alt={event.cover?.alt ?? ""}
+        style={`object-position:${objectPosition(event.cover)}`}
+        data-reveal
+      />
+    )}
+    {body && <div class="prose" set:html={body} data-reveal />}
   </article>
 </Base>
 
 <style>
+  .head {
+    padding-top: calc(var(--header-h) + clamp(3rem, 8vw, 6rem));
+    padding-bottom: 2.5rem;
+  }
+  .back {
+    display: block;
+    width: fit-content;
+    margin-bottom: 3rem;
+  }
+  .accent {
+    color: var(--red);
+  }
+  h1 {
+    margin: 1rem 0 0;
+    max-width: 20ch;
+  }
+  .lede {
+    margin: 1.5rem 0 0;
+  }
   .facts {
-    list-style: none;
-    padding: 0;
-    margin: 0 0 1.5rem;
     display: flex;
     flex-wrap: wrap;
-    gap: 0.5rem 2rem;
-    font-size: 1.1rem;
+    align-items: center;
+    gap: 1.5rem 3.5rem;
+    margin: 0 0 3rem;
+    padding: 1.5rem 0;
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
   }
-  .facts strong {
-    color: var(--red);
-    margin-right: 0.35rem;
-    text-transform: uppercase;
-    font-size: 0.85rem;
-    letter-spacing: 0.1em;
+  .facts dd {
+    margin: 0.35rem 0 0;
+    font-size: 1.15rem;
   }
-  .ctas {
+  .actions {
     display: flex;
     flex-wrap: wrap;
     gap: 0.75rem;
+    margin-left: auto;
   }
   .cover {
     width: 100%;
-    border-radius: 1rem;
-    margin-bottom: 2rem;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    margin-bottom: 3rem;
   }
 </style>
