@@ -373,6 +373,17 @@ html.is-scrollbar-dragging * {
   background: linear-gradient(to right, var(--red) 0.55rem, transparent 0.55rem), var(--label);
   rotate: 0.8deg;
 }
+/* Ordinary labels carry the tape-speed box printed on every VHS spine */
+.btn:not(.btn--primary)::after {
+  content: "SP";
+  padding: 0.2em 0.3em 0.1em;
+  border: 1px solid currentColor;
+  font-family: var(--sans);
+  font-size: 0.55rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  opacity: 0.7;
+}
 /* Hover: one pass of bad VHS tracking, the label text splits red/cyan and settles */
 @media (prefers-reduced-motion: no-preference) {
   .btn:hover,
