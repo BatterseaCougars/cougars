@@ -21,7 +21,8 @@ const checks = [
     async () => {
       const res = await fetch(new URL("/api/join", base), {
         method: "POST",
-        headers: { Accept: "application/json" },
+        // Same-origin, like a browser: Astro rejects form posts from other origins with 403
+        headers: { Accept: "application/json", Origin: new URL(base).origin },
         body: new FormData(), // empty: must be rejected, so no row is written
       });
       if (res.status !== 400) throw new Error(`expected 400, got ${res.status}`);
