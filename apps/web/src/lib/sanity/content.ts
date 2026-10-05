@@ -5,11 +5,12 @@ import { DEMO_CONTENT } from "astro:env/server";
 import { sanity } from "./client";
 import * as q from "./queries";
 import { FALLBACK_SETTINGS } from "./fallback";
-import { DEMO_ALBUMS, DEMO_EVENTS, DEMO_PLAYERS, DEMO_POSTS, DEMO_VIDEOS } from "./demo";
+import { DEMO_ALBUMS, DEMO_EVENTS, DEMO_HONOURS, DEMO_PLAYERS, DEMO_POSTS, DEMO_VIDEOS } from "./demo";
 import type { Album, ClubEvent, Player, Post, SiteSettings, Sponsor, Video } from "./types";
 
-// Local design preview only: `DEMO_CONTENT=true npm run dev`. Never in builds.
-const demo = import.meta.env.DEV && DEMO_CONTENT;
+// Sample content for design previews: `DEMO_CONTENT=true npm run dev`, or a preview build
+// (scripts/deploy-preview.sh). Production CI never sets it. Pages built with it are noindex.
+export const demo = DEMO_CONTENT;
 
 async function fetchOr<T>(query: string, fallback: T): Promise<T> {
   const client = sanity();
@@ -28,8 +29,13 @@ export const getSettings = memo(async (): Promise<SiteSettings> => {
     ...FALLBACK_SETTINGS,
     ...stripNulls(s),
     socials: { ...FALLBACK_SETTINGS.socials, ...stripNulls(s.socials ?? {}) },
-    kumite: { ...FALLBACK_SETTINGS.kumite, ...stripNulls(s.kumite ?? {}) },
+    kumite: {
+      ...FALLBACK_SETTINGS.kumite,
+      ...(demo ? { honours: DEMO_HONOURS } : {}),
+      ...stripNulls(s.kumite ?? {}),
+    },
     team: { ...FALLBACK_SETTINGS.team, ...stripNulls(s.team ?? {}) },
+    pub: { ...FALLBACK_SETTINGS.pub, ...stripNulls(s.pub ?? {}) },
   };
 });
 export const getPosts = memo(() => fetchOr<Post[]>(q.POSTS, demo ? DEMO_POSTS : []));

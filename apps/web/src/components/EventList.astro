@@ -30,7 +30,7 @@ const TYPE = { training: "Training", social: "Social", tournament: "Tournament",
     list-style: none;
     margin: 0;
     padding: 0;
-    border-top: 1px solid var(--line);
+    border-top: 1px solid var(--rule);
   }
   a {
     display: grid;
@@ -38,7 +38,7 @@ const TYPE = { training: "Training", social: "Social", tournament: "Tournament",
     align-items: baseline;
     gap: 0.5rem 2rem;
     padding: 1.6rem 0;
-    border-bottom: 1px solid var(--line);
+    border-bottom: 1px solid var(--rule);
   }
   .title {
     font-weight: 600;
@@ -51,14 +51,14 @@ const TYPE = { training: "Training", social: "Social", tournament: "Tournament",
     color: var(--red);
   }
   .arrow {
-    color: var(--bone-3);
+    color: var(--text-3);
     transition:
       transform 0.35s var(--ease-smooth),
       color 0.35s;
   }
   a:hover .arrow {
     transform: translateX(4px);
-    color: var(--bone);
+    color: var(--text);
   }
   @media (max-width: 44rem) {
     a {

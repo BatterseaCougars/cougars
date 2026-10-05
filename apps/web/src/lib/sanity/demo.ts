@@ -2,7 +2,7 @@
 // content. Only used when DEMO_CONTENT=true in `astro dev`; never in builds.
 // Photos are random placeholders from picsum.photos (not hockey); videos are
 // public inline hockey clips on YouTube.
-import type { Album, ClubEvent, Player, Post, SanityImage, Video } from "./types";
+import type { Album, ClubEvent, Honour, Player, Post, SanityImage, Video } from "./types";
 
 const inDays = (d: number, time: string) => {
   const t = new Date();
@@ -154,4 +154,12 @@ export const DEMO_PLAYERS: Player[] = [
     weakness: "Has not found the brakes yet",
     quote: "Which way are we shooting?",
   }),
+];
+
+// Placeholder honours board. Real winners go in the Studio (Club details → Kumite).
+export const DEMO_HONOURS: Honour[] = [
+  { season: "Autumn 2026", champions: "Team Sample A", topScorer: "Sample player" },
+  { season: "Summer 2026", champions: "Team Sample B", topScorer: "Sample player" },
+  { season: "Spring 2026", champions: "Team Sample C", topScorer: "Sample player" },
+  { season: "Winter 2026", champions: "Team Sample D", topScorer: "Sample player" },
 ];

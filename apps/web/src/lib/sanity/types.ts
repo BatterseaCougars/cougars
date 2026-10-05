@@ -27,11 +27,18 @@ export interface SiteSettings {
   training: TrainingSlot[];
   kitNotes: string;
   feesText?: string | null;
-  kumite: { intro: string; format: string[]; awards: string[] };
+  kumite: { intro: string; format: string[]; awards: string[]; honours?: Honour[] | null };
+  pub: { name: string; about: string; mapUrl?: string | null };
   team: { intro: string; league?: string | null; photo?: SanityImage | null };
   venue: { name: string; address: string; mapUrl: string };
   contactEmail: string;
   socials: { instagram?: string | null; facebook?: string | null; youtube?: string | null };
+}
+
+export interface Honour {
+  season: string;
+  champions?: string | null;
+  topScorer?: string | null;
 }
 
 export interface Post {

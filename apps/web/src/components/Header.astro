@@ -4,32 +4,40 @@ import logo from "../assets/cougars.png";
 
 // One-page navigation: every item is a section of the home page, in page order. From any
 // other page the link goes back to that section. Full pages (/fridays/, /team/, ...) are
-// reached from the "see all" link inside each section.
+// reached from the "see all" link inside each section. `time` is the section's slot on the
+// Friday-night running order, shown in the menu.
 const path = Astro.url.pathname;
 const home = path === "/";
 const links = [
-  { section: "fridays", label: "Fridays", page: "/fridays/" },
-  { section: "team", label: "Team", page: "/team/" },
-  { section: "kumite", label: "Kumite", page: "/kumite/" },
-  { section: "events", label: "Events", page: "/events/" },
-  { section: "media", label: "Videos & photos", page: "/videos/" },
-  { section: "news", label: "News", page: "/news/" },
+  { section: "fridays", label: "Fridays", time: "19:30", page: "/fridays/" },
+  { section: "team", label: "The team", time: "21:30", page: "/team/" },
+  { section: "pub", label: "The pub", time: "21:45", page: "" },
+  { section: "kumite", label: "Kumite", time: "--:--", page: "/kumite/" },
+  { section: "events", label: "What's on", time: "", page: "/events/" },
+  { section: "media", label: "Footage", time: "", page: "/videos/" },
+  { section: "news", label: "News", time: "", page: "/news/" },
 ].map((l) => ({ ...l, href: home ? `#${l.section}` : `/#${l.section}` }));
-// On a full page, mark the section it belongs to (/photos/ belongs to "Videos & photos").
+// On a full page, mark the section it belongs to (/photos/ belongs to "Footage").
 const owner = (l: (typeof links)[number]) =>
-  path.startsWith(l.page) || (l.section === "media" && path.startsWith("/photos/"));
+  (l.page !== "" && path.startsWith(l.page)) || (l.section === "media" && path.startsWith("/photos/"));
 const current = (l: (typeof links)[number]) => (!home && owner(l) ? "page" : undefined);
+const joinCurrent = path.startsWith("/join/") ? "page" : undefined;
 ---
 
 <header class="header" data-header transition:name="site-header">
   <div class="bar">
-    <a href="/" class="brand" aria-label="Battersea Cougars, home">
+    <a href={home ? "#top" : "/"} class="brand" aria-label="Battersea Cougars, home">
       <Image src={logo} alt="" width={120} class="brand-mark" loading="eager" />
-      <span class="brand-text" aria-hidden="true">
-        <span>Inline hockey</span>
-        <span>Battersea · Est. 1996</span>
-      </span>
     </a>
+    <!-- Running clock: follows the Friday night down the home page (scripts/motion.ts) -->
+    <p class="clock" aria-hidden="true">
+      <span class="clock-time" data-clock-time>
+        1996
+      </span>
+      <span class="clock-label" data-clock-label>
+        Est. Battersea
+      </span>
+    </p>
 
     <nav class="nav" aria-label="Main">
       <ul>
@@ -41,7 +49,7 @@ const current = (l: (typeof links)[number]) => (!home && owner(l) ? "page" : und
           </li>
         ))}
       </ul>
-      <a class="btn btn--primary join" href="/join/" aria-current={path.startsWith("/join/") ? "page" : undefined}>
+      <a class="btn btn--primary join" href="/join/" aria-current={joinCurrent}>
         Join
       </a>
     </nav>
@@ -55,23 +63,20 @@ const current = (l: (typeof links)[number]) => (!home && owner(l) ? "page" : und
 
 <!-- Outside <header>: its backdrop-filter would otherwise trap this fixed overlay inside the bar. -->
 <div class="menu" id="menu" data-menu hidden>
-  <ul>
-    <li style="--i:0">
-      <a href={home ? "#top" : "/"}>Home</a>
-    </li>
+  <p class="menu-head label">Friday night running order</p>
+  <ol>
     {links.map((l, i) => (
-      <li style={`--i:${i + 1}`}>
+      <li style={`--i:${i}`}>
         <a href={l.href} aria-current={current(l)}>
+          <span class="menu-time">{l.time}</span>
           {l.label}
         </a>
       </li>
     ))}
-    <li style={`--i:${links.length + 1}`}>
-      <a href="/join/" aria-current={path.startsWith("/join/") ? "page" : undefined}>
-        Join
-      </a>
-    </li>
-  </ul>
+  </ol>
+  <a class="btn btn--primary menu-join" href="/join/" aria-current={joinCurrent} style={`--i:${links.length}`}>
+    Try a session
+  </a>
 </div>
 
 <style>
@@ -79,76 +84,94 @@ const current = (l: (typeof links)[number]) => (!home && owner(l) ? "page" : und
     position: fixed;
     inset: 0 0 auto;
     z-index: 150;
-    border-bottom: 1px solid transparent;
-    background: linear-gradient(to bottom, rgb(11 11 12 / 0.6), transparent);
+    background: rgb(13 13 15 / 0.88);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--rule);
     transition:
-      background 0.3s ease,
-      border-color 0.3s ease;
+      background 0.4s ease,
+      color 0.4s ease,
+      border-color 0.4s ease;
   }
-  :global(.header.is-scrolled) {
-    background: rgb(11 11 12 / 0.82);
-    backdrop-filter: blur(14px);
-    border-color: var(--line);
+  /* Underground: header goes dark while the Kumite is on screen */
+  :global(.header.night) {
+    background: rgb(6 6 6 / 0.9);
+    border-color: var(--red);
   }
   .bar {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    gap: 1.25rem;
     height: var(--header-h);
     padding-inline: var(--gutter);
   }
-  .brand {
-    display: flex;
-    align-items: center;
-    gap: 0.9rem;
-  }
   .brand :global(.brand-mark) {
-    width: 3.75rem;
+    width: 4.1rem;
     transition: transform 0.4s var(--ease-smooth);
   }
   .brand:hover :global(.brand-mark) {
-    transform: rotate(-4deg) scale(1.06);
+    transform: rotate(-5deg) scale(1.06);
   }
-  .brand-text {
-    display: grid;
-    gap: 0.3rem;
-    padding-left: 0.9rem;
-    border-left: 1px solid var(--line-strong);
-    font-size: 0.62rem;
-    font-weight: 600;
-    letter-spacing: 0.22em;
+  .clock {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin: 0;
+    padding-left: 1.25rem;
+    border-left: 1px solid var(--rule-strong);
+    white-space: nowrap;
+  }
+  .clock-time {
+    min-width: 3.6ch;
+    padding: 0.3em 0.45em 0.2em;
+    background: var(--text);
+    color: var(--paper);
+    font-family: var(--display);
+    font-size: 1.05rem;
     line-height: 1;
-    text-transform: uppercase;
-    color: var(--bone-2);
+    letter-spacing: 0.04em;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+    transition:
+      background 0.4s ease,
+      color 0.4s ease;
   }
-  .brand-text span:first-child {
-    color: var(--bone);
+  :global(.header.night) .clock-time {
+    background: var(--red);
+    color: #fff;
+  }
+  .clock-label {
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
   }
   .nav {
     display: flex;
     align-items: center;
-    gap: 2.5rem;
-  }
-  .nav .join {
-    padding: 0.7rem 1.2rem;
+    gap: 2rem;
+    margin-left: auto;
   }
   .nav ul {
     display: flex;
-    gap: 2.25rem;
+    gap: 1.6rem;
     list-style: none;
     margin: 0;
     padding: 0;
   }
   .nav ul a {
     font-family: var(--display);
-    font-size: 1.05rem;
-    letter-spacing: 0.06em;
+    font-size: 1.08rem;
+    letter-spacing: 0.04em;
     text-transform: uppercase;
-    color: var(--bone-2);
+    white-space: nowrap;
   }
   .nav ul a:hover,
-  .nav ul a[aria-current="page"] {
-    color: var(--bone);
+  .nav ul a[aria-current] {
+    color: var(--red-hot);
+  }
+  .nav .join {
+    padding: 0.6rem 1.1rem 0.5rem;
+    box-shadow: 3px 3px 0 var(--text);
   }
 
   /* Hamburger → X (from ark) */
@@ -158,16 +181,17 @@ const current = (l: (typeof links)[number]) => (!home && owner(l) ? "page" : und
     z-index: 2;
     width: 2.75rem;
     height: 2.75rem;
-    border: 0;
-    background: transparent;
-    color: var(--bone);
+    margin-left: auto;
+    border: 1px solid var(--rule-strong);
+    background: var(--paper);
+    color: var(--text);
     cursor: pointer;
   }
   .icon {
     position: absolute;
     left: 50%;
     top: 50%;
-    width: 1.4rem;
+    width: 1.2rem;
     height: 8px;
     translate: -50% -50%;
   }
@@ -178,73 +202,107 @@ const current = (l: (typeof links)[number]) => (!home && owner(l) ? "page" : und
     left: 0;
     top: 0;
     width: 100%;
-    height: 1px;
+    height: 2px;
     background: currentColor;
-    transition: transform 0.35s var(--ease-out);
+    transition:
+      transform 0.35s var(--ease-smooth),
+      top 0.35s var(--ease-smooth);
   }
   .icon::after {
-    transform: translate3d(0, 7px, 0);
+    top: 6px;
   }
   [aria-expanded="true"] .icon::before {
-    transform: translate3d(0, 3.5px, 0) rotate(45deg);
+    top: 3px;
+    transform: rotate(45deg);
   }
   [aria-expanded="true"] .icon::after {
-    transform: translate3d(0, 3.5px, 0) rotate(-45deg);
+    top: 3px;
+    transform: rotate(-45deg);
   }
 
+  /* Mobile menu: the running order, as a sheet of newsprint */
   .menu {
     position: fixed;
-    inset: 0;
+    inset: var(--header-h) 0 0;
     z-index: 149;
-    display: grid;
-    place-items: center;
-    background: rgb(11 11 12 / 0.92);
-    backdrop-filter: blur(18px);
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    padding: 2rem var(--gutter) 2.5rem;
+    overflow-y: auto;
+    background: var(--paper);
     opacity: 0;
-    transition: opacity 0.4s var(--ease-out);
+    transition: opacity 0.3s var(--ease-out);
   }
-  /* display: grid above would otherwise override [hidden] and leave an invisible overlay on the page */
+  /* display: flex above would otherwise override [hidden] and leave an invisible overlay on the page */
   .menu[hidden] {
     display: none;
   }
   .menu.is-open {
     opacity: 1;
   }
-  .menu ul {
+  .menu ol {
     list-style: none;
     margin: 0;
     padding: 0;
-    text-align: center;
+    border-top: 1px solid var(--rule-strong);
   }
-  .menu a {
-    display: block;
-    padding: 0.3rem 0;
+  .menu li a {
+    display: flex;
+    align-items: baseline;
+    gap: 1rem;
+    padding: 0.7rem 0 0.55rem;
+    border-bottom: 1px solid var(--rule);
     font-family: var(--display);
-    font-size: 2.6rem;
-    font-weight: 400;
-    letter-spacing: 0.02em;
-    line-height: 1.1;
+    font-size: clamp(2rem, 9vw, 2.6rem);
+    line-height: 1;
     text-transform: uppercase;
+  }
+  .menu-time {
+    min-width: 3.4rem;
+    font-size: 0.95rem;
+    color: var(--red-hot);
+    font-variant-numeric: tabular-nums;
+  }
+  .menu li a,
+  .menu-join {
     opacity: 0;
     transform: translateY(10px);
     transition:
-      opacity 0.35s var(--ease-smooth) calc(var(--i) * 40ms + 100ms),
-      transform 0.35s var(--ease-smooth) calc(var(--i) * 40ms + 100ms);
+      opacity 0.35s var(--ease-smooth) calc(var(--i) * 35ms + 60ms),
+      transform 0.35s var(--ease-smooth) calc(var(--i) * 35ms + 60ms);
   }
-  .menu.is-open a {
+  .menu.is-open li a,
+  .menu.is-open .menu-join {
     opacity: 1;
     transform: none;
   }
+  .menu-join {
+    align-self: start;
+  }
   .menu a[aria-current="page"] {
-    color: var(--bone-3);
+    color: var(--red-hot);
   }
 
-  @media (max-width: 60rem) {
+  @media (max-width: 78rem) {
+    .nav ul {
+      gap: 1.1rem;
+    }
+    .nav ul a {
+      font-size: 0.98rem;
+    }
+  }
+  @media (max-width: 68rem) {
     .nav {
       display: none;
     }
     .menu-btn {
       display: block;
+    }
+  }
+  @media (max-width: 26rem) {
+    .clock-label {
+      display: none;
     }
   }
 </style>
@@ -267,7 +325,7 @@ const current = (l: (typeof links)[number]) => (!home && owner(l) ? "page" : und
         requestAnimationFrame(() => menu.classList.add("is-open"));
       } else {
         menu.classList.remove("is-open");
-        setTimeout(() => (menu.hidden = btn.getAttribute("aria-expanded") === "false"), 400);
+        setTimeout(() => (menu.hidden = btn.getAttribute("aria-expanded") === "false"), 300);
       }
     };
     btn.addEventListener("click", () => set(btn.getAttribute("aria-expanded") !== "true"));

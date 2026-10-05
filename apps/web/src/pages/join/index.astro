@@ -128,7 +128,7 @@ const slot = s.training[0];
   }
   em {
     font-style: normal;
-    color: var(--bone-3);
+    color: var(--text-3);
     opacity: 0.7;
     margin-left: 0.4em;
   }
@@ -139,10 +139,10 @@ const slot = s.training[0];
     font: inherit;
     font-size: 1.25rem;
     letter-spacing: -0.01em;
-    color: var(--bone);
+    color: var(--text);
     background: transparent;
     border: 0;
-    border-bottom: 1px solid var(--line-strong);
+    border-bottom: 1px solid var(--rule-strong);
     border-radius: 0;
     outline: none;
     transition: border-color 0.3s var(--ease-smooth);
@@ -152,7 +152,7 @@ const slot = s.training[0];
   }
   input:focus,
   textarea:focus {
-    border-bottom-color: var(--bone);
+    border-bottom-color: var(--text);
   }
   [aria-invalid="true"] {
     border-bottom-color: var(--red) !important;
@@ -174,7 +174,7 @@ const slot = s.training[0];
   .choice span {
     display: inline-block;
     padding: 0.6rem 1rem;
-    border: 1px solid var(--line-strong);
+    border: 1px solid var(--rule-strong);
     font-size: 0.9rem;
     cursor: pointer;
     transition:
@@ -182,14 +182,14 @@ const slot = s.training[0];
       background 0.3s var(--ease-smooth);
   }
   .choice span:hover {
-    border-color: var(--bone-3);
+    border-color: var(--text-3);
   }
   .choice input:checked + span {
-    border-color: var(--bone);
+    border-color: var(--text);
     background: rgb(236 232 225 / 0.08);
   }
   .choice input:focus-visible + span {
-    outline: 1px solid var(--bone);
+    outline: 1px solid var(--text);
     outline-offset: 3px;
   }
   .err {
@@ -223,7 +223,7 @@ const slot = s.training[0];
     display: grid;
     gap: 1.75rem;
     padding-top: 1.5rem;
-    border-top: 1px solid var(--line);
+    border-top: 1px solid var(--rule);
   }
   .info p {
     margin: 0.4rem 0 0;

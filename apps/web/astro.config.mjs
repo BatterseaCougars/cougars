@@ -27,7 +27,7 @@ export default defineConfig({
       SANITY_DATASET: envField.string({ context: "server", access: "public", default: "production" }),
       SANITY_API_TOKEN: envField.string({ context: "server", access: "secret", optional: true }),
       PUBLIC_BUILD_VERSION: envField.string({ context: "client", access: "public", default: "dev" }),
-      // Local design preview with sample events/news (dev server only).
+      // Sample content for design previews (dev, or scripts/deploy-preview.sh). Never set in CI.
       DEMO_CONTENT: envField.boolean({ context: "server", access: "public", default: false }),
     },
   },

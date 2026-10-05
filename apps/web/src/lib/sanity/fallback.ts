@@ -3,17 +3,17 @@
 import type { SiteSettings } from "./types";
 
 export const FALLBACK_SETTINGS: SiteSettings = {
-  heroHeadline: "Inline hockey in Battersea since 1996.",
+  heroHeadline: "Tough crowd. Soft centre.",
   heroSubheading:
     "Inline hockey in Battersea since 1996. Fast, physical, non-contact, and open to anyone who wants to learn. First session? We lend you the kit.",
   aboutHeading: "Since 1996",
   aboutBody:
-    "Nearly thirty years on the same sport court in Battersea. League players, weekend skaters and people " +
-    "who have never held a stick, all on the same rink every Friday night.\n\n" +
-    "We are a multinational, inclusive club. Nobody cares where you are from or how well you skate. " +
-    "Turn up, gear up, play.\n\n" +
-    "Our official team plays in the BIPHA league. And when Friday hockey is done, we head to the local pub " +
-    "for a pint.",
+    "Take a Van Damme film, put it on skates, hand everyone a stick and set it in South London. That's " +
+    "us, every Friday since 1996, on the same Battersea court: league players, weekend skaters and people " +
+    "who've never held a stick, all on one rink.\n\n" +
+    "We play hard and we take the mickey harder. Nobody cares where you're from or how well you skate. " +
+    "Turn up, gear up, play. Our official team flies the flag in the BIPHA league, and when the final " +
+    "whistle goes, everyone heads to the pub.",
   founded: 1996,
   training: [
     {
@@ -29,9 +29,10 @@ export const FALLBACK_SETTINGS: SiteSettings = {
   feesText: null,
   kumite: {
     intro:
-      "Four times a year, the Cougars go underground. The Kumite is our in-house tournament, a special event " +
-      "apart from regular Friday hockey. Everyone who signs up is drafted into balanced teams, every team plays " +
-      "every other team, and one team walks away as champions. It sounds secret. It isn't: anyone can play.",
+      "Four times a year, the Cougars go underground. Think Bloodsport, but in a Battersea sports hall, on " +
+      "skates, and nobody gets hurt on purpose. The Kumite is our in-house tournament, a special event apart " +
+      "from regular Friday hockey. Everyone who signs up is drafted into balanced teams, every team plays every " +
+      "other team, and one team walks away as champions. It sounds secret. It isn't: anyone can play.",
     format: [
       "Players are drafted into balanced teams on the day",
       "Full round robin: every team plays every team",
@@ -45,6 +46,13 @@ export const FALLBACK_SETTINGS: SiteSettings = {
       "plus fixtures against other inline hockey clubs.",
     league: "BIPHA",
     photo: null,
+  },
+  pub: {
+    name: "The Anchor",
+    about:
+      "Final whistle, first round. Players, first-timers and whoever came to watch. Nobody has to drink " +
+      "beer. Everybody has to come.",
+    mapUrl: null,
   },
   venue: {
     name: "Battersea Sports Centre",

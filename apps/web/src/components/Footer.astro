@@ -5,6 +5,7 @@ import { imageUrl } from "../lib/sanity/images";
 const s = await getSettings();
 const sponsors = await getSponsors();
 const slot = s.training[0];
+const day = slot?.day ?? "Friday";
 const socials = [
   { href: s.socials.instagram, label: "Instagram" },
   { href: s.socials.facebook, label: "Facebook" },
@@ -13,7 +14,20 @@ const socials = [
 ---
 
 <footer class="footer">
-  <div class="wrap">
+  <!-- Last call: the invitation, big -->
+  <div class="call">
+    <div class="wrap call-inner">
+      <p class="call-line">Fancy it?</p>
+      <p class="call-sub">
+        Come down on a {day}. First session, we'll lend you the kit. Splits optional. After that, you're one of us.
+      </p>
+      <a class="btn call-btn" href="/join/">
+        Try a session
+      </a>
+    </div>
+  </div>
+
+  <div class="wrap base">
     {sponsors.length > 0 && (
       <ul class="sponsors">
         {sponsors.map((sp) => (
@@ -26,8 +40,13 @@ const socials = [
       </ul>
     )}
     <div class="cols">
-      <p class="brand">Battersea Cougars</p>
+      <p class="brand">
+        Battersea
+        <br />
+        Cougars
+      </p>
       <div>
+        <p class="label">Rink</p>
         {slot && (
           <p>
             {slot.day}s {slot.start}–{slot.end}
@@ -40,6 +59,11 @@ const socials = [
         </p>
       </div>
       <div>
+        <p class="label">Afterwards</p>
+        <p>{s.pub.name}</p>
+      </div>
+      <div>
+        <p class="label">Say hello</p>
         <p>
           <a class="link" href={`mailto:${s.contactEmail}`}>
             {s.contactEmail}
@@ -54,59 +78,71 @@ const socials = [
         </p>
       </div>
     </div>
-    <p class="warning">
-      <b>Warning</b> Unauthorised hooking, slashing or refusing to pass may result in being drafted last.
-    </p>
     <p class="legal label">
-      © {new Date().getFullYear()} Battersea Cougars Inline Hockey Club · Est. {s.founded}
+      © {new Date().getFullYear()} Battersea Cougars Inline Hockey Club · Est. {s.founded} · South London
     </p>
   </div>
 </footer>
 
 <style>
-  .footer {
-    padding-block: 4rem 2rem;
-    border-top: 1px solid var(--line);
-    font-size: 0.9rem;
-    color: var(--bone-2);
+  .call {
+    background: var(--red);
+    color: #fff;
+  }
+  .call-inner {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: end;
+    gap: 1.5rem 3rem;
+    padding-block: clamp(3.5rem, 8vw, 6rem);
+  }
+  .call-line {
+    grid-column: 1 / -1;
+    margin: 0;
+    font-family: var(--display);
+    font-size: clamp(4.5rem, 15vw, 12rem);
+    line-height: 0.85;
+    text-transform: uppercase;
+  }
+  .call-sub {
+    max-width: 34rem;
+    margin: 0;
+    font-size: clamp(1.1rem, 1.6vw, 1.3rem);
+    line-height: 1.5;
+  }
+  .call-btn {
+    --text: #16130f;
+    background: #fff;
+  }
+  .base {
+    padding-block: 3.5rem 2rem;
+    font-size: 0.92rem;
+    color: var(--text-2);
   }
   .cols {
     display: grid;
-    grid-template-columns: 1.5fr 1fr 1fr;
+    grid-template-columns: 1.4fr 1fr 1fr 1.2fr;
     gap: 2rem;
   }
   .cols p {
-    margin: 0 0 0.4rem;
+    margin: 0 0 0.35rem;
+  }
+  .cols .label {
+    margin-bottom: 0.6rem;
   }
   .brand {
     font-family: var(--display);
-    font-size: 1.5rem;
-    letter-spacing: 0.02em;
-    line-height: 1;
+    font-size: 2rem;
+    line-height: 0.95;
     text-transform: uppercase;
-    color: var(--bone);
-  }
-  .warning {
-    max-width: 30rem;
-    margin: 3rem 0 0;
-    padding: 0.75rem 1rem;
-    border: 1px solid var(--line-strong);
-    font-size: 0.72rem;
-    letter-spacing: 0.06em;
-    line-height: 1.5;
-    text-transform: uppercase;
-    color: var(--bone-3);
-  }
-  .warning b {
-    color: var(--red-hot);
-    margin-right: 0.4em;
+    color: var(--text);
   }
   .social {
     display: flex;
     gap: 1.25rem;
   }
   .legal {
-    margin: 1.5rem 0 0;
+    margin: 3rem 0 0;
   }
   .sponsors {
     list-style: none;
@@ -120,12 +156,16 @@ const socials = [
   .sponsors img {
     max-height: 2.25rem;
     width: auto;
-    filter: grayscale(1) brightness(1.8);
-    opacity: 0.6;
+    filter: grayscale(1);
+    opacity: 0.7;
   }
-  @media (max-width: 48rem) {
-    .cols {
+  @media (max-width: 52rem) {
+    .call-inner {
       grid-template-columns: 1fr;
+      justify-items: start;
+    }
+    .cols {
+      grid-template-columns: 1fr 1fr;
     }
   }
 </style>

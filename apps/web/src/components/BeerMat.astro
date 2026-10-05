@@ -1,0 +1,171 @@
+---
+// A Cougars beer mat from The Anchor. Press to flip (scripts/cards.ts handles flip + tilt).
+import { Image } from "astro:assets";
+import logo from "../assets/cougars.png";
+
+interface Props {
+  pub: string;
+  founded: number;
+}
+const { pub, founded } = Astro.props;
+const ring = `Battersea Cougars · Friday night hockey · Est. ${founded} · `;
+---
+
+<div class="mat-slot">
+  <button class="mat" type="button" aria-pressed="false" data-card aria-label="Beer mat: flip it over">
+    <span class="face front">
+      <svg class="ring" viewBox="0 0 200 200" aria-hidden="true">
+        <defs>
+          <path id="mat-ring" d="M100,100 m-79,0 a79,79 0 1,1 158,0 a79,79 0 1,1 -158,0" />
+        </defs>
+        <text>
+          <textPath href="#mat-ring" textLength="490">
+            {ring.toUpperCase()}
+          </textPath>
+        </text>
+      </svg>
+      <Image class="mat-logo" src={logo} alt="" width={320} loading="lazy" />
+      <span class="sheen" aria-hidden="true" />
+    </span>
+    <span class="face back">
+      <span class="stain" aria-hidden="true" />
+      <span class="small">This mat entitles the bearer to</span>
+      <strong>One pint of glory</strong>
+      <span class="small">Not exchangeable for actual pints.</span>
+      <span class="small">Valid at {pub} after any Friday.</span>
+      <span class="serial">No. {founded}-0001</span>
+    </span>
+  </button>
+</div>
+
+<style>
+  .mat-slot {
+    --text: #16130f;
+    container-type: inline-size;
+    perspective: 1100px;
+    width: 100%;
+    max-width: 26rem;
+  }
+  .mat {
+    --rx: 0deg;
+    --ry: 0deg;
+    --flip: 0deg;
+    position: relative;
+    display: block;
+    width: 100%;
+    aspect-ratio: 1;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: none;
+    color: var(--red);
+    font: inherit;
+    cursor: pointer;
+    transform-style: preserve-3d;
+    transform: rotate(-8deg) rotateX(var(--rx)) rotateY(calc(var(--ry) + var(--flip)));
+    transition: transform 0.8s var(--ease-smooth);
+  }
+  .mat:global(.is-tilting) {
+    transition: transform 0.12s linear;
+  }
+  .mat[aria-pressed="true"] {
+    --flip: 180deg;
+  }
+  .face {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    border-radius: 50%;
+    backface-visibility: hidden;
+    /* pulped cardboard */
+    background:
+      radial-gradient(circle at 30% 25%, rgb(255 255 255 / 0.45), transparent 55%),
+      radial-gradient(rgb(120 90 60 / 0.09) 1px, transparent 1.2px) 0 0 / 5px 5px,
+      radial-gradient(rgb(120 90 60 / 0.07) 1px, transparent 1.2px) 2px 3px / 7px 7px,
+      #f4ecdc;
+    box-shadow:
+      inset 0 0 0 2.2cqw #f4ecdc,
+      inset 0 0 0 3.2cqw var(--red),
+      0 1.2cqw 0 #d9ccb3,
+      0 4cqw 7cqw var(--shadow);
+  }
+  .ring {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    fill: var(--text);
+    font-family: var(--display);
+    font-size: 15px;
+    letter-spacing: 0.08em;
+  }
+  .front :global(.mat-logo) {
+    width: 64%;
+    height: auto;
+    translate: 0 -1%;
+  }
+  .sheen {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: radial-gradient(circle at var(--mx, 50%) var(--my, 0%), rgb(255 255 255 / 0.4), transparent 55%);
+    mix-blend-mode: soft-light;
+    opacity: 0;
+    transition: opacity 0.4s ease;
+  }
+  .mat:hover .sheen {
+    opacity: 1;
+  }
+  .back {
+    transform: rotateY(180deg);
+    align-content: center;
+    gap: 2.4cqw;
+    padding: 18cqw;
+    color: var(--red);
+    text-align: center;
+  }
+  .back strong {
+    font-family: var(--display);
+    font-size: 13cqw;
+    font-weight: 400;
+    line-height: 0.95;
+    text-transform: uppercase;
+  }
+  .small {
+    font-size: 3.6cqw;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    line-height: 1.3;
+    text-transform: uppercase;
+  }
+  .serial {
+    margin-top: 1.5cqw;
+    font-size: 3cqw;
+    letter-spacing: 0.2em;
+    color: var(--text);
+    opacity: 0.6;
+  }
+  /* someone already put their pint on it */
+  .stain {
+    position: absolute;
+    left: 52%;
+    top: 46%;
+    width: 58cqw;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    border: 1.6cqw solid rgb(150 105 50 / 0.14);
+    box-shadow: inset 0 0 3cqw rgb(150 105 50 / 0.1);
+    translate: -50% -50%;
+  }
+  .mat:focus-visible {
+    outline: 2px solid var(--red);
+    outline-offset: 8px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .mat {
+      transition: none;
+    }
+  }
+</style>

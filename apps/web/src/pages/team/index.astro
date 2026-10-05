@@ -98,8 +98,8 @@ const roster = [...players].sort((a, b) => (a.number ?? 999) - (b.number ?? 999)
   .placeholder {
     display: grid;
     place-items: center;
-    border: 1px dashed var(--line-strong);
-    background: radial-gradient(circle at 50% 50%, rgb(229 19 31 / 0.12), transparent 60%), var(--ink-2);
+    border: 1px dashed var(--rule-strong);
+    background: radial-gradient(circle at 50% 50%, rgb(229 19 31 / 0.12), transparent 60%), var(--paper-2);
   }
   .block {
     margin-top: clamp(4rem, 9vw, 6rem);
@@ -115,15 +115,15 @@ const roster = [...players].sort((a, b) => (a.number ?? 999) - (b.number ?? 999)
   .roster th {
     padding: 0 1rem 0.9rem 0;
     text-align: left;
-    border-bottom: 1px solid var(--line-strong);
+    border-bottom: 1px solid var(--rule-strong);
   }
   .roster td {
     padding: 1rem 1rem 1rem 0;
-    border-bottom: 1px solid var(--line);
-    color: var(--bone-2);
+    border-bottom: 1px solid var(--rule);
+    color: var(--text-2);
   }
   .roster strong {
-    color: var(--bone);
+    color: var(--text);
     font-weight: 600;
   }
   .roster .no {

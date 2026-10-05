@@ -4,9 +4,11 @@ import { ClientRouter } from "astro:transitions";
 import { Font } from "astro:assets";
 import { getImage } from "astro:assets";
 import { PUBLIC_BUILD_VERSION } from "astro:env/client";
+import { demo } from "../lib/sanity/content";
 import Header from "../components/Header.astro";
 import Footer from "../components/Footer.astro";
 import ogDefault from "../assets/og-default.jpg";
+import carbonImage from "../assets/cougars_background.png";
 
 interface Props {
   title?: string;
@@ -17,12 +19,13 @@ interface Props {
 const site = "Battersea Cougars";
 const {
   title,
-  description = "Inline hockey in Battersea, London since 1996. Friday nights, all levels, kit provided for your first session.",
+  description = "Roller hockey in Battersea, South London, since 1996. Friday nights, all levels, kit provided for your first session. Then the pub.",
   image,
 } = Astro.props;
 const fullTitle = title ? `${title} · ${site}` : `${site} · Inline hockey in Battersea, London`;
 const og = image ?? new URL((await getImage({ src: ogDefault, format: "jpg", width: 1200 })).src, Astro.site).href;
 const canonical = new URL(Astro.url.pathname, Astro.site).href;
+const carbon = (await getImage({ src: carbonImage, width: 1920, format: "webp", quality: 70 })).src;
 ---
 
 <!doctype html>
@@ -45,6 +48,7 @@ const canonical = new URL(Astro.url.pathname, Astro.site).href;
     <meta property="og:image" content={og} />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="generator" content={`cougars ${PUBLIC_BUILD_VERSION}`} />
+    {demo && <meta name="robots" content="noindex, nofollow" />}
     <script is:inline>
       // Back/forward (incl. first load from history): skip entrance motion. From ark.
       try {
@@ -59,7 +63,7 @@ const canonical = new URL(Astro.url.pathname, Astro.site).href;
     <Font cssVariable="--font-osd" preload />
     <ClientRouter fallback="swap" />
   </head>
-  <body>
+  <body style={`--carbon:url(${carbon})`}>
     <a class="skip visually-hidden" href="#main">
       Skip to content
     </a>
@@ -89,7 +93,7 @@ const canonical = new URL(Astro.url.pathname, Astro.site).href;
     clip: auto;
     z-index: 300;
     padding: 0.6rem 1rem;
-    background: var(--bone);
-    color: var(--ink);
+    background: var(--text);
+    color: var(--paper);
   }
 </style>

@@ -22,6 +22,7 @@ const credits = [
   ["Teams by", "the draft", ""],
   ["Format", "full round robin", ""],
   ["Survivors", "one team", ""],
+  ["Inspired by", "a certain Belgian", "(unofficially)"],
 ];
 ---
 
@@ -43,7 +44,8 @@ const credits = [
     <span class="word">Kumite</span>
   </Heading>
   <p class="tagline">
-    Four times a year, the Cougars go underground. Drafted teams. Everyone plays everyone. One team walks out champions.
+    Four times a year, the Cougars go underground. Bloodsport on wheels, minus the blood. Drafted teams, everyone plays
+    everyone, one team walks out champions.
   </p>
 
   <div class="date">
@@ -72,7 +74,7 @@ const credits = [
       and gloves required.
     </span>
   </span>
-  {href && <span class="more label">Enter the Kumite →</span>}
+  {href && <span class="enter label">Enter the Kumite →</span>}
 </Tag>
 
 <style>
@@ -89,7 +91,7 @@ const credits = [
       radial-gradient(ellipse 70% 60% at 50% 42%, rgb(229 19 31 / 0.32), transparent 70%),
       linear-gradient(to bottom, rgb(11 11 12 / 0.75), rgb(11 11 12 / 0.9)),
       var(--bg) center / cover;
-    border-block: 1px solid var(--line);
+    border-block: 1px solid var(--rule);
   }
   .poster > * {
     position: relative;
@@ -111,10 +113,10 @@ const credits = [
     font-weight: 600;
     letter-spacing: 0.4em;
     text-transform: uppercase;
-    color: var(--bone-2);
+    color: var(--text-2);
   }
   .presents s {
-    color: var(--bone-3);
+    color: var(--text-3);
     text-decoration-color: var(--red-hot);
     text-decoration-thickness: 2px;
   }
@@ -124,11 +126,11 @@ const credits = [
   /* Classified, until you look closer */
   .date .where {
     margin-top: 0.6rem;
-    color: var(--bone-3);
+    color: var(--text-3);
   }
   .redacted {
     position: relative;
-    color: var(--bone);
+    color: var(--text);
   }
   .redacted::after {
     content: "";
@@ -156,7 +158,7 @@ const credits = [
     font-size: clamp(1.1rem, 2.6vw, 2rem);
     letter-spacing: 0.42em;
     text-indent: 0.42em;
-    color: var(--bone);
+    color: var(--text);
   }
   /* Blood-red block capitals with a worn, painted edge */
   .word {
@@ -176,7 +178,7 @@ const credits = [
     max-width: 34rem;
     font-size: clamp(1rem, 1.5vw, 1.2rem);
     line-height: 1.5;
-    color: var(--bone-2);
+    color: var(--text-2);
     text-wrap: balance;
   }
   .date {
@@ -198,7 +200,7 @@ const credits = [
     text-transform: uppercase;
   }
   .date .togo {
-    color: var(--bone-2);
+    color: var(--text-2);
   }
   /* Film-poster billing block: small words low, names tall and narrow */
   .billing {
@@ -209,13 +211,13 @@ const credits = [
     max-width: 46rem;
     margin-top: clamp(1.5rem, 4vw, 3rem);
     padding-top: 1.25rem;
-    border-top: 1px solid var(--line);
+    border-top: 1px solid var(--rule);
     font-family: var(--display);
     font-size: 1.15rem;
     line-height: 1.2;
     letter-spacing: 0.04em;
     text-transform: uppercase;
-    color: var(--bone-3);
+    color: var(--text-3);
   }
   .billing span {
     white-space: nowrap;
@@ -229,21 +231,21 @@ const credits = [
   .rating {
     display: flex;
     align-items: stretch;
-    border: 1px solid var(--bone-3);
+    border: 1px solid var(--text-3);
     font-size: 0.6rem;
     font-weight: 600;
     letter-spacing: 0.08em;
     line-height: 1.35;
     text-align: left;
     text-transform: uppercase;
-    color: var(--bone-3);
+    color: var(--text-3);
   }
   .rating b {
     display: grid;
     place-items: center;
     padding: 0 0.6rem;
-    background: var(--bone-3);
-    color: var(--ink);
+    background: var(--text-3);
+    color: var(--paper);
     font-family: var(--display);
     font-size: 1.5rem;
     font-weight: 400;
@@ -251,12 +253,12 @@ const credits = [
   .rating span {
     padding: 0.35rem 0.6rem;
   }
-  .more {
+  .enter {
     margin-top: 0.75rem;
-    color: var(--bone);
+    color: var(--text);
     transition: translate 0.35s var(--ease-smooth);
   }
-  a.poster:hover .more {
+  a.poster:hover .enter {
     translate: 6px 0;
   }
   @media (max-width: 40rem) {

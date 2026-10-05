@@ -10,6 +10,7 @@ export const siteSettings = defineType({
     { name: "training", title: "Training" },
     { name: "kumite", title: "Kumite" },
     { name: "team", title: "Team" },
+    { name: "pub", title: "Pub" },
     { name: "contact", title: "Contact & social" },
   ],
   fields: [
@@ -97,6 +98,19 @@ export const siteSettings = defineType({
     }),
 
     defineField({
+      name: "pub",
+      title: "After hockey",
+      type: "object",
+      group: "pub",
+      description: "Shown on the homepage, in the “21:45” section.",
+      fields: [
+        defineField({ name: "name", title: "Pub name", type: "string" }),
+        defineField({ name: "about", title: "A line or two about it", type: "text", rows: 3 }),
+        defineField({ name: "mapUrl", title: "Google Maps link", type: "url" }),
+      ],
+    }),
+
+    defineField({
       name: "kumite",
       title: "Cougars Kumite",
       type: "object",
@@ -111,6 +125,24 @@ export const siteSettings = defineType({
           type: "array",
           of: [defineArrayMember({ type: "string" })],
           description: "One short line per point.",
+        }),
+        defineField({
+          name: "honours",
+          title: "Honours board",
+          description: "Past champions, newest first. Shown on the Kumite page and the homepage.",
+          type: "array",
+          of: [
+            defineArrayMember({
+              type: "object",
+              name: "honour",
+              fields: [
+                defineField({ name: "season", type: "string", description: "e.g. Winter 2026" }),
+                defineField({ name: "champions", title: "Winning team", type: "string" }),
+                defineField({ name: "topScorer", title: "Top scorer", type: "string" }),
+              ],
+              preview: { select: { title: "season", subtitle: "champions" } },
+            }),
+          ],
         }),
         defineField({
           name: "awards",

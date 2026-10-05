@@ -1,56 +1,82 @@
 ---
-import { Image, getImage } from "astro:assets";
+// The home page is a Friday night, top to bottom: kit up, face-off, final whistle, The Anchor,
+// and (four times a year) the Kumite, underground. Then the week's news. Each section's
+// data-time / data-title drives the header clock (scripts/motion.ts).
+import { Image } from "astro:assets";
 import Base from "../layouts/Base.astro";
 import logo from "../assets/cougars.png";
-import background from "../assets/cougars_background.png";
 import { getAlbums, getEvents, getPlayers, getPosts, getSettings, getVideos, upcoming } from "../lib/sanity/content";
-import { imageUrl, objectPosition } from "../lib/sanity/images";
+import { imageSrcSet, imageUrl, objectPosition } from "../lib/sanity/images";
 import { formatDate } from "../lib/dates";
 import EventList from "../components/EventList.astro";
 import Empty from "../components/Empty.astro";
 import KumitePoster from "../components/KumitePoster.astro";
 import PlayerCard from "../components/PlayerCard.astro";
-import PostCard from "../components/PostCard.astro";
 import VideoCard from "../components/VideoCard.astro";
+import BeerMat from "../components/BeerMat.astro";
+import HonoursBoard from "../components/HonoursBoard.astro";
 
 const s = await getSettings();
 const all = upcoming(await getEvents());
 const kumite = all.find((e) => e.type === "kumite");
 const events = all.filter((e) => e !== kumite).slice(0, 4);
 const slot = s.training[0];
+const day = slot?.day ?? "Friday";
 const players = (await getPlayers()).slice(0, 5);
 const videos = (await getVideos()).slice(0, 2);
 const albums = (await getAlbums()).slice(0, 3);
-const posts = (await getPosts()).slice(0, 3);
-const day = slot?.day ?? "Friday";
-// Quick facts under "Who we are"
+const [lead, ...stories] = (await getPosts()).slice(0, 3);
+const honours = s.kumite.honours ?? [];
+const years = new Date().getFullYear() - s.founded;
+// Only a hero photo from the Studio; otherwise the site-wide carbon mesh shows through.
+const heroBg = s.heroImage ? imageUrl(s.heroImage, 2000, 1200) : null;
+
+// Quick facts under "Kit up"
 const strip: [string, string][] = [
   [String(s.founded), "Founded"],
-  [slot ? `${day}s ${slot.start}` : `${day}s`, "Club hockey"],
+  [`${years} yrs`, "Same rink"],
   ...(s.team.league ? ([[s.team.league, "League team"]] as [string, string][]) : []),
-  ["The pub", "Afterwards"],
+  [s.pub.name, "Afterwards"],
 ];
-const heroBg = s.heroImage
-  ? imageUrl(s.heroImage, 2000, 1200)
-  : (await getImage({ src: background, width: 1800, format: "webp", quality: 72 })).src;
 ---
 
 <Base>
-  <section class="hero" id="top" data-hero style={`--hero-bg:url(${heroBg});--hero-pos:${objectPosition(s.heroImage)}`}>
-    <div class="hero-bg" aria-hidden="true"></div>
+  <!-- Poster hero: the logo, and the one line that matters -->
+  <section
+    class="hero"
+    id="top"
+    style={heroBg ? `--hero-bg:url(${heroBg});--hero-pos:${objectPosition(s.heroImage)}` : undefined}
+  >
+    <p class="corner tl label" aria-hidden="true">
+      No. {s.founded}
+    </p>
+    <p class="corner tr label" aria-hidden="true">
+      London SW11
+    </p>
     <h1 class="visually-hidden">Battersea Cougars inline hockey club</h1>
-    <Image class="hero-logo" src={logo} alt="Battersea Cougars" width={640} loading="eager" fetchpriority="high" />
-    <a class="scroll" href="#club" aria-label="Scroll to content">
-      <span></span>
-    </a>
+    <Image class="hero-logo" src={logo} alt="Battersea Cougars" width={720} loading="eager" fetchpriority="high" />
+    <p class="hero-line">
+      {day} night roller hockey <span>·</span> South London <span>·</span> Since {s.founded}
+    </p>
+    <p class="hero-sub label">Part hockey club, part Van Damme film. All Battersea.</p>
+    <div class="hero-actions">
+      <a class="btn btn--primary" href="/join/">
+        Try a session
+      </a>
+      <a class="btn" href="#fridays">
+        {day}s {slot?.start}
+      </a>
+    </div>
   </section>
 
-  <section class="section wrap club" id="club">
-    <div data-reveal>
-      <p class="kicker">Who we are</p>
+  <!-- 19:00 Kit up: who we are -->
+  <section class="section wrap club" id="club" data-time="19:00" data-title="Kit up">
+    <div class="club-head" data-reveal>
+      <p class="stamp">19:00</p>
+      <p class="kicker">Kit up · Who we are</p>
       <h2>{s.heroHeadline}</h2>
     </div>
-    <div data-reveal style="--i:1">
+    <div class="club-body" data-reveal style="--i:1">
       {s.aboutBody.split(/\n{2,}/).map((para) => (
         <p class="lede">{para}</p>
       ))}
@@ -65,72 +91,82 @@ const heroBg = s.heroImage
     </dl>
   </section>
 
-  <section class="section wrap fridays band" id="fridays">
-    <div class="fridays-head">
-      <div data-reveal>
-        <p class="kicker">Every {day} · Regular club hockey</p>
-        <h2>
-          {day} night
-          <br />
-          hockey
-        </h2>
-      </div>
-      {slot && (
-        <p class="time num" data-reveal style="--i:1">
-          {slot.start}
-          <span class="dash">–</span>
-          {slot.end}
-        </p>
-      )}
-    </div>
-    <div class="fridays-copy">
-      <p class="lede" data-reveal style="--i:2">
-        {slot?.description}
+  <!-- The club ethos, as a warning sign -->
+  <aside class="notice" aria-label="Club ethos" data-reveal>
+    <div class="wrap notice-inner">
+      <p class="notice-tag">Warning</p>
+      <p class="notice-text">
+        Hooking, slashing or refusing to pass may result in being <em>drafted first.</em>
       </p>
-      <dl class="facts" data-reveal style="--i:3">
-        <div>
-          <dt class="label">Where</dt>
-          <dd>
-            <a class="link" href={s.venue.mapUrl} rel="noopener" target="_blank">
-              {s.venue.name} ↗
-            </a>
-            <span class="muted">{s.venue.address}</span>
-          </dd>
+      <p class="notice-small label">We don't take ourselves too seriously. The hockey, slightly more.</p>
+    </div>
+  </aside>
+
+  <!-- 19:30 Face-off: Friday hockey -->
+  <section class="section band" id="fridays" data-time={slot?.start ?? "19:30"} data-title="Face-off">
+    <div class="wrap fridays">
+      <div class="fridays-head" data-reveal>
+        <p class="stamp">{slot?.start ?? "19:30"}</p>
+        <p class="kicker">Face-off · Every {day}</p>
+        <h2>{day} night hockey</h2>
+        {slot && (
+          <p class="time num">
+            {slot.start}
+            <span class="dash">–</span>
+            {slot.end}
+          </p>
+        )}
+        <p class="lede">{slot?.description}</p>
+      </div>
+      <div class="fridays-copy" data-reveal style="--i:1">
+        <dl class="facts">
+          <div>
+            <dt class="label">Where</dt>
+            <dd>
+              <a class="link strong" href={s.venue.mapUrl} rel="noopener" target="_blank">
+                {s.venue.name} ↗
+              </a>
+              <span class="muted">{s.venue.address}</span>
+            </dd>
+          </div>
+          <div>
+            <dt class="label">Bring</dt>
+            <dd>
+              <span class="strong">Helmet and gloves</span>
+              <span class="muted">{s.kitNotes}</span>
+            </dd>
+          </div>
+          <div>
+            <dt class="label">Who</dt>
+            <dd>
+              <span class="strong">Anyone</span>
+              <span class="muted">Never skated, or played for years. Same rink, balanced teams.</span>
+            </dd>
+          </div>
+        </dl>
+        <div class="actions">
+          <a class="btn btn--primary" href="/join/">
+            Try a session
+          </a>
+          <a class="more" href="/fridays/">
+            Your first {day}
+          </a>
         </div>
-        <div>
-          <dt class="label">Bring</dt>
-          <dd>
-            <span class="muted">{s.kitNotes}</span>
-          </dd>
-        </div>
-        <div>
-          <dt class="label">After</dt>
-          <dd>
-            <span>The pub.</span>
-            <span class="muted">Most Fridays end with a pint at the local. Come for that too.</span>
-          </dd>
-        </div>
-      </dl>
-      <div class="actions" data-reveal style="--i:4">
-        <a class="btn btn--primary" href="/join/">
-          Try a session
-        </a>
-        <a class="label link" href="/fridays/">
-          More about {day}s →
-        </a>
       </div>
     </div>
   </section>
 
-  <section class="section squad" id="team">
-    <div class="wrap section-head row" data-reveal>
+  <!-- 21:30 Final whistle: the characters -->
+  <section class="section team" id="team" data-time={slot?.end ?? "21:30"} data-title="Final whistle">
+    <div class="wrap section-head" data-reveal>
       <div>
-        <p class="kicker">The official team{s.team.league && ` · ${s.team.league} league`}</p>
+        <p class="stamp">{slot?.end ?? "21:30"}</p>
+        <p class="kicker">Final whistle · The team{s.team.league && ` · ${s.team.league}`}</p>
         <h2>Some characters</h2>
-        <p class="lede intro">{s.team.intro}</p>
+        <p class="lede">{s.team.intro}</p>
       </div>
-      <a class="label link" href="/team/">
-        Full roster →
+      <a class="more" href="/team/">
+        Full roster
       </a>
     </div>
     {players.length > 0 ? (
@@ -150,262 +186,428 @@ const heroBg = s.heroImage
     )}
   </section>
 
-  <section id="kumite">
-    <KumitePoster next={kumite} href="/kumite/" />
+  <!-- 21:45 The pub -->
+  <section class="section band" id="pub" data-time="21:45" data-title={s.pub.name}>
+    <div class="wrap pub">
+      <div data-reveal>
+        <p class="stamp">21:45</p>
+        <p class="kicker">Last orders · After hockey</p>
+        <h2>{s.pub.name}</h2>
+        <p class="lede">{s.pub.about}</p>
+        {s.pub.mapUrl && (
+          <a class="more" href={s.pub.mapUrl} rel="noopener" target="_blank">
+            Find {s.pub.name}
+          </a>
+        )}
+        <p class="hint label">Go on, flip the mat.</p>
+      </div>
+      <div class="mat-col" data-reveal style="--i:1">
+        <BeerMat pub={s.pub.name} founded={s.founded} />
+      </div>
+    </div>
   </section>
 
-  <section class="section wrap" id="events">
-    <div class="section-head row" data-reveal>
+  <!-- Off the record: the Kumite, underground -->
+  <section class="night kumite" id="kumite" data-time="--:--" data-title="Off the record" data-night>
+    <KumitePoster next={kumite} href="/kumite/" />
+    <div class="wrap section kumite-more">
+      <div data-reveal>
+        <p class="kicker">How it works</p>
+        <ol class="rules">
+          {s.kumite.format.map((line, i) => (
+            <li>
+              <span class="num">{String(i + 1).padStart(2, "0")}</span>
+              {line}
+            </li>
+          ))}
+        </ol>
+        <p class="awards label">Awards: {s.kumite.awards.join(" · ")}</p>
+        <a class="more" href="/kumite/">
+          Enter the Kumite
+        </a>
+      </div>
+      <div data-reveal style="--i:1">
+        <HonoursBoard honours={honours} />
+      </div>
+    </div>
+  </section>
+
+  <!-- The week: what's on -->
+  <section class="section wrap" id="events" data-time="Diary" data-title="What's on">
+    <div class="section-head" data-reveal>
       <div>
         <p class="kicker">Coming up</p>
         <h2>Also on the bill</h2>
-        <p class="lede intro">Socials, clinics and tournaments, on top of every {day} on the rink.</p>
+        <p class="lede">Socials, clinics and tournaments, on top of every {day} on the rink.</p>
       </div>
-      <a class="label link" href="/events/">
+      <a class="more" href="/events/">
         All events
       </a>
     </div>
     {events.length ? (
       <EventList events={events} />
     ) : (
-      <Empty>Nothing else on the calendar yet. Fridays never stop.</Empty>
+      <Empty>Nothing else on the calendar yet. {day}s never stop.</Empty>
     )}
   </section>
 
-  <section class="section wrap band" id="media">
-    <div class="section-head row" data-reveal>
-      <div>
-        <p class="kicker">Footage</p>
-        <h2>Videos & photos</h2>
-        <p class="lede intro">Friday nights and Kumite days, as filmed by whoever wasn't playing.</p>
+  <section class="section band" id="media" data-time="Replay" data-title="Footage">
+    <div class="wrap">
+      <div class="section-head" data-reveal>
+        <div>
+          <p class="kicker">Footage</p>
+          <h2>Videos & photos</h2>
+          <p class="lede">{day} nights and Kumite days, as filmed by whoever wasn't playing.</p>
+        </div>
+        <span class="see-all">
+          <a class="more" href="/videos/">
+            All videos
+          </a>
+          <a class="more" href="/photos/">
+            All photos
+          </a>
+        </span>
       </div>
-      <span class="see-all">
-        <a class="label link" href="/videos/">
-          All videos →
-        </a>
-        <a class="label link" href="/photos/">
-          All photos →
-        </a>
-      </span>
-    </div>
-    {videos.length || albums.length ? (
-      <div class="media-grid">
-        {videos.length > 0 && (
-          <div class="videos">
-            {videos.map((v, i) => (
-              <div data-reveal style={`--i:${i}`}>
-                <VideoCard video={v} />
-              </div>
-            ))}
-          </div>
-        )}
-        {albums.length > 0 && (
-          <div class="albums">
-            {albums.map((a, i) => (
-              <a class="card album" href={`/photos/${a.slug}/`} data-reveal style={`--i:${i}`}>
-                <div class="media">
-                  <img
-                    src={imageUrl(a.cover, 800, 600)}
-                    alt=""
-                    loading="lazy"
-                    style={`object-position:${objectPosition(a.cover)}`}
-                  />
+      {videos.length || albums.length ? (
+        <div class="media-grid">
+          {videos.length > 0 && (
+            <div class="videos">
+              {videos.map((v, i) => (
+                <div data-reveal style={`--i:${i}`}>
+                  <VideoCard video={v} />
                 </div>
-                <p class="label">
-                  {formatDate(a.date)} · {a.photos.length} photos
-                </p>
-                <h3>{a.title}</h3>
+              ))}
+            </div>
+          )}
+          {albums.length > 0 && (
+            <div class="albums">
+              {albums.map((a, i) => (
+                <a class="card album" href={`/photos/${a.slug}/`} data-reveal style={`--i:${i}`}>
+                  <div class="media">
+                    <img
+                      src={imageUrl(a.cover, 800, 600)}
+                      alt=""
+                      loading="lazy"
+                      style={`object-position:${objectPosition(a.cover)}`}
+                    />
+                  </div>
+                  <p class="label">
+                    {formatDate(a.date)} · {a.photos.length} photos
+                  </p>
+                  <h3>{a.title}</h3>
+                </a>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : (
+        <Empty>
+          Footage from {day} nights and the Kumite will appear here. Meanwhile, there's{" "}
+          <a href={s.socials.instagram ?? "/photos/"} rel="noopener" target="_blank">
+            Instagram
+          </a>
+          .
+        </Empty>
+      )}
+    </div>
+  </section>
+
+  <!-- News, as the back page of a local paper -->
+  <section class="section newsprint backpage-section" id="news" data-time="Extra" data-title="Back page">
+    <div class="wrap">
+      <div class="masthead" data-reveal>
+        <p class="paper-name">The Cougar</p>
+        <p class="label">Back page · Battersea's only inline hockey news</p>
+        <a class="more" href="/news/">
+          All news
+        </a>
+      </div>
+      {lead ? (
+        <div class="backpage">
+          <a class="lead" href={`/news/${lead.slug}/`} data-reveal>
+            {imageUrl(lead.cover, 1000, 640) && (
+              <div class="media">
+                <img
+                  src={imageUrl(lead.cover, 1000, 640)}
+                  srcset={imageSrcSet(lead.cover, [600, 1000, 1400], 25 / 16)}
+                  sizes="(max-width: 52rem) 100vw, 40rem"
+                  alt={lead.cover?.alt ?? ""}
+                  loading="lazy"
+                  style={`object-position:${objectPosition(lead.cover)}`}
+                />
+              </div>
+            )}
+            <p class="label">{formatDate(lead.publishedAt)}</p>
+            <h3 class="headline">{lead.title}</h3>
+            {lead.excerpt && <p class="muted">{lead.excerpt}</p>}
+          </a>
+          <div class="stories">
+            {stories.map((p, i) => (
+              <a class="story" href={`/news/${p.slug}/`} data-reveal style={`--i:${i + 1}`}>
+                <p class="label">{formatDate(p.publishedAt)}</p>
+                <h3>{p.title}</h3>
+                {p.excerpt && <p class="muted">{p.excerpt}</p>}
               </a>
             ))}
           </div>
-        )}
-      </div>
-    ) : (
-      <Empty>
-        Footage from Friday nights and the Kumite will appear here. Meanwhile, there's{" "}
-        <a href={s.socials.instagram ?? "/photos/"} rel="noopener" target="_blank">
-          Instagram
-        </a>
-        .
-      </Empty>
-    )}
-  </section>
-
-  <section class="section wrap" id="news">
-    <div class="section-head row" data-reveal>
-      <div>
-        <p class="kicker">From the club</p>
-        <h2>News</h2>
-      </div>
-      <a class="label link" href="/news/">
-        All news →
-      </a>
+        </div>
+      ) : (
+        <Empty>No news yet. Hold the back page.</Empty>
+      )}
     </div>
-    {posts.length ? (
-      <div class="news-grid">
-        {posts.map((p, i) => (
-          <div data-reveal style={`--i:${i}`}>
-            <PostCard post={p} />
-          </div>
-        ))}
-      </div>
-    ) : (
-      <Empty>No news yet.</Empty>
-    )}
   </section>
 </Base>
 
 <style>
+  /* ---------- Hero: fight-night poster ---------- */
   .hero {
     position: relative;
-    isolation: isolate;
-    height: 100svh;
-    min-height: 32rem;
     display: grid;
-    place-items: center;
+    justify-items: center;
+    align-content: center;
+    gap: clamp(1.25rem, 3vh, 2rem);
+    min-height: 100svh;
+    padding: calc(var(--header-h) + 2.5rem) var(--gutter) 3rem;
+    text-align: center;
     overflow: clip;
-  }
-  .hero-bg {
-    position: absolute;
-    inset: 0;
-    z-index: -1;
-    background: var(--hero-bg) var(--hero-pos) / cover no-repeat;
-  }
-  .hero-bg::after {
-    content: "";
-    position: absolute;
-    inset: 0;
+    isolation: isolate;
+    /* carbon fibre, a red glow behind the logo, fading into the page */
+    /* the page's carbon mesh (or the Studio's hero photo), a red glow behind the logo */
     background:
-      radial-gradient(ellipse 60% 55% at 50% 50%, transparent, rgb(11 11 12 / 0.85)),
-      linear-gradient(to top, var(--ink), transparent 35%);
+      radial-gradient(circle at 50% 42%, rgb(229 19 31 / 0.3), transparent 42%),
+      radial-gradient(ellipse 75% 65% at 50% 45%, transparent, rgb(13 13 15 / 0.65)),
+      var(--hero-bg, none) var(--hero-pos, center) / cover no-repeat;
   }
-  .hero-bg::before {
-    content: "";
+  .corner {
     position: absolute;
-    inset: 0;
-    background: radial-gradient(circle at 50% 50%, rgb(229 19 31 / 0.26), transparent 40%);
-    pointer-events: none;
+    top: calc(var(--header-h) + 1.25rem);
+    margin: 0;
+    color: var(--text);
+  }
+  .tl {
+    left: var(--gutter);
+  }
+  .tr {
+    right: var(--gutter);
   }
   .hero :global(.hero-logo) {
-    width: min(72vw, 32rem, 56svh);
+    width: min(78vw, 34rem, 54svh);
     height: auto;
-    filter: drop-shadow(0 30px 60px rgb(0 0 0 / 0.6));
+    filter: drop-shadow(0 30px 60px rgb(0 0 0 / 0.65));
   }
-  .scroll {
-    position: absolute;
-    z-index: 3;
-    bottom: 2.5rem;
-    left: 50%;
-    translate: -50% 0;
-    padding: 1rem;
-    color: var(--bone-3);
+  .hero-line {
+    margin: 0;
+    font-family: var(--display);
+    font-size: clamp(1.25rem, 2.6vw, 2rem);
+    letter-spacing: 0.04em;
+    line-height: 1.1;
+    text-transform: uppercase;
   }
-  /* ark's bouncing chevron */
-  .scroll span {
-    display: block;
-    width: 10px;
-    height: 10px;
-    border-right: 1px solid currentColor;
-    border-bottom: 1px solid currentColor;
-    transform: rotate(45deg);
+  .hero-line span {
+    color: var(--red);
   }
-
+  .hero-sub {
+    margin: -0.5rem 0 0.25rem;
+    color: var(--text-2);
+  }
+  .hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 1rem 1.25rem;
+  }
   @media (prefers-reduced-motion: no-preference) {
     .hero :global(.hero-logo) {
-      opacity: 0;
-      animation: logo-in 1.6s var(--ease-smooth) 0.2s forwards;
+      animation: logo-in 1.2s var(--ease-smooth) 0.1s both;
     }
-    .hero-bg {
-      animation: settle 2.4s var(--ease-smooth) both;
-    }
-    .scroll span {
-      animation: bounce 2s ease-in-out 1.6s infinite;
+    .hero-line,
+    .hero-sub,
+    .hero-actions {
+      animation: logo-in 1s var(--ease-smooth) 0.45s both;
     }
     :global(html.navigation-restore) .hero :global(.hero-logo),
-    :global(html.navigation-restore) .hero-bg {
+    :global(html.navigation-restore) .hero-line,
+    :global(html.navigation-restore) .hero-sub,
+    :global(html.navigation-restore) .hero-actions {
       animation: none;
-      opacity: 1;
     }
   }
   @keyframes logo-in {
     from {
       opacity: 0;
-      transform: translateY(12px);
-    }
-    to {
-      opacity: 1;
-      transform: none;
-    }
-  }
-  @keyframes settle {
-    from {
-      opacity: 0;
-      scale: 1.04;
-    }
-  }
-  @keyframes bounce {
-    0%,
-    100% {
-      transform: rotate(45deg) translate(0, 0);
-      opacity: 1;
-    }
-    50% {
-      transform: rotate(45deg) translate(3px, 3px);
-      opacity: 0.4;
+      transform: translateY(14px) scale(0.98);
     }
   }
 
+  /* ---------- Shared section bits ---------- */
+  /* "19:30 —— FACE-OFF": time stamp and kicker on one line */
+  .stamp {
+    margin: 0 0.75rem 0 0;
+    vertical-align: top;
+  }
+  .stamp + .kicker {
+    height: 1.68rem; /* the stamp's height: 1.05rem type + 0.6em padding */
+    margin: 0;
+    vertical-align: top;
+  }
+  .kicker + h2 {
+    margin-top: 0.9rem;
+  }
+  h2 + .lede {
+    margin-top: 1.25rem;
+  }
+  /* Alternate sections sit on a darker band of paper */
+  .band {
+    background: rgb(255 255 255 / 0.03);
+    border-block: 1px solid var(--rule);
+  }
+  .section-head {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: end;
+    gap: 1.5rem 3rem;
+    margin-bottom: clamp(2rem, 4vw, 3rem);
+  }
+  .section-head .lede {
+    margin-bottom: 0;
+  }
+  .strong {
+    font-weight: 700;
+    color: var(--text);
+  }
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1.25rem 2rem;
+  }
+
+  /* ---------- Kit up ---------- */
   .club {
     display: grid;
-    grid-template-columns: 1fr 1.1fr;
+    grid-template-columns: 1fr 1.05fr;
     gap: 2rem clamp(3rem, 8vw, 7rem);
+    align-items: end;
   }
-  .club h2 {
-    margin-top: 1rem;
+  .club-body .lede:last-child {
+    margin-bottom: 0;
   }
-  @media (max-width: 52rem) {
-    .club {
+  .strip {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+    margin: clamp(1rem, 3vw, 2rem) 0 0;
+    border-top: 1px solid var(--rule-strong);
+  }
+  .strip div {
+    padding: 1.4rem 1.5rem 0 0;
+  }
+  .strip div + div {
+    padding-left: 1.5rem;
+    border-left: 1px solid var(--rule);
+  }
+  .strip dd {
+    margin: 0.5rem 0 0;
+    font-family: var(--display);
+    font-size: clamp(2rem, 3.8vw, 3.2rem);
+    line-height: 1;
+    text-transform: uppercase;
+  }
+  .strip div:first-child dd {
+    color: var(--red-hot);
+  }
+
+  /* ---------- The ethos: a warning sign ---------- */
+  .notice {
+    padding-block: clamp(3rem, 7vw, 5rem);
+    border-block: 1px solid var(--rule);
+    /* hazard tape along the top and bottom edges */
+    background:
+      repeating-linear-gradient(-45deg, var(--red) 0 14px, transparent 14px 28px) top / 100% 8px no-repeat,
+      repeating-linear-gradient(-45deg, var(--red) 0 14px, transparent 14px 28px) bottom / 100% 8px no-repeat,
+      rgb(0 0 0 / 0.35);
+  }
+  .notice-inner {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.75rem 2rem;
+    align-items: start;
+  }
+  .notice-tag {
+    margin: 0.4rem 0 0;
+    padding: 0.45rem 0.7rem 0.35rem;
+    background: var(--red);
+    color: #fff;
+    font-family: var(--display);
+    font-size: clamp(1.1rem, 2vw, 1.5rem);
+    letter-spacing: 0.08em;
+    line-height: 1;
+    text-transform: uppercase;
+  }
+  .notice-text {
+    margin: 0;
+    font-family: var(--display);
+    font-size: clamp(2.2rem, 5.4vw, 4.75rem);
+    line-height: 0.98;
+    text-transform: uppercase;
+    text-wrap: balance;
+  }
+  .notice-text em {
+    font-style: normal;
+    color: var(--red-hot);
+  }
+  .notice-small {
+    grid-column: 2;
+    margin: 0.5rem 0 0;
+    color: var(--text-2);
+  }
+  @media (max-width: 40rem) {
+    .notice-inner {
       grid-template-columns: 1fr;
+    }
+    .notice-tag {
+      justify-self: start;
+    }
+    .notice-small {
+      grid-column: 1;
     }
   }
 
+  /* ---------- Face-off ---------- */
   .fridays {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    align-items: start;
-    gap: 2.5rem clamp(3rem, 7vw, 6rem);
-  }
-  .fridays h2 {
-    margin-top: 1rem;
-  }
-  .fridays-head,
-  .fridays-copy {
-    display: grid;
-    gap: 1.5rem;
-  }
-  .fridays-copy .lede {
-    margin: 0;
+    grid-template-columns: 1.1fr 1fr;
+    gap: 3rem clamp(3rem, 7vw, 6rem);
+    align-items: end;
   }
   .time {
-    margin: 0;
-    font-size: clamp(3rem, 6vw, 5rem);
-    line-height: 1;
-    color: var(--red-hot);
+    margin: 1rem 0 0;
+    font-size: clamp(3.4rem, 8vw, 6.5rem);
+    line-height: 0.9;
+    color: var(--red);
   }
   .time .dash {
-    color: var(--bone-3);
-    margin-inline: 0.08em;
+    color: var(--text);
+    margin-inline: 0.06em;
+  }
+  .fridays-copy {
+    display: grid;
+    gap: 2rem;
   }
   .facts {
     margin: 0;
-    border-top: 1px solid var(--line);
+    border-top: 1px solid var(--rule-strong);
   }
   .facts > div {
     display: grid;
     grid-template-columns: 5rem 1fr;
     gap: 0.5rem 1.5rem;
-    padding: 1rem 0;
-    border-bottom: 1px solid var(--line);
+    padding: 1.1rem 0;
+    border-bottom: 1px solid var(--rule);
+  }
+  .facts dt {
+    padding-top: 0.2rem;
   }
   .facts dd {
     margin: 0;
@@ -413,20 +615,15 @@ const heroBg = s.heroImage
     justify-items: start;
     gap: 0.2rem;
   }
-  .actions {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 1.5rem 2.5rem;
-  }
-  /* A hand of cards, dealt slightly crooked. Scrolls sideways on small screens. */
-  .squad {
+
+  /* ---------- Final whistle: a hand of cards, dealt crooked ---------- */
+  .team {
     overflow-x: clip;
   }
   .hand {
     list-style: none;
     margin: 0;
-    padding: 1.5rem var(--gutter) 2.5rem;
+    padding: 1rem var(--gutter) 2.5rem;
     display: flex;
     justify-content: safe center;
     gap: clamp(1rem, 2vw, 1.75rem);
@@ -448,9 +645,68 @@ const heroBg = s.heroImage
     rotate: 0deg;
     z-index: 1;
   }
+
+  /* ---------- The pub ---------- */
+  .pub {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: center;
+    gap: 3rem clamp(3rem, 7vw, 6rem);
+  }
+  .pub h2 {
+    font-size: clamp(3.4rem, 9vw, 7.5rem);
+  }
+  .hint {
+    margin: 1.5rem 0 0;
+  }
+  .mat-col {
+    display: grid;
+    justify-items: center;
+  }
+
+  /* ---------- Kumite: underground ---------- */
+  .kumite :global(.poster) {
+    border-block: 0;
+  }
+  .kumite-more {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 3rem clamp(3rem, 7vw, 6rem);
+    align-items: start;
+    padding-top: clamp(3rem, 6vw, 4.5rem);
+  }
+  .rules {
+    list-style: none;
+    margin: 1.5rem 0;
+    padding: 0;
+    border-top: 1px solid var(--rule);
+  }
+  .rules li {
+    display: flex;
+    gap: 1.25rem;
+    align-items: baseline;
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--rule);
+    font-size: clamp(1.1rem, 1.6vw, 1.3rem);
+  }
+  .rules .num {
+    font-size: 1.4rem;
+    color: var(--red-hot);
+  }
+  .awards {
+    display: block;
+    margin: 0 0 2rem;
+    line-height: 1.8;
+  }
+  .kumite .more {
+    color: var(--text);
+  }
+
+  /* ---------- Footage ---------- */
   .see-all {
     display: flex;
-    gap: 1.5rem;
+    flex-wrap: wrap;
+    gap: 1rem 1.75rem;
   }
   .media-grid {
     display: grid;
@@ -473,68 +729,109 @@ const heroBg = s.heroImage
     object-fit: cover;
   }
   .album .label {
-    margin-top: 1.1rem;
+    margin-top: 1rem;
   }
   .album h3 {
-    margin-top: 0.5rem;
+    margin-top: 0.4rem;
   }
-  /* Alternate sections sit on a slightly lighter band so each reads as its own block */
-  .band {
-    background: var(--ink-2);
-    box-shadow: 0 0 0 100vmax var(--ink-2);
-    clip-path: inset(0 -100vmax);
+
+  /* ---------- Back page: a sheet of newsprint ---------- */
+  .backpage-section {
+    background-image:
+      radial-gradient(var(--grain) 1px, transparent 1px), radial-gradient(var(--grain) 1px, transparent 1px);
+    background-size:
+      7px 7px,
+      11px 11px;
   }
-  .section-head .intro {
-    margin: 1.25rem 0 0;
-  }
-  .news-grid {
+  .masthead {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr));
-    gap: clamp(1.5rem, 3vw, 2.5rem);
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 0.5rem 1.5rem;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 6px double var(--text);
   }
-  .club .strip {
-    grid-column: 1 / -1;
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
-    margin: clamp(1rem, 3vw, 2rem) 0 0;
-    border-top: 1px solid var(--line);
-  }
-  .strip div {
-    padding: 1.5rem 1.5rem 0 0;
-  }
-  .strip div + div {
-    padding-left: 1.5rem;
-    border-left: 1px solid var(--line);
-  }
-  .strip dd {
-    margin: 0.6rem 0 0;
+  .paper-name {
+    margin: 0;
+    padding: 0.3rem 0.7rem 0.15rem;
+    background: var(--red);
+    color: #fff;
     font-family: var(--display);
-    font-size: clamp(2rem, 3.6vw, 3rem);
+    font-size: clamp(2.2rem, 5vw, 3.6rem);
     line-height: 1;
+    letter-spacing: 0.01em;
     text-transform: uppercase;
+    rotate: -1.5deg;
   }
-  .strip div:first-child dd {
+  .backpage {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr;
+    gap: 2.5rem clamp(2rem, 5vw, 4rem);
+  }
+  .lead .media {
+    margin-bottom: 1rem;
+    overflow: clip;
+    border: 2px solid var(--text);
+  }
+  .lead img {
+    aspect-ratio: 25 / 16;
+    width: 100%;
+    object-fit: cover;
+    transition: transform 0.7s var(--ease-out);
+  }
+  .lead:hover img {
+    transform: scale(1.03);
+  }
+  .headline {
+    margin: 0.4rem 0 0.6rem;
+    font-size: clamp(2.4rem, 5vw, 4.25rem);
+    line-height: 0.92;
+  }
+  .lead:hover .headline,
+  .story:hover h3 {
     color: var(--red-hot);
+  }
+  .stories {
+    display: grid;
+    align-content: start;
+  }
+  .story {
+    display: block;
+    padding: 1.25rem 0;
+    border-top: 2px solid var(--text);
+  }
+  .story h3 {
+    margin: 0.4rem 0;
+    font-size: clamp(1.7rem, 2.6vw, 2.2rem);
+    transition: color 0.25s;
+  }
+  .story p:last-child,
+  .lead p:last-child {
+    margin: 0;
+  }
+
+  /* ---------- Small screens ---------- */
+  @media (max-width: 56rem) {
+    .club,
+    .fridays,
+    .pub,
+    .kumite-more,
+    .backpage {
+      grid-template-columns: 1fr;
+    }
+    .masthead {
+      grid-template-columns: 1fr;
+      justify-items: start;
+    }
   }
   @media (max-width: 40rem) {
     .strip div + div {
       padding-left: 0;
       border-left: 0;
     }
-  }
-  .section-head.row {
-    display: flex;
-    justify-content: space-between;
-    align-items: end;
-    gap: 1.5rem;
-    margin-bottom: 2rem;
-  }
-  .section-head h2 {
-    margin-top: 1rem;
-  }
-  @media (max-width: 56rem) {
-    .fridays {
-      grid-template-columns: 1fr;
+    .corner {
+      display: none;
     }
   }
 </style>

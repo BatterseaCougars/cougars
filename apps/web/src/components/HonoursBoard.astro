@@ -1,0 +1,119 @@
+---
+// Clubhouse honours board: gold leaf on varnished wood. Kumite champions, newest first.
+// Blank lines at the bottom wait for future winners.
+import type { Honour } from "../lib/sanity/types";
+
+interface Props {
+  honours: Honour[];
+}
+const { honours } = Astro.props;
+const blanks = Math.max(0, 5 - honours.length);
+---
+
+<figure class="board" data-reveal>
+  <figcaption>
+    <span class="orn" aria-hidden="true">
+      ✦
+    </span>
+    Kumite champions
+    <span class="orn" aria-hidden="true">
+      ✦
+    </span>
+  </figcaption>
+  <ol>
+    {honours.map((h) => (
+      <li>
+        <span class="season">{h.season}</span>
+        <span class="team">{h.champions ?? "—"}</span>
+        {h.topScorer && <span class="scorer">Top scorer: {h.topScorer}</span>}
+      </li>
+    ))}
+    {Array.from({ length: blanks }, () => (
+      <li class="blank" aria-hidden="true">
+        <span class="season">· · ·</span>
+        <span class="team">Your name here</span>
+      </li>
+    ))}
+  </ol>
+</figure>
+
+<style>
+  .board {
+    --gold: linear-gradient(180deg, #f6e29a 0%, #d2a945 45%, #9c7424 55%, #e5c66d 100%);
+    position: relative;
+    margin: 0;
+    padding: clamp(1.75rem, 4vw, 2.75rem) clamp(1.25rem, 4vw, 3rem);
+    border-radius: 6px;
+    /* varnished mahogany */
+    background:
+      linear-gradient(180deg, rgb(255 255 255 / 0.08), transparent 30%),
+      repeating-linear-gradient(
+        92deg,
+        rgb(0 0 0 / 0.12) 0 2px,
+        transparent 2px 9px,
+        rgb(255 255 255 / 0.03) 9px 11px,
+        transparent 11px 23px
+      ),
+      linear-gradient(90deg, #4a1d12, #5e2617 30%, #521f13 60%, #632a19);
+    box-shadow:
+      inset 0 0 0 6px #3a160d,
+      inset 0 0 0 8px #8a6528,
+      inset 0 0 0 10px #3a160d,
+      0 25px 50px rgb(0 0 0 / 0.5);
+    text-align: center;
+  }
+  figcaption,
+  .season,
+  .team {
+    background: var(--gold);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    filter: drop-shadow(0 1px 0 rgb(0 0 0 / 0.6));
+  }
+  figcaption {
+    margin-bottom: 1.5rem;
+    font-family: var(--display);
+    font-size: clamp(1.6rem, 3.4vw, 2.4rem);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .orn {
+    font-size: 0.6em;
+    vertical-align: 0.25em;
+    margin-inline: 0.4em;
+  }
+  ol {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  li {
+    display: grid;
+    gap: 0.15rem;
+    padding: 0.8rem 0;
+    border-top: 1px solid rgb(210 169 69 / 0.25);
+  }
+  .season {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+  }
+  .team {
+    font-family: var(--display);
+    font-size: clamp(1.4rem, 2.6vw, 1.9rem);
+    letter-spacing: 0.04em;
+    line-height: 1.05;
+    text-transform: uppercase;
+  }
+  .scorer {
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgb(229 198 109 / 0.65);
+  }
+  .blank {
+    opacity: 0.35;
+  }
+</style>

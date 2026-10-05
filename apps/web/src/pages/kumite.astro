@@ -15,74 +15,79 @@ const nextUp = next[0];
   title="Cougars Kumite"
   description="The Cougars Kumite: our quarterly in-house tournament. Drafted teams, a full round robin, one champion."
 >
-  <div class="top">
-    <KumitePoster next={nextUp} heading="h1" />
-  </div>
-
-  <div class="wrap page-body">
-    <p class="intro" data-reveal>
-      {s.kumite.intro}
-    </p>
-    {nextUp && (
-      <p class="next" data-reveal>
-        <a class="btn btn--primary" href={`/events/${nextUp.slug}/`}>
-          Next Kumite details
-        </a>
-      </p>
-    )}
-    <div class="cols">
-      <section data-reveal>
-        <p class="kicker">Rules of the Kumite</p>
-        <ol class="list">
-          {s.kumite.format.map((line, i) => (
-            <li>
-              <span class="label">0{i + 1}</span>
-              {line}
-            </li>
-          ))}
-        </ol>
-      </section>
-      <section data-reveal style="--i:1">
-        <p class="kicker">Glory</p>
-        <ul class="list awards">
-          {s.kumite.awards.map((a) => (
-            <li>
-              <span class="belt" aria-hidden="true" />
-              {a}
-            </li>
-          ))}
-        </ul>
-      </section>
+  <div class="night underground" data-night-page>
+    <div class="top">
+      <KumitePoster next={nextUp} heading="h1" />
     </div>
 
-    {next.length > 1 && (
-      <section class="block">
-        <p class="kicker" data-reveal>
-          Upcoming
+    <div class="wrap page-body">
+      <p class="intro" data-reveal>
+        {s.kumite.intro}
+      </p>
+      {nextUp && (
+        <p class="next" data-reveal>
+          <a class="btn btn--primary" href={`/events/${nextUp.slug}/`}>
+            Next Kumite details
+          </a>
         </p>
-        <EventList events={next} />
-      </section>
-    )}
+      )}
+      <div class="cols">
+        <section data-reveal>
+          <p class="kicker">Rules of the Kumite</p>
+          <ol class="list">
+            {s.kumite.format.map((line, i) => (
+              <li>
+                <span class="label">0{i + 1}</span>
+                {line}
+              </li>
+            ))}
+          </ol>
+        </section>
+        <section data-reveal style="--i:1">
+          <p class="kicker">Glory</p>
+          <ul class="list awards">
+            {s.kumite.awards.map((a) => (
+              <li>
+                <span class="belt" aria-hidden="true" />
+                {a}
+              </li>
+            ))}
+          </ul>
+        </section>
+      </div>
 
-    {past.length > 0 && (
-      <section class="block">
-        <p class="kicker" data-reveal>
-          Previously, on the Kumite
-        </p>
-        <EventList events={past} />
-      </section>
-    )}
+      {next.length > 1 && (
+        <section class="block">
+          <p class="kicker" data-reveal>
+            Upcoming
+          </p>
+          <EventList events={next} />
+        </section>
+      )}
 
-    <div class="cta" data-reveal>
-      <p class="muted">New to the club? Nobody starts at the Kumite. Start with a regular Friday.</p>
-      <a class="btn" href="/fridays/">
-        Fridays
-      </a>
+      {past.length > 0 && (
+        <section class="block">
+          <p class="kicker" data-reveal>
+            Previously, on the Kumite
+          </p>
+          <EventList events={past} />
+        </section>
+      )}
+
+      <div class="cta" data-reveal>
+        <p class="muted">New to the club? Nobody starts at the Kumite. Start with a regular Friday.</p>
+        <a class="btn" href="/fridays/">
+          Fridays
+        </a>
+      </div>
     </div>
   </div>
 </Base>
 
 <style>
+  .underground {
+    min-height: 100svh;
+  }
   .top {
     padding-top: var(--header-h);
   }
@@ -101,7 +106,7 @@ const nextUp = next[0];
     grid-template-columns: 1.4fr 1fr;
     gap: 3rem clamp(3rem, 8vw, 7rem);
     padding-top: 2rem;
-    border-top: 1px solid var(--line);
+    border-top: 1px solid var(--rule);
   }
   .list {
     list-style: none;
@@ -113,7 +118,7 @@ const nextUp = next[0];
     gap: 1.25rem;
     align-items: baseline;
     padding: 1.1rem 0;
-    border-bottom: 1px solid var(--line);
+    border-bottom: 1px solid var(--rule);
     font-size: clamp(1.15rem, 1.8vw, 1.45rem);
     letter-spacing: -0.015em;
   }
@@ -148,7 +153,7 @@ const nextUp = next[0];
     gap: 1.5rem;
     margin-top: clamp(4rem, 9vw, 7rem);
     padding-top: 2rem;
-    border-top: 1px solid var(--line);
+    border-top: 1px solid var(--rule);
   }
   .cta p {
     margin: 0;

@@ -16,31 +16,45 @@ function onPage() {
   sectionSpy(pageAbort.signal);
 }
 
-/** Home page: underline the nav link for the section in view. */
+/**
+ * Home page: underline the nav link for the section in view, run the header clock
+ * (each section carries data-time / data-title) and turn the header dark for
+ * sections marked data-night (the Kumite).
+ */
 function sectionSpy(signal: AbortSignal) {
+  const header = document.querySelector<HTMLElement>("[data-header]");
+  const clockTime = document.querySelector<HTMLElement>("[data-clock-time]");
+  const clockLabel = document.querySelector<HTMLElement>("[data-clock-label]");
   const links = [...document.querySelectorAll<HTMLAnchorElement>('[data-section-link][href^="#"]')];
-  const sections = links
-    .map((a) => document.getElementById(a.hash.slice(1)))
-    .filter((el): el is HTMLElement => el !== null);
+  const sections = [...document.querySelectorAll<HTMLElement>("main section[data-title]")];
+  // A whole page can be underground (the Kumite page)
+  header?.classList.toggle("night", document.querySelector("main [data-night-page]") !== null);
   if (!sections.length) return;
+  const initial = { time: clockTime?.textContent ?? "", label: clockLabel?.textContent ?? "" };
   let raf = 0;
+  let last: HTMLElement | null | undefined;
   const update = () => {
     raf = 0;
-    const line = innerHeight * 0.35; // section "in view" once its top passes this line
-    // The last section (in page order, whatever the nav order) whose top has passed the line
-    let active = "";
+    const line = innerHeight * 0.35; // a section is "on" once its top passes this line
+    let active: HTMLElement | null = null;
     let best = -Infinity;
     for (const s of sections) {
-      const top = s.getBoundingClientRect().top;
-      if (top <= line && top > best) [active, best] = [s.id, top];
+      const r = s.getBoundingClientRect();
+      if (r.top <= line && r.bottom > line && r.top > best) [active, best] = [s, r.top];
     }
+    if (active === last) return;
+    last = active;
     for (const a of links) {
-      if (a.hash.slice(1) === active) a.setAttribute("aria-current", "location");
+      if (active && a.hash.slice(1) === active.id) a.setAttribute("aria-current", "location");
       else a.removeAttribute("aria-current");
     }
+    if (clockTime) clockTime.textContent = active?.dataset.time ?? initial.time;
+    if (clockLabel) clockLabel.textContent = active?.dataset.title ?? initial.label;
+    header?.classList.toggle("night", active?.hasAttribute("data-night") ?? false);
   };
   update();
   addEventListener("scroll", () => (raf ||= requestAnimationFrame(update)), { passive: true, signal });
+  addEventListener("resize", () => (raf ||= requestAnimationFrame(update)), { passive: true, signal });
 }
 
 function reveal() {
