@@ -7,8 +7,9 @@
   --bone: #ece8e1;
   --bone-2: rgb(236 232 225 / 0.7);
   --bone-3: rgb(236 232 225 / 0.45);
-  --red: #c8323b;
-  --red-soft: rgb(200 50 59 / 0.55);
+  --red: #d1333c; /* logo red */
+  --red-hot: #e2434c;
+  --red-soft: rgb(209 51 60 / 0.55);
 
   --sans: var(--font-sans), system-ui, -apple-system, "Segoe UI", sans-serif;
 
@@ -83,23 +84,26 @@ a {
   outline-offset: 4px;
 }
 
+/* Sporty but disciplined: heavy uppercase headings, everything else calm. */
 h1,
 h2,
 h3 {
-  font-weight: 400;
-  line-height: 1.08;
-  letter-spacing: -0.025em;
+  font-weight: 800;
+  line-height: 0.95;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
   margin: 0;
   text-wrap: balance;
 }
 h1 {
-  font-size: clamp(2.75rem, 6vw, 5rem);
+  font-size: clamp(3rem, 7.5vw, 6.5rem);
 }
 h2 {
-  font-size: clamp(2.25rem, 4vw, 3.5rem);
+  font-size: clamp(2.4rem, 5vw, 4.25rem);
 }
 h3 {
-  font-size: clamp(1.5rem, 2.2vw, 1.9rem);
+  font-size: clamp(1.35rem, 2vw, 1.7rem);
+  letter-spacing: -0.01em;
 }
 
 p {
@@ -176,10 +180,35 @@ html.is-scrollbar-dragging * {
 .label {
   display: inline-block;
   font-size: 0.7rem;
-  font-weight: 500;
+  font-weight: 600;
   letter-spacing: 0.24em;
   text-transform: uppercase;
   color: var(--bone-3);
+}
+
+/* Section kicker: red, with a short bar */
+.kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--red);
+}
+.kicker::before {
+  content: "";
+  width: 1.5rem;
+  height: 2px;
+  background: currentColor;
+}
+
+/* Big tabular numerals for times and dates */
+.num {
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
 }
 
 .lede {
@@ -230,6 +259,18 @@ html.is-scrollbar-dragging * {
 }
 .btn:active {
   transform: scale(0.98);
+}
+/* Primary action: solid logo red */
+.btn--primary {
+  background: var(--red);
+  border-color: var(--red);
+  color: #fff;
+  font-weight: 700;
+}
+.btn--primary:hover {
+  background: var(--red-hot);
+  border-color: var(--red-hot);
+  box-shadow: 0 10px 30px rgb(209 51 60 / 0.3);
 }
 
 /* Underline draws in from the left, retracts to the right (from ark) */

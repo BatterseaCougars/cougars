@@ -32,7 +32,7 @@ const nextUp = next[0];
   <div class="wrap page-body">
     <div class="cols">
       <section data-reveal>
-        <p class="label">How it works</p>
+        <p class="kicker">How it works</p>
         <ol class="list">
           {s.kumite.format.map((line, i) => (
             <li>
@@ -43,7 +43,7 @@ const nextUp = next[0];
         </ol>
       </section>
       <section data-reveal style="--i:1">
-        <p class="label">Awards</p>
+        <p class="kicker">Awards</p>
         <ul class="list awards">
           {s.kumite.awards.map((a) => (
             <li>{a}</li>
@@ -54,7 +54,7 @@ const nextUp = next[0];
 
     {next.length > 1 && (
       <section class="block">
-        <p class="label" data-reveal>
+        <p class="kicker" data-reveal>
           Upcoming
         </p>
         <EventList events={next} />
@@ -63,7 +63,7 @@ const nextUp = next[0];
 
     {past.length > 0 && (
       <section class="block">
-        <p class="label" data-reveal>
+        <p class="kicker" data-reveal>
           Past Kumites
         </p>
         <EventList events={past} />

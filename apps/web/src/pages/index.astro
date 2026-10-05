@@ -30,7 +30,7 @@ const heroBg = s.heroImage
 
   <section class="section wrap club" id="club">
     <div data-reveal>
-      <p class="label">The club</p>
+      <p class="kicker">The club</p>
       <h2>{s.heroHeadline}</h2>
     </div>
     <div data-reveal style="--i:1">
@@ -42,7 +42,7 @@ const heroBg = s.heroImage
 
   <section class="section wrap fridays" id="fridays">
     <div class="section-head" data-reveal>
-      <p class="label">Every {slot?.day ?? "Friday"} · Regular club hockey</p>
+      <p class="kicker">Every {slot?.day ?? "Friday"} · Regular club hockey</p>
       <h2>Come and play</h2>
     </div>
     <dl class="facts">
@@ -50,8 +50,11 @@ const heroBg = s.heroImage
         <div data-reveal style="--i:1">
           <dt class="label">When</dt>
           <dd>
-            <span class="big">
-              {slot.day}s, {slot.start}–{slot.end}
+            <span class="big">{slot.day}s</span>
+            <span class="time num">
+              {slot.start}
+              <span class="dash">–</span>
+              {slot.end}
             </span>
             {slot.description && <span class="muted">{slot.description}</span>}
           </dd>
@@ -75,7 +78,7 @@ const heroBg = s.heroImage
       </div>
     </dl>
     <div class="actions" data-reveal style="--i:4">
-      <a class="btn" href="/join/">
+      <a class="btn btn--primary" href="/join/">
         Try a session
       </a>
       <a class="label link" href="/fridays/">
@@ -87,7 +90,7 @@ const heroBg = s.heroImage
   <section class="section wrap">
     <a class="kumite" href="/kumite/" data-reveal>
       <div>
-        <p class="label accent">Special event · Quarterly</p>
+        <p class="kicker light">Special event · Quarterly</p>
         <h2>The Cougars Kumite</h2>
         <p class="lede">{s.kumite.intro}</p>
       </div>
@@ -102,7 +105,7 @@ const heroBg = s.heroImage
   {events.length > 0 && (
     <section class="section wrap">
       <div class="section-head row" data-reveal>
-        <p class="label">Coming up</p>
+        <p class="kicker">Coming up</p>
         <a class="label link" href="/events/">
           All events
         </a>
@@ -135,6 +138,14 @@ const heroBg = s.heroImage
     background:
       radial-gradient(ellipse 60% 55% at 50% 50%, transparent, rgb(11 11 12 / 0.85)),
       linear-gradient(to top, var(--ink), transparent 35%);
+  }
+  .hero::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: radial-gradient(circle at 50% 50%, rgb(209 51 60 / 0.22), transparent 38%);
+    pointer-events: none;
   }
   .hero :global(.hero-logo) {
     width: min(68vw, 28rem, 52svh);
@@ -257,10 +268,18 @@ const heroBg = s.heroImage
   }
   .big {
     font-size: clamp(1.6rem, 2.6vw, 2.2rem);
-    font-weight: 400;
+    font-weight: 600;
     letter-spacing: -0.02em;
     line-height: 1.15;
     justify-self: start;
+  }
+  .time {
+    font-size: clamp(2.6rem, 5.5vw, 4.5rem);
+    line-height: 1;
+  }
+  .time .dash {
+    color: var(--red);
+    margin-inline: 0.08em;
   }
   .facts .muted {
     max-width: 34rem;
@@ -274,31 +293,43 @@ const heroBg = s.heroImage
     }
   }
 
-  /* Kumite: the one framed, accented block on the page */
+  /* Kumite: the one loud block on the page */
   .kumite {
     position: relative;
+    overflow: clip;
     display: grid;
     grid-template-columns: 1.6fr 1fr;
     gap: 2.5rem clamp(2rem, 6vw, 5rem);
     padding: clamp(2rem, 5vw, 4rem);
-    border: 1px solid rgb(200 50 59 / 0.45);
-    background: radial-gradient(80% 120% at 100% 0%, rgb(200 50 59 / 0.12), transparent 60%), var(--ink-2);
+    background: var(--red);
+    color: #fff;
     transition:
-      border-color 0.4s var(--ease-smooth),
-      box-shadow 0.4s var(--ease-smooth);
+      transform 0.5s var(--ease-smooth),
+      box-shadow 0.5s var(--ease-smooth);
+  }
+  .kumite::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(70% 120% at 100% 0%, rgb(255 255 255 / 0.14), transparent 60%);
+    pointer-events: none;
   }
   .kumite:hover {
-    border-color: rgb(200 50 59 / 0.8);
-    box-shadow: 0 0 60px rgb(200 50 59 / 0.12);
+    transform: translateY(-3px);
+    box-shadow: 0 30px 70px rgb(209 51 60 / 0.25);
   }
   .kumite h2 {
-    margin: 1rem 0 1.25rem;
+    margin: 1.1rem 0 1.25rem;
   }
   .kumite .lede {
     margin: 0;
+    color: rgb(255 255 255 / 0.85);
   }
-  .accent {
-    color: var(--red);
+  .kicker.light {
+    color: #fff;
+  }
+  .kumite .label {
+    color: rgb(255 255 255 / 0.7);
   }
   .kumite-side {
     display: flex;
@@ -306,14 +337,16 @@ const heroBg = s.heroImage
     justify-content: flex-end;
     gap: 0.6rem;
     padding-left: clamp(0rem, 3vw, 2.5rem);
-    border-left: 1px solid var(--line);
+    border-left: 1px solid rgb(255 255 255 / 0.3);
   }
   .kumite-side .big {
     margin: 0 0 1rem;
+    font-weight: 800;
+    text-transform: uppercase;
   }
   .kumite-side .link {
     align-self: start;
-    color: var(--bone);
+    color: #fff;
   }
   .kumite:hover .kumite-side .link::after {
     transform: scaleX(1);
@@ -326,7 +359,7 @@ const heroBg = s.heroImage
     .kumite-side {
       padding: 1.5rem 0 0;
       border-left: 0;
-      border-top: 1px solid var(--line);
+      border-top: 1px solid rgb(255 255 255 / 0.3);
     }
   }
 </style>

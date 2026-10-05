@@ -27,7 +27,7 @@ const current = (href: string) => (path.startsWith(href) ? "page" : undefined);
           </li>
         ))}
       </ul>
-      <a class="btn join" href="/join/" aria-current={current("/join/")}>
+      <a class="btn btn--primary join" href="/join/" aria-current={current("/join/")}>
         Join
       </a>
     </nav>
@@ -84,7 +84,10 @@ const current = (href: string) => (path.startsWith(href) ? "page" : undefined);
     padding-inline: var(--gutter);
   }
   .brand {
-    font-size: 1.5rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: -0.01em;
+    font-size: 1.15rem;
     font-weight: 400;
     letter-spacing: -0.02em;
     line-height: 1;
