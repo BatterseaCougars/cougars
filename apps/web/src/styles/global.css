@@ -321,12 +321,14 @@ html.is-scrollbar-dragging * {
 }
 
 /*
- * VHS spine label: a cream sticker stuck on slightly crooked. Straightens when you hover,
- * flattens when pressed. The primary label has the red band down its left edge.
+ * VHS spine label: a cream sticker stuck on slightly crooked, slanted like the COUGARS
+ * wordmark. Straightens when you hover, flattens when pressed. The primary label has
+ * the red band down its left edge.
  */
 .btn {
   --label: #f3efe6;
   --label-ink: #16130f;
+  --slant: skewX(-9deg);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -346,6 +348,7 @@ html.is-scrollbar-dragging * {
   line-height: 1;
   text-transform: uppercase;
   rotate: -1deg;
+  transform: var(--slant);
   cursor: pointer;
   transition:
     rotate 0.25s var(--ease-smooth),
@@ -355,13 +358,13 @@ html.is-scrollbar-dragging * {
 .btn:hover,
 .btn:focus-visible {
   rotate: 0deg;
-  transform: translateY(-2px);
+  transform: var(--slant) translateY(-2px);
   box-shadow:
     0 1px 0 rgb(0 0 0 / 0.25),
     0 8px 16px var(--shadow);
 }
 .btn:active {
-  transform: translateY(1px);
+  transform: var(--slant) translateY(1px);
   box-shadow: 0 1px 2px var(--shadow);
 }
 .btn--primary {
