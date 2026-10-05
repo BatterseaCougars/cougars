@@ -2,14 +2,23 @@
 
 Architecture follows gwenda-hackney/ark, simplified. Read README.md first.
 
+**Decisions are recorded in [docs/adr/](docs/adr/README.md).** Read the relevant ADR before changing how
+something works. A new decision (a service, a rule, a pattern, a trade-off) gets a new ADR; changing one means
+a new ADR that supersedes it, never a quiet edit.
+
 ## Hard rules
 
 - **Free tiers only.** Don't add a paid service or binding (Cloudflare Images, Durable Objects with storage,
   paid Sanity features, card-payment providers) without asking. Check limits in docs/roadmap.md.
-- **Secrets live only in Bitwarden Secrets Manager.** Never print secret values, never write them to files
-  (`.env`, `.dev.vars`), never commit them. Use `node scripts/env-pull.mjs --status` to see what exists.
-  GitHub holds only `BWS_ACCESS_TOKEN`.
+- **Secrets live only in Bitwarden Secrets Manager** ([ADR 0002](docs/adr/0002-secrets-in-bitwarden.md)).
+  Never print secret values, never write them to files (`.env`, `.dev.vars`), never commit them. `.env` is for
+  local non-secret overrides only. GitHub holds only `BWS_ACCESS_TOKEN`. Use
+  `node scripts/env-pull.mjs --status` to see what exists (names only).
+- **Every secret is documented in [README.md#secrets](README.md#secrets)**, and a provider token is named
+  exactly like its secret. Adding or renaming a secret means updating that section in the same change.
 - **Never deploy to production by hand.** Production deploys only from `main` via `.github/workflows/deploy.yml`.
+  Design previews go to the separate `cougars-preview` worker via `scripts/deploy-preview.sh`
+  ([ADR 0005](docs/adr/0005-deploys.md)).
 - **D1 migrations are additive.** Never edit a migration that has run. See db/README.md.
 - `archive/` is read-only reference. Don't import from it.
 

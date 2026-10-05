@@ -3,7 +3,9 @@
 Everything here is free. It takes about an hour. Do the steps in order; each one says which value goes where.
 
 All secrets go into **Bitwarden Secrets Manager** and nowhere else. GitHub only ever holds one secret,
-`BWS_ACCESS_TOKEN`, which lets CI read the rest.
+`BWS_ACCESS_TOKEN`, which lets CI read the rest. **Name every token you create exactly like its secret**
+(for example a Cloudflare token called `CLOUDFLARE_API_TOKEN`). Each secret is described in
+[README.md#secrets](../README.md#secrets); the rules are in [ADR 0002](adr/0002-secrets-in-bitwarden.md).
 
 ## 1. Cloudflare (hosting + database)
 
@@ -12,7 +14,7 @@ All secrets go into **Bitwarden Secrets Manager** and nowhere else. GitHub only 
    `https://cougars.<subdomain>.workers.dev` until we buy a domain.
 3. Copy your **Account ID** (right-hand side of the Workers & Pages overview).
 4. **My Profile → API Tokens → Create Token → "Edit Cloudflare Workers" template**, then add the permission
-   **Account → D1 → Edit**. Restrict it to your account. Copy the token.
+   **Account → D1 → Edit**. Restrict it to your account. Name it `CLOUDFLARE_API_TOKEN`. Copy the token.
 
 Bitwarden secrets: `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN`.
 
@@ -22,7 +24,7 @@ Bitwarden secrets: `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN`.
    `production` (public).
 2. Put the **project ID** in `apps/studio/sanity.config.ts` and `apps/studio/sanity.cli.ts` as the default for
    `SANITY_STUDIO_PROJECT_ID`. It isn't a secret.
-3. **API → Tokens**: create a **Viewer** token (lets the website build read content) and a **Deploy Studio** token.
+3. **API → Tokens**: create a **Viewer** token named `SANITY_API_TOKEN` (lets the website build read content).
 4. **API → CORS origins**: add `http://localhost:4520` (allow credentials).
 5. Seed the club details from the old Wix site, and publish the Studio:
    ```sh
@@ -40,7 +42,7 @@ Bitwarden secrets: `SANITY_PROJECT_ID`, `SANITY_API_TOKEN` (the Viewer token).
 2. Create a project `cougars`, and add the four secrets from steps 1 and 2 with exactly those names.
    - The naming rule: `NAME` applies everywhere. To override one for PR previews only, add `NAME__PREVIEW`.
 3. **Machine accounts → New** → `github-ci`, with **read** access to the `cougars` project → create an
-   **access token**. Copy it.
+   **access token** named `BWS_ACCESS_TOKEN`. Copy it.
 4. If your vault is on the EU server (`vault.bitwarden.eu`), remember that for step 4.
 
 Locally, export the token in your shell. Don't save it in a file in the repo.
@@ -69,8 +71,9 @@ the database id. Paste it into `apps/web/wrangler.jsonc` as `"database_id"` and 
 
 This makes the site rebuild about 2 minutes after an editor presses **Publish**.
 
-1. GitHub → **Settings → Developer settings → Fine-grained tokens**: create a token for `das974/cougars` only,
-   with permission **Contents: Read and write**. (GitHub requires this to start a workflow; it can't push
+1. GitHub → **Settings → Developer settings → Fine-grained tokens**: create a token named
+   `SANITY_WEBHOOK_GITHUB_TOKEN` for `das974/cougars` only, with permission **Contents: Read and write**.
+   Add it to Secrets Manager under the same name. (GitHub requires this to start a workflow; it can't push
    anything the workflow doesn't.)
 2. In Sanity **manage → API → Webhooks → Create**:
    - URL: `https://api.github.com/repos/das974/cougars/dispatches`

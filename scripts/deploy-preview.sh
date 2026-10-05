@@ -8,8 +8,8 @@
 # CLOUDFLARE_ACCOUNT_ID in the environment. Don't put them in a file:
 #   read -rs CLOUDFLARE_API_TOKEN && export CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID=<id>
 #   bash scripts/deploy-preview.sh
-# or from Bitwarden (secrets CLOUDFLARE_API_TOKEN__PREVIEW, CLOUDFLARE_ACCOUNT_ID__PREVIEW):
-#   node scripts/env-pull.mjs --environment preview -- bash scripts/deploy-preview.sh
+# or from Bitwarden (secrets CLOUDFLARE_API_TOKEN__DESIGN, CLOUDFLARE_ACCOUNT_ID__DESIGN):
+#   node scripts/env-pull.mjs --environment design -- bash scripts/deploy-preview.sh
 set -euo pipefail
 cd "$(dirname "$0")/../apps/web"
 

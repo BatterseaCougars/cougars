@@ -3,13 +3,14 @@
 // (never commit it, never write secrets to files).
 //
 // Naming rule (from gwenda-hackney/ark): a secret NAME applies everywhere;
-// NAME__PRODUCTION / NAME__PREVIEW override it for that environment. Code only
-// ever reads NAME.
+// NAME__PRODUCTION / NAME__PREVIEW / NAME__DESIGN override it for that environment.
+// Code only ever reads NAME. Every secret is documented in README.md#secrets
+// (docs/adr/0002-secrets-in-bitwarden.md).
 import { spawnSync } from "node:child_process";
 
 export function loadSecrets(environment = "production") {
   if (!process.env.BWS_ACCESS_TOKEN) {
-    throw new Error("BWS_ACCESS_TOKEN is not set. See docs/secrets.md.");
+    throw new Error("BWS_ACCESS_TOKEN is not set. See README.md#secrets.");
   }
   const args = ["secret", "list", "--output", "json"];
   if (process.env.BWS_PROJECT_ID) args.splice(2, 0, process.env.BWS_PROJECT_ID);
