@@ -1,0 +1,67 @@
+---
+// Kumite champions: the reigning team up top, earlier winners as a compact list.
+import type { Honour } from "../lib/sanity/types";
+
+interface Props {
+  honours: Honour[];
+}
+const { honours } = Astro.props;
+const [reigning, ...past] = honours;
+---
+
+{reigning && (
+  <div class="board" data-reveal>
+    <p class="kicker">Champions</p>
+    <div class="reigning">
+      <p class="label">Reigning · {reigning.season}</p>
+      <p class="team">{reigning.champions ?? "—"}</p>
+      {reigning.topScorer && <p class="muted">Top scorer: {reigning.topScorer}</p>}
+    </div>
+    {past.length > 0 && (
+      <ol class="past">
+        {past.map((h) => (
+          <li>
+            <span class="label">{h.season}</span>
+            <span>{h.champions ?? "—"}</span>
+          </li>
+        ))}
+      </ol>
+    )}
+  </div>
+)}
+
+<style>
+  .reigning {
+    margin: 1.5rem 0 0;
+    padding: 1.5rem 0;
+    border-top: 1px solid var(--rule);
+  }
+  .reigning p {
+    margin: 0;
+  }
+  .reigning .label {
+    color: var(--red-hot);
+  }
+  .team {
+    margin: 0.5rem 0 0.4rem !important;
+    font-family: var(--display);
+    font-size: clamp(2.2rem, 4.5vw, 3.4rem);
+    line-height: 1;
+    text-transform: uppercase;
+  }
+  .past {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border-top: 1px solid var(--rule);
+  }
+  .past li {
+    display: flex;
+    justify-content: space-between;
+    gap: 1.25rem;
+    align-items: baseline;
+    padding: 0.85rem 0;
+    border-bottom: 1px solid var(--rule);
+    color: var(--text-2);
+  }
+</style>

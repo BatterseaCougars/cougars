@@ -1,0 +1,99 @@
+---
+import "../styles/global.css";
+import { ClientRouter } from "astro:transitions";
+import { Font } from "astro:assets";
+import { getImage } from "astro:assets";
+import { PUBLIC_BUILD_VERSION } from "astro:env/client";
+import { demo } from "../lib/sanity/content";
+import Header from "../components/Header.astro";
+import Footer from "../components/Footer.astro";
+import ogDefault from "../assets/og-default.jpg";
+import carbonImage from "../assets/cougars_background.png";
+
+interface Props {
+  title?: string;
+  description?: string;
+  image?: string | null;
+}
+
+const site = "Battersea Cougars";
+const {
+  title,
+  description = "Roller hockey in Battersea, South London, since 1996. Friday nights, all levels, kit provided for your first session. Then the pub.",
+  image,
+} = Astro.props;
+const fullTitle = title ? `${title} · ${site}` : `${site} · Inline hockey in Battersea, London`;
+const og = image ?? new URL((await getImage({ src: ogDefault, format: "jpg", width: 1200 })).src, Astro.site).href;
+const canonical = new URL(Astro.url.pathname, Astro.site).href;
+const carbon = (await getImage({ src: carbonImage, width: 1920, format: "webp", quality: 70 })).src;
+---
+
+<!doctype html>
+<html lang="en-GB">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>{fullTitle}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="sitemap" href="/sitemap-index.xml" />
+    <meta name="theme-color" content="#0b0b0c" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content={site} />
+    <meta property="og:title" content={title ?? site} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={og} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="generator" content={`cougars ${PUBLIC_BUILD_VERSION}`} />
+    {demo && <meta name="robots" content="noindex, nofollow" />}
+    <script is:inline>
+      // Back/forward (incl. first load from history): skip entrance motion. From ark.
+      try {
+        const nav = performance.getEntriesByType("navigation")[0];
+        if (nav && nav.type === "back_forward") document.documentElement.classList.add("navigation-restore");
+      } catch {
+        // Navigation Timing unavailable: animate as normal.
+      }
+    </script>
+    <Font cssVariable="--font-sans" preload />
+    <Font cssVariable="--font-display" preload />
+    <Font cssVariable="--font-osd" preload />
+    <ClientRouter fallback="swap" />
+  </head>
+  <body style={`--carbon:url(${carbon})`}>
+    <a class="skip visually-hidden" href="#main">
+      Skip to content
+    </a>
+    <Header />
+    <main id="main">
+      <slot />
+    </main>
+    <Footer />
+    <div class="scrollbar" data-scrollbar aria-hidden="true" transition:persist="scrollbar">
+      <div class="scrollbar-thumb" data-scrollbar-thumb></div>
+    </div>
+    <script>
+      import "../scripts/motion";
+      import "../scripts/scrollbar";
+      import "../scripts/cards";
+    </script>
+  </body>
+</html>
+
+<style>
+  .skip:focus {
+    position: fixed;
+    top: 0.75rem;
+    left: 0.75rem;
+    width: auto;
+    height: auto;
+    clip: auto;
+    z-index: 300;
+    padding: 0.6rem 1rem;
+    background: var(--text);
+    color: var(--paper);
+  }
+</style>

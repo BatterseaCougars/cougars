@@ -1,16 +1,50 @@
 FROM node:24
 
-# GH, jq, sudo, curl
+# Battersea Cougars dev image (based on the Gwenda ark image).
+
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends gh jq sudo curl \
+    && apt-get install -y --no-install-recommends \
+        gh \
+        jq \
+        sudo \
+        curl \
+        python3 \
+        python3-pip \
+        python3-venv \
+        imagemagick \
+        ripgrep \
+        fd-find \
+        pandoc \
+        poppler-utils \
+        tesseract-ocr \
+        csvkit \
+        qpdf \
+        unzip \
     && rm -rf /var/lib/apt/lists/* \
     && echo "node ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 
-# Fly.io CLI
-RUN curl -L https://fly.io/install.sh | FLYCTL_INSTALL=/usr/local sh
+RUN ln -sf "$(command -v fdfind)" /usr/local/bin/fd || true
 
-# NPM Gloabl tools, pnpm, yalc and airtable blocks CLI
-RUN npm add --global pnpm@10 yalc@1.0.0-pre.53 @airtable/blocks-cli
+RUN python3 -m pip install --break-system-packages --no-cache-dir \
+        httpx \
+        pyyaml \
+        ruff \
+        pandas \
+        openpyxl \
+        python-docx \
+        pypdf \
+        tabulate
+
+# Bitwarden CLI — bw-unlock (see bw-session.bashrc)
+RUN npm install -g @bitwarden/cli@2026.8.0 --allow-scripts=core-js
+
+# Secrets Manager CLI — scripts/env-pull.mjs reads secrets into memory (docs/setup.md)
+RUN curl -sL -o /tmp/bws.zip \
+      "https://github.com/bitwarden/sdk-sm/releases/download/bws-v2.1.0/bws-x86_64-unknown-linux-gnu-2.1.0.zip" \
+    && unzip -o -j /tmp/bws.zip bws -d /usr/local/bin \
+    && chmod 755 /usr/local/bin/bws \
+    && rm -f /tmp/bws.zip \
+    && bws --version
 
 ARG USERNAME=node
 
@@ -19,9 +53,8 @@ RUN \
     && printf "store-dir=/home/${USERNAME}/.pnpm-store\n" > /home/${USERNAME}/.config/pnpm/rc \
     && chown -R ${USERNAME}:${USERNAME} /home/${USERNAME}/.config /home/${USERNAME}/.pnpm-store
 
-# Pre-create workspace dirs and npm cache with correct ownership
-RUN mkdir -p /src/node_modules /src/.forge /home/${USERNAME}/.npm \
-    && chown -R ${USERNAME}:${USERNAME} /src/node_modules /src/.forge /home/${USERNAME}/.npm
+RUN mkdir -p /src/node_modules /home/${USERNAME}/.npm \
+    && chown -R ${USERNAME}:${USERNAME} /src/node_modules /home/${USERNAME}/.npm
 
 RUN SNIPPET="export PROMPT_COMMAND='history -a' && export HISTFILE=/commandhistory/.bash_history" \
     && mkdir /commandhistory \
@@ -31,3 +64,6 @@ RUN SNIPPET="export PROMPT_COMMAND='history -a' && export HISTFILE=/commandhisto
 
 RUN grep -qxF "alias python=python3" "/home/$USERNAME/.bashrc" \
     || echo "alias python=python3" >> "/home/$USERNAME/.bashrc"
+
+# The Bitwarden session snippet (bw-unlock / bw-lock) is installed into
+# ~/.bashrc by post-start.sh from bw-session.bashrc, on every start.

@@ -1,0 +1,51 @@
+---
+import Base from "../../layouts/Base.astro";
+import PageHeader from "../../components/PageHeader.astro";
+import EventList from "../../components/EventList.astro";
+import Empty from "../../components/Empty.astro";
+import { getEvents, getSettings, upcoming } from "../../lib/sanity/content";
+
+const all = await getEvents();
+const next = upcoming(all);
+const past = all
+  .filter((e) => !next.includes(e))
+  .reverse()
+  .slice(0, 12);
+const s = await getSettings();
+const day = s.training[0]?.day ?? "Friday";
+---
+
+<Base title="Events" description="Tournaments, socials and the quarterly Cougars Kumite.">
+  <PageHeader
+    eyebrow="What's on"
+    title="Events"
+    lede={`Special events on top of regular ${day} hockey: the quarterly Kumite, tournaments and socials.`}
+  />
+  <div class="wrap page-body">
+    {next.length ? (
+      <EventList events={next} />
+    ) : (
+      <Empty>
+        Nothing scheduled right now. We're on court every {day}: <a href="/fridays/">come along</a>.
+      </Empty>
+    )}
+    {past.length > 0 && (
+      <section class="past">
+        <p class="kicker" data-reveal>
+          Past events
+        </p>
+        <EventList events={past} />
+      </section>
+    )}
+  </div>
+</Base>
+
+<style>
+  .past {
+    margin-top: clamp(4rem, 9vw, 6rem);
+    opacity: 0.7;
+  }
+  .past .label {
+    margin-bottom: 1.5rem;
+  }
+</style>

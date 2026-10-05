@@ -1,0 +1,166 @@
+---
+import Base from "../layouts/Base.astro";
+import KumitePoster from "../components/KumitePoster.astro";
+import EventList from "../components/EventList.astro";
+import { getEvents, getSettings, upcoming } from "../lib/sanity/content";
+
+const s = await getSettings();
+const all = (await getEvents()).filter((e) => e.type === "kumite");
+const next = upcoming(all);
+const past = all.filter((e) => !next.includes(e)).reverse();
+const nextUp = next[0];
+---
+
+<Base
+  title="Cougars Kumite"
+  description="The Cougars Kumite: our quarterly in-house tournament. Drafted teams, a full round robin, one champion."
+>
+  <div class="night underground" data-night-page>
+    <div class="top">
+      <KumitePoster next={nextUp} heading="h1" />
+    </div>
+
+    <div class="wrap page-body">
+      <p class="intro" data-reveal>
+        {s.kumite.intro}
+      </p>
+      {nextUp && (
+        <p class="next" data-reveal>
+          <a class="btn btn--primary" href={`/events/${nextUp.slug}/`}>
+            Next Kumite details
+          </a>
+        </p>
+      )}
+      <div class="cols">
+        <section data-reveal>
+          <p class="kicker">Rules of the Kumite</p>
+          <ol class="list">
+            {s.kumite.format.map((line, i) => (
+              <li>
+                <span class="label">0{i + 1}</span>
+                {line}
+              </li>
+            ))}
+          </ol>
+        </section>
+        <section data-reveal style="--i:1">
+          <p class="kicker">Glory</p>
+          <ul class="list awards">
+            {s.kumite.awards.map((a) => (
+              <li>
+                <span class="belt" aria-hidden="true" />
+                {a}
+              </li>
+            ))}
+          </ul>
+        </section>
+      </div>
+
+      {next.length > 1 && (
+        <section class="block">
+          <p class="kicker" data-reveal>
+            Upcoming
+          </p>
+          <EventList events={next} />
+        </section>
+      )}
+
+      {past.length > 0 && (
+        <section class="block">
+          <p class="kicker" data-reveal>
+            Previously, on the Kumite
+          </p>
+          <EventList events={past} />
+        </section>
+      )}
+
+      <div class="cta" data-reveal>
+        <p class="muted">New to the club? Nobody starts at the Kumite. Start with a regular Friday.</p>
+        <a class="btn" href="/fridays/">
+          Fridays
+        </a>
+      </div>
+    </div>
+  </div>
+</Base>
+
+<style>
+  .underground {
+    min-height: 100svh;
+  }
+  .top {
+    padding-top: var(--header-h);
+  }
+  .intro {
+    max-width: 46rem;
+    margin: clamp(3rem, 7vw, 5rem) 0 2rem;
+    font-size: clamp(1.25rem, 2.2vw, 1.7rem);
+    line-height: 1.4;
+    letter-spacing: -0.015em;
+  }
+  .next {
+    margin: 0 0 clamp(3rem, 7vw, 5rem);
+  }
+  .cols {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr;
+    gap: 3rem clamp(3rem, 8vw, 7rem);
+    padding-top: 2rem;
+    border-top: 1px solid var(--rule);
+  }
+  .list {
+    list-style: none;
+    margin: 1.5rem 0 0;
+    padding: 0;
+  }
+  .list li {
+    display: flex;
+    gap: 1.25rem;
+    align-items: baseline;
+    padding: 1.1rem 0;
+    border-bottom: 1px solid var(--rule);
+    font-size: clamp(1.15rem, 1.8vw, 1.45rem);
+    letter-spacing: -0.015em;
+  }
+  .awards li {
+    font-family: var(--display);
+    font-size: clamp(1.6rem, 2.6vw, 2.2rem);
+    letter-spacing: 0.01em;
+    line-height: 1;
+    text-transform: uppercase;
+    align-items: center;
+  }
+  /* Tiny title belt */
+  .belt {
+    flex-shrink: 0;
+    width: 2.2rem;
+    height: 0.7rem;
+    background:
+      radial-gradient(circle, var(--yellow) 0 0.42rem, transparent 0.45rem) center / 100% 300% no-repeat,
+      var(--red);
+  }
+  .block {
+    margin-top: clamp(4rem, 9vw, 6rem);
+  }
+  .block .label {
+    margin-bottom: 1.5rem;
+  }
+  .cta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+    margin-top: clamp(4rem, 9vw, 7rem);
+    padding-top: 2rem;
+    border-top: 1px solid var(--rule);
+  }
+  .cta p {
+    margin: 0;
+  }
+  @media (max-width: 48rem) {
+    .cols {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

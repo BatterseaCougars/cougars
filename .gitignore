@@ -3,3 +3,10 @@
 __pycache__/
 __BAK__/
 TODO.md
+node_modules/
+dist/
+.astro/
+.wrangler/
+.sanity/
+.dev.vars*
+!.env.example

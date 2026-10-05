@@ -1,0 +1,357 @@
+---
+// CONCEPT C: "Ledger". Thirty years of club life as an index.
+// Refs: The Surfer's Journal archive (one cover on a flat field, big corner
+// figures), Visual Society (giant one-line entries + tiny metadata column),
+// Quartersnacks (dated, dry, insider log).
+import { Image, getImage } from "astro:assets";
+import Concept from "../../layouts/Concept.astro";
+import logo from "../../assets/cougars.png";
+import background from "../../assets/cougars_background.png";
+import { getEvents, getSettings, upcoming } from "../../lib/sanity/content";
+import { formatDayDate } from "../../lib/dates";
+
+const s = await getSettings();
+const slot = s.training[0];
+const all = await getEvents();
+const next = upcoming(all);
+const kumites = all.filter((e) => e.type === "kumite");
+const year = new Date().getFullYear();
+const cover = (await getImage({ src: background, width: 900, format: "webp", quality: 72 })).src;
+
+type Entry = { type: string; when: string; where: string; line: string; accent?: boolean };
+const entries: Entry[] = [
+  {
+    type: "Weekly",
+    when: `${slot?.day}s ${slot?.start}`,
+    where: s.venue.name,
+    line: `${slot?.day} session, all levels`,
+  },
+  ...next.map((e) => ({
+    type: e.type === "kumite" ? "Kumite" : e.type,
+    when: formatDayDate(e.startsAt),
+    where: e.location ?? "TBA",
+    line: e.title,
+    accent: e.type === "kumite",
+  })),
+  { type: "Founded", when: String(s.founded), where: "Battersea", line: "Battersea Cougars, est. " + s.founded },
+];
+const nav = ["Fridays", "Kumite", "Events", "Videos", "Photos", "Join"];
+---
+
+<Concept title="Ledger" fonts={["--font-sans", "--font-mono"]}>
+  <div class="page">
+    <header class="top">
+      <a href="#" class="mono brand">
+        Battersea Cougars
+      </a>
+      <nav class="mono" aria-label="Main">
+        {nav.map((n) => (
+          <a href="#">
+            <span>[ ]</span> {n}
+          </a>
+        ))}
+      </nav>
+    </header>
+
+    <section class="cover-field">
+      <a href="#" class="cover" style={`--cover:url(${cover})`}>
+        <span class="cover-strap mono">Inline hockey · London SW11</span>
+        <Image src={logo} alt="Battersea Cougars" width={520} loading="eager" />
+        <span class="cover-foot mono">
+          {slot?.day}s {slot?.start}–{slot?.end}
+        </span>
+      </a>
+      <span class="corner left">{s.founded}</span>
+      <span class="corner right">
+        {year - s.founded}
+        <small> yrs</small>
+      </span>
+      <span class="corner-label mono">All ({entries.length})</span>
+    </section>
+
+    <section class="index">
+      <div class="index-head mono">
+        <span>Index</span>
+        <span>Type · When · Where</span>
+      </div>
+      {entries.map((e) => (
+        <a href="#" class:list={["entry", { accent: e.accent }]}>
+          <dl class="mono">
+            <div>
+              <dt>Type</dt>
+              <dd>[{e.type}]</dd>
+            </div>
+            <div>
+              <dt>When</dt>
+              <dd>[{e.when}]</dd>
+            </div>
+            <div>
+              <dt>Where</dt>
+              <dd>[{e.where}]</dd>
+            </div>
+          </dl>
+          <span class="line">{e.line}</span>
+        </a>
+      ))}
+    </section>
+
+    <section class="issues">
+      <div class="index-head mono">
+        <span>Kumite</span>
+        <span>Quarterly · Special event</span>
+      </div>
+      <p class="intro">{s.kumite.intro}</p>
+      <div class="covers">
+        {kumites.map((k) => (
+          <a href="#" class="issue">
+            <span class="mono">Kumite</span>
+            <strong>{k.title.replace(/^Cougars Kumite:?\s*/i, "")}</strong>
+            <span class="mono">{formatDayDate(k.startsAt)}</span>
+          </a>
+        ))}
+        <div class="issue issue--next">
+          <span class="mono">Following issue</span>
+          <strong>TBA</strong>
+          <span class="mono">Four a year</span>
+        </div>
+      </div>
+    </section>
+
+    <footer class="foot">
+      <span class="line">
+        {s.founded}–{year}. Still turning up.
+      </span>
+      <span class="mono">
+        {s.contactEmail} · {s.venue.name}
+      </span>
+    </footer>
+  </div>
+</Concept>
+
+<style>
+  :global(body) {
+    --paper: #f1efea;
+    --ink: #111;
+    --dim: rgb(17 17 17 / 0.45);
+    --red: #d1333c;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-sans);
+  }
+  .page {
+    padding: 0 clamp(0.75rem, 2vw, 1.5rem) 2rem;
+  }
+  .mono {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+  }
+  .top {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 0.5rem 2rem;
+    padding: 0.8rem 0;
+    background: var(--paper);
+  }
+  .brand {
+    font-weight: 700;
+  }
+  .top nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.5rem;
+  }
+  .top nav a span {
+    color: var(--red);
+    transition: color 0.2s;
+  }
+  .top nav a:hover span {
+    color: var(--ink);
+  }
+  .top nav a:hover span::before {
+    content: "";
+  }
+
+  /* One cover on a flat field, big figures in the corners */
+  .cover-field {
+    position: relative;
+    display: grid;
+    place-items: center;
+    min-height: calc(100svh - 3rem);
+    padding: 2rem 0 6rem;
+  }
+  .cover {
+    position: relative;
+    display: grid;
+    justify-items: center;
+    align-content: space-between;
+    gap: 1.5rem;
+    width: min(78vw, 26rem);
+    aspect-ratio: 3 / 4;
+    padding: 1.25rem;
+    background: var(--cover) center / cover;
+    color: #f1efea;
+    box-shadow:
+      -8px 0 0 var(--red),
+      0 30px 60px rgb(0 0 0 / 0.25);
+    transition:
+      transform 0.5s cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 0.5s;
+  }
+  .cover:hover {
+    transform: translateY(-6px) rotate(-1deg);
+    box-shadow:
+      -8px 0 0 var(--red),
+      0 40px 80px rgb(0 0 0 / 0.3);
+  }
+  .cover :global(img) {
+    width: 82%;
+    filter: drop-shadow(0 15px 30px rgb(0 0 0 / 0.6));
+  }
+  .corner {
+    position: absolute;
+    bottom: 1rem;
+    font-size: clamp(3rem, 9vw, 7.5rem);
+    font-weight: 400;
+    letter-spacing: -0.05em;
+    line-height: 0.8;
+  }
+  .corner small {
+    font-size: 0.35em;
+    letter-spacing: 0;
+  }
+  .corner.left {
+    left: 0;
+  }
+  .corner.right {
+    right: 0;
+  }
+  .corner-label {
+    position: absolute;
+    bottom: 1.4rem;
+    left: 50%;
+    translate: -50% 0;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  /* Index: one giant line per entry, tiny metadata column */
+  .index-head {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.6rem 0;
+    border-top: 1px solid var(--ink);
+    border-bottom: 1px solid var(--ink);
+    font-weight: 700;
+  }
+  .entry {
+    display: grid;
+    grid-template-columns: 12rem 1fr;
+    align-items: center;
+    gap: 1.5rem;
+    padding: 0.4rem 0;
+    border-bottom: 1px solid rgb(17 17 17 / 0.12);
+    overflow: hidden;
+  }
+  .entry dl {
+    margin: 0;
+    display: grid;
+    gap: 0.1rem;
+    font-size: 0.62rem;
+  }
+  .entry dl div {
+    display: grid;
+    grid-template-columns: 3.5rem 1fr;
+  }
+  .entry dt {
+    color: var(--dim);
+  }
+  .entry dd {
+    margin: 0;
+    color: var(--red);
+  }
+  .line {
+    font-size: clamp(2rem, 6.5vw, 6rem);
+    font-weight: 500;
+    letter-spacing: -0.045em;
+    line-height: 1.05;
+    white-space: nowrap;
+    transition:
+      transform 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+      color 0.2s;
+  }
+  .entry:hover .line {
+    transform: translateX(1.5rem);
+    color: var(--red);
+  }
+  .entry.accent .line {
+    color: var(--red);
+  }
+
+  /* Kumite issues */
+  .issues {
+    margin-top: clamp(5rem, 12vw, 9rem);
+  }
+  .intro {
+    max-width: 44rem;
+    padding: 1.5rem 0 2rem;
+    font-size: clamp(1.2rem, 2vw, 1.6rem);
+    letter-spacing: -0.02em;
+    line-height: 1.3;
+  }
+  .covers {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 14rem), 1fr));
+    gap: 1rem;
+  }
+  .issue {
+    display: grid;
+    align-content: space-between;
+    aspect-ratio: 3 / 4;
+    padding: 1rem;
+    background: var(--red);
+    color: #fff;
+    transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .issue:hover {
+    transform: translateY(-6px);
+  }
+  .issue strong {
+    font-size: clamp(2rem, 4vw, 3rem);
+    font-weight: 600;
+    letter-spacing: -0.04em;
+    line-height: 0.95;
+  }
+  .issue--next {
+    background: transparent;
+    color: var(--ink);
+    border: 1px dashed var(--ink);
+  }
+  .foot {
+    display: grid;
+    gap: 1rem;
+    margin-top: clamp(5rem, 12vw, 9rem);
+    padding-top: 1rem;
+    border-top: 1px solid var(--ink);
+  }
+  .foot .line {
+    white-space: normal;
+  }
+  @media (max-width: 44rem) {
+    .entry {
+      grid-template-columns: 1fr;
+      gap: 0.4rem;
+      padding: 0.8rem 0;
+    }
+    .line {
+      white-space: normal;
+    }
+    .corner-label {
+      display: none;
+    }
+  }
+</style>

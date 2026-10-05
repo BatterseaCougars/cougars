@@ -1,21 +1,58 @@
 {
+  "name": "cougars",
   "service": "devcontainer",
   "workspaceFolder": "/src",
   "dockerComposeFile": ["docker-compose.yml"],
   "mounts": [
     "source=..,target=/src,type=bind,consistency=cached",
-    "source=bashhistory,target=/commandhistory,type=volume"
+    "source=bashhistory,target=/commandhistory,type=volume",
+    "source=claude-config,target=/home/node/.claude,type=volume",
+    "source=${localEnv:HOME}${localEnv:USERPROFILE}/.config/gh,target=/home/node/.config/gh,type=bind,consistency=cached",
+    "source=cougars-bitwarden-cli,target=/home/node/.config/Bitwarden CLI,type=volume"
   ],
   "customizations": {
     "vscode": {
       "extensions": [
         "ms-azuretools.vscode-docker",
-        "vitest.explorer@1.40.0", // pinned until confirm coverage is working again
-        "vscode-icons-team.vscode-icons"
-      ]
+        "astro-build.astro-vscode",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "ms-python.python",
+        "charliermarsh.ruff",
+        "vitest.explorer",
+        "vscode-icons-team.vscode-icons",
+        "ritwickdey.LiveServer",
+        "yzhang.markdown-all-in-one",
+        "bierner.markdown-preview-github-styles",
+        "DavidAnson.vscode-markdownlint",
+        "mechatroner.rainbow-csv",
+        "GrapeCity.gc-excelviewer",
+        "redhat.vscode-yaml",
+        "tamasfe.even-better-toml",
+        "Anthropic.claude-code"
+      ],
+      "settings": {
+        "task.allowAutomaticTasks": "on",
+        "[python]": {
+          "editor.defaultFormatter": "charliermarsh.ruff",
+          "editor.formatOnSave": true
+        },
+        "python.defaultInterpreterPath": "/usr/bin/python3"
+      }
     }
   },
-  "forwardPorts": [3000],
+  // Cougars owns 4500-4529 so it can run alongside ark (4321/3333/5174/8788) on the host.
+  "forwardPorts": [4500, 4510, 4520],
+  "portsAttributes": {
+    "4500": { "label": "Website (astro dev)" },
+    "4510": { "label": "Ops app" },
+    "4520": { "label": "Sanity Studio" }
+  },
+  "otherPortsAttributes": { "onAutoForward": "ignore" },
   "postStartCommand": "bash /src/.devcontainer/post-start.sh",
-  "remoteUser": "node"
+  // Dev servers (.vscode/tasks.json) start on folder open; wait until npm install
+  // and local DB migrations in post-start.sh have finished.
+  "waitFor": "postStartCommand",
+  "remoteUser": "node",
+  "shutdownAction": "stopCompose"
 }

@@ -1,0 +1,20 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "cougars",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "main": "@astrojs/cloudflare/entrypoints/server",
+  "assets": { "directory": "./dist", "binding": "ASSETS" },
+  "observability": { "enabled": true },
+  "vars": {
+    "SITE_ENV": "production",
+    "CONTACT_EMAIL": "batterseahockey@gmail.com",
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "cougars",
+      "migrations_dir": "../../db/migrations",
+    },
+  ],
+}

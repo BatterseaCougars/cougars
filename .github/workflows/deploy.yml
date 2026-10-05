@@ -1,0 +1,110 @@
+name: Deploy
+
+# Branches map to environments like Ark (docs/adr/0013-main-deploys-dev.md), each on its own Cloudflare account
+# (docs/adr/0010-two-environments.md):
+# pull request    -> dev: a preview version of `cougars-dev`, commented on the PR
+# main            -> dev: worker `cougars-dev`, Cougars Dev account
+# release         -> production: worker `cougars`, Cougars account
+# sanity-publish  -> production rebuild of `release` after an editor publishes in the Studio
+# GitHub environment `production` (release only) holds BWS_ACCESS_TOKEN__PRODUCTION; `preview` holds
+# BWS_ACCESS_TOKEN__DEV, which can't read production secrets.
+on:
+  push:
+    branches: [main, release]
+  pull_request:
+    branches: [main]
+  repository_dispatch:
+    types: [sanity-publish]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-${{ github.event_name == 'pull_request' && github.ref || (github.ref == 'refs/heads/release' || github.event_name == 'repository_dispatch') && 'production' || 'dev' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  deploy:
+    # Forks don't get secrets; their PRs are covered by pr.yml.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    environment: ${{ (github.ref == 'refs/heads/release' || github.event_name == 'repository_dispatch') && 'production' || 'preview' }}
+    env:
+      SITE_ENV: ${{ (github.ref == 'refs/heads/release' || github.event_name == 'repository_dispatch') && 'production' || 'dev' }}
+      SITE_URL: ${{ (github.ref == 'refs/heads/release' || github.event_name == 'repository_dispatch') && vars.SITE_URL || '' }}
+      # Dev: sample content where Sanity's dev dataset is empty, and noindex. Production too while the
+      # `production` environment's variable DEMO_CONTENT is `true` (until real content is in Sanity).
+      DEMO_CONTENT: ${{ (github.ref == 'refs/heads/release' || github.event_name == 'repository_dispatch') && (vars.DEMO_CONTENT || 'false') || 'true' }}
+      BWS_SERVER_URL: ${{ vars.BWS_SERVER_URL }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # A Studio publish rebuilds what's live: the release branch
+          ref: ${{ github.event_name == 'repository_dispatch' && 'release' || '' }}
+      - uses: ./.github/actions/setup
+
+      - name: Install Bitwarden Secrets Manager CLI
+        run: |
+          curl -fsSL -o /tmp/bws.zip "https://github.com/bitwarden/sdk-sm/releases/download/bws-v2.1.0/bws-x86_64-unknown-linux-gnu-2.1.0.zip"
+          sudo unzip -o /tmp/bws.zip -d /usr/local/bin
+
+      - name: Load secrets from Bitwarden
+        run: node scripts/env-pull.mjs --github-env --environment "$SITE_ENV"
+        env:
+          # Each GitHub environment holds only its own: BWS_ACCESS_TOKEN__PRODUCTION or BWS_ACCESS_TOKEN__DEV
+          BWS_ACCESS_TOKEN: ${{ secrets.BWS_ACCESS_TOKEN__PRODUCTION || secrets.BWS_ACCESS_TOKEN__DEV }}
+
+      # Until there's a domain (GitHub variable SITE_URL), the site lives at <worker>.<account subdomain>.workers.dev
+      - name: Site URL
+        if: env.SITE_URL == ''
+        run: |
+          sub=$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/subdomain" | jq -r .result.subdomain)
+          worker=${{ env.SITE_ENV == 'production' && 'cougars' || 'cougars-dev' }}
+          echo "SITE_URL=https://$worker.$sub.workers.dev" >> "$GITHUB_ENV"
+
+      - name: Build version
+        run: echo "PUBLIC_BUILD_VERSION=$(date -u +%Y.%m.%d)+$(git rev-parse --short HEAD)" >> "$GITHUB_ENV"
+
+      - name: Build
+        run: npm run build
+
+      # Worker name, D1 database and SITE_ENV for this environment (creates the database once)
+      - name: Target ${{ env.SITE_ENV }}
+        run: node scripts/ci/target.mjs "$SITE_ENV"
+
+      # Each environment has its own database, so a PR migrates dev, never production.
+      # Keep migrations additive (db/README.md).
+      - name: Apply D1 migrations
+        working-directory: apps/web
+        # D1 commands don't follow the build's config redirect, so name the generated config
+        run: npx wrangler d1 migrations apply DB --remote -c dist/server/wrangler.json
+
+      - name: Deploy
+        id: deploy
+        if: github.event_name != 'pull_request'
+        working-directory: apps/web
+        run: |
+          out=$(npx wrangler deploy --message "$PUBLIC_BUILD_VERSION" 2>&1 | tee /dev/stderr)
+          url=$(echo "$out" | grep -oE 'https://[^ ]+\.workers\.dev' | head -1)
+          echo "url=${SITE_URL:-$url}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload preview
+        id: preview
+        if: github.event_name == 'pull_request'
+        working-directory: apps/web
+        run: |
+          out=$(npx wrangler versions upload --preview-alias "pr-${{ github.event.number }}" --message "$PUBLIC_BUILD_VERSION" 2>&1 | tee /dev/stderr)
+          url=$(echo "$out" | grep -oE 'https://pr-[^ ]+\.workers\.dev' | head -1)
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+
+      - name: Smoke test
+        run: node scripts/ci/smoke-test.mjs "${{ steps.preview.outputs.url || steps.deploy.outputs.url }}" "$PUBLIC_BUILD_VERSION"
+
+      - name: Comment preview URL
+        if: steps.preview.outputs.url
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          message: "Preview: ${{ steps.preview.outputs.url }} (`${{ env.PUBLIC_BUILD_VERSION }}`)"

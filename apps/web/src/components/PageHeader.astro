@@ -1,0 +1,51 @@
+---
+interface Props {
+  eyebrow?: string;
+  title: string;
+  lede?: string | null;
+}
+const { eyebrow, title, lede } = Astro.props;
+---
+
+<header class="page-head wrap">
+  {eyebrow && (
+    <p class="kicker" data-reveal>
+      {eyebrow}
+    </p>
+  )}
+  <h1 data-reveal style="--i:1">
+    {title}
+  </h1>
+  {lede && (
+    <p class="lede" data-reveal style="--i:2">
+      {lede}
+    </p>
+  )}
+  <div class="extra" data-reveal style="--i:3">
+    <slot />
+  </div>
+</header>
+
+<style>
+  .page-head {
+    padding-top: calc(var(--header-h) + clamp(4rem, 10vw, 8rem));
+    padding-bottom: clamp(3rem, 6vw, 4.5rem);
+  }
+  h1 {
+    margin-top: 1.25rem;
+    max-width: 18ch;
+  }
+  .lede {
+    margin: 1.5rem 0 0;
+  }
+  .extra {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1rem 2rem;
+    margin-top: 2rem;
+  }
+  .extra:empty {
+    display: none;
+  }
+</style>

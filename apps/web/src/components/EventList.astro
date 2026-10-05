@@ -1,0 +1,74 @@
+---
+// Hairline list of events: date · title · arrow. Kumite events get a quiet red marker.
+import type { ClubEvent } from "../lib/sanity/types";
+import { formatRange } from "../lib/dates";
+
+interface Props {
+  events: ClubEvent[];
+}
+const { events } = Astro.props;
+const TYPE = { training: "Training", social: "Social", tournament: "Tournament", kumite: "Kumite" } as const;
+---
+
+<ul class="events">
+  {events.map((e, i) => (
+    <li data-reveal style={`--i:${Math.min(i, 6)}`}>
+      <a href={`/events/${e.slug}/`} data-type={e.type}>
+        <span class="when label">{formatRange(e.startsAt, e.endsAt)}</span>
+        <span class="title">{e.title}</span>
+        <span class="type label">{TYPE[e.type]}</span>
+        <span class="arrow" aria-hidden="true">
+          →
+        </span>
+      </a>
+    </li>
+  ))}
+</ul>
+
+<style>
+  .events {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border-top: 1px solid var(--rule);
+  }
+  a {
+    display: grid;
+    grid-template-columns: 15rem 1fr auto auto;
+    align-items: baseline;
+    gap: 0.5rem 2rem;
+    padding: 1.6rem 0;
+    border-bottom: 1px solid var(--rule);
+  }
+  .title {
+    font-weight: 600;
+    font-size: clamp(1.35rem, 2.2vw, 1.8rem);
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+    transition: color 0.3s var(--ease-smooth);
+  }
+  [data-type="kumite"] .type {
+    color: var(--red);
+  }
+  .arrow {
+    color: var(--text-3);
+    transition:
+      transform 0.35s var(--ease-smooth),
+      color 0.35s;
+  }
+  a:hover .arrow {
+    transform: translateX(4px);
+    color: var(--text);
+  }
+  @media (max-width: 44rem) {
+    a {
+      grid-template-columns: 1fr auto;
+    }
+    .when {
+      grid-column: 1 / -1;
+    }
+    .type {
+      display: none;
+    }
+  }
+</style>

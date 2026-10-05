@@ -1,0 +1,39 @@
+---
+import Base from "../../layouts/Base.astro";
+import PageHeader from "../../components/PageHeader.astro";
+import VideoCard from "../../components/VideoCard.astro";
+import Empty from "../../components/Empty.astro";
+import { getSettings, getVideos } from "../../lib/sanity/content";
+
+const videos = await getVideos();
+const s = await getSettings();
+---
+
+<Base title="Videos" description="Footage from Friday night inline hockey in Battersea.">
+  <PageHeader eyebrow="Footage" title="Videos" lede="Games and highlights from Friday sessions and the Kumite.">
+    {s.socials.youtube && (
+      <a class="btn" href={s.socials.youtube} rel="noopener" target="_blank">
+        YouTube channel ↗
+      </a>
+    )}
+  </PageHeader>
+  <div class="wrap page-body">
+    {videos.length ? (
+      <div class="grid videos">
+        {videos.map((v, i) => (
+          <div data-reveal style={`--i:${i % 2}`}>
+            <VideoCard video={v} />
+          </div>
+        ))}
+      </div>
+    ) : (
+      <Empty>No videos yet. Footage from Friday sessions will appear here.</Empty>
+    )}
+  </div>
+</Base>
+
+<style>
+  .videos {
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 28rem), 1fr));
+  }
+</style>
