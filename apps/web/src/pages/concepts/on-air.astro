@@ -21,10 +21,17 @@ const tick = [
   s.venue.name,
   kumite ? `Kumite · ${formatDayDate(kumite.startsAt)}` : "Kumite · date TBA",
   "All levels",
-  "Kit provided first visit",
+  ...(s.firstSessionKit ? ["Kit provided first visit"] : []),
   `Est. ${s.founded}`,
 ];
-const tags = ["All levels", "Non-contact", "Kit provided", "Multinational", "London SW11", `Since ${s.founded}`];
+const tags = [
+  "All levels",
+  "Non-contact",
+  ...(s.firstSessionKit ? ["Kit provided"] : []),
+  "Multinational",
+  "London SW11",
+  `Since ${s.founded}`,
+];
 ---
 
 <Concept title="On Air" fonts={["--font-unbounded", "--font-mono"]}>

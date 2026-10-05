@@ -2,7 +2,7 @@
 // Used when DEMO_CONTENT=true: locally, and in dev and PR builds (deploy.yml).
 // Photos are random placeholders from picsum.photos (not hockey); videos are
 // public inline hockey clips on YouTube, dated as recent Friday sessions.
-import type { Album, ClubEvent, Honour, Player, SanityImage, Video } from "./types";
+import type { Album, ClubEvent, KumiteResult, Player, SanityImage, Video } from "./types";
 
 const inDays = (d: number, time: string) => {
   const t = new Date();
@@ -137,10 +137,10 @@ export const DEMO_PLAYERS: Player[] = [
   }),
 ];
 
-// Placeholder honours board. Real winners go in the Studio (Club details → Kumite).
-export const DEMO_HONOURS: Honour[] = [
-  { season: "Autumn 2026", champions: "Team Sample A", topScorer: "Sample player" },
-  { season: "Summer 2026", champions: "Team Sample B", topScorer: "Sample player" },
-  { season: "Spring 2026", champions: "Team Sample C", topScorer: "Sample player" },
-  { season: "Winter 2026", champions: "Team Sample D", topScorer: "Sample player" },
+// Placeholder honours board. Real winners go in the Studio (Kumite → Results).
+export const DEMO_KUMITE_RESULTS: KumiteResult[] = [
+  { season: "Autumn 2026", date: "2026-09-26", champions: "Team Sample A", topScorer: "Sample player" },
+  { season: "Summer 2026", date: "2026-06-27", champions: "Team Sample B", topScorer: "Sample player" },
+  { season: "Spring 2026", date: "2026-03-28", champions: "Team Sample C", topScorer: "Sample player" },
+  { season: "Winter 2026", date: "2026-01-31", champions: "Team Sample D", topScorer: "Sample player" },
 ];

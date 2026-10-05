@@ -4,7 +4,7 @@ import { ClientRouter } from "astro:transitions";
 import { Font } from "astro:assets";
 import { getImage } from "astro:assets";
 import { PUBLIC_BUILD_VERSION } from "astro:env/client";
-import { demo } from "../lib/sanity/content";
+import { demo, getSettings } from "../lib/sanity/content";
 import Header from "../components/Header.astro";
 import Footer from "../components/Footer.astro";
 import ogDefault from "../assets/og-default.jpg";
@@ -17,9 +17,10 @@ interface Props {
 }
 
 const site = "Battersea Cougars";
+const s = await getSettings();
 const {
   title,
-  description = "Roller hockey in Battersea, South London, since 1996. Friday nights, all levels, kit provided for your first session. Then the pub.",
+  description = `Roller hockey in Battersea, South London, since ${s.founded}. Friday nights, all levels${s.firstSessionKit ? ", kit provided for your first session" : ""}. Then the pub.`,
   image,
 } = Astro.props;
 const fullTitle = title ? `${title} · ${site}` : `${site} · Inline hockey in Battersea, London`;

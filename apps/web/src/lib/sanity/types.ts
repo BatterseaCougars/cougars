@@ -17,28 +17,56 @@ export interface TrainingSlot {
   description?: string;
 }
 
-export interface SiteSettings {
-  heroHeadline: string;
-  heroSubheading: string;
-  heroImage?: SanityImage | null;
-  aboutHeading: string;
-  aboutBody: string;
+// Club facts, one Sanity singleton each (apps/studio/schemaTypes/settings.ts). Page wording lives in code.
+export interface Club {
   founded: number;
-  training: TrainingSlot[];
-  kitNotes: string;
-  feesText?: string | null;
-  kumite: { intro: string; format: string[]; awards: string[]; honours?: Honour[] | null };
-  pub: { name: string; about: string; mapUrl?: string | null };
-  team: { intro: string; league?: string | null; photo?: SanityImage | null };
-  venue: { name: string; address: string; mapUrl: string };
   contactEmail: string;
   socials: { instagram?: string | null; facebook?: string | null; youtube?: string | null };
+  youtubeChannelId?: string | null;
+  heroImage?: SanityImage | null;
 }
 
-export interface Honour {
+export interface Fridays {
+  training: TrainingSlot[];
+  venue: { name: string; address: string; mapUrl: string };
+  kitNotes: string;
+  /** What the club lends a newcomer. Empty: the site says nothing about lending kit. */
+  firstSessionKit?: string | null;
+  feesText?: string | null;
+}
+
+export interface Pub {
+  name: string;
+  about: string;
+  mapUrl?: string | null;
+}
+
+export interface Team {
+  intro: string;
+  league?: string | null;
+  photo?: SanityImage | null;
+}
+
+export interface Kumite {
+  intro: string;
+  format: string[];
+  awards: string[];
+}
+
+/** Every club fact in one object, the shape pages read through getSettings(). */
+export interface SiteSettings extends Club, Fridays {
+  pub: Pub;
+  team: Team;
+  kumite: Kumite;
+}
+
+export interface KumiteResult {
   season: string;
+  /** YYYY-MM-DD. The newest is the reigning champion. */
+  date: string;
   champions?: string | null;
   topScorer?: string | null;
+  event?: { title: string; slug: string } | null;
 }
 
 export interface Video {

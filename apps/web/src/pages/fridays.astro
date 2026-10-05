@@ -1,7 +1,7 @@
 ---
 import Base from "../layouts/Base.astro";
 import PageHeader from "../components/PageHeader.astro";
-import { getSettings } from "../lib/sanity/content";
+import { getSettings, kitText } from "../lib/sanity/content";
 
 const s = await getSettings();
 const slot = s.training[0];
@@ -24,7 +24,7 @@ const steps = [
 
 <Base
   title="Fridays"
-  description={`Regular club inline hockey every ${slot?.day ?? "Friday"} at ${s.venue.name}. All levels, kit provided for your first session.`}
+  description={`Regular club inline hockey every ${slot?.day ?? "Friday"} at ${s.venue.name}. All levels${s.firstSessionKit ? ", kit provided for your first session" : ""}.`}
 >
   <PageHeader
     eyebrow="Regular club hockey"
@@ -47,7 +47,7 @@ const steps = [
         <dt class="label">Kit</dt>
         <dd>
           <span class="big">Helmet and gloves</span>
-          <span class="muted">{s.kitNotes}</span>
+          <span class="muted">{kitText(s)}</span>
         </dd>
       </div>
       {s.feesText && (

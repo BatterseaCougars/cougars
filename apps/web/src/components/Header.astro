@@ -1,6 +1,7 @@
 ---
 import { Image } from "astro:assets";
 import logo from "../assets/cougars.png";
+import { getClub } from "../lib/sanity/content";
 
 // One-page navigation: every item is a section of the home page, in page order. From any
 // other page the link goes back to that section. Full pages (/fridays/, /team/, ...) are
@@ -20,6 +21,7 @@ const links = [
 const owner = (l: (typeof links)[number]) => l.page !== "" && path.startsWith(l.page);
 const current = (l: (typeof links)[number]) => (!home && owner(l) ? "page" : undefined);
 const joinCurrent = path.startsWith("/join/") ? "page" : undefined;
+const { founded } = await getClub();
 ---
 
 <header class="header" data-header transition:name="site-header">
@@ -30,7 +32,7 @@ const joinCurrent = path.startsWith("/join/") ? "page" : undefined;
     <!-- Running clock: follows the Friday night down the home page (scripts/motion.ts) -->
     <p class="clock" aria-hidden="true">
       <span class="clock-time" data-clock-time>
-        1996
+        {founded}
       </span>
       <span class="clock-label" data-clock-label>
         Est. Battersea

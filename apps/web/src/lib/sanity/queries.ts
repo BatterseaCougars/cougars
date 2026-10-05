@@ -1,10 +1,16 @@
 // All GROQ lives here. Keep projections explicit so the shape matches types.ts.
 
-export const SETTINGS = /* groq */ `*[_id == "siteSettings"][0]{
-  heroHeadline, heroSubheading, heroImage, aboutHeading, aboutBody, founded,
-  training[]{title, day, start, end, description}, kitNotes, feesText, kumite{intro, format, awards, honours[]{season, champions, topScorer}}, team{intro, league, photo},
-  pub{name, about, mapUrl},
-  venue{name, address, mapUrl}, contactEmail, socials
+// Club facts: one singleton each, found by its fixed _id (apps/studio/structure.ts).
+export const CLUB = /* groq */ `*[_id == "club"][0]{founded, contactEmail, socials, youtubeChannelId, heroImage}`;
+export const FRIDAYS = /* groq */ `*[_id == "fridays"][0]{
+  training[]{title, day, start, end, description}, venue{name, address, mapUrl}, kitNotes, firstSessionKit, feesText
+}`;
+export const PUB = /* groq */ `*[_id == "pub"][0]{name, about, mapUrl}`;
+export const TEAM = /* groq */ `*[_id == "team"][0]{intro, league, photo}`;
+export const KUMITE = /* groq */ `*[_id == "kumite"][0]{intro, format, awards}`;
+
+export const KUMITE_RESULTS = /* groq */ `*[_type == "kumiteResult" && defined(season)] | order(date desc){
+  season, date, champions, topScorer, "event": event->{title, "slug": slug.current}
 }`;
 
 export const VIDEOS = /* groq */ `*[_type == "video" && defined(youtubeUrl)] | order(recordedOn desc){

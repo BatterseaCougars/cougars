@@ -1,12 +1,13 @@
 ---
-// Kumite champions: the reigning team up top, earlier winners as a compact list.
-import type { Honour } from "../lib/sanity/types";
+// Kumite champions: the reigning team (the newest result) up top, earlier winners as a compact list.
+import type { KumiteResult } from "../lib/sanity/types";
 
 interface Props {
-  honours: Honour[];
+  /** Newest first, as getKumiteResults() returns them. */
+  results: KumiteResult[];
 }
-const { honours } = Astro.props;
-const [reigning, ...past] = honours;
+const { results } = Astro.props;
+const [reigning, ...past] = results;
 ---
 
 {reigning && (

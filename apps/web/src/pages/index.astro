@@ -5,7 +5,16 @@
 import { Image } from "astro:assets";
 import Base from "../layouts/Base.astro";
 import logo from "../assets/cougars.png";
-import { getAlbums, getEvents, getPlayers, getSettings, getVideos, upcoming } from "../lib/sanity/content";
+import {
+  getAlbums,
+  getEvents,
+  getKumiteResults,
+  getPlayers,
+  getSettings,
+  getVideos,
+  kitText,
+  upcoming,
+} from "../lib/sanity/content";
 import { imageSrcSet, imageUrl, objectPosition } from "../lib/sanity/images";
 import EventList from "../components/EventList.astro";
 import Empty from "../components/Empty.astro";
@@ -25,10 +34,23 @@ const players = (await getPlayers()).slice(0, 5);
 const [latest, ...earlier] = (await getVideos()).slice(0, 3);
 // The newest photos across albums, for the home gallery
 const photos = (await getAlbums()).flatMap((a) => a.photos).slice(0, 12);
-const honours = s.kumite.honours ?? [];
+const results = await getKumiteResults();
 const years = new Date().getFullYear() - s.founded;
 // Only a hero photo from the Studio; otherwise the site-wide carbon mesh shows through.
 const heroBg = s.heroImage ? imageUrl(s.heroImage, 2000, 1200) : null;
+
+// "Kit up": who we are. Page wording, not club facts, so it lives here rather than in Sanity (ADR 0014).
+const headline = "Tough crowd. Soft centre.";
+const about = [
+  "Take a Van Damme film, put it on skates, hand everyone a stick and set it in South London. That's " +
+    "us: inline hockey at Battersea Sports Centre since 1996. Nearly 30 years on the same sport court has " +
+    "made us part of the furniture of London's inline hockey scene.",
+  "We're a proper mix: half the world's accents, seasoned pros and people picking up a stick for the " +
+    "first time, all on one rink. Nobody cares where you're from or how well you skate. Turn up, gear up, " +
+    "play.",
+  "Some of us play league hockey for the club in BIPHA. All of us play on Friday. And when the final " +
+    "whistle goes, everyone heads to the pub.",
+];
 
 // Quick facts under "Kit up"
 const strip: [string, string][] = [
@@ -65,10 +87,10 @@ const strip: [string, string][] = [
     <div class="club-head" data-reveal>
       <p class="stamp">19:00</p>
       <p class="kicker">Kit up · Who we are</p>
-      <h2>{s.heroHeadline}</h2>
+      <h2>{headline}</h2>
     </div>
     <div class="club-body" data-reveal style="--i:1">
-      {s.aboutBody.split(/\n{2,}/).map((para) => (
+      {about.map((para) => (
         <p class="lede">{para}</p>
       ))}
     </div>
@@ -123,7 +145,7 @@ const strip: [string, string][] = [
             <dt class="label">Bring</dt>
             <dd>
               <span class="strong">Helmet and gloves</span>
-              <span class="muted">{s.kitNotes}</span>
+              <span class="muted">{kitText(s)}</span>
             </dd>
           </div>
           <div>
@@ -198,7 +220,7 @@ const strip: [string, string][] = [
         </a>
       </div>
       <div data-reveal style="--i:1">
-        <HonoursBoard honours={honours} />
+        <HonoursBoard results={results} />
       </div>
     </div>
   </section>
