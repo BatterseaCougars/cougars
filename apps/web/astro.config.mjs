@@ -50,6 +50,25 @@ export default defineConfig({
         ],
       },
     },
+    // Display (poster titles) and VCR on-screen-display type. Both SIL OFL, self-hosted.
+    {
+      provider: fontProviders.local(),
+      name: "Anton",
+      cssVariable: "--font-display",
+      fallbacks: ["Impact", "Haettenschweiler", "sans-serif"],
+      options: {
+        variants: [{ src: ["./src/assets/fonts/Anton.woff2"], weight: "400", style: "normal", display: "swap" }],
+      },
+    },
+    {
+      provider: fontProviders.local(),
+      name: "VT323",
+      cssVariable: "--font-osd",
+      fallbacks: ["ui-monospace", "monospace"],
+      options: {
+        variants: [{ src: ["./src/assets/fonts/VT323.woff2"], weight: "400", style: "normal", display: "swap" }],
+      },
+    },
     // Design concept prototypes (src/pages/concepts). Fetched from Fontsource at build.
     {
       provider: fontProviders.fontsource(),
@@ -78,5 +97,20 @@ export default defineConfig({
   },
   server: { port: 4500, host: true },
   devToolbar: { enabled: false },
-  vite: { envDir: "../.." },
+  vite: {
+    envDir: "../..",
+    // The dev server keeps its own dependency cache: `astro build` and `astro check` rewrite
+    // the default one, which breaks a dev server that is already running (500s on /_image).
+    cacheDir: process.argv.includes("dev") ? "node_modules/.vite-dev" : "node_modules/.vite",
+    // Pre-bundle the view-transition modules. Discovered late, they trigger a mid-session
+    // re-optimise that leaves the dev server serving stale deps (500s on /_image).
+    optimizeDeps: {
+      include: [
+        "astro/virtual-modules/transitions-events.js",
+        "astro/virtual-modules/transitions-router.js",
+        "astro/virtual-modules/transitions-swap-functions.js",
+        "astro/virtual-modules/transitions-types.js",
+      ],
+    },
+  },
 });

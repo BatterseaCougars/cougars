@@ -8,6 +8,7 @@ const builder = SANITY_PROJECT_ID
 
 /** Sanity CDN URL honouring the editor's crop and hotspot. */
 export function imageUrl(image: SanityImage | null | undefined, width: number, height?: number): string | null {
+  if (image?.demoUrl) return `${image.demoUrl}/${width}/${height ?? Math.round(width * 0.75)}`;
   if (!builder || !image?.asset) return null;
   let b = builder.image(image).width(width).auto("format").quality(80);
   if (height) b = b.height(height).fit("crop");

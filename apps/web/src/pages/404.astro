@@ -1,21 +1,85 @@
 ---
 import Base from "../layouts/Base.astro";
-import PageHeader from "../components/PageHeader.astro";
 ---
 
 <Base title="Page not found">
-  <PageHeader eyebrow="404" title="Page not found" lede="It may have moved, or the link is wrong.">
-    <a class="btn" href="/">
-      Home
-    </a>
-    <a class="label link" href="/fridays/">
-      Fridays
-    </a>
-    <a class="label link" href="/kumite/">
-      Kumite
-    </a>
-    <a class="label link" href="/events/">
-      Events
-    </a>
-  </PageHeader>
+  <section class="nosignal crt">
+    <p class="osd">
+      <span>Stop ■</span>
+      <span>404</span>
+    </p>
+    <div class="body">
+      <h1>No signal</h1>
+      <p>This tape has been eaten. The page moved, or the link is wrong.</p>
+      <p class="links">
+        <a class="btn" href="/">
+          Rewind to home
+        </a>
+        <a class="label link" href="/fridays/">
+          Fridays
+        </a>
+        <a class="label link" href="/kumite/">
+          Kumite
+        </a>
+        <a class="label link" href="/events/">
+          Events
+        </a>
+      </p>
+    </div>
+  </section>
 </Base>
+
+<style>
+  /* The blue screen a VCR shows when there is nothing on the tape */
+  .nosignal {
+    position: relative;
+    display: grid;
+    align-content: center;
+    min-height: 100svh;
+    padding: calc(var(--header-h) + 2rem) var(--gutter) 4rem;
+    background: var(--vcr-blue);
+    color: #fff;
+    font-family: var(--osd);
+    font-size: clamp(1.3rem, 2.2vw, 1.8rem);
+    letter-spacing: 0.06em;
+    line-height: 1.2;
+    text-transform: uppercase;
+  }
+  .nosignal > * {
+    position: relative;
+    z-index: 2;
+  }
+  .osd {
+    position: absolute;
+    inset: calc(var(--header-h) + 1rem) var(--gutter) auto;
+    display: flex;
+    justify-content: space-between;
+    margin: 0;
+  }
+  h1 {
+    font-family: var(--osd);
+    font-size: clamp(4rem, 14vw, 11rem);
+    letter-spacing: 0.04em;
+    line-height: 0.9;
+    margin-bottom: 1.5rem;
+  }
+  .links {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1rem 2rem;
+    margin-top: 2.5rem;
+  }
+  .links .btn {
+    border-color: #fff;
+    color: #fff;
+  }
+  .links .btn:hover {
+    background: #fff;
+    color: var(--vcr-blue);
+    box-shadow: none;
+  }
+  .links .label {
+    color: #fff;
+  }
+</style>

@@ -1,0 +1,311 @@
+---
+// An old-school hockey trading card. Front: photo, number, nickname. Press it to flip
+// to the back: the vital statistics. Tilt and flip behaviour is in scripts/cards.ts.
+import { Image } from "astro:assets";
+import logo from "../assets/cougars.png";
+import type { Player } from "../lib/sanity/types";
+import { imageUrl, objectPosition } from "../lib/sanity/images";
+
+interface Props {
+  player: Player;
+}
+const { player: p } = Astro.props;
+const photo = imageUrl(p.photo, 640, 720);
+const title = p.nickname ?? p.name;
+const stats = [
+  ["Position", p.position],
+  ["Shoots", p.shoots],
+  ["Cougar since", p.since],
+  ["Known for", p.knownFor],
+  ["Weakness", p.weakness],
+].filter(([, v]) => v);
+---
+
+<div class="slot">
+  <button class="pc" type="button" aria-pressed="false" data-card aria-label={`${title}: flip card`}>
+    <span class="face front">
+      <span class="photo">
+        {photo ? (
+          <img
+            src={photo}
+            alt={p.photo?.alt ?? ""}
+            loading="lazy"
+            style={`object-position:${objectPosition(p.photo)}`}
+          />
+        ) : (
+          <Image class="ghost" src={logo} alt="" width={360} loading="lazy" />
+        )}
+        {p.number != null && <span class="no">{p.number}</span>}
+        {p.position && <span class="pos">{p.position}</span>}
+      </span>
+      <span class="plate">
+        <strong>{title}</strong>
+      </span>
+      <span class="foot">
+        <span>{p.nickname ? p.name : "Battersea Cougars"}</span>
+        <span>{p.since ? `Since ${p.since}` : ""}</span>
+      </span>
+      <span class="sheen" aria-hidden="true" />
+    </span>
+
+    <span class="face back">
+      <span class="back-head">
+        <span class="back-no">{p.number != null ? `No. ${p.number}` : "Cougar"}</span>
+        <strong>{title}</strong>
+        {p.nickname && <span class="real">{p.name}</span>}
+      </span>
+      <span class="stats">
+        {stats.map(([k, v]) => (
+          <span class="row">
+            <span>{k}</span>
+            <span>{v}</span>
+          </span>
+        ))}
+      </span>
+      {p.quote && <span class="quote">“{p.quote}”</span>}
+      <span class="back-foot">Battersea Cougars · Inline hockey · London</span>
+    </span>
+  </button>
+</div>
+
+<style>
+  .slot {
+    container-type: inline-size;
+    perspective: 1100px;
+  }
+  .pc {
+    --rx: 0deg;
+    --ry: 0deg;
+    --flip: 0deg;
+    position: relative;
+    display: block;
+    width: 100%;
+    aspect-ratio: 5 / 7;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: #171514;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    transform-style: preserve-3d;
+    transform: rotateX(var(--rx)) rotateY(calc(var(--ry) + var(--flip)));
+    transition: transform 0.7s var(--ease-smooth);
+  }
+  .pc:global(.is-tilting) {
+    transition: transform 0.12s linear;
+  }
+  .pc[aria-pressed="true"] {
+    --flip: 180deg;
+  }
+  .face {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: 3.2cqw;
+    backface-visibility: hidden;
+    /* card stock: warm, slightly uneven */
+    background:
+      radial-gradient(120% 90% at 20% 0%, rgb(255 255 255 / 0.5), transparent 60%),
+      repeating-linear-gradient(0deg, rgb(0 0 0 / 0.018) 0 1px, transparent 1px 3px), #e9e2d3;
+    box-shadow:
+      0 1px 0 rgb(255 255 255 / 0.5) inset,
+      0 20px 40px rgb(0 0 0 / 0.5);
+  }
+  .back {
+    transform: rotateY(180deg);
+  }
+
+  /* ----- front ----- */
+  .front {
+    padding: 5cqw 5cqw 4cqw;
+  }
+  .photo {
+    position: relative;
+    flex: 1;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    border: 0.7cqw solid #171514;
+    background:
+      radial-gradient(circle at 50% 45%, rgb(229 19 31 / 0.55), transparent 65%),
+      repeating-linear-gradient(135deg, #1a1a1d 0 2px, #101012 2px 5px);
+  }
+  .photo img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    filter: contrast(1.05) saturate(0.9);
+  }
+  .photo :global(img.ghost) {
+    position: static;
+    width: 74%;
+    height: auto;
+    filter: drop-shadow(0 6px 14px rgb(0 0 0 / 0.5));
+  }
+  .no {
+    position: absolute;
+    top: 0;
+    left: 0;
+    min-width: 17cqw;
+    padding: 1.5cqw 2.5cqw 1cqw;
+    background: #171514;
+    color: #e9e2d3;
+    font-family: var(--display);
+    font-size: 11cqw;
+    line-height: 1;
+    text-align: center;
+  }
+  .pos {
+    position: absolute;
+    top: 3cqw;
+    right: -9cqw;
+    width: 36cqw;
+    padding: 1.2cqw 0;
+    rotate: 38deg;
+    background: var(--yellow);
+    font-size: 2.9cqw;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-align: center;
+    text-transform: uppercase;
+  }
+  .plate {
+    position: relative;
+    z-index: 1;
+    align-self: start;
+    max-width: 100%;
+    margin: -6.5cqw 0 0 -5cqw;
+    padding: 2.6cqw 6cqw 2cqw 5cqw;
+    background: var(--red);
+    color: #fff;
+    clip-path: polygon(0 0, 100% 0, calc(100% - 4cqw) 100%, 0 100%);
+  }
+  .plate strong {
+    display: block;
+    font-family: var(--display);
+    font-size: 10.5cqw;
+    font-weight: 400;
+    line-height: 1;
+    letter-spacing: 0.01em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .foot {
+    display: flex;
+    justify-content: space-between;
+    gap: 2cqw;
+    padding-top: 3cqw;
+    font-size: 2.9cqw;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    line-height: 1;
+    text-transform: uppercase;
+  }
+  /* light catching the card as it tilts */
+  .sheen {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(
+      circle at var(--mx, 50%) var(--my, 0%),
+      rgb(255 255 255 / 0.38),
+      rgb(255 255 255 / 0.06) 35%,
+      transparent 60%
+    );
+    mix-blend-mode: soft-light;
+    opacity: 0;
+    transition: opacity 0.4s ease;
+    pointer-events: none;
+  }
+  .pc:hover .sheen {
+    opacity: 1;
+  }
+
+  /* ----- back: red ink on card stock ----- */
+  .back {
+    padding: 5cqw;
+    gap: 3cqw;
+    color: #9c0d15;
+  }
+  .back-head {
+    display: grid;
+    gap: 1cqw;
+    padding: 3.5cqw 4cqw 3cqw;
+    background: #b3101a;
+    color: #e9e2d3;
+  }
+  .back-no,
+  .real,
+  .back-foot {
+    font-size: 2.9cqw;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    line-height: 1.2;
+    text-transform: uppercase;
+  }
+  .back-head strong {
+    font-family: var(--display);
+    font-size: 11cqw;
+    font-weight: 400;
+    line-height: 1;
+    text-transform: uppercase;
+  }
+  .stats {
+    display: grid;
+    border: 0.5cqw solid currentColor;
+  }
+  .row {
+    display: grid;
+    grid-template-columns: 27cqw 1fr;
+    font-size: 3.7cqw;
+    line-height: 1.25;
+  }
+  .row + .row {
+    border-top: 0.3cqw solid currentColor;
+  }
+  .row span {
+    padding: 1.7cqw 2.2cqw;
+  }
+  .row span:first-child {
+    border-right: 0.3cqw solid currentColor;
+    font-size: 2.7cqw;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    line-height: 1.7;
+    text-transform: uppercase;
+  }
+  .row span:last-child {
+    color: #171514;
+    font-weight: 500;
+  }
+  .quote {
+    flex: 1;
+    display: grid;
+    align-content: center;
+    font-family: var(--display);
+    font-size: 6.2cqw;
+    line-height: 1.08;
+    text-transform: uppercase;
+    text-wrap: balance;
+  }
+  .back-foot {
+    margin-top: auto;
+    padding-top: 2.5cqw;
+    border-top: 0.3cqw solid currentColor;
+    font-size: 2.5cqw;
+    text-align: center;
+  }
+  .pc:focus-visible {
+    outline: 2px solid var(--bone);
+    outline-offset: 6px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .pc {
+      transition: none;
+    }
+  }
+</style>

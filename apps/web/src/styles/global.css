@@ -7,11 +7,16 @@
   --bone: #ece8e1;
   --bone-2: rgb(236 232 225 / 0.7);
   --bone-3: rgb(236 232 225 / 0.45);
-  --red: #d1333c; /* logo red */
-  --red-hot: #e2434c;
-  --red-soft: rgb(209 51 60 / 0.55);
+  --red: #e5131f; /* logo red, a touch calmer for large areas */
+  --red-hot: #fb0d1a; /* exact logo red */
+  --red-soft: rgb(229 19 31 / 0.55);
+
+  --yellow: #ffd60a; /* Kumite sticker */
+  --vcr-blue: #1420c8; /* no-signal screen */
 
   --sans: var(--font-sans), system-ui, -apple-system, "Segoe UI", sans-serif;
+  --display: var(--font-display), Impact, sans-serif; /* poster titles */
+  --osd: var(--font-osd), ui-monospace, monospace; /* 404 no-signal screen only */
 
   /* ark's curves */
   --ease-out: cubic-bezier(0.25, 0.46, 0.45, 0.94);
@@ -45,6 +50,11 @@ html {
   html:not(.navigation-restore):not(.is-scrollbar-dragging):not(:active-view-transition) {
     scroll-behavior: smooth;
   }
+}
+
+/* Anchored sections land below the fixed header */
+section[id] {
+  scroll-margin-top: calc(var(--header-h) - 1px);
 }
 
 body {
@@ -84,26 +94,28 @@ a {
   outline-offset: 4px;
 }
 
-/* Sporty but disciplined: heavy uppercase headings, everything else calm. */
+/* Video-shop poster titles: tall condensed capitals. Everything else stays calm. */
 h1,
 h2,
 h3 {
-  font-weight: 800;
-  line-height: 0.95;
-  letter-spacing: -0.02em;
+  font-family: var(--display);
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: 0.005em;
   text-transform: uppercase;
   margin: 0;
   text-wrap: balance;
 }
 h1 {
-  font-size: clamp(3rem, 7.5vw, 6.5rem);
+  font-size: clamp(3.4rem, 9vw, 8rem);
 }
 h2 {
-  font-size: clamp(2.4rem, 5vw, 4.25rem);
+  font-size: clamp(2.6rem, 5.5vw, 4.75rem);
 }
 h3 {
-  font-size: clamp(1.35rem, 2vw, 1.7rem);
-  letter-spacing: -0.01em;
+  font-size: clamp(1.5rem, 2.2vw, 1.9rem);
+  letter-spacing: 0.01em;
+  line-height: 1.1;
 }
 
 p {
@@ -181,7 +193,7 @@ html.is-scrollbar-dragging * {
   display: inline-block;
   font-size: 0.7rem;
   font-weight: 600;
-  letter-spacing: 0.24em;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
   color: var(--bone-3);
 }
@@ -195,7 +207,7 @@ html.is-scrollbar-dragging * {
   font-weight: 700;
   letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: var(--red);
+  color: var(--red-hot);
 }
 .kicker::before {
   content: "";
@@ -204,11 +216,36 @@ html.is-scrollbar-dragging * {
   background: currentColor;
 }
 
+/* Yellow sticker: Kumite only. */
+.sticker {
+  display: inline-block;
+  padding: 0.3em 0.6em 0.25em;
+  background: var(--yellow);
+  color: #111;
+  font-family: var(--display);
+  font-size: 1rem;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  text-transform: uppercase;
+  rotate: -3deg;
+}
+
+/* CRT scanlines over a positioned block */
+.crt::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: repeating-linear-gradient(to bottom, transparent 0 2px, rgb(0 0 0 / 0.22) 2px 3px);
+  pointer-events: none;
+}
+
 /* Big tabular numerals for times and dates */
 .num {
-  font-weight: 800;
+  font-family: var(--display);
+  font-weight: 400;
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.03em;
+  letter-spacing: 0.01em;
 }
 
 .lede {
@@ -240,10 +277,11 @@ html.is-scrollbar-dragging * {
   border: 1px solid var(--line-strong);
   background: transparent;
   color: var(--bone);
-  font: inherit;
-  font-size: 0.7rem;
-  font-weight: 500;
-  letter-spacing: 0.22em;
+  font-family: var(--display);
+  font-size: 1.05rem;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  line-height: 1;
   text-transform: uppercase;
   cursor: pointer;
   transition:
@@ -254,8 +292,8 @@ html.is-scrollbar-dragging * {
 }
 .btn:hover {
   border-color: var(--red-soft);
-  background: rgb(200 50 59 / 0.08);
-  box-shadow: 0 0 28px rgb(200 50 59 / 0.16);
+  background: rgb(229 19 31 / 0.08);
+  box-shadow: 0 0 28px rgb(229 19 31 / 0.16);
 }
 .btn:active {
   transform: scale(0.98);
@@ -265,12 +303,11 @@ html.is-scrollbar-dragging * {
   background: var(--red);
   border-color: var(--red);
   color: #fff;
-  font-weight: 700;
 }
 .btn--primary:hover {
   background: var(--red-hot);
   border-color: var(--red-hot);
-  box-shadow: 0 10px 30px rgb(209 51 60 / 0.3);
+  box-shadow: 0 10px 30px rgb(229 19 31 / 0.3);
 }
 
 /* Underline draws in from the left, retracts to the right (from ark) */
@@ -291,7 +328,8 @@ html.is-scrollbar-dragging * {
 }
 .link:hover::after,
 .link:focus-visible::after,
-.link[aria-current="page"]::after {
+.link[aria-current="page"]::after,
+.link[aria-current="location"]::after {
   transform: scaleX(1);
   transform-origin: left center;
 }
@@ -352,7 +390,7 @@ a.card:hover img {
   margin: 2.5rem 0 1rem;
 }
 .prose h2 {
-  font-size: 2.2rem;
+  font-size: 2.4rem;
 }
 .prose a {
   color: var(--bone);

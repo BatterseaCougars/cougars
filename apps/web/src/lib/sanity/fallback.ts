@@ -11,7 +11,9 @@ export const FALLBACK_SETTINGS: SiteSettings = {
     "Nearly thirty years on the same sport court in Battersea. League players, weekend skaters and people " +
     "who have never held a stick, all on the same rink every Friday night.\n\n" +
     "We are a multinational, inclusive club. Nobody cares where you are from or how well you skate. " +
-    "Turn up, gear up, play.",
+    "Turn up, gear up, play.\n\n" +
+    "Our official team plays in the BIPHA league. And when Friday hockey is done, we head to the local pub " +
+    "for a pint.",
   founded: 1996,
   training: [
     {
@@ -27,15 +29,22 @@ export const FALLBACK_SETTINGS: SiteSettings = {
   feesText: null,
   kumite: {
     intro:
-      "Four times a year we hold the Kumite, our in-house tournament and a special event apart from regular Friday hockey. " +
-      "Everyone who signs up is drafted into balanced teams, every team plays every other team, and one team " +
-      "walks away as champions.",
+      "Four times a year, the Cougars go underground. The Kumite is our in-house tournament, a special event " +
+      "apart from regular Friday hockey. Everyone who signs up is drafted into balanced teams, every team plays " +
+      "every other team, and one team walks away as champions. It sounds secret. It isn't: anyone can play.",
     format: [
       "Players are drafted into balanced teams on the day",
       "Full round robin: every team plays every team",
       "One team finishes top of the table as champions",
     ],
     awards: ["Champions", "Top scorer", "Most assists", "Most points"],
+  },
+  team: {
+    intro:
+      "The official Battersea Cougars team plays in the BIPHA league. Same club, same Friday rink, " +
+      "plus fixtures against other inline hockey clubs.",
+    league: "BIPHA",
+    photo: null,
   },
   venue: {
     name: "Battersea Sports Centre",

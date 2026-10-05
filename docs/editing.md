@@ -35,6 +35,14 @@ You don't upload video files to the website. YouTube hosts them for free.
 **News → +**. Add a title, summary, main image and the text. You can drop photos and YouTube links into the
 text.
 
+## Update the team
+
+**Team roster → +** adds a player. Only the name is required; the nickname goes big on the front of their
+trading card, and _Known for_, _Weakness_ and _Quote_ go on the back. Lower _Order_ numbers show first, and
+the first five appear on the homepage.
+
+The team photo and the introduction live in **Club details & homepage → Team**.
+
 ## Change club details
 
 **Club details & homepage** has the headline, the "About" text, training times, venue, kit list, fees,

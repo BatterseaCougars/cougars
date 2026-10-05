@@ -1,9 +1,8 @@
 ---
 import Base from "../layouts/Base.astro";
-import PageHeader from "../components/PageHeader.astro";
+import KumitePoster from "../components/KumitePoster.astro";
 import EventList from "../components/EventList.astro";
 import { getEvents, getSettings, upcoming } from "../lib/sanity/content";
-import { formatRange } from "../lib/dates";
 
 const s = await getSettings();
 const all = (await getEvents()).filter((e) => e.type === "kumite");
@@ -16,23 +15,24 @@ const nextUp = next[0];
   title="Cougars Kumite"
   description="The Cougars Kumite: our quarterly in-house tournament. Drafted teams, a full round robin, one champion."
 >
-  <PageHeader eyebrow="Special event · Quarterly" title="The Cougars Kumite" lede={s.kumite.intro}>
-    <div class="next">
-      <span class="label">Next Kumite</span>
-      {nextUp ? (
-        <a class="link" href={`/events/${nextUp.slug}/`}>
-          {formatRange(nextUp.startsAt, nextUp.endsAt)}
-        </a>
-      ) : (
-        <span>Date to be announced</span>
-      )}
-    </div>
-  </PageHeader>
+  <div class="top">
+    <KumitePoster next={nextUp} heading="h1" />
+  </div>
 
   <div class="wrap page-body">
+    <p class="intro" data-reveal>
+      {s.kumite.intro}
+    </p>
+    {nextUp && (
+      <p class="next" data-reveal>
+        <a class="btn btn--primary" href={`/events/${nextUp.slug}/`}>
+          Next Kumite details
+        </a>
+      </p>
+    )}
     <div class="cols">
       <section data-reveal>
-        <p class="kicker">How it works</p>
+        <p class="kicker">Rules of the Kumite</p>
         <ol class="list">
           {s.kumite.format.map((line, i) => (
             <li>
@@ -43,10 +43,13 @@ const nextUp = next[0];
         </ol>
       </section>
       <section data-reveal style="--i:1">
-        <p class="kicker">Awards</p>
+        <p class="kicker">Glory</p>
         <ul class="list awards">
           {s.kumite.awards.map((a) => (
-            <li>{a}</li>
+            <li>
+              <span class="belt" aria-hidden="true" />
+              {a}
+            </li>
           ))}
         </ul>
       </section>
@@ -64,14 +67,14 @@ const nextUp = next[0];
     {past.length > 0 && (
       <section class="block">
         <p class="kicker" data-reveal>
-          Past Kumites
+          Previously, on the Kumite
         </p>
         <EventList events={past} />
       </section>
     )}
 
     <div class="cta" data-reveal>
-      <p class="muted">New to the club? Start with a regular Friday session.</p>
+      <p class="muted">New to the club? Nobody starts at the Kumite. Start with a regular Friday.</p>
       <a class="btn" href="/fridays/">
         Fridays
       </a>
@@ -80,16 +83,18 @@ const nextUp = next[0];
 </Base>
 
 <style>
-  .next {
-    display: flex;
-    align-items: baseline;
-    gap: 1.25rem;
-    padding: 1rem 1.25rem;
-    border: 1px solid rgb(200 50 59 / 0.45);
-    font-size: 1.15rem;
+  .top {
+    padding-top: var(--header-h);
   }
-  .next .label {
-    color: var(--red);
+  .intro {
+    max-width: 46rem;
+    margin: clamp(3rem, 7vw, 5rem) 0 2rem;
+    font-size: clamp(1.25rem, 2.2vw, 1.7rem);
+    line-height: 1.4;
+    letter-spacing: -0.015em;
+  }
+  .next {
+    margin: 0 0 clamp(3rem, 7vw, 5rem);
   }
   .cols {
     display: grid;
@@ -112,14 +117,22 @@ const nextUp = next[0];
     font-size: clamp(1.15rem, 1.8vw, 1.45rem);
     letter-spacing: -0.015em;
   }
-  .awards li::before {
-    content: "";
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: var(--red);
+  .awards li {
+    font-family: var(--display);
+    font-size: clamp(1.6rem, 2.6vw, 2.2rem);
+    letter-spacing: 0.01em;
+    line-height: 1;
+    text-transform: uppercase;
+    align-items: center;
+  }
+  /* Tiny title belt */
+  .belt {
     flex-shrink: 0;
-    translate: 0 -0.2em;
+    width: 2.2rem;
+    height: 0.7rem;
+    background:
+      radial-gradient(circle, var(--yellow) 0 0.42rem, transparent 0.45rem) center / 100% 300% no-repeat,
+      var(--red);
   }
   .block {
     margin-top: clamp(4rem, 9vw, 6rem);

@@ -2,7 +2,7 @@
 
 export const SETTINGS = /* groq */ `*[_id == "siteSettings"][0]{
   heroHeadline, heroSubheading, heroImage, aboutHeading, aboutBody, founded,
-  training[]{title, day, start, end, description}, kitNotes, feesText, kumite{intro, format, awards},
+  training[]{title, day, start, end, description}, kitNotes, feesText, kumite{intro, format, awards}, team{intro, league, photo},
   venue{name, address, mapUrl}, contactEmail, socials
 }`;
 
@@ -23,3 +23,7 @@ export const ALBUMS = /* groq */ `*[_type == "album" && defined(slug.current)] |
 }`;
 
 export const SPONSORS = /* groq */ `*[_type == "sponsor"] | order(orderRank asc){name, url, logo}`;
+
+export const PLAYERS = /* groq */ `*[_type == "player"] | order(orderRank asc, name asc){
+  _id, name, nickname, number, position, shoots, since, knownFor, weakness, quote, photo
+}`;

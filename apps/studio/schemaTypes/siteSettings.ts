@@ -9,6 +9,7 @@ export const siteSettings = defineType({
     { name: "home", title: "Homepage", default: true },
     { name: "training", title: "Training" },
     { name: "kumite", title: "Kumite" },
+    { name: "team", title: "Team" },
     { name: "contact", title: "Contact & social" },
   ],
   fields: [
@@ -79,6 +80,19 @@ export const siteSettings = defineType({
         defineField({ name: "name", type: "string" }),
         defineField({ name: "address", type: "string" }),
         defineField({ name: "mapUrl", title: "Google Maps link", type: "url" }),
+      ],
+    }),
+
+    defineField({
+      name: "team",
+      title: "Official team",
+      type: "object",
+      group: "team",
+      description: "Shown on the Team page and the homepage. Players are added under “Team roster”.",
+      fields: [
+        defineField({ name: "intro", title: "Introduction", type: "text", rows: 3 }),
+        defineField({ name: "league", title: "League", type: "string", description: "e.g. BIPHA" }),
+        imageField("photo", "Team photo", { description: "A wide group shot works best." }),
       ],
     }),
 

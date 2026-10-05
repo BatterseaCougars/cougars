@@ -5,6 +5,8 @@ export interface SanityImage {
   hotspot?: { x: number; y: number };
   crop?: unknown;
   alt?: string;
+  /** Demo content only (lib/sanity/demo.ts): placeholder photo base URL, sized by imageUrl(). */
+  demoUrl?: string;
 }
 
 export interface TrainingSlot {
@@ -26,6 +28,7 @@ export interface SiteSettings {
   kitNotes: string;
   feesText?: string | null;
   kumite: { intro: string; format: string[]; awards: string[] };
+  team: { intro: string; league?: string | null; photo?: SanityImage | null };
   venue: { name: string; address: string; mapUrl: string };
   contactEmail: string;
   socials: { instagram?: string | null; facebook?: string | null; youtube?: string | null };
@@ -76,4 +79,18 @@ export interface Sponsor {
   name: string;
   url?: string | null;
   logo?: SanityImage | null;
+}
+
+export interface Player {
+  _id: string;
+  name: string;
+  nickname?: string | null;
+  number?: number | null;
+  position?: string | null;
+  shoots?: string | null;
+  since?: number | null;
+  knownFor?: string | null;
+  weakness?: string | null;
+  quote?: string | null;
+  photo?: SanityImage | null;
 }

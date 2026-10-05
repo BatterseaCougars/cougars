@@ -55,6 +55,8 @@ const canonical = new URL(Astro.url.pathname, Astro.site).href;
       }
     </script>
     <Font cssVariable="--font-sans" preload />
+    <Font cssVariable="--font-display" preload />
+    <Font cssVariable="--font-osd" preload />
     <ClientRouter fallback="swap" />
   </head>
   <body>
@@ -72,6 +74,7 @@ const canonical = new URL(Astro.url.pathname, Astro.site).href;
     <script>
       import "../scripts/motion";
       import "../scripts/scrollbar";
+      import "../scripts/cards";
     </script>
   </body>
 </html>

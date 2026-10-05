@@ -1,0 +1,163 @@
+---
+import Base from "../../layouts/Base.astro";
+import PageHeader from "../../components/PageHeader.astro";
+import PlayerCard from "../../components/PlayerCard.astro";
+import Empty from "../../components/Empty.astro";
+import { getPlayers, getSettings } from "../../lib/sanity/content";
+import { imageSrcSet, imageUrl, objectPosition } from "../../lib/sanity/images";
+
+const s = await getSettings();
+const players = await getPlayers();
+const photo = imageUrl(s.team.photo, 1600, 900);
+const roster = [...players].sort((a, b) => (a.number ?? 999) - (b.number ?? 999));
+---
+
+<Base title="Team" description="The official Battersea Cougars team: roster and player cards.">
+  <PageHeader eyebrow="The official team" title="Battersea Cougars" lede={s.team.intro} />
+
+  <div class="wrap page-body">
+    <figure class="team-photo" data-reveal>
+      {photo ? (
+        <img
+          src={photo}
+          srcset={imageSrcSet(s.team.photo, [800, 1200, 1600, 2200], 16 / 9)}
+          sizes="(max-width: 70rem) 100vw, 70rem"
+          alt={s.team.photo?.alt ?? "The Battersea Cougars team"}
+          style={`object-position:${objectPosition(s.team.photo)}`}
+        />
+      ) : (
+        <div class="placeholder">
+          <span class="label">Team photo coming soon</span>
+        </div>
+      )}
+    </figure>
+
+    <section class="block">
+      <p class="kicker" data-reveal>
+        Roster
+      </p>
+      {roster.length ? (
+        <table class="roster" data-reveal>
+          <thead>
+            <tr>
+              <th class="label">No.</th>
+              <th class="label">Player</th>
+              <th class="label">Position</th>
+              <th class="label">Shoots</th>
+              <th class="label">Since</th>
+            </tr>
+          </thead>
+          <tbody>
+            {roster.map((p) => (
+              <tr>
+                <td class="no">{p.number ?? "–"}</td>
+                <td>
+                  <strong>{p.name}</strong>
+                  {p.nickname && <span class="muted"> “{p.nickname}”</span>}
+                </td>
+                <td>{p.position ?? "–"}</td>
+                <td>{p.shoots ?? "–"}</td>
+                <td>{p.since ?? "–"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : (
+        <Empty>The roster is on its way.</Empty>
+      )}
+    </section>
+
+    {players.length > 0 && (
+      <section class="block">
+        <div class="cards-head" data-reveal>
+          <p class="kicker">Collect them all</p>
+          <p class="muted">Press a card to turn it over.</p>
+        </div>
+        <ul class="cards">
+          {players.map((p, i) => (
+            <li data-reveal style={`--i:${i % 4}`}>
+              <PlayerCard player={p} />
+            </li>
+          ))}
+        </ul>
+      </section>
+    )}
+  </div>
+</Base>
+
+<style>
+  .team-photo {
+    margin: 0;
+  }
+  .team-photo img,
+  .placeholder {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+  }
+  .placeholder {
+    display: grid;
+    place-items: center;
+    border: 1px dashed var(--line-strong);
+    background: radial-gradient(circle at 50% 50%, rgb(229 19 31 / 0.12), transparent 60%), var(--ink-2);
+  }
+  .block {
+    margin-top: clamp(4rem, 9vw, 6rem);
+  }
+  .block > .kicker {
+    margin-bottom: 1.5rem;
+  }
+  .roster {
+    width: 100%;
+    border-collapse: collapse;
+    font-variant-numeric: tabular-nums;
+  }
+  .roster th {
+    padding: 0 1rem 0.9rem 0;
+    text-align: left;
+    border-bottom: 1px solid var(--line-strong);
+  }
+  .roster td {
+    padding: 1rem 1rem 1rem 0;
+    border-bottom: 1px solid var(--line);
+    color: var(--bone-2);
+  }
+  .roster strong {
+    color: var(--bone);
+    font-weight: 600;
+  }
+  .roster .no {
+    width: 4.5rem;
+    font-family: var(--display);
+    font-size: 1.6rem;
+    line-height: 1;
+    color: var(--red-hot);
+  }
+  .cards-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+  .cards-head p {
+    margin: 0;
+  }
+  .cards {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 15.5rem), 1fr));
+    gap: clamp(1.5rem, 3vw, 2.5rem);
+  }
+  @media (max-width: 40rem) {
+    .roster th:nth-child(4),
+    .roster td:nth-child(4),
+    .roster th:nth-child(5),
+    .roster td:nth-child(5) {
+      display: none;
+    }
+  }
+</style>
