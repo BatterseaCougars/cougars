@@ -136,7 +136,7 @@ export async function channelVideos(
   try {
     return await fetchChannelVideos(channel, key, options);
   } catch (e) {
-    console.warn(`[youtube] ${(e as Error).message}. Showing Sanity videos only.`);
+    console.warn(`[youtube] ${(e as Error).message.replace(/\.$/, "")}. Showing Sanity videos only.`);
     return [];
   }
 }
