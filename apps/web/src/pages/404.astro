@@ -49,7 +49,8 @@ import Base from "../layouts/Base.astro";
     position: relative;
     z-index: 2;
   }
-  .osd {
+  /* Beats `.nosignal > *` above, which Astro's scoping makes the more specific of the two */
+  .nosignal > .osd {
     position: absolute;
     inset: calc(var(--header-h) + 1rem) var(--gutter) auto;
     display: flex;
