@@ -10,7 +10,7 @@ export const TEAM = /* groq */ `*[_id == "team"][0]{intro, league, photo}`;
 export const KUMITE = /* groq */ `*[_id == "kumite"][0]{intro, format, awards}`;
 
 export const KUMITE_RESULTS = /* groq */ `*[_type == "kumiteResult" && defined(season)] | order(date desc){
-  season, date, champions, topScorer, "event": event->{title, "slug": slug.current}
+  season, date, champions, topScorer, bestGoalie, "event": event->{title, "slug": slug.current}
 }`;
 
 // Overrides for channel videos, and videos that aren't on the channel. Merged and sorted in lib/youtube.ts.

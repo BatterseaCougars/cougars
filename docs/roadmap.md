@@ -31,7 +31,7 @@ worktree under `.worktrees/`. Each stream lands on `main` when it passes the pre
   - smoke test
   - Sanity publish → rebuild
 
-## M1: Club facts, checked (stream A, with the developer and team manager)
+## ✅ M1: Club facts, checked (stream A, with the developer and team manager)
 
 - [x] List every factual claim the site makes ([club-facts.md](club-facts.md)):
   - times, venue, founded
@@ -42,7 +42,7 @@ worktree under `.worktrees/`. Each stream lands on `main` when it passes the pre
   - Kumite frequency and format
   - awards
   - contact and socials
-- [ ] Walk the list together:
+- [x] Walk the list together:
   - Confirmed facts become seed values, editable in Sanity.
   - Unknown facts come out of the site.
 
@@ -151,9 +151,7 @@ worktree under `.worktrees/`. Each stream lands on `main` when it passes the pre
 - [ ] When the Kumite is finalised, a results page with automatic **awards**:
   - champions
   - top scorer
-  - most assists
-  - most points
-  - optional MVP vote
+  - best goalie (the club's awards, confirmed in M1)
 - [ ] Finalising a Kumite writes a `kumiteResult` to Sanity, which feeds the all-time hall of fame.
 
 Open questions: match length, tiebreak order, whether a draw scores 1 point, and the award list.

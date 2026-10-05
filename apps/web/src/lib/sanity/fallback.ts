@@ -63,5 +63,5 @@ export const FALLBACK_KUMITE: Kumite = {
     "Full round robin: every team plays every team",
     "One team finishes top of the table as champions",
   ],
-  awards: ["Champions", "Top scorer", "Most assists", "Most points"],
+  awards: ["Champions", "Top scorer", "Best goalie"],
 };

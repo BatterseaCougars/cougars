@@ -66,6 +66,7 @@ export interface KumiteResult {
   date: string;
   champions?: string | null;
   topScorer?: string | null;
+  bestGoalie?: string | null;
   event?: { title: string; slug: string } | null;
 }
 

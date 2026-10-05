@@ -28,6 +28,7 @@ export const kumiteResult = defineType({
       description: "The team name, or the players' names.",
     }),
     defineField({ name: "topScorer", title: "Top scorer", type: "string", description: "Optional." }),
+    defineField({ name: "bestGoalie", title: "Best goalie", type: "string", description: "Optional." }),
     defineField({
       name: "event",
       title: "Event",

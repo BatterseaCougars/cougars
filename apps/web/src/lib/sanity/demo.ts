@@ -141,8 +141,32 @@ export const DEMO_PLAYERS: Player[] = [
 
 // Placeholder honours board. Real winners go in the Studio (Kumite → Results).
 export const DEMO_KUMITE_RESULTS: KumiteResult[] = [
-  { season: "Autumn 2026", date: "2026-09-26", champions: "Team Sample A", topScorer: "Sample player" },
-  { season: "Summer 2026", date: "2026-06-27", champions: "Team Sample B", topScorer: "Sample player" },
-  { season: "Spring 2026", date: "2026-03-28", champions: "Team Sample C", topScorer: "Sample player" },
-  { season: "Winter 2026", date: "2026-01-31", champions: "Team Sample D", topScorer: "Sample player" },
+  {
+    season: "Autumn 2026",
+    date: "2026-09-26",
+    champions: "Team Sample A",
+    topScorer: "Sample player",
+    bestGoalie: "Sample goalie",
+  },
+  {
+    season: "Summer 2026",
+    date: "2026-06-27",
+    champions: "Team Sample B",
+    topScorer: "Sample player",
+    bestGoalie: "Sample goalie",
+  },
+  {
+    season: "Spring 2026",
+    date: "2026-03-28",
+    champions: "Team Sample C",
+    topScorer: "Sample player",
+    bestGoalie: "Sample goalie",
+  },
+  {
+    season: "Winter 2026",
+    date: "2026-01-31",
+    champions: "Team Sample D",
+    topScorer: "Sample player",
+    bestGoalie: "Sample goalie",
+  },
 ];

@@ -17,6 +17,7 @@ const [reigning, ...past] = results;
       <p class="label">Reigning · {reigning.season}</p>
       <p class="team">{reigning.champions ?? "—"}</p>
       {reigning.topScorer && <p class="muted">Top scorer: {reigning.topScorer}</p>}
+      {reigning.bestGoalie && <p class="muted">Best goalie: {reigning.bestGoalie}</p>}
     </div>
     {past.length > 0 && (
       <ol class="past">
