@@ -5,7 +5,7 @@ name: Deploy
 # pull request    -> dev: a preview version of `cougars-dev`, commented on the PR
 # main            -> dev: worker `cougars-dev`, Cougars Dev account
 # release         -> production: worker `cougars`, Cougars account
-# sanity-publish  -> production rebuild after an editor publishes in the Studio
+# sanity-publish  -> production rebuild when content changes (from the team app, roadmap M6; ADR 0018)
 # schedule        -> daily production rebuild, to pick up new club YouTube uploads (docs/adr/0015)
 # Those two run on the default branch, which the `production` environment refuses, so their only job
 # (`rebuild`) starts this workflow again on `release`, where the real production deploy runs.

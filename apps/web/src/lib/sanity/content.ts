@@ -1,5 +1,5 @@
-// Content access for pages. Everything is fetched at build time; a publish in
-// the Studio triggers a rebuild. Until a Sanity project is configured, pages
+// Content access for pages. Everything is fetched at build time; the site
+// rebuilds daily and on each release (ADR 0018). Until a Sanity project is configured, pages
 // render from the fallback club facts (fallback.ts) and empty lists. The merge
 // rules are in merge.ts.
 import { DEMO_CONTENT, YOUTUBE_API_KEY } from "astro:env/server";

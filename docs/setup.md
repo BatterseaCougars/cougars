@@ -105,26 +105,14 @@ In `das974/cougars` → **Settings**:
 `main` deploys dev; `git push origin main:release` deploys production ([ADR 0013](adr/0013-main-deploys-dev.md)). The
 first production deploy creates the D1 database and applies migrations.
 
-## 5. Publish → rebuild webhook
+## 5. Publish → rebuild (deferred to the team app)
 
-This makes the live site rebuild about 2 minutes after an editor presses **Publish**.
+Not set up ([ADR 0018](adr/0018-rebuilds-until-team-app.md)). Studio changes reach the live site at the daily
+rebuild (04:30 UK winter, 05:30 summer) or the next release. Photos are read live and need no rebuild. To publish
+something sooner, start a production rebuild by hand: **Actions → Deploy → Run workflow → `release`**, or
+`gh workflow run deploy.yml --ref release`.
 
-1. GitHub → **Settings → Developer settings → Fine-grained tokens**: create a token named
-   `SANITY_WEBHOOK_GITHUB_TOKEN__PRODUCTION` for `das974/cougars` only, with permission **Contents: Read and
-   write**. Add it to Secrets Manager (`cougars`) under the same name. (GitHub requires this to start a
-   workflow; it can't push anything the workflow doesn't.)
-2. In Sanity **manage → Cougars → API → Webhooks → Create**:
-   - URL: `https://api.github.com/repos/das974/cougars/dispatches`
-   - Dataset: `production`
-   - Trigger on: Create, Update, Delete
-   - Filter: `_type in ["club","fridays","pub","team","kumite","kumiteResult","event","video","player","sponsor"]`
-     (not `album`: photos are read live, with no rebuild)
-   - Projection: `{"event_type": "sanity-publish"}`
-   - HTTP method: POST
-   - HTTP headers:
-     - `Authorization: Bearer <token>`
-     - `Accept: application/vnd.github+json`
-   - Leave **drafts** off, so only published changes trigger a rebuild.
+The team app (roadmap M6) will start rebuilds when content changes, the way Gwenda's ops does.
 
 ## 6. Later: domain
 

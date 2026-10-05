@@ -54,19 +54,18 @@ Rules ([ADR 0002](docs/adr/0002-secrets-in-bitwarden.md), [ADR 0010](docs/adr/00
 - **Every secret has an entry below.** Adding one: create the token with its secret name, add it to Secrets
   Manager with `node scripts/secret-set.mjs NAME` (hidden prompt; it picks the project from the name), add it here.
 
-| Secret                                                                                | Project       | Issued by                   | Used by                      |
-| ------------------------------------------------------------------------------------- | ------------- | --------------------------- | ---------------------------- |
-| [`BWS_ACCESS_TOKEN__PRODUCTION`](#bitwarden-tokens)                                   | (GitHub)      | Bitwarden, `cougars-ci`     | Production deploys           |
-| [`BWS_ACCESS_TOKEN__DEV`](#bitwarden-tokens)                                          | (GitHub)      | Bitwarden, `cougars-ci-dev` | PR previews                  |
-| [`COUGARS_LOCAL_BW_TOKEN`](#bitwarden-tokens)                                         | (your vault)  | Bitwarden, `cougars-local`  | Your machine                 |
-| [`CLOUDFLARE_API_TOKEN__PRODUCTION`](#cloudflare_api_token__production)               | `cougars`     | Cloudflare, Cougars         | Production deploys           |
-| [`CLOUDFLARE_ACCOUNT_ID__PRODUCTION`](#cloudflare_account_id__production)             | `cougars`     | Cloudflare, Cougars         | Production deploys           |
-| [`CLOUDFLARE_API_TOKEN__DEV`](#cloudflare_api_token__dev)                             | `cougars-dev` | Cloudflare, Cougars Dev     | PR previews, `deploy-dev.sh` |
-| [`CLOUDFLARE_ACCOUNT_ID__DEV`](#cloudflare_account_id__dev)                           | `cougars-dev` | Cloudflare, Cougars Dev     | PR previews, `deploy-dev.sh` |
-| [`SANITY_WEBHOOK_GITHUB_TOKEN__PRODUCTION`](#sanity_webhook_github_token__production) | `cougars`     | GitHub (fine-grained)       | Sanity's publish webhook     |
-| [`SANITY_DEPLOY_TOKEN__PRODUCTION`](#sanity_deploy_token__production)                 | `cougars`     | Sanity                      | Studio deploys               |
-| [`YOUTUBE_API_KEY__PRODUCTION`](#youtube-api-keys)                                    | `cougars`     | Google Cloud                | Website build (production)   |
-| [`YOUTUBE_API_KEY__DEV`](#youtube-api-keys)                                           | `cougars-dev` | Google Cloud                | Website build (dev)          |
+| Secret                                                                    | Project       | Issued by                   | Used by                      |
+| ------------------------------------------------------------------------- | ------------- | --------------------------- | ---------------------------- |
+| [`BWS_ACCESS_TOKEN__PRODUCTION`](#bitwarden-tokens)                       | (GitHub)      | Bitwarden, `cougars-ci`     | Production deploys           |
+| [`BWS_ACCESS_TOKEN__DEV`](#bitwarden-tokens)                              | (GitHub)      | Bitwarden, `cougars-ci-dev` | PR previews                  |
+| [`COUGARS_LOCAL_BW_TOKEN`](#bitwarden-tokens)                             | (your vault)  | Bitwarden, `cougars-local`  | Your machine                 |
+| [`CLOUDFLARE_API_TOKEN__PRODUCTION`](#cloudflare_api_token__production)   | `cougars`     | Cloudflare, Cougars         | Production deploys           |
+| [`CLOUDFLARE_ACCOUNT_ID__PRODUCTION`](#cloudflare_account_id__production) | `cougars`     | Cloudflare, Cougars         | Production deploys           |
+| [`CLOUDFLARE_API_TOKEN__DEV`](#cloudflare_api_token__dev)                 | `cougars-dev` | Cloudflare, Cougars Dev     | PR previews, `deploy-dev.sh` |
+| [`CLOUDFLARE_ACCOUNT_ID__DEV`](#cloudflare_account_id__dev)               | `cougars-dev` | Cloudflare, Cougars Dev     | PR previews, `deploy-dev.sh` |
+| [`SANITY_DEPLOY_TOKEN__PRODUCTION`](#sanity_deploy_token__production)     | `cougars`     | Sanity                      | Studio deploys               |
+| [`YOUTUBE_API_KEY__PRODUCTION`](#youtube-api-keys)                        | `cougars`     | Google Cloud                | Website build (production)   |
+| [`YOUTUBE_API_KEY__DEV`](#youtube-api-keys)                               | `cougars-dev` | Google Cloud                | Website build (dev)          |
 
 ### Bitwarden tokens
 
@@ -123,18 +122,6 @@ Can't touch production: it is a different account.
 ### `CLOUDFLARE_ACCOUNT_ID__DEV`
 
 The Cougars Dev account's id. Not secret.
-
-### `SANITY_WEBHOOK_GITHUB_TOKEN__PRODUCTION`
-
-Lets Sanity start a production rebuild when an editor presses Publish (`repository_dispatch` → `deploy.yml`).
-
-- **Issued by:** GitHub → Developer settings → Fine-grained tokens, repository `das974/cougars` only,
-  **Contents: Read and write**. Token name: `SANITY_WEBHOOK_GITHUB_TOKEN__PRODUCTION`.
-- **Stored in:** Secrets Manager (the record) and the Sanity webhook's `Authorization` header (where it is used).
-  See [docs/setup.md](docs/setup.md#5-publish--rebuild-webhook).
-- **Expires:** yes, at most a year. Set a reminder.
-- **Rotate:** new token with the same name, update Secrets Manager and the webhook header, publish something to
-  check, delete the old token.
 
 ### `SANITY_DEPLOY_TOKEN__PRODUCTION`
 

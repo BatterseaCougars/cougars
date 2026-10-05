@@ -29,7 +29,7 @@ worktree under `.worktrees/`. Each stream lands on `main` when it passes the pre
   - PR checks
   - `main` → dev, `release` → production
   - smoke test
-  - Sanity publish → rebuild
+  - daily production rebuild (Studio publishes go live the next morning; ADR 0018)
 
 ## ✅ M1: Club facts, checked (stream A, with the developer and team manager)
 
@@ -83,7 +83,7 @@ worktree under `.worktrees/`. Each stream lands on `main` when it passes the pre
 - [ ] `/photos` shows album covers; photos live on each album's page.
 - [ ] The home photo strip refreshes from `/api/photos/latest`, and falls back to build-time photos without
       JavaScript.
-- [ ] Album uploads leave the rebuild webhook.
+- [x] Photos need no rebuild.
 - [ ] ADR 0016.
 
 ## M5: Launch
@@ -117,6 +117,9 @@ worktree under `.worktrees/`. Each stream lands on `main` when it passes the pre
 - [ ] Import players from the archived Airtable base, once.
 - [ ] Write events, roster cards and Kumite results to Sanity (write token `SANITY_WRITE_TOKEN`), so the team
       manager can run the website from the team app ([ADR 0014](adr/)).
+- [ ] Start a production rebuild when content changes (a GitHub token with Actions write, held by the team app or
+      a small Worker, batched after a few quiet minutes, like Gwenda's site-deploy webhook). Replaces the
+      Sanity publish webhook we didn't set up ([ADR 0018](adr/0018-rebuilds-until-team-app.md)).
 
 ## M7: Payments and invoices (bank transfer)
 

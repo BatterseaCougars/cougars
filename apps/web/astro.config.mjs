@@ -8,8 +8,8 @@ import { sanityProject } from "../../shared/sanity";
 // SITE_ENV is set by deploy.yml; a laptop and scripts/deploy-dev.sh are dev.
 const sanity = sanityProject(process.env.SITE_ENV);
 
-// Pages are prerendered at build time (content comes from Sanity and a publish
-// triggers a rebuild). Only routes that opt out with `prerender = false`
+// Pages are prerendered at build time (content comes from Sanity; the site rebuilds
+// daily and on each release, ADR 0018). Only routes that opt out with `prerender = false`
 // (/api/*, later /kumite/live) run on the Worker. Admin lives in apps/ops.
 export default defineConfig({
   site: process.env.SITE_URL || "https://cougars.workers.dev",

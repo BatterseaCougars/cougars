@@ -8,7 +8,9 @@ invited with.
 ## Live or practice?
 
 The Studio at **https://battersea-cougars.sanity.studio** is the real website: its title says **Cougars website
-(Live)**. Changes appear on the website **about 2 minutes after you press Publish**.
+(Live)**. Changes appear on the website **the next morning**, when it rebuilds by itself. Photos are the
+exception: they're on the site a few minutes after you press Publish. If something can't wait until tomorrow,
+ask the developer to rebuild the site now.
 
 There's also a separate practice copy, **Cougars dev site (Practice copy, not live)**, for trying things out. It
 only shows on the dev site, never on the real one. Ask the developer if you'd like access.
@@ -77,7 +79,7 @@ the first five appear on the homepage.
 ## Videos
 
 1. Upload the video to the club YouTube channel as **Public**. That's all: it appears on the website by itself,
-   within a day, or sooner if anyone presses **Publish** in the Studio.
+   by the next morning.
 2. Use the Studio only to change how a video shows. **Videos → +**, paste the video's link from YouTube's
    **Share** button, then:
    - **Hide from the website** keeps it off the site (it stays on YouTube).
