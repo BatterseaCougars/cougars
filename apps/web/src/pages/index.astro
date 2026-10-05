@@ -585,10 +585,19 @@ const strip: [string, string][] = [
     gap: 2rem clamp(1.5rem, 3vw, 2.5rem);
     align-items: start;
   }
+  /* "Latest" sits on the video like a sticker, so both columns start on the same rule */
+  .latest {
+    position: relative;
+  }
   .latest .stamp {
-    margin-bottom: 0.75rem;
+    position: absolute;
+    z-index: 2;
+    top: calc(1.5rem + 1px + 0.75rem);
+    left: 0.75rem;
+    margin: 0;
     background: var(--red);
     color: #fff;
+    pointer-events: none;
   }
   .earlier {
     list-style: none;
