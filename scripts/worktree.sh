@@ -13,7 +13,7 @@
 #   cms 4501 / studio 4521, youtube 4502 / 4522, gallery 4503 / 4523.
 set -euo pipefail
 # The main checkout, even when run from inside a worktree (whose own copy of this script lives there).
-root="$(cd "$(git -C "$(dirname "$0")" rev-parse --git-common-dir)/.." && pwd)"
+root="$(cd "$(git -C "$(dirname "$0")" rev-parse --path-format=absolute --git-common-dir)/.." && pwd)"
 
 slot() {
   case "$1" in
