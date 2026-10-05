@@ -5,8 +5,10 @@ name: Deploy
 # pull request    -> dev: a preview version of `cougars-dev`, commented on the PR
 # main            -> dev: worker `cougars-dev`, Cougars Dev account
 # release         -> production: worker `cougars`, Cougars account
-# sanity-publish  -> production rebuild of `release` after an editor publishes in the Studio
-# schedule        -> daily production rebuild of `release`, to pick up new club YouTube uploads (docs/adr/0015)
+# sanity-publish  -> production rebuild after an editor publishes in the Studio
+# schedule        -> daily production rebuild, to pick up new club YouTube uploads (docs/adr/0015)
+# Those two run on the default branch, which the `production` environment refuses, so their only job
+# (`rebuild`) starts this workflow again on `release`, where the real production deploy runs.
 # GitHub environment `production` (release only) holds BWS_ACCESS_TOKEN__PRODUCTION; `preview` holds
 # BWS_ACCESS_TOKEN__DEV, which can't read production secrets.
 on:
@@ -21,7 +23,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: deploy-${{ github.event_name == 'pull_request' && github.ref || (github.ref == 'refs/heads/release' || github.event_name == 'repository_dispatch' || github.event_name == 'schedule') && 'production' || 'dev' }}
+  group: deploy-${{ github.event_name == 'pull_request' && github.ref || github.ref == 'refs/heads/release' && 'production' || (github.event_name == 'repository_dispatch' || github.event_name == 'schedule') && 'rebuild' || 'dev' }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
@@ -29,23 +31,39 @@ permissions:
   pull-requests: write
 
 jobs:
-  deploy:
-    # Forks don't get secrets; their PRs are covered by pr.yml.
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+  # A Studio publish or the daily schedule: deploy what's live by running this workflow on `release`.
+  rebuild:
+    if: github.event_name == 'repository_dispatch' || github.event_name == 'schedule'
     runs-on: ubuntu-latest
-    environment: ${{ (github.ref == 'refs/heads/release' || github.event_name == 'repository_dispatch' || github.event_name == 'schedule') && 'production' || 'preview' }}
+    permissions:
+      actions: write
+    steps:
+      - name: Rebuild production from release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh api "repos/${{ github.repository }}/branches/release" --silent 2>/dev/null; then
+            gh workflow run deploy.yml --repo "${{ github.repository }}" --ref release
+          else
+            echo "No release branch yet: nothing is live, nothing to rebuild."
+          fi
+
+  deploy:
+    # Forks don't get secrets; their PRs are covered by pr.yml. Rebuild triggers only start `rebuild`.
+    if: >-
+      github.event_name != 'repository_dispatch' && github.event_name != 'schedule' &&
+      (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref == 'refs/heads/release' && 'production' || 'preview' }}
     env:
-      SITE_ENV: ${{ (github.ref == 'refs/heads/release' || github.event_name == 'repository_dispatch' || github.event_name == 'schedule') && 'production' || 'dev' }}
-      SITE_URL: ${{ (github.ref == 'refs/heads/release' || github.event_name == 'repository_dispatch' || github.event_name == 'schedule') && vars.SITE_URL || '' }}
+      SITE_ENV: ${{ github.ref == 'refs/heads/release' && 'production' || 'dev' }}
+      SITE_URL: ${{ github.ref == 'refs/heads/release' && vars.SITE_URL || '' }}
       # Dev: sample content where Sanity's dev dataset is empty, and noindex. Production too while the
       # `production` environment's variable DEMO_CONTENT is `true` (until real content is in Sanity).
-      DEMO_CONTENT: ${{ (github.ref == 'refs/heads/release' || github.event_name == 'repository_dispatch' || github.event_name == 'schedule') && (vars.DEMO_CONTENT || 'false') || 'true' }}
+      DEMO_CONTENT: ${{ github.ref == 'refs/heads/release' && (vars.DEMO_CONTENT || 'false') || 'true' }}
       BWS_SERVER_URL: ${{ vars.BWS_SERVER_URL }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          # A Studio publish or the daily rebuild rebuilds what's live: the release branch
-          ref: ${{ (github.event_name == 'repository_dispatch' || github.event_name == 'schedule') && 'release' || '' }}
       - uses: ./.github/actions/setup
 
       - name: Install Bitwarden Secrets Manager CLI
