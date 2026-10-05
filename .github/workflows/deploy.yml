@@ -139,5 +139,6 @@ jobs:
       - name: Deploy Studio
         run: npm run deploy -w @cougars/studio -- --yes
         env:
-          SANITY_STUDIO_PROJECT_ID: ${{ env.SANITY_PROJECT_ID }}
+          # The live project (shared/sanity.ts, ADR 0017)
+          SANITY_STUDIO_SITE_ENV: production
           SANITY_AUTH_TOKEN: ${{ env.SANITY_DEPLOY_TOKEN }}

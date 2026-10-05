@@ -2,6 +2,11 @@
 import { defineConfig, envField, fontProviders } from "astro/config";
 import cloudflare from "@astrojs/cloudflare";
 import sitemap from "@astrojs/sitemap";
+import { sanityProject } from "../../shared/sanity";
+
+// The Sanity project for this build: production on `release`, otherwise dev (docs/adr/0017-two-sanity-projects.md).
+// SITE_ENV is set by deploy.yml; a laptop and scripts/deploy-dev.sh are dev.
+const sanity = sanityProject(process.env.SITE_ENV);
 
 // Pages are prerendered at build time (content comes from Sanity and a publish
 // triggers a rebuild). Only routes that opt out with `prerender = false`
@@ -25,8 +30,9 @@ export default defineConfig({
   }),
   env: {
     schema: {
-      SANITY_PROJECT_ID: envField.string({ context: "server", access: "public", optional: true }),
-      SANITY_DATASET: envField.string({ context: "server", access: "public", default: "production" }),
+      SANITY_PROJECT_ID: envField.string({ context: "server", access: "public", default: sanity.projectId }),
+      SANITY_DATASET: envField.string({ context: "server", access: "public", default: sanity.dataset }),
+      // Not needed: both projects' datasets are public. Only for a private dataset or drafts later.
       SANITY_API_TOKEN: envField.string({ context: "server", access: "secret", optional: true }),
       // Pulls the club channel's videos at build time (lib/youtube.ts). Without it: Sanity videos only.
       YOUTUBE_API_KEY: envField.string({ context: "server", access: "secret", optional: true }),

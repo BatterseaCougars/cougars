@@ -23,7 +23,7 @@
     },
     {
       "label": "dev: studio (:4520)",
-      "detail": "Sanity Studio. Needs SANITY_STUDIO_PROJECT_ID (docs/setup.md). Not started automatically.",
+      "detail": "Sanity Studio for the Cougars Dev project (docs/adr/0017-two-sanity-projects.md). Not started automatically.",
       "type": "shell",
       "command": "npm run dev -w @cougars/studio",
       "isBackground": true,

@@ -3,8 +3,9 @@
 // Page wording (headline, about text) moved into the website code and is not copied.
 //
 // It never overwrites: documents that already exist are left alone. Without --commit it only prints the plan.
-//   SANITY_STUDIO_DATASET=dev npm run migrate-settings -w @cougars/studio              # dry run
-//   SANITY_STUDIO_DATASET=dev npm run migrate-settings -w @cougars/studio -- --commit  # write
+// The dev project unless SANITY_STUDIO_SITE_ENV=production (docs/adr/0017-two-sanity-projects.md):
+//   npm run migrate-settings -w @cougars/studio              # dry run
+//   npm run migrate-settings -w @cougars/studio -- --commit  # write
 // Then check the results in the Studio, and delete siteSettings by hand once the site looks right.
 import { getCliClient } from "sanity/cli";
 
@@ -20,7 +21,9 @@ const commit = process.argv.includes("--commit");
 
 const old = await client.getDocument("siteSettings");
 if (!old) {
-  console.log(`No siteSettings document in "${client.config().dataset}": nothing to migrate.`);
+  console.log(
+    `No siteSettings document in ${client.config().projectId}/${client.config().dataset}: nothing to migrate.`,
+  );
   process.exit(0);
 }
 
@@ -77,7 +80,9 @@ honours.forEach((h, i) => {
     console.warn(`  Check the date of "${h.season}": guessed ${date} from its place in the list.`);
 });
 
-console.log(`${commit ? "Creating" : "Would create"} in "${client.config().dataset}" (existing documents are kept):`);
+console.log(
+  `${commit ? "Creating" : "Would create"} in ${client.config().projectId}/${client.config().dataset} (existing documents are kept):`,
+);
 for (const d of docs)
   console.log(
     `  ${d._id}: ${

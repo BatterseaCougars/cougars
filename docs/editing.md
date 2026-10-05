@@ -7,12 +7,11 @@ invited with.
 
 ## Live or practice?
 
-The Studio has two workspaces. Switch between them with the menu at the top left:
+The Studio at **https://battersea-cougars.sanity.studio** is the real website: its title says **Cougars website
+(Live)**. Changes appear on the website **about 2 minutes after you press Publish**.
 
-- **Cougars website (Live)**: what the public sees. Changes appear on the website **about 2 minutes after you
-  press Publish**.
-- **Practice copy (Dev site, not live)**: a separate copy for trying things out. It only shows on the dev site,
-  never on the real one.
+There's also a separate practice copy, **Cougars dev site (Practice copy, not live)**, for trying things out. It
+only shows on the dev site, never on the real one. Ask the developer if you'd like access.
 
 Nothing goes live until you press **Publish** (bottom right), so it's safe to experiment either way. If a
 **Publish** button is greyed out, a red message on the page says what's missing.

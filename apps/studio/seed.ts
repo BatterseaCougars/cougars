@@ -1,7 +1,8 @@
 // One-off: create the club-facts singletons (Club, Fridays, Pub, Team, Kumite) from the website's defaults
 // (apps/web/src/lib/sanity/fallback.ts). Safe to re-run: it never overwrites an existing document.
-// Seed the dev dataset first:
-//   SANITY_STUDIO_DATASET=dev npm run seed -w @cougars/studio
+// Seed the dev project first, then the live one (docs/adr/0017-two-sanity-projects.md):
+//   npm run seed -w @cougars/studio
+//   SANITY_STUDIO_SITE_ENV=production npm run seed -w @cougars/studio
 import { getCliClient } from "sanity/cli";
 import {
   FALLBACK_CLUB,
@@ -36,5 +37,5 @@ const tx = client.transaction();
 for (const doc of docs) tx.createIfNotExists(doc);
 await tx.commit();
 console.log(
-  `Seeded ${docs.map((d) => d._id).join(", ")} in "${client.config().dataset}" (existing ones left unchanged).`,
+  `Seeded ${docs.map((d) => d._id).join(", ")} in ${client.config().projectId}/${client.config().dataset} (existing ones left unchanged).`,
 );

@@ -43,6 +43,9 @@ Rules ([ADR 0002](docs/adr/0002-secrets-in-bitwarden.md), [ADR 0010](docs/adr/00
   ([.env.example](.env.example)).
 - **Two environments.** Production (Cloudflare account **Cougars**) and dev (account **Cougars Dev**). Your
   machine, PR previews and `scripts/deploy-dev.sh` are dev.
+- **Two Sanity projects** to match: **Cougars** (`ah165efl`, production) and **Cougars Dev** (`zmg6rbe3`), each
+  with one public `production` dataset ([ADR 0017](docs/adr/0017-two-sanity-projects.md)). Their IDs aren't
+  secret (`shared/sanity.ts`), and public datasets need no read token.
 - **Naming:** `NAME` applies to both; `NAME__PRODUCTION` / `NAME__DEV` override it for one. Code reads `NAME`.
   Production values sit in the Secrets Manager project `cougars`; dev and shared values in `cougars-dev`. Every
   app shares these two projects ([ADR 0012](docs/adr/0012-secrets-manager-projects.md)); _Used by_ says which app
@@ -51,22 +54,19 @@ Rules ([ADR 0002](docs/adr/0002-secrets-in-bitwarden.md), [ADR 0010](docs/adr/00
 - **Every secret has an entry below.** Adding one: create the token with its secret name, add it to Secrets
   Manager with `node scripts/secret-set.mjs NAME` (hidden prompt; it picks the project from the name), add it here.
 
-| Secret                                                                                | Project       | Issued by                   | Used by                           |
-| ------------------------------------------------------------------------------------- | ------------- | --------------------------- | --------------------------------- |
-| [`BWS_ACCESS_TOKEN__PRODUCTION`](#bitwarden-tokens)                                   | (GitHub)      | Bitwarden, `cougars-ci`     | Production deploys                |
-| [`BWS_ACCESS_TOKEN__DEV`](#bitwarden-tokens)                                          | (GitHub)      | Bitwarden, `cougars-ci-dev` | PR previews                       |
-| [`COUGARS_LOCAL_BW_TOKEN`](#bitwarden-tokens)                                         | (your vault)  | Bitwarden, `cougars-local`  | Your machine                      |
-| [`CLOUDFLARE_API_TOKEN__PRODUCTION`](#cloudflare_api_token__production)               | `cougars`     | Cloudflare, Cougars         | Production deploys                |
-| [`CLOUDFLARE_ACCOUNT_ID__PRODUCTION`](#cloudflare_account_id__production)             | `cougars`     | Cloudflare, Cougars         | Production deploys                |
-| [`CLOUDFLARE_API_TOKEN__DEV`](#cloudflare_api_token__dev)                             | `cougars-dev` | Cloudflare, Cougars Dev     | PR previews, `deploy-dev.sh`      |
-| [`CLOUDFLARE_ACCOUNT_ID__DEV`](#cloudflare_account_id__dev)                           | `cougars-dev` | Cloudflare, Cougars Dev     | PR previews, `deploy-dev.sh`      |
-| [`SANITY_PROJECT_ID`](#sanity_project_id)                                             | `cougars-dev` | Sanity                      | Website build (both)              |
-| [`SANITY_API_TOKEN`](#sanity_api_token)                                               | `cougars-dev` | Sanity                      | Website build (both)              |
-| [`SANITY_DATASET__DEV`](#sanity_dataset__dev)                                         | `cougars-dev` | (a setting)                 | Dev builds read the `dev` dataset |
-| [`SANITY_WEBHOOK_GITHUB_TOKEN__PRODUCTION`](#sanity_webhook_github_token__production) | `cougars`     | GitHub (fine-grained)       | Sanity's publish webhook          |
-| [`SANITY_DEPLOY_TOKEN__PRODUCTION`](#sanity_deploy_token__production)                 | `cougars`     | Sanity                      | Studio deploys                    |
-| [`YOUTUBE_API_KEY__PRODUCTION`](#youtube-api-keys)                                    | `cougars`     | Google Cloud                | Website build (production)        |
-| [`YOUTUBE_API_KEY__DEV`](#youtube-api-keys)                                           | `cougars-dev` | Google Cloud                | Website build (dev)               |
+| Secret                                                                                | Project       | Issued by                   | Used by                      |
+| ------------------------------------------------------------------------------------- | ------------- | --------------------------- | ---------------------------- |
+| [`BWS_ACCESS_TOKEN__PRODUCTION`](#bitwarden-tokens)                                   | (GitHub)      | Bitwarden, `cougars-ci`     | Production deploys           |
+| [`BWS_ACCESS_TOKEN__DEV`](#bitwarden-tokens)                                          | (GitHub)      | Bitwarden, `cougars-ci-dev` | PR previews                  |
+| [`COUGARS_LOCAL_BW_TOKEN`](#bitwarden-tokens)                                         | (your vault)  | Bitwarden, `cougars-local`  | Your machine                 |
+| [`CLOUDFLARE_API_TOKEN__PRODUCTION`](#cloudflare_api_token__production)               | `cougars`     | Cloudflare, Cougars         | Production deploys           |
+| [`CLOUDFLARE_ACCOUNT_ID__PRODUCTION`](#cloudflare_account_id__production)             | `cougars`     | Cloudflare, Cougars         | Production deploys           |
+| [`CLOUDFLARE_API_TOKEN__DEV`](#cloudflare_api_token__dev)                             | `cougars-dev` | Cloudflare, Cougars Dev     | PR previews, `deploy-dev.sh` |
+| [`CLOUDFLARE_ACCOUNT_ID__DEV`](#cloudflare_account_id__dev)                           | `cougars-dev` | Cloudflare, Cougars Dev     | PR previews, `deploy-dev.sh` |
+| [`SANITY_WEBHOOK_GITHUB_TOKEN__PRODUCTION`](#sanity_webhook_github_token__production) | `cougars`     | GitHub (fine-grained)       | Sanity's publish webhook     |
+| [`SANITY_DEPLOY_TOKEN__PRODUCTION`](#sanity_deploy_token__production)                 | `cougars`     | Sanity                      | Studio deploys               |
+| [`YOUTUBE_API_KEY__PRODUCTION`](#youtube-api-keys)                                    | `cougars`     | Google Cloud                | Website build (production)   |
+| [`YOUTUBE_API_KEY__DEV`](#youtube-api-keys)                                           | `cougars-dev` | Google Cloud                | Website build (dev)          |
 
 ### Bitwarden tokens
 
@@ -124,29 +124,6 @@ Can't touch production: it is a different account.
 
 The Cougars Dev account's id. Not secret.
 
-### `SANITY_PROJECT_ID`
-
-Which Sanity project the website reads. Shared by both environments (they use different datasets). Not
-secret. Without it, the site builds from `apps/web/src/lib/sanity/fallback.ts`. The Studio deploy passes it to
-the Studio as `SANITY_STUDIO_PROJECT_ID`.
-
-### `SANITY_API_TOKEN`
-
-Lets the website build read content. One token reads both datasets.
-
-- **Issued by:** Sanity → API → Tokens, role **Viewer**. Token name: `SANITY_API_TOKEN`.
-- **Used by:** the website build (`apps/web/src/lib/sanity/client.ts`). Never sent to the browser.
-- **Gets there by:** CI pull, into the build only. The Worker's live photo pages
-  ([ADR 0016](docs/adr/0016-live-photo-gallery.md)) don't need it, because free-plan datasets are public. If a
-  dataset is ever made private, the Worker needs it too, as a Worker secret (`wrangler secret put SANITY_API_TOKEN`).
-- **Expires:** no.
-- **Rotate:** add a new Viewer token with the same name, update Secrets Manager, deploy, delete the old one.
-
-### `SANITY_DATASET__DEV`
-
-`dev`. Makes dev builds read the `dev` dataset; production uses the default, `production`. A setting, kept here
-so the naming rule picks it per environment.
-
 ### `SANITY_WEBHOOK_GITHUB_TOKEN__PRODUCTION`
 
 Lets Sanity start a production rebuild when an editor presses Publish (`repository_dispatch` → `deploy.yml`).
@@ -163,7 +140,7 @@ Lets Sanity start a production rebuild when an editor presses Publish (`reposito
 
 Lets CI deploy the Studio to https://battersea-cougars.sanity.studio on every push to `release`.
 
-- **Issued by:** Sanity → manage → project → API → Tokens, role **Deploy Studio**. Token name:
+- **Issued by:** Sanity → manage → project **Cougars** → API → Tokens, role **Deploy Studio**. Token name:
   `SANITY_DEPLOY_TOKEN__PRODUCTION`.
 - **Used by:** the `studio` job in `deploy.yml` (`sanity deploy`, which reads it as `SANITY_AUTH_TOKEN`).
   Production only: `main` and PRs never deploy the Studio.
@@ -194,14 +171,14 @@ without touching production. Without a key the build still passes and shows only
 
 ### Settings that aren't secret
 
-| Name                                    | Where                       | What                                                             |
-| --------------------------------------- | --------------------------- | ---------------------------------------------------------------- |
-| `SITE_URL`                              | GitHub variable             | Production URL, once there is a domain                           |
-| `BWS_SERVER_URL`                        | GitHub variable, your shell | `https://vault.bitwarden.eu` if the vault is on the EU server    |
-| `SANITY_DATASET`                        | Default `production`        | Overridden by `SANITY_DATASET__DEV` for dev                      |
-| `SANITY_STUDIO_PROJECT_ID` / `_DATASET` | Your shell, CI              | Studio's project; the dataset for its seed and migration scripts |
-| `DEMO_CONTENT`                          | `.env`, GitHub variable     | Sample content + `noindex`; `true` on production only pre-launch |
-| `PUBLIC_BUILD_VERSION`                  | Set by CI                   | Shown in `<meta name="generator">`; checked by the smoke test    |
+| Name                                   | Where                       | What                                                             |
+| -------------------------------------- | --------------------------- | ---------------------------------------------------------------- |
+| `SITE_URL`                             | GitHub variable             | Production URL, once there is a domain                           |
+| `BWS_SERVER_URL`                       | GitHub variable, your shell | `https://vault.bitwarden.eu` if the vault is on the EU server    |
+| `SANITY_PROJECT_ID` / `SANITY_DATASET` | `shared/sanity.ts`          | Picked from `SITE_ENV`: Cougars on production, Cougars Dev else  |
+| `SANITY_STUDIO_SITE_ENV`               | CI (Studio deploy)          | `production` builds the live Studio; unset is the dev project    |
+| `DEMO_CONTENT`                         | `.env`, GitHub variable     | Sample content + `noindex`; `true` on production only pre-launch |
+| `PUBLIC_BUILD_VERSION`                 | Set by CI                   | Shown in `<meta name="generator">`; checked by the smoke test    |
 
 ## Docs
 

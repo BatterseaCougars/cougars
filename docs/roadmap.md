@@ -57,7 +57,7 @@ worktree under `.worktrees/`. Each stream lands on `main` when it passes the pre
   - venue required
 - [x] Studio:
   - project ID from the environment, never in code
-  - live and practice (dev) datasets as two workspaces
+  - one Sanity project per environment: Cougars (live) and Cougars Dev ([ADR 0017](adr/0017-two-sanity-projects.md))
   - Vision hidden
   - sidebar in club order
   - deployed from CI

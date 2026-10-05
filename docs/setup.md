@@ -27,29 +27,38 @@ Bitwarden secrets (step 3): `CLOUDFLARE_API_TOKEN__PRODUCTION`, `CLOUDFLARE_ACCO
 
 ## 2. Sanity (content editing)
 
-1. `npx sanity login`, then create a project at <https://www.sanity.io/manage> (Free plan), with datasets
-   `production` and `dev` (both public; the Free plan allows two).
-2. Note the **project ID**. It goes in Secrets Manager as `SANITY_PROJECT_ID`; the Studio reads it from
-   `SANITY_STUDIO_PROJECT_ID`, so it's never in the code.
-3. **API → Tokens**: create a **Viewer** token named `SANITY_API_TOKEN` (lets the website build read content),
-   and a **Deploy Studio** token named `SANITY_DEPLOY_TOKEN__PRODUCTION` (lets CI deploy the Studio).
-4. **API → CORS origins**: add `http://localhost:4520` (allow credentials).
-5. Seed the club facts (Club, Fridays, Pub, Team, Kumite) from the website's defaults, `dev` first, and publish
-   the Studio once by hand (after that, every push to `release` deploys it):
-   ```sh
-   export SANITY_STUDIO_PROJECT_ID=<id>
-   SANITY_STUDIO_DATASET=dev npm run seed -w @cougars/studio
-   SANITY_STUDIO_DATASET=production npm run seed -w @cougars/studio
-   npm run deploy -w @cougars/studio   # → https://battersea-cougars.sanity.studio
-   ```
-   A dataset that still has the old `siteSettings` document is migrated instead: run
-   `npm run migrate-settings -w @cougars/studio` (a dry run), then again with `-- --commit`.
-6. **Members**: invite the club's editors (the Free plan includes 20 seats). Give them the _Editor_ role. The
-   Studio shows two workspaces, **Cougars website** (live, `production`) and **Practice copy** (`dev`); Vision,
-   the query tool, only appears for administrators.
+Two free projects, one per environment, like the two Cloudflare accounts
+([ADR 0017](adr/0017-two-sanity-projects.md)). Both exist already:
 
-Bitwarden secrets (step 3): `SANITY_PROJECT_ID`, `SANITY_API_TOKEN` and `SANITY_DATASET__DEV` = `dev` in
-`cougars-dev` (shared by both environments); `SANITY_DEPLOY_TOKEN__PRODUCTION` in `cougars`.
+| Project         | ID         | Dataset               | Used by                                                      |
+| --------------- | ---------- | --------------------- | ------------------------------------------------------------ |
+| **Cougars**     | `ah165efl` | `production` (public) | The live site and the hosted Studio                          |
+| **Cougars Dev** | `zmg6rbe3` | `production` (public) | The dev site, PR previews, your machine and the local Studio |
+
+The IDs are in `shared/sanity.ts`; the environment picks the project, so nothing about them goes in Secrets
+Manager. Public datasets need no read token.
+
+To set up a project from scratch (or check one):
+
+1. `npx sanity login` with your own account, then create the project at <https://www.sanity.io/manage> (Free
+   plan) with one public dataset, `production`, and put its ID in `shared/sanity.ts`.
+2. **API → CORS origins**:
+   - Cougars Dev: `http://localhost:4520` to `http://localhost:4523`, with credentials (local Studios, including
+     worktrees).
+   - Cougars: nothing to add; the hosted Studio adds its own origin when it's deployed.
+3. **Cougars → API → Tokens**: a **Deploy Studio** token named `SANITY_DEPLOY_TOKEN__PRODUCTION`, into Secrets
+   Manager (`cougars`). CI deploys the Studio with it on every push to `release`.
+4. Seed the club facts (Club, Fridays, Pub, Team, Kumite) from the website's defaults, dev first. The scripts use
+   your own login:
+   ```sh
+   npm run seed -w @cougars/studio                                    # Cougars Dev
+   SANITY_STUDIO_SITE_ENV=production npm run seed -w @cougars/studio  # Cougars
+   ```
+   A project that still has the old `siteSettings` document is migrated instead: run
+   `npm run migrate-settings -w @cougars/studio` (a dry run), then again with `-- --commit`.
+5. **Members**: invite the club's editors to **Cougars** with the _Editor_ role (the Free plan includes 20
+   seats), and to **Cougars Dev** if they want somewhere to practise. Vision, the query tool, only appears for
+   administrators.
 
 ## 3. Bitwarden Secrets Manager
 
@@ -104,7 +113,7 @@ This makes the live site rebuild about 2 minutes after an editor presses **Publi
    `SANITY_WEBHOOK_GITHUB_TOKEN__PRODUCTION` for `das974/cougars` only, with permission **Contents: Read and
    write**. Add it to Secrets Manager (`cougars`) under the same name. (GitHub requires this to start a
    workflow; it can't push anything the workflow doesn't.)
-2. In Sanity **manage → API → Webhooks → Create**:
+2. In Sanity **manage → Cougars → API → Webhooks → Create**:
    - URL: `https://api.github.com/repos/das974/cougars/dispatches`
    - Dataset: `production`
    - Trigger on: Create, Update, Delete
