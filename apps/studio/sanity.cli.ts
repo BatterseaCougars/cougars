@@ -8,5 +8,6 @@ export default defineCliConfig({
   api: { projectId, dataset },
   // Hosted free at https://battersea-cougars.sanity.studio, deployed from `release` (deploy.yml).
   studioHost: "battersea-cougars",
-  deployment: { autoUpdates: true },
+  // appId: the hosted Studio app, so CI deploys don't stop to ask which one (only production is deployed).
+  deployment: { autoUpdates: true, appId: "e6jvjj3rw1erb4rr45k97yy0" },
 });
