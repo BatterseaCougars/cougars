@@ -72,7 +72,9 @@ const album = (slug: string, title: string, days: number, count: number): Album 
   cover: pic(`${slug}-0`),
   photos: Array.from({ length: count }, (_, i) => ({ ...pic(`${slug}-${i}`), caption: `Sample photo ${i + 1}` })),
 });
-export const DEMO_ALBUMS: Album[] = [
+// A function, not a constant: the Worker serves these at request time (/photos, ADR 0016), and a Worker's
+// clock reads 1970 while modules load, so dates must be worked out per request.
+export const demoAlbums = (): Album[] => [
   album("demo-friday", "Friday night, last week (sample)", -4, 9),
   album("demo-kumite", "Kumite: Autumn (sample)", -50, 12),
   album("demo-social", "Summer social (sample)", -90, 6),
