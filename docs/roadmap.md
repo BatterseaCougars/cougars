@@ -33,7 +33,7 @@ worktree under `.worktrees/`. Each stream lands on `main` when it passes the pre
 
 ## M1: Club facts, checked (stream A, with the developer and team manager)
 
-- [ ] List every factual claim the site makes:
+- [x] List every factual claim the site makes ([club-facts.md](club-facts.md)):
   - times, venue, founded
   - first-session kit
   - fees
@@ -48,21 +48,22 @@ worktree under `.worktrees/`. Each stream lands on `main` when it passes the pre
 
 ## M2: CMS models the team manager can run (stream A)
 
-- [ ] Replace the `siteSettings` document with small singletons: Club, Fridays, Pub, Team, Kumite. Only club facts
+- [x] Replace the `siteSettings` document with small singletons: Club, Fridays, Pub, Team, Kumite. Only club facts
       are editable; page wording stays in code.
-- [ ] `kumiteResult` documents (season, champions, top scorer, event) replace the honours list.
-- [ ] Validation and help text written for the team manager:
+- [x] `kumiteResult` documents (season, champions, top scorer, event) replace the honours list.
+- [x] Validation and help text written for the team manager:
   - alt text required on images
   - email checked
   - venue required
-- [ ] Studio:
-  - project ID set
+- [x] Studio:
+  - project ID from the environment, never in code
+  - live and practice (dev) datasets as two workspaces
   - Vision hidden
   - sidebar in club order
   - deployed from CI
-- [ ] `content.ts`: each singleton merges with its own fallback, and demo lists work, with tests.
-- [ ] Derived copy (header clock, footer, meta descriptions) reads from facts, not hard-coded claims.
-- [ ] [ADR 0014](adr/): Sanity is the source for public content; the team app will write to it through the API;
+- [x] `content.ts`: each singleton merges with its own fallback, and demo lists work, with tests.
+- [x] Derived copy (header clock, footer, meta descriptions) reads from facts, not hard-coded claims.
+- [x] [ADR 0014](adr/0014-sanity-public-content.md): Sanity is the source for public content; the team app will write to it through the API;
       ops-only data lives in D1.
 
 ## M3: YouTube channel auto-pull (stream B, parallel)
