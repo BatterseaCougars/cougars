@@ -45,12 +45,6 @@ const strip: [string, string][] = [
     id="top"
     style={heroBg ? `--hero-bg:url(${heroBg});--hero-pos:${objectPosition(s.heroImage)}` : undefined}
   >
-    <p class="corner tl label" aria-hidden="true">
-      No. {s.founded}
-    </p>
-    <p class="corner tr label" aria-hidden="true">
-      London SW11
-    </p>
     <h1 class="visually-hidden">Battersea Cougars inline hockey club</h1>
     <Image class="hero-logo" src={logo} alt="Battersea Cougars" width={720} loading="eager" fetchpriority="high" />
     <p class="hero-line">
@@ -323,18 +317,6 @@ const strip: [string, string][] = [
       radial-gradient(circle at 50% 42%, rgb(229 19 31 / 0.3), transparent 42%),
       radial-gradient(ellipse 75% 65% at 50% 45%, transparent, rgb(13 13 15 / 0.65)),
       var(--hero-bg, none) var(--hero-pos, center) / cover no-repeat;
-  }
-  .corner {
-    position: absolute;
-    top: calc(var(--header-h) + 1.25rem);
-    margin: 0;
-    color: var(--text);
-  }
-  .tl {
-    left: var(--gutter);
-  }
-  .tr {
-    right: var(--gutter);
   }
   .hero :global(.hero-logo) {
     width: min(78vw, 34rem, 54svh);
@@ -662,9 +644,6 @@ const strip: [string, string][] = [
     .strip div + div {
       padding-left: 0;
       border-left: 0;
-    }
-    .corner {
-      display: none;
     }
   }
 </style>

@@ -14,14 +14,14 @@ const socials = [
 ---
 
 <footer class="footer">
-  <!-- Last call: the invitation, big -->
+  <!-- Last call: the invitation, one red button -->
   <div class="call">
     <div class="wrap call-inner">
       <p class="call-line">Fancy it?</p>
       <p class="call-sub">
         Come down on a {day}. First session, we'll lend you the kit. Splits optional. After that, you're one of us.
       </p>
-      <a class="btn call-btn" href="/join/">
+      <a class="btn btn--primary call-btn" href="/join/">
         Try a session
       </a>
     </div>
@@ -86,35 +86,31 @@ const socials = [
 
 <style>
   .call {
-    background: var(--red);
-    color: #fff;
+    border-top: 1px solid var(--rule);
   }
   .call-inner {
     display: grid;
     grid-template-columns: 1fr auto;
     align-items: end;
-    gap: 1.5rem 3rem;
-    padding-block: clamp(3.5rem, 8vw, 6rem);
+    gap: 1rem 3rem;
+    padding-block: clamp(2.5rem, 5vw, 3.5rem);
   }
   .call-line {
     grid-column: 1 / -1;
     margin: 0;
     font-family: var(--display);
-    font-size: clamp(4.5rem, 15vw, 12rem);
-    line-height: 0.85;
+    font-size: clamp(2.5rem, 6vw, 4rem);
+    line-height: 0.9;
     text-transform: uppercase;
   }
   .call-sub {
     max-width: 34rem;
     margin: 0;
-    font-size: clamp(1.1rem, 1.6vw, 1.3rem);
+    color: var(--text-2);
     line-height: 1.5;
   }
-  .call-btn {
-    --text: #16130f;
-    background: #fff;
-  }
   .base {
+    border-top: 1px solid var(--rule);
     padding-block: 3.5rem 2rem;
     font-size: 0.92rem;
     color: var(--text-2);
