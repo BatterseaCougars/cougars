@@ -22,3 +22,4 @@ rule, a trade-off. Copy [template.md](template.md), take the next number, keep i
 | [0011](0011-no-news.md)                     | No news section                                                          | Accepted           |
 | [0012](0012-secrets-manager-projects.md)    | Two Secrets Manager projects, shared by every app                        | Accepted           |
 | [0013](0013-main-deploys-dev.md)            | `main` deploys dev; `release` deploys production                         | Accepted           |
+| [0014](0014-sanity-public-content.md)       | Sanity is the source for public content; only club facts are editable    | Accepted           |

@@ -1,0 +1,39 @@
+# 0014. Sanity is the source for public content; only club facts are editable
+
+- **Status:** Accepted
+- **Date:** 2026-10-05
+- **Builds on:** [0004](0004-astro-workers-sanity-d1.md)
+
+## Context
+
+The team manager should run the site from the Studio without a developer, and a team app (`apps/ops`) is coming
+that will record Kumite results, events and the roster. The single `siteSettings` document mixed club facts
+(times, venue, kit, fees) with page wording (headlines, the "about" text), kept Kumite winners as an ordered list
+inside it ("the first one is the reigning champion"), and some of its facts had never been checked. Two copies of
+any fact, one in Sanity and one in D1, would drift.
+
+## Decision
+
+- **Sanity is the single source for everything the public site shows.** The site reads it at build time
+  ([ADR 0004](0004-astro-workers-sanity-d1.md)).
+- **Only club facts are editable**, one small singleton each, in the club's own terms: **Club** (founded, contact
+  email, socials, YouTube channel ID), **Fridays** (sessions, venue, kit rules, first-timers' kit, fees), **Pub**,
+  **Team** and **Kumite**. Singletons have fixed `_id`s equal to their type. All other wording (headlines, jokes,
+  page intros) lives in the website code, where it can change with the design.
+- **Copy that depends on a fact reads the fact.** For example the "we lend you the kit" lines appear only while
+  _Kit for first-timers_ is filled in.
+- **Kumite results are documents** (`kumiteResult`: season, date, champions, top scorer, optional event). The
+  newest by date is the reigning champion.
+- **The team app writes public content to Sanity through its API** (events, roster cards, Kumite results), with a
+  write token documented in the README when it lands. Schemas avoid anything that would block an API write
+  (read-only fields, values only the Studio can make).
+- **Ops-only data lives in D1**: enquiries, attendance, payments, ratings. It is never shown publicly as is.
+- **Fallbacks.** Each singleton merges with its own defaults (`apps/web/src/lib/sanity/fallback.ts`) field by
+  field: a missing required field falls back; an optional field left empty stays empty.
+
+## Consequences
+
+- The team manager edits facts, not prose: fewer ways to break the design, and anything else is a code change.
+- Facts live in one place; the team app and the Studio edit the same documents, and a publish rebuilds the site.
+- The Studio's required fields and the website's list of optional fields (`merge.ts`) must be kept in step.
+- Moving off `siteSettings` needs a one-off migration per dataset (`apps/studio/migrate-settings.ts`).

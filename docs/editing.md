@@ -1,26 +1,53 @@
 # Editing the website
 
+A guide for the team manager. No coding needed.
+
 You edit everything at **https://battersea-cougars.sanity.studio**. Log in with the account you were
-invited with. Changes appear on the website **about 2 minutes after you press Publish**.
+invited with.
 
-Nothing goes live until you press **Publish** (bottom right), so it's safe to experiment.
+## Live or practice?
 
-## Post Friday training videos
+The Studio has two workspaces. Switch between them with the menu at the top left:
 
-1. Upload the video to YouTube (it can be _Unlisted_ if you don't want it in YouTube search).
-2. On YouTube, press **Share** and copy the link.
-3. In the Studio: **Videos → + (new)**. Paste the link, check the date and title, then **Publish**.
+- **Cougars website (Live)**: what the public sees. Changes appear on the website **about 2 minutes after you
+  press Publish**.
+- **Practice copy (Dev site, not live)**: a separate copy for trying things out. It only shows on the dev site,
+  never on the real one.
 
-You don't upload video files to the website. YouTube hosts them for free.
+Nothing goes live until you press **Publish** (bottom right), so it's safe to experiment either way. If a
+**Publish** button is greyed out, a red message on the page says what's missing.
 
-## Add photos
+## What's in the sidebar
 
-1. **Photo albums → +**. Give it a title (e.g. "Summer social 2026"), then press **Generate** next to
-   _Web address_.
-2. Drag a whole batch of photos from your computer or phone onto the **Photos** box.
-3. Optional: click a photo to add a caption. You can also drag the circle to mark the important part of the
-   picture, so crops keep it in view.
-4. **Publish**.
+The sidebar follows a Friday night, with the things that rarely change at the bottom:
+
+| Item         | What it holds                                                                    |
+| ------------ | -------------------------------------------------------------------------------- |
+| **Fridays**  | Session days and times, where we play, what to bring, kit for first-timers, fees |
+| **Pub**      | Where everyone goes afterwards                                                   |
+| **Events**   | Socials, tournaments, clinics and Kumite dates                                   |
+| **Kumite**   | _About the Kumite_ (intro, rules, awards) and _Results_ (past winners)           |
+| **Team**     | _About the team_ (intro, league, team photo) and _Players_ (the trading cards)   |
+| **Videos**   | Friday session footage                                                           |
+| **Photos**   | Photo albums                                                                     |
+| **Club**     | Year founded, contact email, social media links, homepage background photo       |
+| **Sponsors** | Logos in the footer                                                              |
+
+Fridays, Pub, Club, _About the Kumite_ and _About the team_ are single pages: you edit them, you can't add or
+delete them. Every box has a line of help text under its name.
+
+**You edit the facts, not the wording.** The website's jokes, headings and page text are part of the design and
+live in the code. If a sentence on the site is wrong, tell the developer.
+
+## Change the Friday details
+
+**Fridays** has the session times, the venue (name, address and Google Maps link), the kit rules and the fees.
+
+- **Kit for first-timers**: what the club lends a newcomer, e.g. "First session, we provide all the kit." While
+  this is filled in, the website also says "we'll lend you the kit" in the footer and in search results. **Leave
+  it empty if the club doesn't lend kit**, and the website won't promise it anywhere.
+- **Fees**: leave it empty to say nothing about cost.
+- If you have more than one session, the first one in the list is the one the homepage talks about.
 
 ## Announce an event
 
@@ -30,20 +57,52 @@ You don't upload video files to the website. YouTube hosts them for free.
    _Button link_.
 3. **Publish**. It appears on the homepage until it's over, and then moves to _Past events_ automatically.
 
+Kumite dates are events with the type _Cougars Kumite_: they also appear on the Kumite poster with a countdown.
+
+## Record a Kumite result
+
+**Kumite → Results → +**. Fill in the season (e.g. "Winter 2026"), the date it was played, the winning team and
+the top scorer, and optionally pick the Kumite event it belongs to. **Publish**.
+
+The result with the newest date shows as the reigning champions on the honours board; older ones are listed
+underneath. You don't need to put them in order.
+
 ## Update the team
 
-**Team roster → +** adds a player. Only the name is required; the nickname goes big on the front of their
+**Team → Players → +** adds a player. Only the name is required; the nickname goes big on the front of their
 trading card, and _Known for_, _Weakness_ and _Quote_ go on the back. Lower _Order_ numbers show first, and
 the first five appear on the homepage.
 
-The team photo and the introduction live in **Club details & homepage → Team**.
+**Team → About the team** has the introduction, the league and the team photo.
+
+## Post Friday training videos
+
+1. Upload the video to YouTube (it can be _Unlisted_ if you don't want it in YouTube search).
+2. On YouTube, press **Share** and copy the link.
+3. In the Studio: **Videos → +**. Paste the link, check the date and title, then **Publish**.
+
+You don't upload video files to the website. YouTube hosts them for free.
+
+## Add photos
+
+1. **Photos → +**. Give the album a title (e.g. "Summer social 2026"), then press **Generate** next to
+   _Web address_.
+2. Drag a whole batch of photos from your computer or phone onto the **Photos** box.
+3. Click a photo to add a caption and a short description (for people using screen readers). You can also drag
+   the circle to mark the important part of the picture, so crops keep it in view.
+4. **Publish**.
+
+## Describe every photo
+
+Every photo needs a short description in _Describe the photo_, e.g. "Cougars celebrating a goal". The Studio
+won't publish a photo without one. It's read aloud to blind visitors and shown if the photo can't load.
 
 ## Change club details
 
-**Club details & homepage** has the headline, the "About" text, training times, venue, kit list, fees,
-contact email and social links.
+**Club** has the year the club was founded (shown in the header, footer and homepage), the contact email, the
+social media links (leave one empty to hide it) and an optional homepage background photo.
 
 ## Who sees the enquiries from "Try a session"?
 
-For now they're stored safely in the club database. Email notifications to the club inbox come in the next
+For now they're stored safely in the club database. Email notifications to the club inbox come in a later
 phase (see the roadmap).
