@@ -64,6 +64,7 @@ Rules ([ADR 0002](docs/adr/0002-secrets-in-bitwarden.md), [ADR 0010](docs/adr/00
 | [`SANITY_API_TOKEN`](#sanity_api_token)                                               | `cougars-dev` | Sanity                      | Website build (both)              |
 | [`SANITY_DATASET__DEV`](#sanity_dataset__dev)                                         | `cougars-dev` | (a setting)                 | Dev builds read the `dev` dataset |
 | [`SANITY_WEBHOOK_GITHUB_TOKEN__PRODUCTION`](#sanity_webhook_github_token__production) | `cougars`     | GitHub (fine-grained)       | Sanity's publish webhook          |
+| [`SANITY_DEPLOY_TOKEN__PRODUCTION`](#sanity_deploy_token__production)                 | `cougars`     | Sanity                      | Studio deploys                    |
 
 ### Bitwarden tokens
 
@@ -124,7 +125,8 @@ The Cougars Dev account's id. Not secret.
 ### `SANITY_PROJECT_ID`
 
 Which Sanity project the website reads. Shared by both environments (they use different datasets). Not
-secret. Without it, the site builds from `apps/web/src/lib/sanity/fallback.ts`.
+secret. Without it, the site builds from `apps/web/src/lib/sanity/fallback.ts`. The Studio deploy passes it to
+the Studio as `SANITY_STUDIO_PROJECT_ID`.
 
 ### `SANITY_API_TOKEN`
 
@@ -152,6 +154,21 @@ Lets Sanity start a production rebuild when an editor presses Publish (`reposito
 - **Rotate:** new token with the same name, update Secrets Manager and the webhook header, publish something to
   check, delete the old token.
 
+### `SANITY_DEPLOY_TOKEN__PRODUCTION`
+
+Lets CI deploy the Studio to https://battersea-cougars.sanity.studio on every push to `release`.
+
+- **Issued by:** Sanity → manage → project → API → Tokens, role **Deploy Studio**. Token name:
+  `SANITY_DEPLOY_TOKEN__PRODUCTION`.
+- **Used by:** the `studio` job in `deploy.yml` (`sanity deploy`, which reads it as `SANITY_AUTH_TOKEN`).
+  Production only: `main` and PRs never deploy the Studio.
+- **Gets there by:** CI pull from Secrets Manager (`cougars`); the job maps `SANITY_DEPLOY_TOKEN` to
+  `SANITY_AUTH_TOKEN`. Never name it `SANITY_STUDIO_*`: the Studio build puts those variables in its public
+  JavaScript.
+- **Expires:** no.
+- **Rotate:** add a new Deploy Studio token with the same name, update Secrets Manager, push `release` (or re-run
+  the job), delete the old token.
+
 ### Settings that aren't secret
 
 | Name                                    | Where                       | What                                                             |
@@ -159,7 +176,7 @@ Lets Sanity start a production rebuild when an editor presses Publish (`reposito
 | `SITE_URL`                              | GitHub variable             | Production URL, once there is a domain                           |
 | `BWS_SERVER_URL`                        | GitHub variable, your shell | `https://vault.bitwarden.eu` if the vault is on the EU server    |
 | `SANITY_DATASET`                        | Default `production`        | Overridden by `SANITY_DATASET__DEV` for dev                      |
-| `SANITY_STUDIO_PROJECT_ID` / `_DATASET` | Studio config defaults      | Which project and dataset the Studio edits                       |
+| `SANITY_STUDIO_PROJECT_ID` / `_DATASET` | Your shell, CI              | Studio's project; the dataset for its seed and migration scripts |
 | `DEMO_CONTENT`                          | `.env`, GitHub variable     | Sample content + `noindex`; `true` on production only pre-launch |
 | `PUBLIC_BUILD_VERSION`                  | Set by CI                   | Shown in `<meta name="generator">`; checked by the smoke test    |
 
