@@ -24,7 +24,7 @@ const steps = [
 
 <Base
   title="Fridays"
-  description={`Regular club inline hockey every ${slot?.day ?? "Friday"} at ${s.venue.name}. All levels${s.firstSessionKit ? ", kit provided for your first session" : ""}.`}
+  description={`Regular club inline hockey every ${slot?.day ?? "Friday"} at ${s.venue.name}. All levels${s.firstSessionKit ? ", spare kit to borrow for your first session" : ""}.`}
 >
   <PageHeader
     eyebrow="Regular club hockey"
@@ -46,7 +46,7 @@ const steps = [
       <div data-reveal style="--i:1">
         <dt class="label">Kit</dt>
         <dd>
-          <span class="big">Helmet and gloves</span>
+          <span class="big">Helmet, gloves, shins</span>
           <span class="muted">{kitText(s)}</span>
         </dd>
       </div>

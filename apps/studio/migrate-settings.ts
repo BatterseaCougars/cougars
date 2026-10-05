@@ -32,7 +32,7 @@ const pick = (keys: string[], from: Record<string, unknown> = old) =>
   Object.fromEntries(keys.filter((k) => from[k] !== undefined && from[k] !== null).map((k) => [k, from[k]]));
 
 // The old kit text mixed the kit rules with the first-session offer. Sentences about the first session move to
-// the new "Kit for first-timers" field, which switches the site's "we lend you the kit" lines on.
+// the new "Kit for first-timers" field, which switches the site's "spare kit to borrow" lines on.
 const sentences: string[] = String(old.kitNotes ?? "").match(/[^.!?]+[.!?]*/g) ?? [];
 const isFirstSession = (s: string) => /first (session|time|visit|night)/i.test(s);
 const kitNotes = sentences

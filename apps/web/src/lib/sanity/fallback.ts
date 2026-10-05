@@ -32,8 +32,8 @@ export const FALLBACK_FRIDAYS: Fridays = {
     address: "London SW11 3AB",
     mapUrl: "https://maps.app.goo.gl/w5GZTqQF9Qekgeaa6",
   },
-  kitNotes: "Helmet and gloves are non-negotiable. Full pads (knees, elbows, shins) strongly recommended.",
-  firstSessionKit: "First session, we provide all the kit.",
+  kitNotes: "Helmet, gloves and shin pads are non-negotiable. Knee and elbow pads strongly recommended.",
+  firstSessionKit: "First session? The club can lend you some kit, and players often have spares to lend or give away.",
   feesText: null,
 };
 

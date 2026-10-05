@@ -184,7 +184,7 @@ export const fridays = defineType({
       type: "text",
       rows: 2,
       description:
-        "What the club lends a newcomer on their first night, e.g. “First session, we provide all the kit.” " +
+        "What the club lends a newcomer on their first night, e.g. “The club can lend you some kit, and players often have spares.” " +
         "Leave this empty if the club doesn't lend kit: the website then won't mention lending kit anywhere.",
     }),
     defineField({

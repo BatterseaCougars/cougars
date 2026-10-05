@@ -20,7 +20,7 @@ const site = "Battersea Cougars";
 const s = await getSettings();
 const {
   title,
-  description = `Roller hockey in Battersea, South London, since ${s.founded}. Friday nights, all levels${s.firstSessionKit ? ", kit provided for your first session" : ""}. Then the pub.`,
+  description = `Roller hockey in Battersea, South London, since ${s.founded}. Friday nights, all levels${s.firstSessionKit ? ", spare kit to borrow for your first session" : ""}. Then the pub.`,
   image,
 } = Astro.props;
 const fullTitle = title ? `${title} · ${site}` : `${site} · Inline hockey in Battersea, London`;

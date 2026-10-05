@@ -72,6 +72,9 @@ worktree under `.worktrees/`. Each stream lands on `main` when it passes the pre
 - [ ] Sanity `video` documents become optional overrides matched by YouTube ID: pin, retitle, hide.
 - [ ] A daily scheduled rebuild picks up new uploads.
 - [ ] ADR 0015.
+- [ ] Club YouTube channel on batterseahockey@gmail.com, with the filmer as a manager. Today's videos are
+      unlisted uploads on a member's personal channel, which the public-uploads pull can't see.
+- [ ] Read a playlist on the club channel (optional playlist ID in Club), including unlisted videos in it.
 
 ## M4: Live photo gallery (stream C, parallel)
 
