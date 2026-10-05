@@ -8,6 +8,8 @@ const dayDate = fmt({ weekday: "short", day: "numeric", month: "short", year: "n
 const longDate = fmt({ day: "numeric", month: "long", year: "numeric" });
 const time = fmt({ hour: "2-digit", minute: "2-digit", hour12: false });
 const parts = fmt({ day: "numeric", month: "short" });
+// en-CA formats dates as YYYY-MM-DD
+const isoDay = new Intl.DateTimeFormat("en-CA", { timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit" });
 
 export const formatDate = (iso: string) => longDate.format(new Date(iso));
 /** "Fri 4 Dec 2026" (Intl puts a comma after the weekday; we drop it). */
@@ -31,3 +33,6 @@ export function formatRange(startIso: string, endIso?: string | null) {
   const sameDay = formatDayDate(startIso) === formatDayDate(endIso);
   return sameDay ? `${start}–${formatTime(endIso)}` : `${start} – ${formatDayDate(endIso)} · ${formatTime(endIso)}`;
 }
+
+/** "2026-10-02": the calendar day in London, like a Sanity `date` field. */
+export const londonDay = (iso: string) => isoDay.format(new Date(iso));

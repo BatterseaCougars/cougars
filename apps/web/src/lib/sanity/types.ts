@@ -77,6 +77,18 @@ export interface Video {
   description?: string | null;
 }
 
+/** A Sanity `video` document. It overrides the channel video with the same YouTube id, or adds one. */
+export interface VideoOverride {
+  _id: string;
+  _createdAt?: string;
+  youtubeUrl: string;
+  title?: string | null;
+  recordedOn?: string | null;
+  description?: string | null;
+  hidden?: boolean | null;
+  pinned?: boolean | null;
+}
+
 export type EventType = "training" | "social" | "tournament" | "kumite";
 
 export interface ClubEvent {

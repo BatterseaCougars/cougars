@@ -1,0 +1,75 @@
+{
+  "channels": {
+    "kind": "youtube#channelListResponse",
+    "items": [
+      {
+        "kind": "youtube#channel",
+        "id": "UCabcdefghijklmnopqrstuv",
+        "contentDetails": { "relatedPlaylists": { "likes": "", "uploads": "UUabcdefghijklmnopqrstuv" } }
+      }
+    ]
+  },
+  "playlistItems": {
+    "kind": "youtube#playlistItemListResponse",
+    "nextPageToken": "PAGE2",
+    "items": [
+      {
+        "snippet": {
+          "publishedAt": "2026-10-02T21:40:00Z",
+          "title": "Friday session, full game ",
+          "description": "Five a side, two goalies.\n\nSubscribe! https://example.com #inlinehockey",
+          "resourceId": { "kind": "youtube#video", "videoId": "aaaaaaaaaaa" }
+        },
+        "contentDetails": { "videoId": "aaaaaaaaaaa", "videoPublishedAt": "2026-10-02T23:30:00Z" },
+        "status": { "privacyStatus": "public" }
+      },
+      {
+        "snippet": {
+          "publishedAt": "2026-09-30T10:00:00Z",
+          "title": "Private video",
+          "description": "This video is private.",
+          "resourceId": { "kind": "youtube#video", "videoId": "bbbbbbbbbbb" }
+        },
+        "contentDetails": { "videoId": "bbbbbbbbbbb" },
+        "status": { "privacyStatus": "private" }
+      },
+      {
+        "snippet": {
+          "publishedAt": "2026-09-27T10:00:00Z",
+          "title": "Deleted video",
+          "description": "This video is unavailable.",
+          "resourceId": { "kind": "youtube#video", "videoId": "ccccccccccc" }
+        },
+        "contentDetails": { "videoId": "ccccccccccc" },
+        "status": { "privacyStatus": "privacyStatusUnspecified" }
+      },
+      {
+        "snippet": {
+          "publishedAt": "2026-09-26T09:00:00Z",
+          "title": "Team only",
+          "description": "",
+          "resourceId": { "kind": "youtube#video", "videoId": "ddddddddddd" }
+        },
+        "contentDetails": { "videoId": "ddddddddddd", "videoPublishedAt": "2026-09-26T09:00:00Z" },
+        "status": { "privacyStatus": "unlisted" }
+      },
+      {
+        "snippet": {
+          "publishedAt": "2026-12-04T22:00:00Z",
+          "title": "Kumite final",
+          "description": "",
+          "resourceId": { "kind": "youtube#video", "videoId": "eeeeeeeeeee" }
+        },
+        "contentDetails": { "videoId": "eeeeeeeeeee", "videoPublishedAt": "2026-09-25T20:00:00Z" },
+        "status": { "privacyStatus": "public" }
+      }
+    ]
+  },
+  "quotaExceeded": {
+    "error": {
+      "code": 403,
+      "message": "The request cannot be completed because you have exceeded your quota.",
+      "errors": [{ "domain": "youtube.quota", "reason": "quotaExceeded" }]
+    }
+  }
+}
