@@ -83,7 +83,7 @@ Lets CI (and you) read the other secrets. Each is an access token on a Bitwarden
 Deploys the `cougars` worker and migrates the `cougars` D1 database on the **Cougars** account.
 
 - **Issued by:** Cloudflare, Cougars account → Manage Account → **Account API Tokens**. Scope **Entire
-  Cougars account**; permissions **Workers Editor**, **D1 Write**. Token name:
+  Cougars account**; permissions **Workers Admin** (Editor can't create a new worker), **D1 Write**. Token name:
   `CLOUDFLARE_API_TOKEN__PRODUCTION`.
 - **Used by:** `deploy.yml` on `main` and Studio publishes only (`target.mjs`, migrations, `wrangler deploy`).
 - **Gets there by:** CI pull from Secrets Manager (code reads `CLOUDFLARE_API_TOKEN`).
@@ -100,7 +100,7 @@ Deploys the `cougars-dev` worker and migrates the `cougars-dev` D1 database on t
 Can't touch production: it is a different account.
 
 - **Issued by:** Cloudflare, Cougars Dev account → Manage Account → **Account API Tokens**. Scope **Entire
-  Cougars Dev account**; permissions **Workers Editor**, **D1 Write**. Token name: `CLOUDFLARE_API_TOKEN__DEV`.
+  Cougars Dev account**; permissions **Workers Admin** (Editor can't create a new worker), **D1 Write**. Token name: `CLOUDFLARE_API_TOKEN__DEV`.
 - **Used by:** `deploy.yml` on pull requests (preview versions), `scripts/deploy-dev.sh`.
 - **Gets there by:** CI pull, or `node scripts/env-pull.mjs -- bash scripts/deploy-dev.sh`.
 - **Expires:** no, unless you set a TTL.

@@ -5,7 +5,8 @@ One database, `cougars`, bound as `DB` in `apps/web/wrangler.jsonc`.
 ## Migrations
 
 - Plain SQL in `db/migrations/NNNN_description.sql`, applied in CI with
-  `wrangler d1 migrations apply cougars --remote` before every deploy.
+  `wrangler d1 migrations apply DB --remote -c dist/server/wrangler.json` (the built config, which
+  names the right database for each environment) before every deploy.
 - Local: `npm run db:migrate:local` (state lives in `apps/web/.wrangler/`).
 - **Additive only.** Never edit a migration that has run. Removing or renaming
   a column = new table/column + backfill + drop in a later migration.

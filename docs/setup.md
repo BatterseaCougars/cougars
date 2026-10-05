@@ -19,7 +19,7 @@ Do this twice: once for **Cougars** (production), once for **Cougars Dev** (dev)
    `https://cougars.<subdomain>.workers.dev` until we buy a domain; dev at `https://cougars-dev.<subdomain>.workers.dev`.
 3. Copy the **Account ID** (account home page).
 4. **Manage Account → Account API Tokens → Create Token** (account-owned, so it doesn't depend on one person's
-   login). Scope **Entire _account_**; permissions **Workers Editor** and **D1 Write**. Name it
+   login). Scope **Entire _account_**; permissions **Workers Admin** (Editor can't create a new worker) and **D1 Write**. Name it
    `CLOUDFLARE_API_TOKEN__PRODUCTION` on Cougars, `CLOUDFLARE_API_TOKEN__DEV` on Cougars Dev. Copy it.
 
 Bitwarden secrets (step 3): `CLOUDFLARE_API_TOKEN__PRODUCTION`, `CLOUDFLARE_ACCOUNT_ID__PRODUCTION` in

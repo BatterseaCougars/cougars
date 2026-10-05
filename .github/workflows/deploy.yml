@@ -63,7 +63,8 @@ jobs:
       # Keep migrations additive (db/README.md).
       - name: Apply D1 migrations
         working-directory: apps/web
-        run: npx wrangler d1 migrations apply "${{ env.SITE_ENV == 'production' && 'cougars' || 'cougars-dev' }}" --remote
+        # D1 commands don't follow the build's config redirect, so name the generated config
+        run: npx wrangler d1 migrations apply DB --remote -c dist/server/wrangler.json
 
       - name: Deploy production
         id: production
