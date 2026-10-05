@@ -24,13 +24,26 @@ export function projectFor(key) {
 }
 
 /**
- * Run bws and parse its JSON output. CI passes BWS_ACCESS_TOKEN; on your machine it's COUGARS_LOCAL_BW_TOKEN.
+ * The Secrets Manager token: BWS_ACCESS_TOKEN in CI; on your machine COUGARS_LOCAL_BW_TOKEN from the shell, or
+ * else the vault item of that name (needs an unlocked vault: `export BW_SESSION=$(bw unlock --raw)`).
+ */
+function accessToken() {
+  const token = process.env.BWS_ACCESS_TOKEN || process.env.COUGARS_LOCAL_BW_TOKEN;
+  if (token) return token;
+  const res = spawnSync("bw", ["get", "password", "COUGARS_LOCAL_BW_TOKEN"], { encoding: "utf8" });
+  if (res.status === 0 && res.stdout.trim()) return res.stdout.trim();
+  throw new Error(
+    "No Bitwarden token. Unlock your vault (export BW_SESSION=$(bw unlock --raw)) with an item named " +
+      "COUGARS_LOCAL_BW_TOKEN, or export COUGARS_LOCAL_BW_TOKEN. See README.md#bitwarden-tokens.",
+  );
+}
+
+/**
+ * Run bws and parse its JSON output.
  * Our organisation is on the EU server, the default when BWS_SERVER_URL is empty.
  */
 export function bws(args) {
-  const token = process.env.BWS_ACCESS_TOKEN || process.env.COUGARS_LOCAL_BW_TOKEN;
-  if (!token) throw new Error("Set COUGARS_LOCAL_BW_TOKEN (or BWS_ACCESS_TOKEN in CI). See README.md#secrets.");
-  const env = { ...process.env, BWS_ACCESS_TOKEN: token };
+  const env = { ...process.env, BWS_ACCESS_TOKEN: accessToken() };
   env.BWS_SERVER_URL ||= "https://vault.bitwarden.eu";
   const res = spawnSync("bws", [...args, "--output", "json"], { encoding: "utf8", env });
   if (res.error) throw new Error(`Could not run bws: ${res.error.message}. Is the Bitwarden CLI installed?`);
