@@ -7,13 +7,14 @@
 // Your machine is dev unless you pass --environment production.
 import { appendFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
-import { loadSecrets } from "./lib/bitwarden.mjs";
+import { ensureToken, loadSecrets } from "./lib/bitwarden.mjs";
 
 const argv = process.argv.slice(2);
 const flag = (name) => argv.includes(name);
 const opt = (name, fallback) => (argv.includes(name) ? argv[argv.indexOf(name) + 1] : fallback);
 const environment = opt("--environment", "dev");
 
+await ensureToken();
 const secrets = loadSecrets(environment);
 
 if (flag("--status")) {

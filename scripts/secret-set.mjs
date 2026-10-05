@@ -5,8 +5,7 @@
 //   pbpaste | node scripts/secret-set.mjs SANITY_API_TOKEN         (reads stdin)
 // NAME__PRODUCTION goes to `cougars`, anything else to `cougars-dev`. The value is never printed.
 // Document the secret in README.md#secrets in the same change.
-import { createInterface } from "node:readline";
-import { bws, projectFor } from "./lib/bitwarden.mjs";
+import { bws, ensureToken, projectFor, promptHidden } from "./lib/bitwarden.mjs";
 
 const key = process.argv[2];
 if (!key || process.argv.length > 3) {
@@ -14,6 +13,7 @@ if (!key || process.argv.length > 3) {
   process.exit(2);
 }
 const projectName = projectFor(key);
+await ensureToken();
 
 const project = bws(["project", "list"]).find((p) => p.name.trim().toLowerCase() === projectName);
 if (!project) {
@@ -30,16 +30,8 @@ console.log(`${existing ? "Updated" : "Created"} ${key} in ${projectName}.`);
 if (!existing) console.log("Now document it in README.md#secrets.");
 
 async function readValue(prompt) {
-  if (!process.stdin.isTTY) {
-    let data = "";
-    for await (const chunk of process.stdin) data += chunk;
-    return data.trim();
-  }
-  const rl = createInterface({ input: process.stdin, output: process.stdout, terminal: true });
-  process.stdout.write(prompt);
-  rl._writeToOutput = () => {}; // hide what's typed or pasted
-  const line = await new Promise((resolve) => rl.once("line", resolve));
-  rl.close();
-  process.stdout.write("\n");
-  return line.trim();
+  if (process.stdin.isTTY) return promptHidden(prompt);
+  let data = "";
+  for await (const chunk of process.stdin) data += chunk;
+  return data.trim();
 }
