@@ -12,7 +12,8 @@
 # Ports come from the stream's slot, inside Cougars' 4500-4529 range:
 #   cms 4501 / studio 4521, youtube 4502 / 4522, gallery 4503 / 4523.
 set -euo pipefail
-root="$(cd "$(dirname "$0")/.." && pwd)"
+# The main checkout, even when run from inside a worktree (whose own copy of this script lives there).
+root="$(cd "$(git -C "$(dirname "$0")" rev-parse --git-common-dir)/.." && pwd)"
 
 slot() {
   case "$1" in
