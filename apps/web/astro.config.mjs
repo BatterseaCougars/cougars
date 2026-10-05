@@ -13,7 +13,9 @@ export default defineConfig({
   // (phase 3) uses its own signed cookie + D1.
   session: false,
   trailingSlash: "ignore",
-  redirects: { "/gallery": "/photos", "/gallery/[slug]": "/photos/[slug]" },
+  // Old Wix addresses. /gallery/<album> is a server route (pages/gallery/[slug].ts): a config redirect to a
+  // server-rendered page would point at a prerendered file that doesn't exist.
+  redirects: { "/gallery": "/photos" },
   integrations: [sitemap({ filter: (page) => !page.includes("/join/thanks") })],
   adapter: cloudflare({
     // Resize local assets at build time with sharp; Sanity's CDN resizes CMS

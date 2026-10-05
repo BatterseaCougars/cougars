@@ -1,38 +1,50 @@
 ---
-import type { GetStaticPaths } from "astro";
+// One album's photos, in a masonry wall that opens the lightbox. Rendered on the Worker from Sanity at
+// request time (ADR 0016). An unknown web address gets the site's 404 page.
 import Base from "../../layouts/Base.astro";
 import PageHeader from "../../components/PageHeader.astro";
+import Empty from "../../components/Empty.astro";
 import Lightbox from "../../components/Lightbox.astro";
-import { getAlbums } from "../../lib/sanity/content";
 import { imageUrl, imageSrcSet } from "../../lib/sanity/images";
 import { formatDate } from "../../lib/dates";
-import type { Album } from "../../lib/sanity/types";
+import { CACHE_CONTROL, UNAVAILABLE_CACHE_CONTROL, findAlbum } from "../../lib/server/photos";
+import { photosConfig } from "../../lib/server/sanity-env";
 
-export const getStaticPaths = (async () =>
-  (await getAlbums()).map((album) => ({ params: { slug: album.slug }, props: { album } }))) satisfies GetStaticPaths;
+export const prerender = false;
 
-const { album } = Astro.props as { album: Album };
+const { data: album, unavailable } = await findAlbum(photosConfig(), Astro.params.slug ?? "");
+// An empty 404 makes Astro serve the site's own 404 page.
+if (!album && !unavailable) return new Response(null, { status: 404 });
+
+Astro.response.headers.set("Cache-Control", unavailable ? UNAVAILABLE_CACHE_CONTROL : CACHE_CONTROL);
+if (unavailable) Astro.response.status = 503;
 ---
 
-<Base title={album.title} image={imageUrl(album.cover, 1200, 630)}>
-  <PageHeader eyebrow={formatDate(album.date)} title={album.title} />
+<Base title={album?.title ?? "Photos"} image={album ? imageUrl(album.cover, 1200, 630) : null}>
+  <PageHeader eyebrow={album?.date ? formatDate(album.date) : "Photos"} title={album?.title ?? "The evidence"} />
   <div class="wrap page-body">
-    <ul class="masonry" data-gallery>
-      {album.photos.map((p) => (
-        <li>
-          <a href={imageUrl(p, 2000)} data-photo data-caption={p.caption ?? ""}>
-            <img
-              src={imageUrl(p, 600)}
-              srcset={imageSrcSet(p, [400, 600, 900])}
-              sizes="(max-width: 40rem) 50vw, 24rem"
-              alt={p.alt ?? p.caption ?? ""}
-              loading="lazy"
-            />
-          </a>
-          {p.caption && <span class="cap">{p.caption}</span>}
-        </li>
-      ))}
-    </ul>
+    {album ? (
+      <ul class="masonry" data-gallery>
+        {album.photos.map((p, i) => (
+          <li>
+            <a href={imageUrl(p, 2000)} data-photo data-caption={p.caption ?? ""}>
+              <img
+                src={imageUrl(p, 600)}
+                srcset={imageSrcSet(p, [400, 600, 900])}
+                sizes="(max-width: 40rem) 100vw, 24rem"
+                alt={p.alt}
+                width="600"
+                height={Math.round(600 / (p.aspect || 4 / 3))}
+                loading={i < 6 ? "eager" : "lazy"}
+              />
+            </a>
+            {p.caption && <span class="cap">{p.caption}</span>}
+          </li>
+        ))}
+      </ul>
+    ) : (
+      <Empty>The photos won't load right now. Try again in a minute.</Empty>
+    )}
     <p>
       <a class="label link" href="/photos/">
         ← All photos
@@ -57,6 +69,7 @@ const { album } = Astro.props as { album: Album };
   }
   .masonry img {
     width: 100%;
+    height: auto;
     border-radius: 6px;
   }
   .cap {

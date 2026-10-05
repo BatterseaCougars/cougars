@@ -1,56 +1,66 @@
 ---
-// One photo gallery: every album's photos on one page, newest album first.
+// Every album, newest first: a cover each, linking to the album's own page. Rendered on the Worker from
+// Sanity at request time (ADR 0016), so a published album is here within minutes, with no rebuild.
 import Base from "../../layouts/Base.astro";
 import PageHeader from "../../components/PageHeader.astro";
 import Empty from "../../components/Empty.astro";
-import Lightbox from "../../components/Lightbox.astro";
-import { getAlbums, getSettings } from "../../lib/sanity/content";
+import { getSettings } from "../../lib/sanity/content";
 import { imageSrcSet, imageUrl } from "../../lib/sanity/images";
 import { formatDate } from "../../lib/dates";
+import { CACHE_CONTROL, UNAVAILABLE_CACHE_CONTROL, listAlbums } from "../../lib/server/photos";
+import { photosConfig } from "../../lib/server/sanity-env";
 
-const albums = await getAlbums();
+export const prerender = false;
+
+const { data: albums, unavailable } = await listAlbums(photosConfig());
 const s = await getSettings();
 const day = s.training[0]?.day ?? "Friday";
+const plural = (n: number) => `${n} photo${n === 1 ? "" : "s"}`;
+
+Astro.response.headers.set("Cache-Control", unavailable ? UNAVAILABLE_CACHE_CONTROL : CACHE_CONTROL);
+if (unavailable) Astro.response.status = 503;
 ---
 
 <Base title="Photos" description={`Photos from Cougars ${day} nights, the Kumite and the rest.`}>
   <PageHeader
     eyebrow="Photos"
     title="The evidence"
-    lede={`Photographic proof that some of us can skate. ${day} nights, Kumite days and the rest; press one to see it big.`}
+    lede={`Photographic proof that some of us can skate. ${day} nights, Kumite days and the rest; pick a tape.`}
   />
   <div class="wrap page-body">
     {albums.length ? (
-      albums.map((a) => (
-        <section class="album" id={a.slug}>
-          <header class="album-head" data-reveal>
-            <h2>
-              <a href={`/photos/${a.slug}/`}>{a.title}</a>
-            </h2>
-            <p class="label">
-              {formatDate(a.date)} · {a.photos.length} photos
-            </p>
-          </header>
-          <ul class="wall" data-gallery>
-            {a.photos.map((p) => (
-              <li>
-                <a href={imageUrl(p, 2000)} data-photo data-caption={p.caption ?? ""}>
+      <ul class="albums">
+        {albums.map((a, i) => (
+          <li data-reveal style={`--i:${i % 3}`}>
+            <a href={`/photos/${a.slug}/`}>
+              <span class="cover">
+                {a.cover && (
                   <img
-                    src={imageUrl(p, 600)}
-                    srcset={imageSrcSet(p, [400, 600, 900])}
-                    sizes="(max-width: 40rem) 50vw, 20rem"
-                    alt={p.alt ?? p.caption ?? ""}
-                    loading="lazy"
+                    src={imageUrl(a.cover, 600, 450)}
+                    srcset={imageSrcSet(a.cover, [400, 600, 900], 4 / 3)}
+                    sizes="(max-width: 40rem) 100vw, (max-width: 64rem) 50vw, 24rem"
+                    alt={a.cover.alt ?? ""}
+                    width="600"
+                    height="450"
+                    loading={i < 3 ? "eager" : "lazy"}
                   />
-                </a>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ))
+                )}
+              </span>
+              <div class="meta">
+                <h2>{a.title}</h2>
+                <p class="label">
+                  {a.date && formatDate(a.date)} · {plural(a.photoCount)}
+                </p>
+              </div>
+            </a>
+          </li>
+        ))}
+      </ul>
     ) : (
       <Empty>
-        No photos yet. See more on{" "}
+        {unavailable
+          ? "The photos won't load right now. Try again in a minute, or see more on "
+          : "No photos yet. See more on "}
         <a href={s.socials.instagram ?? "#"} rel="noopener" target="_blank">
           Instagram
         </a>
@@ -58,55 +68,54 @@ const day = s.training[0]?.day ?? "Friday";
       </Empty>
     )}
   </div>
-  <Lightbox />
 </Base>
 
 <style>
-  .album + .album {
-    margin-top: clamp(3.5rem, 8vw, 5.5rem);
-  }
-  .album-head {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 0.5rem 2rem;
-    margin-bottom: 1.25rem;
-    padding-bottom: 0.75rem;
-    border-bottom: 1px solid var(--rule);
-  }
-  .album-head h2 {
-    font-size: clamp(1.8rem, 3.5vw, 2.6rem);
-  }
-  .album-head a:hover {
-    color: var(--red-hot);
-  }
-  .album-head .label {
-    margin: 0;
-  }
-  .wall {
+  .albums {
     list-style: none;
     margin: 0;
     padding: 0;
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(min(46%, 13rem), 1fr));
-    gap: 0.5rem;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 18rem), 1fr));
+    gap: 2.5rem 1.25rem;
   }
-  .wall a {
+  .albums a {
+    display: grid;
+    gap: 0.75rem;
+  }
+  .cover {
     display: block;
     overflow: hidden;
+    aspect-ratio: 4 / 3;
+    background: var(--rule);
   }
-  .wall img {
+  .cover img {
     width: 100%;
-    aspect-ratio: 1;
+    height: 100%;
     object-fit: cover;
+    filter: saturate(0.9);
     transition:
       transform 0.6s var(--ease-out),
       filter 0.4s;
-    filter: saturate(0.9);
   }
-  .wall a:hover img {
+  .albums a:hover img {
     transform: scale(1.05);
     filter: none;
+  }
+  .meta {
+    display: grid;
+    gap: 0.35rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--rule);
+  }
+  .meta h2 {
+    font-size: clamp(1.6rem, 2.8vw, 2.2rem);
+    line-height: 1.05;
+  }
+  .meta .label {
+    margin: 0;
+  }
+  .albums a:hover h2 {
+    color: var(--red-hot);
   }
 </style>
