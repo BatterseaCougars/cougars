@@ -175,7 +175,28 @@ Lets Sanity start a production rebuild when an editor presses Publish (`reposito
 ## Ports (devcontainer)
 
 Cougars owns ports **4500-4529** so it doesn't clash with other projects on the host:
-4500 web, 4510 ops app, 4520 Sanity Studio.
+4500 web, 4510 ops app, 4520 Sanity Studio. Worktrees use 4501-4509 (web) and 4521-4529 (Studio).
+
+## Worktrees (parallel streams)
+
+Parallel work streams ([roadmap](docs/roadmap.md)) each get a git worktree under `.worktrees/`, with their own
+dependencies, local D1 database and ports, so each can be previewed while `main` runs on 4500:
+
+```sh
+bash scripts/worktree.sh add cms       # branch cms, installs and migrates
+bash scripts/worktree.sh dev cms       # http://localhost:4501 (dev secrets if Bitwarden is unlocked)
+bash scripts/worktree.sh studio cms    # http://localhost:4521
+bash scripts/worktree.sh remove cms    # when the stream has landed on main
+```
+
+| Stream    | Website | Studio |
+| --------- | ------- | ------ |
+| `cms`     | 4501    | 4521   |
+| `youtube` | 4502    | 4522   |
+| `gallery` | 4503    | 4523   |
+
+A Studio on a new port needs that origin added once under the Sanity project's API → CORS origins
+(e.g. `http://localhost:4521`, with credentials).
 
 Opening the devcontainer installs dependencies, migrates the local D1 database and starts **web** and **ops**
 automatically (VS Code tasks in `.vscode/tasks.json`, each in its own terminal). Start the Studio with

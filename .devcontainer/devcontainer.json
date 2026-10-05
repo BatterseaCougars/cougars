@@ -42,11 +42,17 @@
     }
   },
   // Cougars owns 4500-4529 so it can run alongside ark (4321/3333/5174/8788) on the host.
-  "forwardPorts": [4500, 4510, 4520],
+  "forwardPorts": [4500, 4501, 4502, 4503, 4510, 4520, 4521, 4522, 4523],
   "portsAttributes": {
     "4500": { "label": "Website (astro dev)" },
+    "4501": { "label": "Website: cms worktree" },
+    "4502": { "label": "Website: youtube worktree" },
+    "4503": { "label": "Website: gallery worktree" },
     "4510": { "label": "Ops app" },
-    "4520": { "label": "Sanity Studio" }
+    "4520": { "label": "Sanity Studio" },
+    "4521": { "label": "Studio: cms worktree" },
+    "4522": { "label": "Studio: youtube worktree" },
+    "4523": { "label": "Studio: gallery worktree" }
   },
   "otherPortsAttributes": { "onAutoForward": "ignore" },
   "postStartCommand": "bash /src/.devcontainer/post-start.sh",
