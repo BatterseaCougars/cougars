@@ -31,110 +31,126 @@ With secrets (needs `BWS_ACCESS_TOKEN`, see [Secrets](#secrets)):
 
 ```sh
 node scripts/env-pull.mjs --status          # list secret names (never values)
-node scripts/env-pull.mjs -- npm run dev    # run with secrets injected
+node scripts/env-pull.mjs -- npm run dev    # run with dev secrets injected
 ```
 
 ## Secrets
 
-Rules ([ADR 0002](docs/adr/0002-secrets-in-bitwarden.md)):
+Rules ([ADR 0002](docs/adr/0002-secrets-in-bitwarden.md), [ADR 0010](docs/adr/0010-two-environments.md)):
 
-- Every secret lives in **Bitwarden Secrets Manager**, project `cougars`, and nowhere else. GitHub holds only
-  `BWS_ACCESS_TOKEN`. There are no secret files.
-- **Naming:** `NAME` applies everywhere; `NAME__PRODUCTION` or `NAME__PREVIEW` (pull-request previews)
-  override it for that environment. Code reads `NAME`.
-- **A token is named exactly like its secret** at the provider that issued it, so each provider's token list
-  matches this table.
-- **`.env` (repo root) is for local, non-secret overrides only.** See [.env.example](.env.example).
-- **Every secret has an entry below.** Adding one means: create the token with its secret name, add it to
-  Secrets Manager, add it here.
+- Every secret lives in **Bitwarden Secrets Manager** and nowhere else. GitHub holds only `BWS_ACCESS_TOKEN`
+  (one per GitHub environment). There are no secret files; `.env` is for local, non-secret overrides
+  ([.env.example](.env.example)).
+- **Two environments.** Production (Cloudflare account **Cougars**) and dev (account **Cougars Dev**). Your
+  machine, PR previews and `scripts/deploy-dev.sh` are dev.
+- **Naming:** `NAME` applies to both; `NAME__PRODUCTION` / `NAME__DEV` override it for one. Code reads `NAME`.
+  Production values sit in the Secrets Manager project `cougars`; dev and shared values in `cougars-dev`.
+- **A token is named exactly like its secret** at the provider that issued it.
+- **Every secret has an entry below.** Adding one: create the token with its secret name, add it to Secrets
+  Manager, add it here.
 
-| Secret                                                        | Issued by                 | Used by                   |
-| ------------------------------------------------------------- | ------------------------- | ------------------------- |
-| [`BWS_ACCESS_TOKEN`](#bws_access_token)                       | Bitwarden machine account | CI, your shell            |
-| [`CLOUDFLARE_API_TOKEN`](#cloudflare_api_token)               | Cloudflare (club account) | CI deploys, D1 migrations |
-| [`CLOUDFLARE_ACCOUNT_ID`](#cloudflare_account_id)             | Cloudflare (club account) | CI deploys                |
-| [`SANITY_PROJECT_ID`](#sanity_project_id)                     | Sanity                    | Website build             |
-| [`SANITY_API_TOKEN`](#sanity_api_token)                       | Sanity                    | Website build             |
-| [`SANITY_WEBHOOK_GITHUB_TOKEN`](#sanity_webhook_github_token) | GitHub (fine-grained)     | Sanity's publish webhook  |
+| Secret                                                                                | Project       | Issued by                  | Used by                           |
+| ------------------------------------------------------------------------------------- | ------------- | -------------------------- | --------------------------------- |
+| [`BWS_ACCESS_TOKEN`](#bws_access_token)                                               | (GitHub)      | Bitwarden machine accounts | CI, your shell                    |
+| [`CLOUDFLARE_API_TOKEN__PRODUCTION`](#cloudflare_api_token__production)               | `cougars`     | Cloudflare, Cougars        | Production deploys                |
+| [`CLOUDFLARE_ACCOUNT_ID__PRODUCTION`](#cloudflare_account_id__production)             | `cougars`     | Cloudflare, Cougars        | Production deploys                |
+| [`CLOUDFLARE_API_TOKEN__DEV`](#cloudflare_api_token__dev)                             | `cougars-dev` | Cloudflare, Cougars Dev    | PR previews, `deploy-dev.sh`      |
+| [`CLOUDFLARE_ACCOUNT_ID__DEV`](#cloudflare_account_id__dev)                           | `cougars-dev` | Cloudflare, Cougars Dev    | PR previews, `deploy-dev.sh`      |
+| [`SANITY_PROJECT_ID`](#sanity_project_id)                                             | `cougars-dev` | Sanity                     | Website build (both)              |
+| [`SANITY_API_TOKEN`](#sanity_api_token)                                               | `cougars-dev` | Sanity                     | Website build (both)              |
+| [`SANITY_DATASET__DEV`](#sanity_dataset__dev)                                         | `cougars-dev` | (a setting)                | Dev builds read the `dev` dataset |
+| [`SANITY_WEBHOOK_GITHUB_TOKEN__PRODUCTION`](#sanity_webhook_github_token__production) | `cougars`     | GitHub (fine-grained)      | Sanity's publish webhook          |
 
 ### `BWS_ACCESS_TOKEN`
 
-Lets CI (and you, locally) read every other secret. Without it nothing builds with real content or deploys.
+Lets CI (and you) read the other secrets. Each is an access token on a Bitwarden machine account, named
+`BWS_ACCESS_TOKEN`:
 
-- **Issued by:** Bitwarden, as an access token on a machine account: `github-ci` (read on `cougars`) for CI;
-  your own machine account for local use. Name the token `BWS_ACCESS_TOKEN` on both.
-- **Stored in:** GitHub repository secret `BWS_ACCESS_TOKEN`. Locally: exported in your shell only.
-- **Gets there by:** `deploy.yml` passes it to `scripts/env-pull.mjs --github-env`, which exports the rest
-  (masked) into the job.
-- **Expires:** as set when created. Check the machine account's token list.
-- **Rotate:** create a new token on the machine account, `gh secret set BWS_ACCESS_TOKEN`, run a deploy,
-  revoke the old token.
+| Machine account  | Reads                                        | Stored in                                        |
+| ---------------- | -------------------------------------------- | ------------------------------------------------ |
+| `cougars-ci`     | `cougars`, `cougars-dev`                     | GitHub environment `production` (deploys `main`) |
+| `cougars-ci-dev` | `cougars-dev` only                           | GitHub environment `preview` (pull requests)     |
+| your own         | `cougars-dev` (and `cougars` if you need it) | your shell, exported for the session             |
 
-### `CLOUDFLARE_API_TOKEN`
+- **Gets there by:** `deploy.yml` runs `scripts/env-pull.mjs --github-env --environment production|dev`, which
+  exports the rest (masked). Locally, `node scripts/env-pull.mjs -- <command>` (dev by default).
+- **Expires:** as set when created. Check each machine account's token list.
+- **Rotate:** new token on the machine account, `gh secret set BWS_ACCESS_TOKEN --env <environment>`, run a
+  deploy, revoke the old token.
 
-Deploys the workers and runs D1 migrations on the Cougars Cloudflare account: `cougars` (production and
-pull-request previews) and `cougars-preview` (design previews).
+### `CLOUDFLARE_API_TOKEN__PRODUCTION`
 
-- **Issued by:** Cloudflare, the Cougars account → Manage Account → **Account API Tokens** (owned by the
-  account, not a person). Permissions: scope **Entire Cougars account**, **Workers Editor**, **D1 Write**.
-  Token name: `CLOUDFLARE_API_TOKEN`.
-- **Used by:** `deploy.yml` (`ensure-d1`, migrations, `wrangler deploy` / `versions upload`) and
-  `scripts/deploy-preview.sh`.
-- **Gets there by:** CI pull from Secrets Manager. Locally:
-  `node scripts/env-pull.mjs -- bash scripts/deploy-preview.sh`.
+Deploys the `cougars` worker and migrates the `cougars` D1 database on the **Cougars** account.
+
+- **Issued by:** Cloudflare, Cougars account → Manage Account → **Account API Tokens**. Scope **Entire
+  Cougars account**; permissions **Workers Editor**, **D1 Write**. Token name:
+  `CLOUDFLARE_API_TOKEN__PRODUCTION`.
+- **Used by:** `deploy.yml` on `main` and Studio publishes only (`target.mjs`, migrations, `wrangler deploy`).
+- **Gets there by:** CI pull from Secrets Manager (code reads `CLOUDFLARE_API_TOKEN`).
 - **Expires:** no, unless you set a TTL.
-- **Rotate:** roll it in the Cloudflare dashboard, update the value in Secrets Manager. Nothing else holds it.
+- **Rotate:** roll it in the dashboard, update Secrets Manager.
 
-### `CLOUDFLARE_ACCOUNT_ID`
+### `CLOUDFLARE_ACCOUNT_ID__PRODUCTION`
 
-Which Cloudflare account to deploy to. Not secret, kept in Secrets Manager so CI has one source. Account
-tokens need it: they can't look the account up themselves.
+The Cougars account's id (account home page). Not secret. Account tokens need it.
 
-- **Issued by:** Cloudflare (account home page, or the Workers & Pages overview).
-- **Used by:** `deploy.yml` and `scripts/deploy-preview.sh`, via Wrangler.
+### `CLOUDFLARE_API_TOKEN__DEV`
+
+Deploys the `cougars-dev` worker and migrates the `cougars-dev` D1 database on the **Cougars Dev** account.
+Can't touch production: it is a different account.
+
+- **Issued by:** Cloudflare, Cougars Dev account → Manage Account → **Account API Tokens**. Scope **Entire
+  Cougars Dev account**; permissions **Workers Editor**, **D1 Write**. Token name: `CLOUDFLARE_API_TOKEN__DEV`.
+- **Used by:** `deploy.yml` on pull requests (preview versions), `scripts/deploy-dev.sh`.
+- **Gets there by:** CI pull, or `node scripts/env-pull.mjs -- bash scripts/deploy-dev.sh`.
+- **Expires:** no, unless you set a TTL.
+- **Rotate:** roll it in the dashboard, update Secrets Manager.
+
+### `CLOUDFLARE_ACCOUNT_ID__DEV`
+
+The Cougars Dev account's id. Not secret.
 
 ### `SANITY_PROJECT_ID`
 
-Which Sanity project the website reads content from. Not secret (it is also the Studio's default). Without it,
-the site builds from `apps/web/src/lib/sanity/fallback.ts`.
-
-- **Issued by:** Sanity (sanity.io/manage → project).
-- **Used by:** the website build (`astro:env`).
+Which Sanity project the website reads. Shared by both environments (they use different datasets). Not
+secret. Without it, the site builds from `apps/web/src/lib/sanity/fallback.ts`.
 
 ### `SANITY_API_TOKEN`
 
-Lets the website build read content from Sanity.
+Lets the website build read content. One token reads both datasets.
 
 - **Issued by:** Sanity → API → Tokens, role **Viewer**. Token name: `SANITY_API_TOKEN`.
 - **Used by:** the website build (`apps/web/src/lib/sanity/client.ts`). Never sent to the browser.
-- **Gets there by:** CI pull from Secrets Manager.
 - **Expires:** no.
-- **Rotate:** add a new Viewer token with the same name, update Secrets Manager, run a deploy, delete the old
-  token.
+- **Rotate:** add a new Viewer token with the same name, update Secrets Manager, deploy, delete the old one.
 
-### `SANITY_WEBHOOK_GITHUB_TOKEN`
+### `SANITY_DATASET__DEV`
 
-Lets Sanity start a rebuild when an editor presses Publish (`repository_dispatch` → `deploy.yml`).
+`dev`. Makes dev builds read the `dev` dataset; production uses the default, `production`. A setting, kept here
+so the naming rule picks it per environment.
+
+### `SANITY_WEBHOOK_GITHUB_TOKEN__PRODUCTION`
+
+Lets Sanity start a production rebuild when an editor presses Publish (`repository_dispatch` → `deploy.yml`).
 
 - **Issued by:** GitHub → Developer settings → Fine-grained tokens, repository `das974/cougars` only,
-  **Contents: Read and write**. Token name: `SANITY_WEBHOOK_GITHUB_TOKEN`.
-- **Stored in:** Secrets Manager (the record), and pasted into the Sanity webhook's `Authorization` header
-  (where it is used). See [docs/setup.md](docs/setup.md#5-publish--rebuild-webhook).
-- **Expires:** yes, fine-grained tokens expire (at most a year). Set a reminder.
-- **Rotate:** create a new token with the same name, update Secrets Manager and the webhook header, publish
-  something to check, delete the old token.
+  **Contents: Read and write**. Token name: `SANITY_WEBHOOK_GITHUB_TOKEN__PRODUCTION`.
+- **Stored in:** Secrets Manager (the record) and the Sanity webhook's `Authorization` header (where it is used).
+  See [docs/setup.md](docs/setup.md#5-publish--rebuild-webhook).
+- **Expires:** yes, at most a year. Set a reminder.
+- **Rotate:** new token with the same name, update Secrets Manager and the webhook header, publish something to
+  check, delete the old token.
 
 ### Settings that aren't secret
 
-| Name                                    | Where                        | What                                                          |
-| --------------------------------------- | ---------------------------- | ------------------------------------------------------------- |
-| `SITE_URL`                              | GitHub variable              | Public URL, once there is a domain                            |
-| `BWS_SERVER_URL`                        | GitHub variable, your shell  | `https://vault.bitwarden.eu` if the vault is on the EU server |
-| `BWS_PROJECT_ID`                        | GitHub variable, your shell  | Limits `bws` to the `cougars` project                         |
-| `SANITY_DATASET`                        | Default `production`         | Sanity dataset the site reads                                 |
-| `SANITY_STUDIO_PROJECT_ID` / `_DATASET` | Studio config defaults       | Which project the Studio edits                                |
-| `DEMO_CONTENT`                          | `.env` or the preview script | Sample content for design previews; never set in CI           |
-| `PUBLIC_BUILD_VERSION`                  | Set by CI                    | Shown in `<meta name="generator">`; checked by the smoke test |
+| Name                                    | Where                       | What                                                          |
+| --------------------------------------- | --------------------------- | ------------------------------------------------------------- |
+| `SITE_URL`                              | GitHub variable             | Production URL, once there is a domain                        |
+| `BWS_SERVER_URL`                        | GitHub variable, your shell | `https://vault.bitwarden.eu` if the vault is on the EU server |
+| `SANITY_DATASET`                        | Default `production`        | Overridden by `SANITY_DATASET__DEV` for dev                   |
+| `SANITY_STUDIO_PROJECT_ID` / `_DATASET` | Studio config defaults      | Which project and dataset the Studio edits                    |
+| `DEMO_CONTENT`                          | `.env`, dev builds          | Sample content + `noindex`; never set for production          |
+| `PUBLIC_BUILD_VERSION`                  | Set by CI                   | Shown in `<meta name="generator">`; checked by the smoke test |
 
 ## Docs
 

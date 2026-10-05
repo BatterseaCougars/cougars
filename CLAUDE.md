@@ -17,8 +17,8 @@ a new ADR that supersedes it, never a quiet edit.
 - **Every secret is documented in [README.md#secrets](README.md#secrets)**, and a provider token is named
   exactly like its secret. Adding or renaming a secret means updating that section in the same change.
 - **Never deploy to production by hand.** Production deploys only from `main` via `.github/workflows/deploy.yml`.
-  Design previews go to the separate `cougars-preview` worker via `scripts/deploy-preview.sh`
-  ([ADR 0005](docs/adr/0005-deploys.md)).
+  Dev is a separate Cloudflare account (worker `cougars-dev`): PR previews and `scripts/deploy-dev.sh`
+  ([ADR 0010](docs/adr/0010-two-environments.md)). Your machine is dev; production secrets are `NAME__PRODUCTION`.
 - **D1 migrations are additive.** Never edit a migration that has run. See db/README.md.
 - `archive/` is read-only reference. Don't import from it.
 

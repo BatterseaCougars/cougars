@@ -98,7 +98,6 @@ const strip: [string, string][] = [
       <p class="notice-text">
         Hooking, slashing or refusing to pass may result in being <em>drafted first.</em>
       </p>
-      <p class="notice-small label">We don't take ourselves too seriously. The hockey, slightly more.</p>
     </div>
   </aside>
 
@@ -557,20 +556,12 @@ const strip: [string, string][] = [
     font-style: normal;
     color: var(--red-hot);
   }
-  .notice-small {
-    grid-column: 2;
-    margin: 0.5rem 0 0;
-    color: var(--text-2);
-  }
   @media (max-width: 40rem) {
     .notice-inner {
       grid-template-columns: 1fr;
     }
     .notice-tag {
       justify-self: start;
-    }
-    .notice-small {
-      grid-column: 1;
     }
   }
 

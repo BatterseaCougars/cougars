@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# Deploy your working copy to the DEV site (worker cougars-dev, D1 cougars-dev) on
+# the Cougars Dev Cloudflare account, with sample content (DEMO_CONTENT) and noindex.
+# Production (`cougars`, Cougars account) only deploys from main via
+# .github/workflows/deploy.yml (docs/adr/0010-two-environments.md).
+#
+#   node scripts/env-pull.mjs -- bash scripts/deploy-dev.sh
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+: "${CLOUDFLARE_API_TOKEN:?run through scripts/env-pull.mjs (README.md#secrets)}"
+: "${CLOUDFLARE_ACCOUNT_ID:?run through scripts/env-pull.mjs (README.md#secrets)}"
+
+subdomain=$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+  "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/subdomain" |
+  node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>process.stdout.write(JSON.parse(s).result?.subdomain??""))' || true)
+export SITE_URL="https://cougars-dev.${subdomain:-example}.workers.dev"
+export DEMO_CONTENT=true
+export PUBLIC_BUILD_VERSION="dev-$(git rev-parse --short HEAD)"
+
+npm run build
+node scripts/ci/target.mjs dev
+(cd apps/web && npx wrangler d1 migrations apply cougars-dev --remote && npx wrangler deploy --message "$PUBLIC_BUILD_VERSION")
+echo "Dev: $SITE_URL"

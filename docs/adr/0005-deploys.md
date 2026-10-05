@@ -1,6 +1,6 @@
 # 0005. Production deploys only from `main`; design previews on their own worker
 
-- **Status:** Accepted
+- **Status:** Superseded by [0010](0010-two-environments.md)
 - **Date:** 2026-10-05
 
 ## Context

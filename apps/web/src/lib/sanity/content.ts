@@ -8,8 +8,9 @@ import { FALLBACK_SETTINGS } from "./fallback";
 import { DEMO_ALBUMS, DEMO_EVENTS, DEMO_HONOURS, DEMO_PLAYERS, DEMO_POSTS, DEMO_VIDEOS } from "./demo";
 import type { Album, ClubEvent, Player, Post, SiteSettings, Sponsor, Video } from "./types";
 
-// Sample content for design previews: `DEMO_CONTENT=true npm run dev`, or a preview build
-// (scripts/deploy-preview.sh). Production CI never sets it. Pages built with it are noindex.
+// Sample content for dev builds: `DEMO_CONTENT=true npm run dev`, PR previews and
+// scripts/deploy-dev.sh. Real Sanity content still wins wherever it exists. Never set for
+// production. Pages built with it are noindex.
 export const demo = DEMO_CONTENT;
 
 async function fetchOr<T>(query: string, fallback: T): Promise<T> {

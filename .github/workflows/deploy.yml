@@ -1,8 +1,11 @@
 name: Deploy
 
-# main            -> production (https://<SITE_URL>)
-# pull request    -> preview URL, commented on the PR
+# Two environments on two Cloudflare accounts (docs/adr/0010-two-environments.md):
+# main            -> production: worker `cougars`, Cougars account
 # sanity-publish  -> production rebuild after an editor publishes in the Studio
+# pull request    -> dev: a preview version of `cougars-dev`, Cougars Dev account, commented on the PR
+# Each GitHub environment holds its own BWS_ACCESS_TOKEN: `production` (main only) can read
+# production secrets; `preview` holds the dev token, which can't.
 on:
   push:
     branches: [main]
@@ -27,9 +30,10 @@ jobs:
     runs-on: ubuntu-latest
     environment: ${{ github.event_name == 'pull_request' && 'preview' || 'production' }}
     env:
-      SITE_ENV: ${{ github.event_name == 'pull_request' && 'preview' || 'production' }}
-      SITE_URL: ${{ vars.SITE_URL }}
-      BWS_PROJECT_ID: ${{ vars.BWS_PROJECT_ID }}
+      SITE_ENV: ${{ github.event_name == 'pull_request' && 'dev' || 'production' }}
+      SITE_URL: ${{ github.event_name != 'pull_request' && vars.SITE_URL || '' }}
+      # Dev builds: sample content where Sanity's dev dataset is empty, and noindex
+      DEMO_CONTENT: ${{ github.event_name == 'pull_request' && 'true' || 'false' }}
       BWS_SERVER_URL: ${{ vars.BWS_SERVER_URL }}
     steps:
       - uses: actions/checkout@v4
@@ -48,17 +52,18 @@ jobs:
       - name: Build version
         run: echo "PUBLIC_BUILD_VERSION=$(date -u +%Y.%m.%d)+$(git rev-parse --short HEAD)" >> "$GITHUB_ENV"
 
-      - name: Ensure D1 database
-        run: node scripts/ci/ensure-d1.mjs
-
-      # One shared database for now: only production applies migrations, so a
-      # PR can never change the live schema. Keep migrations additive (db/README.md).
-      - name: Apply D1 migrations
-        if: env.SITE_ENV == 'production'
-        run: npx wrangler d1 migrations apply cougars --remote -c apps/web/wrangler.jsonc
-
       - name: Build
         run: npm run build
+
+      # Worker name, D1 database and SITE_ENV for this environment (creates the database once)
+      - name: Target ${{ env.SITE_ENV }}
+        run: node scripts/ci/target.mjs "$SITE_ENV"
+
+      # Each environment has its own database, so a PR migrates dev, never production.
+      # Keep migrations additive (db/README.md).
+      - name: Apply D1 migrations
+        working-directory: apps/web
+        run: npx wrangler d1 migrations apply "${{ env.SITE_ENV == 'production' && 'cougars' || 'cougars-dev' }}" --remote
 
       - name: Deploy production
         id: production
@@ -71,7 +76,7 @@ jobs:
 
       - name: Upload preview
         id: preview
-        if: env.SITE_ENV == 'preview'
+        if: env.SITE_ENV == 'dev'
         working-directory: apps/web
         run: |
           out=$(npx wrangler versions upload --preview-alias "pr-${{ github.event.number }}" --message "$PUBLIC_BUILD_VERSION" 2>&1 | tee /dev/stderr)

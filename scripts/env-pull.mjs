@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 // Load secrets from Bitwarden SM into the current CI job, or run a command
 // with them locally:
-//   node scripts/env-pull.mjs --github-env [--environment production]
-//   node scripts/env-pull.mjs -- npm run build          (local)
-//   node scripts/env-pull.mjs --status                  (names only, no values)
+//   node scripts/env-pull.mjs --github-env --environment production|dev   (CI)
+//   node scripts/env-pull.mjs -- npm run build                            (local: dev)
+//   node scripts/env-pull.mjs --status                                    (names only, no values)
+// Your machine is dev unless you pass --environment production.
 import { appendFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { loadSecrets } from "./lib/bitwarden.mjs";
@@ -11,7 +12,7 @@ import { loadSecrets } from "./lib/bitwarden.mjs";
 const argv = process.argv.slice(2);
 const flag = (name) => argv.includes(name);
 const opt = (name, fallback) => (argv.includes(name) ? argv[argv.indexOf(name) + 1] : fallback);
-const environment = opt("--environment", process.env.SITE_ENV ?? "production");
+const environment = opt("--environment", "dev");
 
 const secrets = loadSecrets(environment);
 

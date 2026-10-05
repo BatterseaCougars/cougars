@@ -11,7 +11,7 @@ export const FALLBACK_SETTINGS: SiteSettings = {
     "Take a Van Damme film, put it on skates, hand everyone a stick and set it in South London. That's " +
     "us, every Friday since 1996, on the same Battersea court: league players, weekend skaters and people " +
     "who've never held a stick, all on one rink.\n\n" +
-    "We play hard and we take the mickey harder. Nobody cares where you're from or how well you skate. " +
+    "Nobody cares where you're from or how well you skate. " +
     "Turn up, gear up, play. Our official team flies the flag in the BIPHA league, and when the final " +
     "whistle goes, everyone heads to the pub.",
   founded: 1996,
