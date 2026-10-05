@@ -13,8 +13,9 @@ export const KUMITE_RESULTS = /* groq */ `*[_type == "kumiteResult" && defined(s
   season, date, champions, topScorer, "event": event->{title, "slug": slug.current}
 }`;
 
-export const VIDEOS = /* groq */ `*[_type == "video" && defined(youtubeUrl)] | order(recordedOn desc){
-  _id, title, recordedOn, youtubeUrl, description
+// Overrides for channel videos, and videos that aren't on the channel. Merged and sorted in lib/youtube.ts.
+export const VIDEOS = /* groq */ `*[_type == "video" && defined(youtubeUrl)]{
+  _id, _createdAt, youtubeUrl, title, recordedOn, description, hidden, pinned
 }`;
 
 const EVENT_FIELDS = `title, "slug": slug.current, type, startsAt, endsAt, location, summary, cover, ctaLabel, ctaUrl`;

@@ -26,6 +26,8 @@ export default defineConfig({
       SANITY_PROJECT_ID: envField.string({ context: "server", access: "public", optional: true }),
       SANITY_DATASET: envField.string({ context: "server", access: "public", default: "production" }),
       SANITY_API_TOKEN: envField.string({ context: "server", access: "secret", optional: true }),
+      // Pulls the club channel's videos at build time (lib/youtube.ts). Without it: Sanity videos only.
+      YOUTUBE_API_KEY: envField.string({ context: "server", access: "secret", optional: true }),
       PUBLIC_BUILD_VERSION: envField.string({ context: "client", access: "public", default: "dev" }),
       // Sample content + noindex for dev builds (local, PR previews, scripts/deploy-dev.sh). Never in production.
       DEMO_CONTENT: envField.boolean({ context: "server", access: "public", default: false }),
