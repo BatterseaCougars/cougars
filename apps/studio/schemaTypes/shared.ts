@@ -1,4 +1,12 @@
-import { defineField, defineArrayMember, type UrlRule } from "sanity";
+import { defineField, defineArrayMember, type StringRule, type UrlRule } from "sanity";
+
+/** Alt text is required once there is a photo: an empty image stays optional. */
+export const altRule = (r: StringRule) =>
+  r.custom((alt: string | undefined, ctx) =>
+    (ctx.parent as { asset?: unknown } | undefined)?.asset && !alt?.trim()
+      ? "Describe the photo in a few words, for people using screen readers"
+      : true,
+  );
 
 /** Image with crop/hotspot and a required description for screen readers. */
 export const imageField = (name: string, title: string, extra: Record<string, unknown> = {}) =>
@@ -13,6 +21,7 @@ export const imageField = (name: string, title: string, extra: Record<string, un
         title: "Describe the photo",
         type: "string",
         description: "One short sentence for people using screen readers, e.g. “Cougars celebrating a goal”.",
+        validation: altRule,
       }),
     ],
     ...extra,
@@ -23,7 +32,7 @@ export const slugField = (source = "title") =>
     name: "slug",
     title: "Web address",
     type: "slug",
-    description: "Click “Generate” to make this from the title.",
+    description: "The end of the page's web address. Click “Generate” to make it from the title.",
     options: { source, maxLength: 80 },
     validation: (r) => r.required(),
   });
@@ -34,11 +43,12 @@ export const youtubeUrlRule = (r: UrlRule) =>
     .required()
     .custom((v?: string) => (!v || YOUTUBE_RE.test(v) ? true : "Paste a YouTube link (youtube.com or youtu.be)"));
 
-/** Rich text used for news posts and event descriptions. */
+/** Rich text used for event descriptions. */
 export const bodyField = defineField({
   name: "body",
   title: "Text",
   type: "array",
+  description: "The full write-up on the event's own page. You can add headings, photos and YouTube videos.",
   of: [
     defineArrayMember({
       type: "block",
@@ -53,8 +63,19 @@ export const bodyField = defineField({
       type: "image",
       options: { hotspot: true },
       fields: [
-        { name: "alt", title: "Describe the photo", type: "string" },
-        { name: "caption", title: "Caption", type: "string" },
+        defineField({
+          name: "alt",
+          title: "Describe the photo",
+          type: "string",
+          description: "One short sentence for people using screen readers.",
+          validation: altRule,
+        }),
+        defineField({
+          name: "caption",
+          title: "Caption",
+          type: "string",
+          description: "Optional. Shown under the photo.",
+        }),
       ],
     }),
     defineArrayMember({

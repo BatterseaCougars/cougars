@@ -6,9 +6,14 @@ export const sponsor = defineType({
   title: "Sponsor",
   type: "document",
   fields: [
-    defineField({ name: "name", type: "string", validation: (r) => r.required() }),
-    defineField({ name: "url", title: "Website", type: "url" }),
-    imageField("logo", "Logo"),
+    defineField({
+      name: "name",
+      type: "string",
+      description: "Shown if there is no logo.",
+      validation: (r) => r.required(),
+    }),
+    defineField({ name: "url", title: "Website", type: "url", description: "Optional. Where the logo links to." }),
+    imageField("logo", "Logo", { description: "Shown in the footer. A PNG with a transparent background works best." }),
     defineField({
       name: "orderRank",
       title: "Order",
