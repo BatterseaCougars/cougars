@@ -5,6 +5,7 @@
 #   bash scripts/worktree.sh add <stream>      # create .worktrees/<stream> on branch <stream>
 #   bash scripts/worktree.sh dev <stream>      # run its website (with dev secrets if unlocked)
 #   bash scripts/worktree.sh studio <stream>   # run its Sanity Studio
+#   bash scripts/worktree.sh stop <stream>     # stop its website (Astro runs it in the background)
 #   bash scripts/worktree.sh remove <stream>   # delete the worktree (the branch stays)
 #   bash scripts/worktree.sh list
 #
@@ -24,7 +25,7 @@ slot() {
 
 cmd="${1:-list}"
 name="${2:-}"
-[ "$cmd" = list ] || [ -n "$name" ] || { echo "usage: $0 add|dev|studio|remove <stream>" >&2; exit 1; }
+[ "$cmd" = list ] || [ -n "$name" ] || { echo "usage: $0 add|dev|studio|stop|remove <stream>" >&2; exit 1; }
 dir="$root/.worktrees/$name"
 
 # Dev secrets when the local Bitwarden token is available, otherwise run without (fallback content).
@@ -60,7 +61,11 @@ case "$cmd" in
     cd "$dir/apps/studio"
     with_env npx sanity dev --port "452$n" --host 0.0.0.0
     ;;
+  stop)
+    (cd "$dir/apps/web" && npx astro dev stop)
+    ;;
   remove)
+    [ -d "$dir/apps/web" ] && (cd "$dir/apps/web" && npx astro dev stop >/dev/null 2>&1 || true)
     git -C "$root" worktree remove "$dir"
     echo "Removed $dir. Branch '$name' is kept; delete it with: git branch -d $name"
     ;;
@@ -68,7 +73,7 @@ case "$cmd" in
     git -C "$root" worktree list
     ;;
   *)
-    echo "usage: $0 add|dev|studio|remove|list <stream>" >&2
+    echo "usage: $0 add|dev|studio|stop|remove|list <stream>" >&2
     exit 1
     ;;
 esac

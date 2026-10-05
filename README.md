@@ -186,6 +186,7 @@ dependencies, local D1 database and ports, so each can be previewed while `main`
 bash scripts/worktree.sh add cms       # branch cms, installs and migrates
 bash scripts/worktree.sh dev cms       # http://localhost:4501 (dev secrets if Bitwarden is unlocked)
 bash scripts/worktree.sh studio cms    # http://localhost:4521
+bash scripts/worktree.sh stop cms      # stop its website (Astro runs it in the background)
 bash scripts/worktree.sh remove cms    # when the stream has landed on main
 ```
 
