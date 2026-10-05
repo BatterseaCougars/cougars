@@ -1,0 +1,8 @@
+archive/
+dist/
+.astro/
+.wrangler/
+.sanity/
+package-lock.json
+**/worker-configuration.d.ts
+.github/kb/

@@ -1,0 +1,283 @@
+---
+import { Image, getImage } from "astro:assets";
+import Base from "../layouts/Base.astro";
+import logo from "../assets/cougars.avif";
+import background from "../assets/cougars_background.png";
+import { getEvents, getSettings, upcoming } from "../lib/sanity/content";
+import { imageUrl, objectPosition } from "../lib/sanity/images";
+import { formatRange } from "../lib/dates";
+
+const s = await getSettings();
+const events = upcoming(await getEvents()).slice(0, 4);
+const slot = s.training[0];
+const heroBg = s.heroImage
+  ? imageUrl(s.heroImage, 2000, 1200)
+  : (await getImage({ src: background, width: 1800, format: "webp", quality: 72 })).src;
+---
+
+<Base>
+  <section class="hero" data-hero style={`--hero-bg:url(${heroBg});--hero-pos:${objectPosition(s.heroImage)}`}>
+    <div class="hero-bg" aria-hidden="true"></div>
+    <h1 class="visually-hidden">Battersea Cougars inline hockey club</h1>
+    <Image class="hero-logo" src={logo} alt="Battersea Cougars" width={560} loading="eager" fetchpriority="high" />
+    <a class="scroll" href="#club" aria-label="Scroll to content"><span></span></a>
+  </section>
+
+  <section class="section wrap club" id="club">
+    <div data-reveal>
+      <p class="label">The club</p>
+      <h2>{s.heroHeadline}</h2>
+    </div>
+    <div data-reveal style="--i:1">
+      {s.aboutBody.split(/\n{2,}/).map((para) => <p class="lede">{para}</p>)}
+    </div>
+  </section>
+
+  <section class="section wrap fridays">
+    <p class="label" data-reveal>Come and play</p>
+    <dl class="facts">
+      {
+        slot && (
+          <div data-reveal style="--i:1">
+            <dt class="label">When</dt>
+            <dd>
+              <span class="big">
+                {slot.day}s, {slot.start}–{slot.end}
+              </span>
+              {slot.description && <span class="muted">{slot.description}</span>}
+            </dd>
+          </div>
+        )
+      }
+      <div data-reveal style="--i:2">
+        <dt class="label">Where</dt>
+        <dd>
+          <a class="big link" href={s.venue.mapUrl} rel="noopener" target="_blank">{s.venue.name}</a>
+          <span class="muted">{s.venue.address}</span>
+        </dd>
+      </div>
+      <div data-reveal style="--i:3">
+        <dt class="label">Bring</dt>
+        <dd>
+          <span class="big">Yourself</span>
+          <span class="muted">{s.kitNotes}</span>
+        </dd>
+      </div>
+    </dl>
+    <div data-reveal style="--i:4">
+      <a class="btn" href="/join/">Try a session</a>
+    </div>
+  </section>
+
+  {
+    events.length > 0 && (
+      <section class="section wrap">
+        <div class="events-head" data-reveal>
+          <p class="label">Coming up</p>
+          <a class="label link" href="/events/">
+            All events
+          </a>
+        </div>
+        <ul class="events">
+          {events.map((e, i) => (
+            <li data-reveal style={`--i:${i}`}>
+              <a href={`/events/${e.slug}/`}>
+                <span class="label">{formatRange(e.startsAt, e.endsAt)}</span>
+                <span class="big">{e.title}</span>
+                <span class="arrow" aria-hidden="true">
+                  →
+                </span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </section>
+    )
+  }
+</Base>
+
+<style>
+  .hero {
+    position: relative;
+    isolation: isolate;
+    height: 100svh;
+    min-height: 32rem;
+    display: grid;
+    place-items: center;
+    overflow: clip;
+  }
+  .hero-bg {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: var(--hero-bg) var(--hero-pos) / cover no-repeat;
+  }
+  .hero-bg::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 60% 55% at 50% 50%, transparent, rgb(11 11 12 / 0.85)),
+      linear-gradient(to top, var(--ink), transparent 35%);
+  }
+  .hero :global(.hero-logo) {
+    width: min(68vw, 28rem, 52svh);
+    height: auto;
+    filter: drop-shadow(0 30px 60px rgb(0 0 0 / 0.6));
+  }
+  .scroll {
+    position: absolute;
+    bottom: 2.5rem;
+    left: 50%;
+    translate: -50% 0;
+    padding: 1rem;
+    color: var(--bone-3);
+  }
+  /* ark's bouncing chevron */
+  .scroll span {
+    display: block;
+    width: 10px;
+    height: 10px;
+    border-right: 1px solid currentColor;
+    border-bottom: 1px solid currentColor;
+    transform: rotate(45deg);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .hero :global(.hero-logo) {
+      opacity: 0;
+      animation: logo-in 1.6s var(--ease-smooth) 0.2s forwards;
+    }
+    .hero-bg {
+      animation: settle 2.4s var(--ease-smooth) both;
+    }
+    .scroll span {
+      animation: bounce 2s ease-in-out 1.6s infinite;
+    }
+    :global(html.navigation-restore) .hero :global(.hero-logo),
+    :global(html.navigation-restore) .hero-bg {
+      animation: none;
+      opacity: 1;
+    }
+  }
+  @keyframes logo-in {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes settle {
+    from {
+      opacity: 0;
+      scale: 1.04;
+    }
+  }
+  @keyframes bounce {
+    0%,
+    100% {
+      transform: rotate(45deg) translate(0, 0);
+      opacity: 1;
+    }
+    50% {
+      transform: rotate(45deg) translate(3px, 3px);
+      opacity: 0.4;
+    }
+  }
+
+  .club {
+    display: grid;
+    grid-template-columns: 1fr 1.1fr;
+    gap: 2rem clamp(3rem, 8vw, 7rem);
+  }
+  .club h2 {
+    margin-top: 1.25rem;
+  }
+  @media (max-width: 52rem) {
+    .club {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .fridays {
+    padding-top: 0;
+  }
+  .facts {
+    margin: 2rem 0 3rem;
+    border-top: 1px solid var(--line);
+  }
+  .facts > div {
+    display: grid;
+    grid-template-columns: 10rem 1fr;
+    gap: 0.5rem 2rem;
+    padding: 1.75rem 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .facts dt {
+    padding-top: 0.6rem;
+  }
+  .facts dd {
+    margin: 0;
+    display: grid;
+    gap: 0.4rem;
+  }
+  .big {
+    font-size: clamp(1.6rem, 2.6vw, 2.2rem);
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+    justify-self: start;
+  }
+  .facts .muted {
+    max-width: 34rem;
+  }
+  @media (max-width: 40rem) {
+    .facts > div {
+      grid-template-columns: 1fr;
+    }
+    .facts dt {
+      padding-top: 0;
+    }
+  }
+
+  .events-head {
+    display: flex;
+    justify-content: space-between;
+    padding-bottom: 1.25rem;
+    border-bottom: 1px solid var(--line);
+  }
+  .events {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .events a {
+    display: grid;
+    grid-template-columns: 16rem 1fr auto;
+    align-items: baseline;
+    gap: 0.5rem 2rem;
+    padding: 1.6rem 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .events .arrow {
+    color: var(--bone-3);
+    transition:
+      transform 0.35s var(--ease-smooth),
+      color 0.35s;
+  }
+  .events a:hover .arrow {
+    transform: translateX(4px);
+    color: var(--red);
+  }
+  @media (max-width: 40rem) {
+    .events a {
+      grid-template-columns: 1fr auto;
+    }
+    .events .label {
+      grid-column: 1 / -1;
+    }
+  }
+</style>

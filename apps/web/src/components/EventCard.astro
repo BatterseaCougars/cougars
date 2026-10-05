@@ -1,0 +1,104 @@
+---
+import type { ClubEvent } from "../lib/sanity/types";
+import { dateBadge, formatRange } from "../lib/dates";
+import { imageUrl, objectPosition } from "../lib/sanity/images";
+
+interface Props {
+  event: ClubEvent;
+}
+const { event } = Astro.props;
+const badge = dateBadge(event.startsAt);
+const label = { training: "Training", social: "Social", tournament: "Tournament", kumite: "Cougars Kumite" }[event.type];
+const cover = imageUrl(event.cover, 800, 600);
+---
+
+<a class="card event" href={`/events/${event.slug}/`} data-type={event.type}>
+  {cover && <img class="bg" src={cover} alt="" loading="lazy" style={`object-position:${objectPosition(event.cover)}`} />}
+  <div class="top">
+    <span class="label">{label}</span>
+    <span class="arrow" aria-hidden="true">→</span>
+  </div>
+  <div class="date" aria-hidden="true">
+    <span class="d">{badge.day}</span>
+    <span class="m">{badge.month}</span>
+  </div>
+  <div class="body">
+    <h3>{event.title}</h3>
+    <p class="meta">{formatRange(event.startsAt, event.endsAt)}{event.location && ` · ${event.location}`}</p>
+  </div>
+</a>
+
+<style>
+  .event {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    min-height: 22rem;
+    padding: 1.5rem;
+    isolation: isolate;
+  }
+  .bg {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0.35;
+  }
+  .event:has(.bg)::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: linear-gradient(to top, var(--ink) 20%, transparent);
+  }
+  .top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .arrow {
+    font-size: 1.5rem;
+    transition: transform 0.4s var(--ease-out);
+  }
+  .event:hover .arrow {
+    transform: rotate(-45deg);
+  }
+  .date {
+    margin-top: auto;
+    font-family: var(--display);
+    font-weight: 900;
+    line-height: 0.8;
+    text-transform: uppercase;
+  }
+  .d {
+    font-size: 6rem;
+    display: block;
+  }
+  .m {
+    font-size: 1.8rem;
+    color: var(--red);
+  }
+  h3 {
+    font-size: 2rem;
+    line-height: 0.95;
+  }
+  .meta {
+    margin: 0.6rem 0 0;
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.06em;
+    color: var(--bone-3);
+  }
+  [data-type="kumite"] {
+    border-color: rgb(232 182 76 / 0.45);
+  }
+  [data-type="kumite"] .m,
+  [data-type="kumite"] .label {
+    color: var(--gold);
+  }
+  [data-type="kumite"] .label::before {
+    background: var(--gold);
+  }
+</style>

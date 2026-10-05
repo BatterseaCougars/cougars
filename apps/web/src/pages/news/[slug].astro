@@ -1,0 +1,43 @@
+---
+import type { GetStaticPaths } from "astro";
+import Base from "../../layouts/Base.astro";
+import PageHeader from "../../components/PageHeader.astro";
+import { getPostPages } from "../../lib/sanity/content";
+import { imageSrcSet, imageUrl } from "../../lib/sanity/images";
+import { renderPortableText } from "../../lib/portable-text";
+import { formatDate } from "../../lib/dates";
+import type { Post } from "../../lib/sanity/types";
+
+export const getStaticPaths = (async () =>
+  (await getPostPages()).map((post) => ({ params: { slug: post.slug }, props: { post } }))) satisfies GetStaticPaths;
+
+const { post } = Astro.props as { post: Post };
+const cover = imageUrl(post.cover, 1200, 630);
+---
+
+<Base title={post.title} description={post.excerpt ?? undefined} image={cover}>
+  <PageHeader eyebrow={formatDate(post.publishedAt)} title={post.title} lede={post.excerpt} />
+  <article class="wrap page-body">
+    {cover && (
+      <img
+        class="cover"
+        src={cover}
+        srcset={imageSrcSet(post.cover, [640, 960, 1400], 1200 / 630)}
+        sizes="(max-width: 72rem) 100vw, 72rem"
+        alt={post.cover?.alt ?? ""}
+      />
+    )}
+    <div class="prose" set:html={renderPortableText(post.body)} />
+    <p>
+      <a href="/news/">← All news</a>
+    </p>
+  </article>
+</Base>
+
+<style>
+  .cover {
+    width: 100%;
+    border-radius: 1rem;
+    margin-bottom: 2rem;
+  }
+</style>

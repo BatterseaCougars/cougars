@@ -1,0 +1,88 @@
+name: Deploy
+
+# main            -> production (https://<SITE_URL>)
+# pull request    -> preview URL, commented on the PR
+# sanity-publish  -> production rebuild after an editor publishes in the Studio
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  repository_dispatch:
+    types: [sanity-publish]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-${{ github.event_name == 'pull_request' && github.ref || 'production' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  deploy:
+    # Forks don't get secrets; their PRs are covered by pr.yml.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    environment: ${{ github.event_name == 'pull_request' && 'preview' || 'production' }}
+    env:
+      SITE_ENV: ${{ github.event_name == 'pull_request' && 'preview' || 'production' }}
+      SITE_URL: ${{ vars.SITE_URL }}
+      BWS_PROJECT_ID: ${{ vars.BWS_PROJECT_ID }}
+      BWS_SERVER_URL: ${{ vars.BWS_SERVER_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+
+      - name: Install Bitwarden Secrets Manager CLI
+        run: |
+          curl -fsSL -o /tmp/bws.zip "https://github.com/bitwarden/sdk-sm/releases/download/bws-v2.1.0/bws-x86_64-unknown-linux-gnu-2.1.0.zip"
+          sudo unzip -o /tmp/bws.zip -d /usr/local/bin
+
+      - name: Load secrets from Bitwarden
+        run: node scripts/env-pull.mjs --github-env --environment "$SITE_ENV"
+        env:
+          BWS_ACCESS_TOKEN: ${{ secrets.BWS_ACCESS_TOKEN }}
+
+      - name: Build version
+        run: echo "PUBLIC_BUILD_VERSION=$(date -u +%Y.%m.%d)+$(git rev-parse --short HEAD)" >> "$GITHUB_ENV"
+
+      - name: Ensure D1 database
+        run: node scripts/ci/ensure-d1.mjs
+
+      # One shared database for now: only production applies migrations, so a
+      # PR can never change the live schema. Keep migrations additive (db/README.md).
+      - name: Apply D1 migrations
+        if: env.SITE_ENV == 'production'
+        run: npx wrangler d1 migrations apply cougars --remote -c apps/web/wrangler.jsonc
+
+      - name: Build
+        run: npm run build
+
+      - name: Deploy production
+        id: production
+        if: env.SITE_ENV == 'production'
+        working-directory: apps/web
+        run: |
+          out=$(npx wrangler deploy --message "$PUBLIC_BUILD_VERSION" 2>&1 | tee /dev/stderr)
+          url=$(echo "$out" | grep -oE 'https://[^ ]+\.workers\.dev' | head -1)
+          echo "url=${SITE_URL:-$url}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload preview
+        id: preview
+        if: env.SITE_ENV == 'preview'
+        working-directory: apps/web
+        run: |
+          out=$(npx wrangler versions upload --preview-alias "pr-${{ github.event.number }}" --message "$PUBLIC_BUILD_VERSION" 2>&1 | tee /dev/stderr)
+          url=$(echo "$out" | grep -oE 'https://pr-[^ ]+\.workers\.dev' | head -1)
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+
+      - name: Smoke test
+        run: node scripts/ci/smoke-test.mjs "${{ steps.preview.outputs.url || steps.production.outputs.url }}" "$PUBLIC_BUILD_VERSION"
+
+      - name: Comment preview URL
+        if: steps.preview.outputs.url
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          message: "Preview: ${{ steps.preview.outputs.url }} (`${{ env.PUBLIC_BUILD_VERSION }}`)"

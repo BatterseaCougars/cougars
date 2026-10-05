@@ -1,0 +1,48 @@
+---
+import Base from "../../layouts/Base.astro";
+import PageHeader from "../../components/PageHeader.astro";
+import EventCard from "../../components/EventCard.astro";
+import Empty from "../../components/Empty.astro";
+import { getEvents, getSettings, upcoming } from "../../lib/sanity/content";
+
+const all = await getEvents();
+const next = upcoming(all);
+const past = all
+  .filter((e) => !next.includes(e))
+  .reverse()
+  .slice(0, 12);
+const s = await getSettings();
+---
+
+<Base title="Events" description="Tournaments, socials and the quarterly Cougars Kumite.">
+  <PageHeader eyebrow="What's on" title="Events" lede="Tournaments, socials and the quarterly Cougars Kumite." />
+  <div class="wrap page-body">
+    {next.length ? (
+      <div class="grid">
+        {next.map((e) => (
+          <EventCard event={e} />
+        ))}
+      </div>
+    ) : (
+      <Empty title="Nothing scheduled right now">
+        We're on court every {s.training[0]?.day ?? "Friday"} — <a href="/join/">come along</a>.
+      </Empty>
+    )}
+    {past.length > 0 && (
+      <section class="section past">
+        <h2>Past events</h2>
+        <div class="grid">
+          {past.map((e) => (
+            <EventCard event={e} />
+          ))}
+        </div>
+      </section>
+    )}
+  </div>
+</Base>
+
+<style>
+  .past {
+    opacity: 0.75;
+  }
+</style>

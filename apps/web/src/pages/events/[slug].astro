@@ -1,0 +1,83 @@
+---
+import type { GetStaticPaths } from "astro";
+import Base from "../../layouts/Base.astro";
+import PageHeader from "../../components/PageHeader.astro";
+import { getEventPages } from "../../lib/sanity/content";
+import { imageUrl } from "../../lib/sanity/images";
+import { renderPortableText } from "../../lib/portable-text";
+import { formatRange } from "../../lib/dates";
+import type { ClubEvent } from "../../lib/sanity/types";
+
+export const getStaticPaths = (async () =>
+  (await getEventPages()).map((event) => ({
+    params: { slug: event.slug },
+    props: { event },
+  }))) satisfies GetStaticPaths;
+
+const { event } = Astro.props as { event: ClubEvent };
+const cover = imageUrl(event.cover, 1200, 630);
+const label = { training: "Training", social: "Social", tournament: "Tournament", kumite: "Cougars Kumite" }[
+  event.type
+];
+---
+
+<Base title={event.title} description={event.summary ?? undefined} image={cover}>
+  <PageHeader eyebrow={label} title={event.title} lede={event.summary}>
+    <ul class="facts">
+      <li>
+        <strong>When</strong> {formatRange(event.startsAt, event.endsAt)}
+      </li>
+      {event.location && (
+        <li>
+          <strong>Where</strong> {event.location}
+        </li>
+      )}
+    </ul>
+    <div class="ctas">
+      {event.ctaUrl && (
+        <a class="btn" href={event.ctaUrl}>
+          {event.ctaLabel ?? "Sign up"}
+        </a>
+      )}
+      <a class="btn btn--ghost" href={`/events/${event.slug}.ics`}>
+        Add to calendar
+      </a>
+    </div>
+  </PageHeader>
+  <article class="wrap page-body">
+    {cover && <img class="cover" src={cover} alt={event.cover?.alt ?? ""} />}
+    <div class="prose" set:html={renderPortableText(event.body)} />
+    <p>
+      <a href="/events/">← All events</a>
+    </p>
+  </article>
+</Base>
+
+<style>
+  .facts {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 1.5rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 2rem;
+    font-size: 1.1rem;
+  }
+  .facts strong {
+    color: var(--red);
+    margin-right: 0.35rem;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    letter-spacing: 0.1em;
+  }
+  .ctas {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+  .cover {
+    width: 100%;
+    border-radius: 1rem;
+    margin-bottom: 2rem;
+  }
+</style>

@@ -1,0 +1,22 @@
+{
+  "name": "@cougars/studio",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "sanity dev --port 4520 --host 0.0.0.0",
+    "build": "sanity build",
+    "deploy": "sanity deploy",
+    "seed": "sanity exec seed.ts --with-user-token"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "typescript": "^6.0.3"
+  },
+  "dependencies": {
+    "@sanity/vision": "^6.17.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "sanity": "^6.17.0",
+    "styled-components": "^6.5.3"
+  }
+}

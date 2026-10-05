@@ -1,0 +1,34 @@
+{
+  // Dev servers start automatically when the devcontainer opens (runOn: folderOpen).
+  // Each gets its own terminal: Terminal → Run Task… to restart one, or kill the terminal to stop it.
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "dev: web (:4500)",
+      "type": "shell",
+      "command": "npm run dev -w @cougars/web",
+      "isBackground": true,
+      "runOptions": { "runOn": "folderOpen" },
+      "presentation": { "group": "dev", "panel": "dedicated", "reveal": "silent", "showReuseMessage": false },
+      "problemMatcher": []
+    },
+    {
+      "label": "dev: ops (:4510)",
+      "type": "shell",
+      "command": "if [ -f apps/ops/package.json ]; then npm run dev -w @cougars/ops; else echo 'apps/ops does not exist yet (docs/roadmap.md, phase 3). This task starts it automatically once it does.'; fi",
+      "isBackground": true,
+      "runOptions": { "runOn": "folderOpen" },
+      "presentation": { "group": "dev", "panel": "dedicated", "reveal": "silent", "showReuseMessage": false },
+      "problemMatcher": []
+    },
+    {
+      "label": "dev: studio (:4520)",
+      "detail": "Sanity Studio. Needs SANITY_STUDIO_PROJECT_ID (docs/setup.md). Not started automatically.",
+      "type": "shell",
+      "command": "npm run dev -w @cougars/studio",
+      "isBackground": true,
+      "presentation": { "group": "dev", "panel": "dedicated", "showReuseMessage": false },
+      "problemMatcher": []
+    }
+  ]
+}

@@ -1,0 +1,110 @@
+---
+import { getSettings, getSponsors } from "../lib/sanity/content";
+import { imageUrl } from "../lib/sanity/images";
+
+const s = await getSettings();
+const sponsors = await getSponsors();
+const slot = s.training[0];
+const socials = [
+  { href: s.socials.instagram, label: "Instagram" },
+  { href: s.socials.facebook, label: "Facebook" },
+  { href: s.socials.youtube, label: "YouTube" },
+].filter((x): x is { href: string; label: string } => Boolean(x.href));
+---
+
+<footer class="footer">
+  <div class="wrap">
+    {
+      sponsors.length > 0 && (
+        <ul class="sponsors">
+          {sponsors.map((sp) => (
+            <li>
+              <a href={sp.url ?? undefined} rel="noopener" target="_blank">
+                {sp.logo ? <img src={imageUrl(sp.logo, 240)} alt={sp.name} loading="lazy" /> : sp.name}
+              </a>
+            </li>
+          ))}
+        </ul>
+      )
+    }
+    <div class="cols">
+      <p class="brand">Battersea Cougars</p>
+      <div>
+        {
+          slot && (
+            <p>
+              {slot.day}s {slot.start}–{slot.end}
+            </p>
+          )
+        }
+        <p>
+          <a class="link" href={s.venue.mapUrl} rel="noopener" target="_blank">{s.venue.name}</a>
+        </p>
+      </div>
+      <div>
+        <p><a class="link" href={`mailto:${s.contactEmail}`}>{s.contactEmail}</a></p>
+        <p class="social">
+          {
+            socials.map((x) => (
+              <a class="link" href={x.href} rel="noopener" target="_blank">
+                {x.label}
+              </a>
+            ))
+          }
+        </p>
+      </div>
+    </div>
+    <p class="legal label">© {new Date().getFullYear()} Battersea Cougars Inline Hockey Club · Est. {s.founded}</p>
+  </div>
+</footer>
+
+<style>
+  .footer {
+    padding-block: 4rem 2rem;
+    border-top: 1px solid var(--line);
+    font-size: 0.9rem;
+    color: var(--bone-2);
+  }
+  .cols {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr 1fr;
+    gap: 2rem;
+  }
+  .cols p {
+    margin: 0 0 0.4rem;
+  }
+  .brand {
+    font-size: 1.6rem;
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    color: var(--bone);
+  }
+  .social {
+    display: flex;
+    gap: 1.25rem;
+  }
+  .legal {
+    margin: 3.5rem 0 0;
+  }
+  .sponsors {
+    list-style: none;
+    margin: 0 0 3rem;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 2.5rem;
+  }
+  .sponsors img {
+    max-height: 2.25rem;
+    width: auto;
+    filter: grayscale(1) brightness(1.8);
+    opacity: 0.6;
+  }
+  @media (max-width: 48rem) {
+    .cols {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

@@ -1,0 +1,33 @@
+---
+// Empty state, shown until the club adds content in the Studio.
+interface Props {
+  title: string;
+}
+const { title } = Astro.props;
+---
+
+<div class="empty" data-reveal>
+  <p class="big">{title}</p>
+  <p class="label label--plain"><slot /></p>
+</div>
+
+<style>
+  .empty {
+    padding: clamp(3rem, 8vw, 6rem) 1.5rem;
+    text-align: center;
+    border: 1px dashed var(--line-strong);
+    border-radius: 1rem;
+  }
+  .big {
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: var(--fs-l);
+    text-transform: uppercase;
+    margin-bottom: 0.75rem;
+  }
+  .label :global(a) {
+    color: var(--bone);
+    text-decoration: underline;
+    text-decoration-color: var(--red);
+  }
+</style>

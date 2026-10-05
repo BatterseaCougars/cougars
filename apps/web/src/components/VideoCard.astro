@@ -1,0 +1,88 @@
+---
+// "Lite" YouTube embed: shows the thumbnail and only loads YouTube's player
+// (~1 MB) when someone presses play. Keeps the videos page fast on phones.
+import type { Video } from "../lib/sanity/types";
+import { embedUrl, thumbnailUrl, youtubeId } from "../lib/youtube";
+import { formatDate } from "../lib/dates";
+
+interface Props {
+  video: Video;
+}
+const { video } = Astro.props;
+const id = youtubeId(video.youtubeUrl);
+---
+
+{id && (
+  <article class="card video">
+    <div class="player" data-embed={embedUrl(id)}>
+      <img src={thumbnailUrl(id)} alt="" loading="lazy" width="480" height="360" />
+      <button type="button" class="play" aria-label={`Play: ${video.title}`}>
+        <svg viewBox="0 0 68 48" aria-hidden="true">
+          <path d="M66.5 7.7A8.5 8.5 0 0 0 60.5 1.7C55.2.3 34 .3 34 .3S12.8.3 7.5 1.7A8.5 8.5 0 0 0 1.5 7.7C.1 13 .1 24 .1 24s0 11 1.4 16.3a8.5 8.5 0 0 0 6 6c5.3 1.4 26.5 1.4 26.5 1.4s21.2 0 26.5-1.4a8.5 8.5 0 0 0 6-6C67.9 35 67.9 24 67.9 24s0-11-1.4-16.3z" />
+          <path d="M45 24 27 14v20" fill="#fff" />
+        </svg>
+      </button>
+    </div>
+    <div class="meta">
+      <h3>{video.title}</h3>
+      <p class="muted">{formatDate(video.recordedOn)}</p>
+      {video.description && <p>{video.description}</p>}
+    </div>
+  </article>
+)}
+
+<style>
+  .player {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    background: #000;
+  }
+  .player img,
+  .player :global(iframe) {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border: 0;
+  }
+  .play {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    background: linear-gradient(transparent 50%, rgb(0 0 0 / 0.5));
+    border: 0;
+    cursor: pointer;
+  }
+  .play svg {
+    width: 4.25rem;
+    fill: var(--red);
+    transition: transform 0.15s;
+  }
+  .play:hover svg,
+  .play:focus-visible svg {
+    transform: scale(1.1);
+  }
+  .meta {
+    padding: 1rem 1.15rem 0.5rem;
+  }
+  .meta h3 {
+    font-size: 1.8rem;
+    margin-bottom: 0.2rem;
+  }
+</style>
+
+<script>
+  document.addEventListener("click", (e) => {
+    const button = (e.target as Element).closest(".video .play");
+    const player = button?.closest<HTMLElement>(".player");
+    if (!player?.dataset.embed) return;
+    const iframe = document.createElement("iframe");
+    iframe.src = player.dataset.embed;
+    iframe.title = button!.getAttribute("aria-label") ?? "YouTube video";
+    iframe.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen";
+    iframe.allowFullscreen = true;
+    player.replaceChildren(iframe);
+  });
+</script>

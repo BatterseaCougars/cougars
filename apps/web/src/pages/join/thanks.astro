@@ -1,0 +1,20 @@
+---
+import Base from "../../layouts/Base.astro";
+import PageHeader from "../../components/PageHeader.astro";
+import { getSettings } from "../../lib/sanity/content";
+
+const s = await getSettings();
+const slot = s.training[0];
+---
+
+<Base title="Thanks!">
+  <PageHeader
+    eyebrow="Thanks"
+    title="See you on court"
+    lede={`We've got your details and someone from the club will be in touch soon.${slot ? ` In the meantime, you're welcome to just turn up on a ${slot.day} at ${slot.start}.` : ""}`}
+  >
+    <a class="btn" href="/">
+      Back to the homepage
+    </a>
+  </PageHeader>
+</Base>
