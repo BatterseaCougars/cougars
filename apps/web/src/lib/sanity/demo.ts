@@ -1,5 +1,5 @@
-// Sample content for previewing the design locally before Sanity has real
-// content. Only used when DEMO_CONTENT=true in `astro dev`; never in builds.
+// Sample content for previewing the design before Sanity has real content.
+// Used when DEMO_CONTENT=true: locally, and in dev and PR builds (deploy.yml).
 // Photos are random placeholders from picsum.photos (not hockey); videos are
 // public inline hockey clips on YouTube, dated as recent Friday sessions.
 import type { Album, ClubEvent, Honour, Player, SanityImage, Video } from "./types";

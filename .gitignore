@@ -10,3 +10,6 @@ dist/
 .sanity/
 .dev.vars*
 !.env.example
+
+# Git worktrees for parallel streams (docs/roadmap.md)
+.worktrees/
