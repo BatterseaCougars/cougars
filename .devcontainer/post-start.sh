@@ -47,10 +47,10 @@ fi
 (cd "$ROOT" && npm run --silent db:migrate:local >/dev/null) || echo "Local D1 migration failed; run: npm run db:migrate:local"
 
 echo "Cougars monorepo ready — web :4500 and ops :4510 start automatically (.vscode/tasks.json). See README.md"
-# Bind-mounted host dir may be root-owned on first create
+# Cougars' own Bitwarden login (a volume, not the host's: that may be another org's account)
 if [ -d "/home/node/.config/Bitwarden CLI" ]; then
   sudo chown -R node:node "/home/node/.config/Bitwarden CLI" 2>/dev/null || true
 fi
 if command -v bw >/dev/null 2>&1; then
-  echo "Secrets: export BWS_ACCESS_TOKEN, then node scripts/env-pull.mjs --status (docs/setup.md)"
+  echo "Secrets: bw-unlock (first time: bw config server https://vault.bitwarden.eu && bw login). docs/setup.md"
 fi

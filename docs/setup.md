@@ -59,11 +59,12 @@ Bitwarden secrets (step 3, in `cougars-dev`, shared by both environments): `SANI
      `COUGARS_LOCAL_BW_TOKEN=...`.
 4. If your vault is on the EU server (`vault.bitwarden.eu`), remember that for step 4.
 
-Locally, **`bw-unlock` is the login**: once per container start, then every script finds the token itself.
+Locally, **`bw-unlock` is the login**: once per container start, then every script finds the token itself. The
+devcontainer keeps its own Bitwarden login (volume `cougars-bitwarden-cli`), separate from your host's.
 
 ```sh
 bw config server https://vault.bitwarden.eu   # once
-bw login                                      # once
+bw login                                      # once, as the account in the Cougars org
 bw-unlock                                     # each container start
 node scripts/env-pull.mjs --status            # lists secret names (dev)
 ```
