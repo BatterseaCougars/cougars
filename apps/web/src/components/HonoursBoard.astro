@@ -1,67 +1,67 @@
 ---
-// Kumite champions, newest first: a plain results list.
+// Kumite champions: the reigning team up top, earlier winners as a compact list.
 import type { Honour } from "../lib/sanity/types";
 
 interface Props {
   honours: Honour[];
 }
 const { honours } = Astro.props;
+const [reigning, ...past] = honours;
 ---
 
-<figure class="board" data-reveal>
-  <figcaption class="label">Kumite champions</figcaption>
-  <ol>
-    {honours.map((h) => (
-      <li>
-        <span class="season label">{h.season}</span>
-        <span class="team">{h.champions ?? "—"}</span>
-        {h.topScorer && <span class="scorer muted">Top scorer: {h.topScorer}</span>}
-      </li>
-    ))}
-  </ol>
-</figure>
+{reigning && (
+  <div class="board" data-reveal>
+    <p class="kicker">Champions</p>
+    <div class="reigning">
+      <p class="label">Reigning · {reigning.season}</p>
+      <p class="team">{reigning.champions ?? "—"}</p>
+      {reigning.topScorer && <p class="muted">Top scorer: {reigning.topScorer}</p>}
+    </div>
+    {past.length > 0 && (
+      <ol class="past">
+        {past.map((h) => (
+          <li>
+            <span class="label">{h.season}</span>
+            <span>{h.champions ?? "—"}</span>
+          </li>
+        ))}
+      </ol>
+    )}
+  </div>
+)}
 
 <style>
-  .board {
+  .reigning {
+    margin: 1.5rem 0 0;
+    padding: 1.5rem 0;
+    border-top: 1px solid var(--rule);
+  }
+  .reigning p {
     margin: 0;
   }
-  figcaption {
-    margin-bottom: 1rem;
+  .reigning .label {
+    color: var(--red-hot);
   }
-  ol {
+  .team {
+    margin: 0.5rem 0 0.4rem !important;
+    font-family: var(--display);
+    font-size: clamp(2.2rem, 4.5vw, 3.4rem);
+    line-height: 1;
+    text-transform: uppercase;
+  }
+  .past {
     list-style: none;
     margin: 0;
     padding: 0;
     border-top: 1px solid var(--rule);
   }
-  li {
-    display: grid;
-    grid-template-columns: 7rem 1fr;
-    gap: 0.2rem 1.25rem;
+  .past li {
+    display: flex;
+    justify-content: space-between;
+    gap: 1.25rem;
     align-items: baseline;
-    padding: 1rem 0;
+    padding: 0.85rem 0;
     border-bottom: 1px solid var(--rule);
-  }
-  .season {
     color: var(--text-2);
-  }
-  .team {
-    font-family: var(--display);
-    font-size: clamp(1.4rem, 2.6vw, 1.9rem);
-    letter-spacing: 0.02em;
-    line-height: 1.05;
-    text-transform: uppercase;
-  }
-  .scorer {
-    grid-column: 2;
-    font-size: 0.85rem;
-  }
-  @media (max-width: 30rem) {
-    li {
-      grid-template-columns: 1fr;
-    }
-    .scorer {
-      grid-column: 1;
-    }
   }
 </style>
