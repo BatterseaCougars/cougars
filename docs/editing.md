@@ -30,11 +30,6 @@ You don't upload video files to the website. YouTube hosts them for free.
    _Button link_.
 3. **Publish**. It appears on the homepage until it's over, and then moves to _Past events_ automatically.
 
-## Write news
-
-**News → +**. Add a title, summary, main image and the text. You can drop photos and YouTube links into the
-text.
-
 ## Update the team
 
 **Team roster → +** adds a player. Only the name is required; the nickname goes big on the front of their

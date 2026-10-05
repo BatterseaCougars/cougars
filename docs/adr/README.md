@@ -19,3 +19,4 @@ rule, a trade-off. Copy [template.md](template.md), take the next number, keep i
 | [0008](0008-magic-link-admin-login.md)      | Admin login by email magic link                                          | Accepted           |
 | [0009](0009-site-design-direction.md)       | Site design: a Friday night, on carbon, one-page navigation              | Accepted           |
 | [0010](0010-two-environments.md)            | Two environments, production and dev, on two Cloudflare accounts         | Accepted           |
+| [0011](0011-no-news.md)                     | No news section                                                          | Accepted           |

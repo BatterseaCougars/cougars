@@ -67,6 +67,19 @@ const steps = [
           </span>
         </dd>
       </div>
+      <div data-reveal style="--i:4">
+        <dt class="label">After</dt>
+        <dd>
+          {s.pub.mapUrl ? (
+            <a class="big link" href={s.pub.mapUrl} rel="noopener" target="_blank">
+              {s.pub.name} ↗
+            </a>
+          ) : (
+            <span class="big">{s.pub.name}</span>
+          )}
+          <span class="muted">{s.pub.about}</span>
+        </dd>
+      </div>
     </dl>
 
     <section class="first">

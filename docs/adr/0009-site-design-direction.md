@@ -14,7 +14,8 @@ afterwards. Earlier designs were rejected as copied, gaudy, too busy, too sophis
   only (trading cards, the beer mat, the newsprint back page). The Kumite section goes "underground": darker,
   with an 80s fight-film poster.
 - **Structure:** the home page runs as a Friday night: 19:00 who we are, 19:30 Fridays, 21:30 the team,
-  21:45 the pub, then the Kumite, events, footage and news. A header clock follows the sections.
+  then the Kumite, events, videos (mostly Friday sessions) and a photo gallery. No news section
+  ([ADR 0011](0011-no-news.md)). A header clock follows the sections.
 - **Navigation:** for now every nav item scrolls to its section of the home page, from any page. Full pages
   are reached from each section's "see all" link.
 - **Voice:** irreverent but welcoming. Ethos line: "Hooking, slashing or refusing to pass may result in being

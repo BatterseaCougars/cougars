@@ -5,8 +5,8 @@ import { DEMO_CONTENT } from "astro:env/server";
 import { sanity } from "./client";
 import * as q from "./queries";
 import { FALLBACK_SETTINGS } from "./fallback";
-import { DEMO_ALBUMS, DEMO_EVENTS, DEMO_HONOURS, DEMO_PLAYERS, DEMO_POSTS, DEMO_VIDEOS } from "./demo";
-import type { Album, ClubEvent, Player, Post, SiteSettings, Sponsor, Video } from "./types";
+import { DEMO_ALBUMS, DEMO_EVENTS, DEMO_HONOURS, DEMO_PLAYERS, DEMO_VIDEOS } from "./demo";
+import type { Album, ClubEvent, Player, SiteSettings, Sponsor, Video } from "./types";
 
 // Sample content for dev builds: `DEMO_CONTENT=true npm run dev`, PR previews and
 // scripts/deploy-dev.sh. Real Sanity content still wins wherever it exists. Never set for
@@ -39,8 +39,6 @@ export const getSettings = memo(async (): Promise<SiteSettings> => {
     pub: { ...FALLBACK_SETTINGS.pub, ...stripNulls(s.pub ?? {}) },
   };
 });
-export const getPosts = memo(() => fetchOr<Post[]>(q.POSTS, demo ? DEMO_POSTS : []));
-export const getPostPages = memo(() => fetchOr<Post[]>(q.POST_PAGES, demo ? DEMO_POSTS : []));
 export const getVideos = memo(() => fetchOr<Video[]>(q.VIDEOS, demo ? DEMO_VIDEOS : []));
 export const getEvents = memo(() => fetchOr<ClubEvent[]>(q.EVENTS, demo ? DEMO_EVENTS : []));
 export const getEventPages = memo(() => fetchOr<ClubEvent[]>(q.EVENT_PAGES, demo ? DEMO_EVENTS : []));

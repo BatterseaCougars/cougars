@@ -92,7 +92,7 @@ This makes the live site rebuild about 2 minutes after an editor presses **Publi
    - URL: `https://api.github.com/repos/das974/cougars/dispatches`
    - Dataset: `production`
    - Trigger on: Create, Update, Delete
-   - Filter: `_type in ["siteSettings","event","video","album","post","player","sponsor"]`
+   - Filter: `_type in ["siteSettings","event","video","album","player","sponsor"]`
    - Projection: `{"event_type": "sanity-publish"}`
    - HTTP method: POST
    - HTTP headers:

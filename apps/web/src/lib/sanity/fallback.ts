@@ -9,10 +9,12 @@ export const FALLBACK_SETTINGS: SiteSettings = {
   aboutHeading: "Since 1996",
   aboutBody:
     "Take a Van Damme film, put it on skates, hand everyone a stick and set it in South London. That's " +
-    "us, every Friday since 1996, on the same Battersea court: league players, weekend skaters and people " +
-    "who've never held a stick, all on one rink.\n\n" +
-    "Nobody cares where you're from or how well you skate. " +
-    "Turn up, gear up, play. Our official team flies the flag in the BIPHA league, and when the final " +
+    "us: inline hockey at Battersea Sports Centre since 1996. Nearly 30 years on the same sport court has " +
+    "made us part of the furniture of London's inline hockey scene.\n\n" +
+    "We're a proper mix: half the world's accents, seasoned pros and people picking up a stick for the " +
+    "first time, all on one rink. Nobody cares where you're from or how well you skate. Turn up, gear up, " +
+    "play.\n\n" +
+    "Some of us play league hockey for the club in BIPHA. All of us play on Friday. And when the final " +
     "whistle goes, everyone heads to the pub.",
   founded: 1996,
   training: [
@@ -21,18 +23,20 @@ export const FALLBACK_SETTINGS: SiteSettings = {
       day: "Friday",
       start: "19:30",
       end: "21:30",
-      description: "All levels on one rink. Teams are balanced every week so every game is a real game.",
+      description:
+        "One session, every level, one rink. We play to get better together and we play to win. Teams are " +
+        "balanced every week so every game is a real game.",
     },
   ],
   kitNotes:
-    "Helmet and gloves are mandatory. Full pads (knees, elbows, shins) recommended. Kit is provided for your first session.",
+    "Helmet and gloves are non-negotiable. Full pads (knees, elbows, shins) strongly recommended. First " +
+    "session, we provide all the kit.",
   feesText: null,
   kumite: {
     intro:
-      "Four times a year, the Cougars go underground. Think Bloodsport, but in a Battersea sports hall, on " +
-      "skates, and nobody gets hurt on purpose. The Kumite is our in-house tournament, a special event apart " +
-      "from regular Friday hockey. Everyone who signs up is drafted into balanced teams, every team plays every " +
-      "other team, and one team walks away as champions. It sounds secret. It isn't: anyone can play.",
+      "Four times a year we hold the Kumite, our in-house tournament, a special event apart from regular " +
+      "Friday hockey. Everyone who signs up is drafted into balanced teams, every team plays every other " +
+      "team, and one team walks away as champions. Anyone can play.",
     format: [
       "Players are drafted into balanced teams on the day",
       "Full round robin: every team plays every team",

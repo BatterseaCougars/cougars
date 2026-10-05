@@ -7,10 +7,6 @@ export const SETTINGS = /* groq */ `*[_id == "siteSettings"][0]{
   venue{name, address, mapUrl}, contactEmail, socials
 }`;
 
-const POST_FIELDS = `title, "slug": slug.current, publishedAt, excerpt, cover`;
-export const POSTS = /* groq */ `*[_type == "post" && defined(slug.current)] | order(publishedAt desc){${POST_FIELDS}}`;
-export const POST_PAGES = /* groq */ `*[_type == "post" && defined(slug.current)]{${POST_FIELDS}, body}`;
-
 export const VIDEOS = /* groq */ `*[_type == "video" && defined(youtubeUrl)] | order(recordedOn desc){
   _id, title, recordedOn, youtubeUrl, description
 }`;

@@ -1,0 +1,122 @@
+---
+// Full-screen photo viewer for any `[data-gallery]` on the page: links inside it
+// (`a[data-photo]`) open here instead of navigating. Without JS the links just open
+// the full-size image. Arrow keys and the buttons step through that gallery.
+---
+
+<dialog class="lightbox" aria-label="Photo viewer" data-lightbox>
+  <img alt="" />
+  <p class="caption"></p>
+  <button type="button" class="close" aria-label="Close" data-close>
+    ×
+  </button>
+  <button type="button" class="nav prev" aria-label="Previous photo" data-step="-1">
+    ‹
+  </button>
+  <button type="button" class="nav next" aria-label="Next photo" data-step="1">
+    ›
+  </button>
+</dialog>
+
+<style>
+  .lightbox {
+    max-width: 100vw;
+    max-height: 100dvh;
+    width: 100vw;
+    height: 100dvh;
+    margin: 0;
+    padding: 1rem;
+    border: 0;
+    background: rgb(0 0 0 / 0.94);
+    color: #ece8e1;
+  }
+  .lightbox[open] {
+    display: grid;
+    place-items: center;
+    align-content: center;
+    gap: 0.75rem;
+  }
+  .lightbox::backdrop {
+    background: transparent;
+  }
+  img {
+    max-height: 84dvh;
+    width: auto;
+  }
+  .caption {
+    margin: 0;
+    font-size: 0.9rem;
+    color: rgb(236 232 225 / 0.7);
+  }
+  button {
+    position: absolute;
+    width: 3rem;
+    height: 3rem;
+    border: 1px solid rgb(236 232 225 / 0.3);
+    border-radius: 50%;
+    background: rgb(0 0 0 / 0.4);
+    color: #fff;
+    font-size: 1.8rem;
+    line-height: 1;
+    cursor: pointer;
+  }
+  button:hover {
+    border-color: var(--red);
+    background: var(--red);
+  }
+  .close {
+    top: 1rem;
+    right: 1rem;
+  }
+  .nav {
+    top: 50%;
+    translate: 0 -50%;
+  }
+  .prev {
+    left: 1rem;
+  }
+  .next {
+    right: 1rem;
+  }
+</style>
+
+<script>
+  // Delegated, so it works after view-transition page swaps without re-binding.
+  let links: HTMLAnchorElement[] = [];
+  let index = 0;
+  const dialog = () => document.querySelector<HTMLDialogElement>("[data-lightbox]");
+
+  const show = (i: number) => {
+    const d = dialog();
+    if (!d || !links.length) return;
+    index = (i + links.length) % links.length;
+    const link = links[index];
+    const img = d.querySelector("img")!;
+    img.src = link.href;
+    img.alt = link.querySelector("img")?.alt ?? "";
+    d.querySelector(".caption")!.textContent = link.dataset.caption ?? "";
+  };
+
+  document.addEventListener("click", (e) => {
+    const target = e.target as Element;
+    const link = target.closest<HTMLAnchorElement>("[data-gallery] a[data-photo]");
+    const d = dialog();
+    if (link && d) {
+      e.preventDefault();
+      links = [...link.closest("[data-gallery]")!.querySelectorAll<HTMLAnchorElement>("a[data-photo]")];
+      show(links.indexOf(link));
+      d.showModal();
+      return;
+    }
+    if (!d?.open) return;
+    if (target.closest("[data-close]") || target === d) d.close();
+    const step = target.closest<HTMLElement>("[data-step]")?.dataset.step;
+    if (step) show(index + Number(step));
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (!dialog()?.open) return;
+    if (e.key === "ArrowLeft") show(index - 1);
+    if (e.key === "ArrowRight") show(index + 1);
+  });
+</script>

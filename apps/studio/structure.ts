@@ -15,7 +15,6 @@ export const structure: StructureResolver = (S) =>
       S.documentTypeListItem("event").title("Events"),
       S.documentTypeListItem("video").title("Videos"),
       S.documentTypeListItem("album").title("Photo albums"),
-      S.documentTypeListItem("post").title("News"),
       S.documentTypeListItem("player").title("Team roster"),
       S.divider(),
       S.documentTypeListItem("sponsor").title("Sponsors"),

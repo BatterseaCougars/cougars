@@ -11,7 +11,6 @@ There are two apps on one D1 database, both on Cloudflare's free tier:
 - Monorepo; team-manager archived.
 - Astro site:
   - home
-  - news
   - videos (lite YouTube embeds)
   - events (with `.ics` add-to-calendar)
   - gallery (lightbox)

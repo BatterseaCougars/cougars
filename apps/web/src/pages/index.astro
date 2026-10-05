@@ -1,20 +1,19 @@
 ---
-// The home page is a Friday night, top to bottom: kit up, face-off, final whistle, The Anchor,
+// The home page is a Friday night, top to bottom: kit up, face-off, final whistle,
 // and (four times a year) the Kumite, underground. Then the week's news. Each section's
 // data-time / data-title drives the header clock (scripts/motion.ts).
 import { Image } from "astro:assets";
 import Base from "../layouts/Base.astro";
 import logo from "../assets/cougars.png";
-import { getAlbums, getEvents, getPlayers, getPosts, getSettings, getVideos, upcoming } from "../lib/sanity/content";
+import { getAlbums, getEvents, getPlayers, getSettings, getVideos, upcoming } from "../lib/sanity/content";
 import { imageSrcSet, imageUrl, objectPosition } from "../lib/sanity/images";
-import { formatDate } from "../lib/dates";
 import EventList from "../components/EventList.astro";
 import Empty from "../components/Empty.astro";
 import KumitePoster from "../components/KumitePoster.astro";
 import PlayerCard from "../components/PlayerCard.astro";
 import VideoCard from "../components/VideoCard.astro";
-import BeerMat from "../components/BeerMat.astro";
 import HonoursBoard from "../components/HonoursBoard.astro";
+import Lightbox from "../components/Lightbox.astro";
 
 const s = await getSettings();
 const all = upcoming(await getEvents());
@@ -23,9 +22,9 @@ const events = all.filter((e) => e !== kumite).slice(0, 4);
 const slot = s.training[0];
 const day = slot?.day ?? "Friday";
 const players = (await getPlayers()).slice(0, 5);
-const videos = (await getVideos()).slice(0, 2);
-const albums = (await getAlbums()).slice(0, 3);
-const [lead, ...stories] = (await getPosts()).slice(0, 3);
+const [latest, ...earlier] = (await getVideos()).slice(0, 3);
+// The newest photos across albums, for the home gallery
+const photos = (await getAlbums()).flatMap((a) => a.photos).slice(0, 12);
 const honours = s.kumite.honours ?? [];
 const years = new Date().getFullYear() - s.founded;
 // Only a hero photo from the Studio; otherwise the site-wide carbon mesh shows through.
@@ -36,7 +35,6 @@ const strip: [string, string][] = [
   [String(s.founded), "Founded"],
   [`${years} yrs`, "Same rink"],
   ...(s.team.league ? ([[s.team.league, "League team"]] as [string, string][]) : []),
-  [s.pub.name, "Afterwards"],
 ];
 ---
 
@@ -58,7 +56,6 @@ const strip: [string, string][] = [
     <p class="hero-line">
       {day} night roller hockey <span>·</span> South London <span>·</span> Since {s.founded}
     </p>
-    <p class="hero-sub label">Part hockey club, part Van Damme film. All Battersea.</p>
     <div class="hero-actions">
       <a class="btn btn--primary" href="/join/">
         Try a session
@@ -91,10 +88,10 @@ const strip: [string, string][] = [
     </dl>
   </section>
 
-  <!-- The club ethos, as a warning sign -->
+  <!-- The club ethos -->
   <aside class="notice" aria-label="Club ethos" data-reveal>
     <div class="wrap notice-inner">
-      <p class="notice-tag">Warning</p>
+      <p class="kicker">House rule</p>
       <p class="notice-text">
         Hooking, slashing or refusing to pass may result in being <em>drafted first.</em>
       </p>
@@ -139,7 +136,9 @@ const strip: [string, string][] = [
             <dt class="label">Who</dt>
             <dd>
               <span class="strong">Anyone</span>
-              <span class="muted">Never skated, or played for years. Same rink, balanced teams.</span>
+              <span class="muted">
+                Never skated, or played for years. Same rink, balanced teams. Non-contact, not no-contact.
+              </span>
             </dd>
           </div>
         </dl>
@@ -183,27 +182,6 @@ const strip: [string, string][] = [
         </Empty>
       </div>
     )}
-  </section>
-
-  <!-- 21:45 The pub -->
-  <section class="section band" id="pub" data-time="21:45" data-title={s.pub.name}>
-    <div class="wrap pub">
-      <div data-reveal>
-        <p class="stamp">21:45</p>
-        <p class="kicker">Last orders · After hockey</p>
-        <h2>{s.pub.name}</h2>
-        <p class="lede">{s.pub.about}</p>
-        {s.pub.mapUrl && (
-          <a class="more" href={s.pub.mapUrl} rel="noopener" target="_blank">
-            Find {s.pub.name}
-          </a>
-        )}
-        <p class="hint label">Go on, flip the mat.</p>
-      </div>
-      <div class="mat-col" data-reveal style="--i:1">
-        <BeerMat pub={s.pub.name} founded={s.founded} />
-      </div>
-    </div>
   </section>
 
   <!-- Off the record: the Kumite, underground -->
@@ -250,111 +228,80 @@ const strip: [string, string][] = [
     )}
   </section>
 
-  <section class="section band" id="media" data-time="Replay" data-title="Footage">
+  <!-- Videos: mostly Friday night sessions -->
+  <section class="section band" id="videos" data-time="Replay" data-title="Videos">
     <div class="wrap">
       <div class="section-head" data-reveal>
         <div>
-          <p class="kicker">Footage</p>
-          <h2>Videos & photos</h2>
-          <p class="lede">{day} nights and Kumite days, as filmed by whoever wasn't playing.</p>
+          <p class="kicker">On tape</p>
+          <h2>{day} nights, filmed</h2>
+          <p class="lede">We set up a camera on {day} nights. Every goal, every fall, on tape.</p>
         </div>
-        <span class="see-all">
-          <a class="more" href="/videos/">
-            All videos
-          </a>
-          <a class="more" href="/photos/">
-            All photos
-          </a>
-        </span>
+        <a class="more" href="/videos/">
+          All videos
+        </a>
       </div>
-      {videos.length || albums.length ? (
-        <div class="media-grid">
-          {videos.length > 0 && (
-            <div class="videos">
-              {videos.map((v, i) => (
-                <div data-reveal style={`--i:${i}`}>
+      {latest ? (
+        <div class="reel">
+          <div class="latest" data-reveal>
+            <p class="stamp">Latest</p>
+            <VideoCard video={latest} />
+          </div>
+          {earlier.length > 0 && (
+            <ol class="earlier" data-reveal style="--i:1">
+              {earlier.map((v) => (
+                <li>
                   <VideoCard video={v} />
-                </div>
+                </li>
               ))}
-            </div>
-          )}
-          {albums.length > 0 && (
-            <div class="albums">
-              {albums.map((a, i) => (
-                <a class="card album" href={`/photos/${a.slug}/`} data-reveal style={`--i:${i}`}>
-                  <div class="media">
-                    <img
-                      src={imageUrl(a.cover, 800, 600)}
-                      alt=""
-                      loading="lazy"
-                      style={`object-position:${objectPosition(a.cover)}`}
-                    />
-                  </div>
-                  <p class="label">
-                    {formatDate(a.date)} · {a.photos.length} photos
-                  </p>
-                  <h3>{a.title}</h3>
-                </a>
-              ))}
-            </div>
+            </ol>
           )}
         </div>
       ) : (
-        <Empty>
-          Footage from {day} nights and the Kumite will appear here. Meanwhile, there's{" "}
-          <a href={s.socials.instagram ?? "/photos/"} rel="noopener" target="_blank">
-            Instagram
-          </a>
-          .
-        </Empty>
+        <Empty>{day} night videos will appear here.</Empty>
       )}
     </div>
   </section>
 
-  <!-- News, as the back page of a local paper -->
-  <section class="section newsprint backpage-section" id="news" data-time="Extra" data-title="Back page">
-    <div class="wrap">
-      <div class="masthead" data-reveal>
-        <p class="paper-name">The Cougar</p>
-        <p class="label">Back page · Battersea's only inline hockey news</p>
-        <a class="more" href="/news/">
-          All news
-        </a>
+  <!-- Photo gallery -->
+  <section class="section wrap" id="photos" data-time="Snaps" data-title="Photos">
+    <div class="section-head" data-reveal>
+      <div>
+        <p class="kicker">Photos</p>
+        <h2>The evidence</h2>
+        <p class="lede">Photographic proof that some of us can skate.</p>
       </div>
-      {lead ? (
-        <div class="backpage">
-          <a class="lead" href={`/news/${lead.slug}/`} data-reveal>
-            {imageUrl(lead.cover, 1000, 640) && (
-              <div class="media">
-                <img
-                  src={imageUrl(lead.cover, 1000, 640)}
-                  srcset={imageSrcSet(lead.cover, [600, 1000, 1400], 25 / 16)}
-                  sizes="(max-width: 52rem) 100vw, 40rem"
-                  alt={lead.cover?.alt ?? ""}
-                  loading="lazy"
-                  style={`object-position:${objectPosition(lead.cover)}`}
-                />
-              </div>
-            )}
-            <p class="label">{formatDate(lead.publishedAt)}</p>
-            <h3 class="headline">{lead.title}</h3>
-            {lead.excerpt && <p class="muted">{lead.excerpt}</p>}
-          </a>
-          <div class="stories">
-            {stories.map((p, i) => (
-              <a class="story" href={`/news/${p.slug}/`} data-reveal style={`--i:${i + 1}`}>
-                <p class="label">{formatDate(p.publishedAt)}</p>
-                <h3>{p.title}</h3>
-                {p.excerpt && <p class="muted">{p.excerpt}</p>}
-              </a>
-            ))}
-          </div>
-        </div>
-      ) : (
-        <Empty>No news yet. Hold the back page.</Empty>
-      )}
+      <a class="more" href="/photos/">
+        All photos
+      </a>
     </div>
+    {photos.length ? (
+      <ul class="gallery" data-gallery data-reveal>
+        {photos.map((p) => (
+          <li>
+            <a href={imageUrl(p, 2000)} data-photo data-caption={p.caption ?? ""}>
+              <img
+                src={imageUrl(p, 600)}
+                srcset={imageSrcSet(p, [400, 600, 900])}
+                sizes="(max-width: 40rem) 50vw, 18rem"
+                alt={p.alt ?? p.caption ?? ""}
+                loading="lazy"
+              />
+            </a>
+          </li>
+        ))}
+      </ul>
+    ) : (
+      <Empty>
+        No photos yet. Meanwhile, there's{" "}
+        <a href={s.socials.instagram ?? "/photos/"} rel="noopener" target="_blank">
+          Instagram
+        </a>
+        .
+      </Empty>
+    )}
   </section>
+  <Lightbox />
 </Base>
 
 <style>
@@ -405,10 +352,6 @@ const strip: [string, string][] = [
   .hero-line span {
     color: var(--red);
   }
-  .hero-sub {
-    margin: -0.5rem 0 0.25rem;
-    color: var(--text-2);
-  }
   .hero-actions {
     display: flex;
     flex-wrap: wrap;
@@ -420,13 +363,11 @@ const strip: [string, string][] = [
       animation: logo-in 1.2s var(--ease-smooth) 0.1s both;
     }
     .hero-line,
-    .hero-sub,
     .hero-actions {
       animation: logo-in 1s var(--ease-smooth) 0.45s both;
     }
     :global(html.navigation-restore) .hero :global(.hero-logo),
     :global(html.navigation-restore) .hero-line,
-    :global(html.navigation-restore) .hero-sub,
     :global(html.navigation-restore) .hero-actions {
       animation: none;
     }
@@ -521,28 +462,10 @@ const strip: [string, string][] = [
   .notice {
     padding-block: clamp(3rem, 7vw, 5rem);
     border-block: 1px solid var(--rule);
-    /* hazard tape along the top and bottom edges */
-    background:
-      repeating-linear-gradient(-45deg, var(--red) 0 14px, transparent 14px 28px) top / 100% 8px no-repeat,
-      repeating-linear-gradient(-45deg, var(--red) 0 14px, transparent 14px 28px) bottom / 100% 8px no-repeat,
-      rgb(0 0 0 / 0.35);
   }
   .notice-inner {
     display: grid;
-    grid-template-columns: auto 1fr;
-    gap: 0.75rem 2rem;
-    align-items: start;
-  }
-  .notice-tag {
-    margin: 0.4rem 0 0;
-    padding: 0.45rem 0.7rem 0.35rem;
-    background: var(--red);
-    color: #fff;
-    font-family: var(--display);
-    font-size: clamp(1.1rem, 2vw, 1.5rem);
-    letter-spacing: 0.08em;
-    line-height: 1;
-    text-transform: uppercase;
+    gap: 1rem;
   }
   .notice-text {
     margin: 0;
@@ -556,15 +479,6 @@ const strip: [string, string][] = [
     font-style: normal;
     color: var(--red-hot);
   }
-  @media (max-width: 40rem) {
-    .notice-inner {
-      grid-template-columns: 1fr;
-    }
-    .notice-tag {
-      justify-self: start;
-    }
-  }
-
   /* ---------- Face-off ---------- */
   .fridays {
     display: grid;
@@ -637,24 +551,6 @@ const strip: [string, string][] = [
     z-index: 1;
   }
 
-  /* ---------- The pub ---------- */
-  .pub {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    align-items: center;
-    gap: 3rem clamp(3rem, 7vw, 6rem);
-  }
-  .pub h2 {
-    font-size: clamp(3.4rem, 9vw, 7.5rem);
-  }
-  .hint {
-    margin: 1.5rem 0 0;
-  }
-  .mat-col {
-    display: grid;
-    justify-items: center;
-  }
-
   /* ---------- Kumite: underground ---------- */
   .kumite :global(.poster) {
     border-block: 0;
@@ -693,127 +589,73 @@ const strip: [string, string][] = [
     color: var(--text);
   }
 
-  /* ---------- Footage ---------- */
-  .see-all {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1rem 1.75rem;
-  }
-  .media-grid {
+  /* ---------- Videos: latest Friday big, earlier ones stacked ---------- */
+  .reel {
     display: grid;
-    gap: clamp(3rem, 6vw, 4.5rem);
+    grid-template-columns: 1.7fr 1fr;
+    gap: 2rem clamp(1.5rem, 3vw, 2.5rem);
+    align-items: start;
   }
-  .videos,
-  .albums {
-    display: grid;
-    gap: clamp(1.5rem, 3vw, 2.5rem);
-  }
-  .videos {
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 26rem), 1fr));
-  }
-  .albums {
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr));
-  }
-  .album img {
-    aspect-ratio: 4 / 3;
-    width: 100%;
-    object-fit: cover;
-  }
-  .album .label {
-    margin-top: 1rem;
-  }
-  .album h3 {
-    margin-top: 0.4rem;
-  }
-
-  /* ---------- Back page: a sheet of newsprint ---------- */
-  .backpage-section {
-    background-image:
-      radial-gradient(var(--grain) 1px, transparent 1px), radial-gradient(var(--grain) 1px, transparent 1px);
-    background-size:
-      7px 7px,
-      11px 11px;
-  }
-  .masthead {
-    display: grid;
-    grid-template-columns: auto 1fr auto;
-    align-items: center;
-    gap: 0.5rem 1.5rem;
-    margin-bottom: 2rem;
-    padding-bottom: 1rem;
-    border-bottom: 6px double var(--text);
-  }
-  .paper-name {
-    margin: 0;
-    padding: 0.3rem 0.7rem 0.15rem;
+  .latest .stamp {
+    margin-bottom: 0.75rem;
     background: var(--red);
     color: #fff;
-    font-family: var(--display);
-    font-size: clamp(2.2rem, 5vw, 3.6rem);
-    line-height: 1;
-    letter-spacing: 0.01em;
-    text-transform: uppercase;
-    rotate: -1.5deg;
   }
-  .backpage {
-    display: grid;
-    grid-template-columns: 1.5fr 1fr;
-    gap: 2.5rem clamp(2rem, 5vw, 4rem);
-  }
-  .lead .media {
-    margin-bottom: 1rem;
-    overflow: clip;
-    border: 2px solid var(--text);
-  }
-  .lead img {
-    aspect-ratio: 25 / 16;
-    width: 100%;
-    object-fit: cover;
-    transition: transform 0.7s var(--ease-out);
-  }
-  .lead:hover img {
-    transform: scale(1.03);
-  }
-  .headline {
-    margin: 0.4rem 0 0.6rem;
-    font-size: clamp(2.4rem, 5vw, 4.25rem);
-    line-height: 0.92;
-  }
-  .lead:hover .headline,
-  .story:hover h3 {
-    color: var(--red-hot);
-  }
-  .stories {
-    display: grid;
-    align-content: start;
-  }
-  .story {
-    display: block;
-    padding: 1.25rem 0;
-    border-top: 2px solid var(--text);
-  }
-  .story h3 {
-    margin: 0.4rem 0;
-    font-size: clamp(1.7rem, 2.6vw, 2.2rem);
-    transition: color 0.25s;
-  }
-  .story p:last-child,
-  .lead p:last-child {
+  .earlier {
+    list-style: none;
     margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 1.5rem;
+  }
+  /* Smaller cards in the side column */
+  .earlier :global(.meta h3) {
+    font-size: 1.25rem;
+  }
+  .earlier :global(.meta .muted) {
+    display: none;
+  }
+
+  /* ---------- Photo gallery ---------- */
+  .gallery {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(46%, 11rem), 1fr));
+    gap: 0.5rem;
+  }
+  .gallery li:first-child {
+    grid-column: span 2;
+    grid-row: span 2;
+  }
+  .gallery a {
+    display: block;
+    height: 100%;
+    overflow: hidden;
+  }
+  .gallery img {
+    width: 100%;
+    height: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+    filter: saturate(0.9);
+    transition:
+      transform 0.6s var(--ease-out),
+      filter 0.4s;
+  }
+  .gallery a:hover img {
+    transform: scale(1.05);
+    filter: none;
   }
 
   /* ---------- Small screens ---------- */
   @media (max-width: 56rem) {
     .club,
     .fridays,
-    .pub,
     .kumite-more,
-    .backpage {
+    .reel {
       grid-template-columns: 1fr;
-    }
-    .masthead {
-      grid-template-columns: 1fr;
-      justify-items: start;
     }
   }
   @media (max-width: 40rem) {

@@ -11,15 +11,13 @@ const home = path === "/";
 const links = [
   { section: "fridays", label: "Fridays", time: "19:30", page: "/fridays/" },
   { section: "team", label: "The team", time: "21:30", page: "/team/" },
-  { section: "pub", label: "The pub", time: "21:45", page: "" },
   { section: "kumite", label: "Kumite", time: "--:--", page: "/kumite/" },
   { section: "events", label: "What's on", time: "", page: "/events/" },
-  { section: "media", label: "Footage", time: "", page: "/videos/" },
-  { section: "news", label: "News", time: "", page: "/news/" },
+  { section: "videos", label: "Videos", time: "", page: "/videos/" },
+  { section: "photos", label: "Photos", time: "", page: "/photos/" },
 ].map((l) => ({ ...l, href: home ? `#${l.section}` : `/#${l.section}` }));
-// On a full page, mark the section it belongs to (/photos/ belongs to "Footage").
-const owner = (l: (typeof links)[number]) =>
-  (l.page !== "" && path.startsWith(l.page)) || (l.section === "media" && path.startsWith("/photos/"));
+// On a full page, mark the section it belongs to.
+const owner = (l: (typeof links)[number]) => l.page !== "" && path.startsWith(l.page);
 const current = (l: (typeof links)[number]) => (!home && owner(l) ? "page" : undefined);
 const joinCurrent = path.startsWith("/join/") ? "page" : undefined;
 ---

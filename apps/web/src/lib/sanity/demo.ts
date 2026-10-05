@@ -1,8 +1,8 @@
 // Sample content for previewing the design locally before Sanity has real
 // content. Only used when DEMO_CONTENT=true in `astro dev`; never in builds.
 // Photos are random placeholders from picsum.photos (not hockey); videos are
-// public inline hockey clips on YouTube.
-import type { Album, ClubEvent, Honour, Player, Post, SanityImage, Video } from "./types";
+// public inline hockey clips on YouTube, dated as recent Friday sessions.
+import type { Album, ClubEvent, Honour, Player, SanityImage, Video } from "./types";
 
 const inDays = (d: number, time: string) => {
   const t = new Date();
@@ -43,46 +43,27 @@ export const DEMO_EVENTS: ClubEvent[] = [
 
 const pic = (seed: string, alt = ""): SanityImage => ({ demoUrl: `https://picsum.photos/seed/cougars-${seed}`, alt });
 
-export const DEMO_POSTS: Post[] = [
-  {
-    title: "Sample news post one",
-    slug: "demo-1",
-    publishedAt: inDays(-3, "12:00"),
-    excerpt: "Demo mode only.",
-    cover: pic("news1"),
-  },
-  {
-    title: "Sample news post two",
-    slug: "demo-2",
-    publishedAt: inDays(-12, "12:00"),
-    excerpt: "Demo mode only.",
-    cover: pic("news2"),
-  },
-  {
-    title: "Sample news post three",
-    slug: "demo-3",
-    publishedAt: inDays(-30, "12:00"),
-    excerpt: "Demo mode only.",
-    cover: pic("news3"),
-  },
-];
-
-export const DEMO_VIDEOS: Video[] = [
-  {
-    _id: "demo-video-1",
-    title: "Friday night highlights (sample)",
-    recordedOn: inDays(-4, "21:00"),
-    youtubeUrl: "https://www.youtube.com/watch?v=_O72RtQsqA4",
-    description: "Sample video: inline street hockey highlights.",
-  },
-  {
-    _id: "demo-video-2",
-    title: "Top ten goals (sample)",
-    recordedOn: inDays(-11, "21:00"),
-    youtubeUrl: "https://www.youtube.com/watch?v=X_rw0CtkL5Q",
-    description: "Sample video: IIHF InLine Hockey World Championship 2015.",
-  },
-];
+// The last few Fridays, each with a session video. Placeholder clips: public inline hockey
+// videos on YouTube, not Cougars footage.
+const fridaysAgo = (n: number) => {
+  const d = new Date();
+  d.setDate(d.getDate() - ((d.getDay() + 2) % 7) - 7 * n); // most recent Friday, then n weeks back
+  d.setHours(21, 30, 0, 0);
+  return d;
+};
+const fridayTitle = (d: Date) =>
+  `Friday ${d.toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "Europe/London" })}`;
+const SESSION_CLIPS = ["_O72RtQsqA4", "sJdXr3mK1H0", "2h88QNxClqU", "2zrhyg5B6dk", "X_rw0CtkL5Q"];
+export const DEMO_VIDEOS: Video[] = SESSION_CLIPS.map((id, n) => {
+  const d = fridaysAgo(n);
+  return {
+    _id: `demo-video-${n}`,
+    title: `${fridayTitle(d)} (sample)`,
+    recordedOn: d.toISOString(),
+    youtubeUrl: `https://www.youtube.com/watch?v=${id}`,
+    description: "Placeholder clip, not Cougars footage.",
+  };
+});
 
 const album = (slug: string, title: string, days: number, count: number): Album => ({
   title,

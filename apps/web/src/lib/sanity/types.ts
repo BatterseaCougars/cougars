@@ -41,15 +41,6 @@ export interface Honour {
   topScorer?: string | null;
 }
 
-export interface Post {
-  title: string;
-  slug: string;
-  publishedAt: string;
-  excerpt?: string | null;
-  cover?: SanityImage | null;
-  body?: PortableTextBlock[] | null;
-}
-
 export interface Video {
   _id: string;
   title: string;
