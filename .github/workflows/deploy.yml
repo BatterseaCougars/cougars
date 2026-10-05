@@ -1,14 +1,16 @@
 name: Deploy
 
-# Two environments on two Cloudflare accounts (docs/adr/0010-two-environments.md):
-# main            -> production: worker `cougars`, Cougars account
-# sanity-publish  -> production rebuild after an editor publishes in the Studio
-# pull request    -> dev: a preview version of `cougars-dev`, Cougars Dev account, commented on the PR
-# Each GitHub environment holds its own Bitwarden token: `production` (main only) can read
-# production secrets; `preview` holds the dev token, which can't.
+# Branches map to environments like Ark (docs/adr/0013-main-deploys-dev.md), each on its own Cloudflare account
+# (docs/adr/0010-two-environments.md):
+# pull request    -> dev: a preview version of `cougars-dev`, commented on the PR
+# main            -> dev: worker `cougars-dev`, Cougars Dev account
+# release         -> production: worker `cougars`, Cougars account
+# sanity-publish  -> production rebuild of `release` after an editor publishes in the Studio
+# GitHub environment `production` (release only) holds BWS_ACCESS_TOKEN__PRODUCTION; `preview` holds
+# BWS_ACCESS_TOKEN__DEV, which can't read production secrets.
 on:
   push:
-    branches: [main]
+    branches: [main, release]
   pull_request:
     branches: [main]
   repository_dispatch:
@@ -16,7 +18,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: deploy-${{ github.event_name == 'pull_request' && github.ref || 'production' }}
+  group: deploy-${{ github.event_name == 'pull_request' && github.ref || (github.ref == 'refs/heads/release' || github.event_name == 'repository_dispatch') && 'production' || 'dev' }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
@@ -28,16 +30,19 @@ jobs:
     # Forks don't get secrets; their PRs are covered by pr.yml.
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
-    environment: ${{ github.event_name == 'pull_request' && 'preview' || 'production' }}
+    environment: ${{ (github.ref == 'refs/heads/release' || github.event_name == 'repository_dispatch') && 'production' || 'preview' }}
     env:
-      SITE_ENV: ${{ github.event_name == 'pull_request' && 'dev' || 'production' }}
-      SITE_URL: ${{ github.event_name != 'pull_request' && vars.SITE_URL || '' }}
-      # Dev builds: sample content where Sanity's dev dataset is empty, and noindex. Production too while the
-      # GitHub variable DEMO_CONTENT is `true` (until real content is in Sanity).
-      DEMO_CONTENT: ${{ github.event_name == 'pull_request' && 'true' || vars.DEMO_CONTENT || 'false' }}
+      SITE_ENV: ${{ (github.ref == 'refs/heads/release' || github.event_name == 'repository_dispatch') && 'production' || 'dev' }}
+      SITE_URL: ${{ (github.ref == 'refs/heads/release' || github.event_name == 'repository_dispatch') && vars.SITE_URL || '' }}
+      # Dev: sample content where Sanity's dev dataset is empty, and noindex. Production too while the
+      # `production` environment's variable DEMO_CONTENT is `true` (until real content is in Sanity).
+      DEMO_CONTENT: ${{ (github.ref == 'refs/heads/release' || github.event_name == 'repository_dispatch') && (vars.DEMO_CONTENT || 'false') || 'true' }}
       BWS_SERVER_URL: ${{ vars.BWS_SERVER_URL }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          # A Studio publish rebuilds what's live: the release branch
+          ref: ${{ github.event_name == 'repository_dispatch' && 'release' || '' }}
       - uses: ./.github/actions/setup
 
       - name: Install Bitwarden Secrets Manager CLI
@@ -68,9 +73,9 @@ jobs:
         # D1 commands don't follow the build's config redirect, so name the generated config
         run: npx wrangler d1 migrations apply DB --remote -c dist/server/wrangler.json
 
-      - name: Deploy production
-        id: production
-        if: env.SITE_ENV == 'production'
+      - name: Deploy
+        id: deploy
+        if: github.event_name != 'pull_request'
         working-directory: apps/web
         run: |
           out=$(npx wrangler deploy --message "$PUBLIC_BUILD_VERSION" 2>&1 | tee /dev/stderr)
@@ -79,7 +84,7 @@ jobs:
 
       - name: Upload preview
         id: preview
-        if: env.SITE_ENV == 'dev'
+        if: github.event_name == 'pull_request'
         working-directory: apps/web
         run: |
           out=$(npx wrangler versions upload --preview-alias "pr-${{ github.event.number }}" --message "$PUBLIC_BUILD_VERSION" 2>&1 | tee /dev/stderr)
@@ -87,7 +92,7 @@ jobs:
           echo "url=$url" >> "$GITHUB_OUTPUT"
 
       - name: Smoke test
-        run: node scripts/ci/smoke-test.mjs "${{ steps.preview.outputs.url || steps.production.outputs.url }}" "$PUBLIC_BUILD_VERSION"
+        run: node scripts/ci/smoke-test.mjs "${{ steps.preview.outputs.url || steps.deploy.outputs.url }}" "$PUBLIC_BUILD_VERSION"
 
       - name: Comment preview URL
         if: steps.preview.outputs.url

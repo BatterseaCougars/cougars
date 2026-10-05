@@ -74,7 +74,7 @@ node scripts/env-pull.mjs --status            # lists secret names (dev)
 In `das974/cougars` → **Settings**:
 
 1. **Environments**:
-   - `production`: deployment branches **`main` only**. Secret `BWS_ACCESS_TOKEN__PRODUCTION`.
+   - `production`: deployment branches **`release` only**. Secret `BWS_ACCESS_TOKEN__PRODUCTION`.
    - `preview`: Secret `BWS_ACCESS_TOKEN__DEV`.
    - No repository-level secrets.
 2. **Variables → Actions** (optional):
@@ -85,7 +85,8 @@ In `das974/cougars` → **Settings**:
    node scripts/env-pull.mjs -- bash scripts/deploy-dev.sh
    ```
 
-The first merge to `main` creates the production D1 database, applies migrations and deploys.
+`main` deploys dev; `git push origin main:release` deploys production ([ADR 0013](adr/0013-main-deploys-dev.md)). The
+first production deploy creates the D1 database and applies migrations.
 
 ## 5. Publish → rebuild webhook
 

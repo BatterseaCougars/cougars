@@ -16,9 +16,9 @@ a new ADR that supersedes it, never a quiet edit.
   `node scripts/env-pull.mjs --status` to see what exists (names only).
 - **Every secret is documented in [README.md#secrets](README.md#secrets)**, and a provider token is named
   exactly like its secret. Adding or renaming a secret means updating that section in the same change.
-- **Never deploy to production by hand.** Production deploys only from `main` via `.github/workflows/deploy.yml`.
-  Dev is a separate Cloudflare account (worker `cougars-dev`): PR previews and `scripts/deploy-dev.sh`
-  ([ADR 0010](docs/adr/0010-two-environments.md)). Your machine is dev; production secrets are `NAME__PRODUCTION`.
+- **Never deploy to production by hand.** Production deploys only from the `release` branch via
+  `.github/workflows/deploy.yml`; `main` and PRs deploy dev ([ADR 0013](docs/adr/0013-main-deploys-dev.md)).
+  Dev is a separate Cloudflare account (worker `cougars-dev`) ([ADR 0010](docs/adr/0010-two-environments.md)). Your machine is dev; production secrets are `NAME__PRODUCTION`.
 - **D1 migrations are additive.** Never edit a migration that has run. See db/README.md.
 - `archive/` is read-only reference. Don't import from it.
 

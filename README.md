@@ -70,11 +70,11 @@ Rules ([ADR 0002](docs/adr/0002-secrets-in-bitwarden.md), [ADR 0010](docs/adr/00
 They let CI (and you) read the other secrets. Each is the access token of one Bitwarden machine account, named
 like the secret that holds it:
 
-| Token                          | Machine account  | `cougars`       | `cougars-dev`   | Stored in                                        |
-| ------------------------------ | ---------------- | --------------- | --------------- | ------------------------------------------------ |
-| `BWS_ACCESS_TOKEN__PRODUCTION` | `cougars-ci`     | Can read        | Can read        | GitHub environment `production` (deploys `main`) |
-| `BWS_ACCESS_TOKEN__DEV`        | `cougars-ci-dev` | No access       | Can read        | GitHub environment `preview` (pull requests)     |
-| `COUGARS_LOCAL_BW_TOKEN`       | `cougars-local`  | Can read, write | Can read, write | your vault: secure note `cougars/.env.local`     |
+| Token                          | Machine account  | `cougars`       | `cougars-dev`   | Stored in                                           |
+| ------------------------------ | ---------------- | --------------- | --------------- | --------------------------------------------------- |
+| `BWS_ACCESS_TOKEN__PRODUCTION` | `cougars-ci`     | Can read        | Can read        | GitHub environment `production` (deploys `release`) |
+| `BWS_ACCESS_TOKEN__DEV`        | `cougars-ci-dev` | No access       | Can read        | GitHub environment `preview` (`main` and PRs)       |
+| `COUGARS_LOCAL_BW_TOKEN`       | `cougars-local`  | Can read, write | Can read, write | your vault: secure note `cougars/.env.local`        |
 
 Project access is set in Secrets Manager → **Machine accounts → _account_ → Projects**. CI is read-only: it never
 changes a secret. `cougars-local` can write, so you add secrets from the shell
@@ -96,7 +96,7 @@ Deploys the `cougars` worker and migrates the `cougars` D1 database on the **Cou
 - **Issued by:** Cloudflare, Cougars account → Manage Account → **Account API Tokens**. Scope **Entire
   Cougars account**; permissions **Workers Admin** (Editor can't create a new worker), **D1 Write**. Token name:
   `CLOUDFLARE_API_TOKEN__PRODUCTION`.
-- **Used by:** `deploy.yml` on `main` and Studio publishes only (`target.mjs`, migrations, `wrangler deploy`).
+- **Used by:** `deploy.yml` on `release` and Studio publishes only (`target.mjs`, migrations, `wrangler deploy`).
 - **Gets there by:** CI pull from Secrets Manager (code reads `CLOUDFLARE_API_TOKEN`).
 - **Expires:** no, unless you set a TTL.
 - **Rotate:** roll it in the dashboard, update Secrets Manager.
@@ -112,7 +112,7 @@ Can't touch production: it is a different account.
 
 - **Issued by:** Cloudflare, Cougars Dev account → Manage Account → **Account API Tokens**. Scope **Entire
   Cougars Dev account**; permissions **Workers Admin** (Editor can't create a new worker), **D1 Write**. Token name: `CLOUDFLARE_API_TOKEN__DEV`.
-- **Used by:** `deploy.yml` on pull requests (preview versions), `scripts/deploy-dev.sh`.
+- **Used by:** `deploy.yml` on `main` and pull requests (preview versions), `scripts/deploy-dev.sh`.
 - **Gets there by:** CI pull, or `node scripts/env-pull.mjs -- bash scripts/deploy-dev.sh`.
 - **Expires:** no, unless you set a TTL.
 - **Rotate:** roll it in the dashboard, update Secrets Manager.

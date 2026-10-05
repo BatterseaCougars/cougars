@@ -1,6 +1,6 @@
 # 0010. Two environments, production and dev, on two Cloudflare accounts
 
-- **Status:** Accepted
+- **Status:** Accepted; "Deploys from" superseded by [0013](0013-main-deploys-dev.md)
 - **Date:** 2026-10-05
 - **Supersedes:** [0005](0005-deploys.md)
 
