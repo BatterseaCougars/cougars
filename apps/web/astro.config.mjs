@@ -50,6 +50,28 @@ export default defineConfig({
         ],
       },
     },
+    // Design concept prototypes (src/pages/concepts). Fetched from Fontsource at build.
+    {
+      provider: fontProviders.fontsource(),
+      name: "Bricolage Grotesque",
+      cssVariable: "--font-bricolage",
+      weights: ["200 800"],
+      fallbacks: ["sans-serif"],
+    },
+    {
+      provider: fontProviders.fontsource(),
+      name: "Unbounded",
+      cssVariable: "--font-unbounded",
+      weights: ["200 900"],
+      fallbacks: ["sans-serif"],
+    },
+    {
+      provider: fontProviders.fontsource(),
+      name: "JetBrains Mono",
+      cssVariable: "--font-mono",
+      weights: ["400 700"],
+      fallbacks: ["monospace"],
+    },
   ],
   image: {
     remotePatterns: [{ protocol: "https", hostname: "cdn.sanity.io", pathname: "/images/**" }],
