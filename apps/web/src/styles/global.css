@@ -320,40 +320,54 @@ html.is-scrollbar-dragging * {
   white-space: nowrap;
 }
 
-/* Poster button: ink outline, hard offset shadow, presses in */
+/*
+ * VHS spine label: a cream sticker stuck on slightly crooked. Straightens when you hover,
+ * flattens when pressed. The primary label has the red band down its left edge.
+ */
 .btn {
+  --label: #f3efe6;
+  --label-ink: #16130f;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.5em;
-  padding: 0.85rem 1.4rem 0.75rem;
-  border: 2px solid var(--text);
-  background: var(--paper);
-  color: var(--text);
-  box-shadow: 4px 4px 0 var(--text);
+  padding: 0.8rem 1.3rem 0.7rem;
+  border: 1px solid rgb(22 19 15 / 0.22);
+  border-radius: 2px;
+  background: var(--label);
+  color: var(--label-ink);
+  box-shadow:
+    0 1px 0 rgb(0 0 0 / 0.25),
+    0 4px 10px var(--shadow);
   font-family: var(--display);
   font-size: 1.1rem;
   font-weight: 400;
   letter-spacing: 0.05em;
   line-height: 1;
   text-transform: uppercase;
+  rotate: -1deg;
   cursor: pointer;
   transition:
+    rotate 0.25s var(--ease-smooth),
     transform 0.18s var(--ease-smooth),
-    box-shadow 0.18s var(--ease-smooth),
-    background 0.25s ease;
+    box-shadow 0.18s var(--ease-smooth);
 }
-.btn:hover {
-  transform: translate(-2px, -2px);
-  box-shadow: 6px 6px 0 var(--text);
+.btn:hover,
+.btn:focus-visible {
+  rotate: 0deg;
+  transform: translateY(-2px);
+  box-shadow:
+    0 1px 0 rgb(0 0 0 / 0.25),
+    0 8px 16px var(--shadow);
 }
 .btn:active {
-  transform: translate(3px, 3px);
-  box-shadow: 1px 1px 0 var(--text);
+  transform: translateY(1px);
+  box-shadow: 0 1px 2px var(--shadow);
 }
 .btn--primary {
-  background: var(--red);
-  color: #fff;
+  padding-left: 1.6rem;
+  background: linear-gradient(to right, var(--red) 0.55rem, transparent 0.55rem), var(--label);
+  rotate: 0.8deg;
 }
 
 /* Underline draws in from the left, retracts to the right (from ark) */
