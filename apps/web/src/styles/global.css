@@ -322,8 +322,8 @@ html.is-scrollbar-dragging * {
 
 /*
  * VHS spine label: a cream sticker stuck on slightly crooked, slanted like the COUGARS
- * wordmark. Straightens when you hover, flattens when pressed. The primary label has
- * the red band down its left edge.
+ * wordmark. Straightens when you hover, flattens when pressed. The primary label is
+ * logo red with white capitals, a cream edge and claw marks.
  */
 .btn {
   --label: #f3efe6;
@@ -370,7 +370,10 @@ html.is-scrollbar-dragging * {
 .btn--primary {
   position: relative;
   padding-inline: 1.6rem 2.8rem;
-  background: linear-gradient(to right, var(--red) 0.55rem, transparent 0.55rem), var(--label);
+  --label: var(--red);
+  --label-ink: #fff;
+  border-color: rgb(0 0 0 / 0.35);
+  background: linear-gradient(to right, #f3efe6 0.35rem, transparent 0.35rem), var(--label);
   rotate: 0.8deg;
 }
 /* Ordinary labels carry the tape-speed box printed on every VHS spine */
