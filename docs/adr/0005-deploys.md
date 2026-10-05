@@ -14,7 +14,7 @@ people can look at before it is merged.
   checks, migrations and a smoke test. Pull requests get a preview version of the same worker.
 - **Design previews** go to a separate worker, `cougars-preview`, with its own D1 database, via
   `scripts/deploy-preview.sh`. They build with sample content (`DEMO_CONTENT=true`) and are `noindex`. They
-  can run on a different Cloudflare account (`CLOUDFLARE_API_TOKEN__DESIGN`, see the README).
+  live on the same Cloudflare account as production, next to the `cougars` worker.
 
 ## Consequences
 

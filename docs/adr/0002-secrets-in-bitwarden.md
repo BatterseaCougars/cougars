@@ -16,12 +16,12 @@ Secrets Manager and one documented naming rule; we follow it.
    run time (`scripts/lib/bitwarden.mjs`, `scripts/env-pull.mjs`). GitHub holds exactly one secret,
    `BWS_ACCESS_TOKEN`.
 2. **One naming rule.** `NAME` applies everywhere; `NAME__PRODUCTION` / `NAME__PREVIEW` override it for that
-   environment (`__DESIGN` for design previews on a personal account). Code only ever reads `NAME`.
+   environment. Code only ever reads `NAME`.
 3. **`.env` is for local overrides only**: non-secret settings for your own machine (for example
    `DEMO_CONTENT=true`). Never a secret. It is gitignored; `.env.example` lists what you may set.
 4. **A token is named the same as its secret.** When you create a token at a provider (Cloudflare, Sanity,
    GitHub, a Bitwarden machine-account token), give it the exact Secrets Manager name, for example
-   `CLOUDFLARE_API_TOKEN__DESIGN`. Then the provider's token list maps one-to-one onto Secrets Manager, and
+   `CLOUDFLARE_API_TOKEN`. Then the provider's token list maps one-to-one onto Secrets Manager, and
    revoking or rotating the right one is obvious.
 5. **Every secret is documented in the README** ([README.md#secrets](../../README.md#secrets)): why it exists,
    where it was issued, its permissions, who uses it, how it gets there, and how to rotate it. A secret that

@@ -3,7 +3,7 @@
 // (never commit it, never write secrets to files).
 //
 // Naming rule (from gwenda-hackney/ark): a secret NAME applies everywhere;
-// NAME__PRODUCTION / NAME__PREVIEW / NAME__DESIGN override it for that environment.
+// NAME__PRODUCTION / NAME__PREVIEW override it for that environment.
 // Code only ever reads NAME. Every secret is documented in README.md#secrets
 // (docs/adr/0002-secrets-in-bitwarden.md).
 import { spawnSync } from "node:child_process";

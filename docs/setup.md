@@ -13,8 +13,9 @@ All secrets go into **Bitwarden Secrets Manager** and nowhere else. GitHub only 
 2. **Workers & Pages** → pick a `*.workers.dev` subdomain (e.g. `batterseacougars`). The site will live at
    `https://cougars.<subdomain>.workers.dev` until we buy a domain.
 3. Copy your **Account ID** (right-hand side of the Workers & Pages overview).
-4. **My Profile → API Tokens → Create Token → "Edit Cloudflare Workers" template**, then add the permission
-   **Account → D1 → Edit**. Restrict it to your account. Name it `CLOUDFLARE_API_TOKEN`. Copy the token.
+4. **Manage Account → Account API Tokens → Create Token** (an account-owned token, so it doesn't depend on one
+   person's login). Permissions: **Account → Workers Scripts → Edit** and **Account → D1 → Edit**. Name it
+   `CLOUDFLARE_API_TOKEN`. Copy the token.
 
 Bitwarden secrets: `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN`.
 

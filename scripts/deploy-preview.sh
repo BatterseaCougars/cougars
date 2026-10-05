@@ -1,15 +1,12 @@
 #!/usr/bin/env bash
 # Design preview: build with sample content and deploy to a SEPARATE worker
-# (cougars-preview) with its own D1 database, on whichever Cloudflare account
-# CLOUDFLARE_API_TOKEN belongs to. Never touches the production `cougars`
-# worker, which only deploys from main via .github/workflows/deploy.yml.
+# (cougars-preview) with its own D1 database, on the Cougars Cloudflare account.
+# Never touches the production `cougars` worker, which only deploys from main
+# via .github/workflows/deploy.yml (docs/adr/0005-deploys.md).
 #
-# Needs CLOUDFLARE_API_TOKEN (account token: Workers Scripts Edit, D1 Edit) and
-# CLOUDFLARE_ACCOUNT_ID in the environment. Don't put them in a file:
-#   read -rs CLOUDFLARE_API_TOKEN && export CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID=<id>
-#   bash scripts/deploy-preview.sh
-# or from Bitwarden (secrets CLOUDFLARE_API_TOKEN__DESIGN, CLOUDFLARE_ACCOUNT_ID__DESIGN):
-#   node scripts/env-pull.mjs --environment design -- bash scripts/deploy-preview.sh
+# Needs CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID (README.md#secrets), loaded
+# from Bitwarden:
+#   node scripts/env-pull.mjs -- bash scripts/deploy-preview.sh
 set -euo pipefail
 cd "$(dirname "$0")/../apps/web"
 

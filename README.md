@@ -40,24 +40,22 @@ Rules ([ADR 0002](docs/adr/0002-secrets-in-bitwarden.md)):
 
 - Every secret lives in **Bitwarden Secrets Manager**, project `cougars`, and nowhere else. GitHub holds only
   `BWS_ACCESS_TOKEN`. There are no secret files.
-- **Naming:** `NAME` applies everywhere; `NAME__PRODUCTION`, `NAME__PREVIEW` (pull-request previews) or
-  `NAME__DESIGN` (design previews) override it for that environment. Code reads `NAME`.
+- **Naming:** `NAME` applies everywhere; `NAME__PRODUCTION` or `NAME__PREVIEW` (pull-request previews)
+  override it for that environment. Code reads `NAME`.
 - **A token is named exactly like its secret** at the provider that issued it, so each provider's token list
   matches this table.
 - **`.env` (repo root) is for local, non-secret overrides only.** See [.env.example](.env.example).
 - **Every secret has an entry below.** Adding one means: create the token with its secret name, add it to
   Secrets Manager, add it here.
 
-| Secret                                                            | Issued by                     | Used by                     |
-| ----------------------------------------------------------------- | ----------------------------- | --------------------------- |
-| [`BWS_ACCESS_TOKEN`](#bws_access_token)                           | Bitwarden machine account     | CI, your shell              |
-| [`CLOUDFLARE_API_TOKEN`](#cloudflare_api_token)                   | Cloudflare (club account)     | CI deploys, D1 migrations   |
-| [`CLOUDFLARE_ACCOUNT_ID`](#cloudflare_account_id)                 | Cloudflare (club account)     | CI deploys                  |
-| [`CLOUDFLARE_API_TOKEN__DESIGN`](#cloudflare_api_token__design)   | Cloudflare (personal account) | `scripts/deploy-preview.sh` |
-| [`CLOUDFLARE_ACCOUNT_ID__DESIGN`](#cloudflare_account_id__design) | Cloudflare (personal account) | `scripts/deploy-preview.sh` |
-| [`SANITY_PROJECT_ID`](#sanity_project_id)                         | Sanity                        | Website build               |
-| [`SANITY_API_TOKEN`](#sanity_api_token)                           | Sanity                        | Website build               |
-| [`SANITY_WEBHOOK_GITHUB_TOKEN`](#sanity_webhook_github_token)     | GitHub (fine-grained)         | Sanity's publish webhook    |
+| Secret                                                        | Issued by                 | Used by                   |
+| ------------------------------------------------------------- | ------------------------- | ------------------------- |
+| [`BWS_ACCESS_TOKEN`](#bws_access_token)                       | Bitwarden machine account | CI, your shell            |
+| [`CLOUDFLARE_API_TOKEN`](#cloudflare_api_token)               | Cloudflare (club account) | CI deploys, D1 migrations |
+| [`CLOUDFLARE_ACCOUNT_ID`](#cloudflare_account_id)             | Cloudflare (club account) | CI deploys                |
+| [`SANITY_PROJECT_ID`](#sanity_project_id)                     | Sanity                    | Website build             |
+| [`SANITY_API_TOKEN`](#sanity_api_token)                       | Sanity                    | Website build             |
+| [`SANITY_WEBHOOK_GITHUB_TOKEN`](#sanity_webhook_github_token) | GitHub (fine-grained)     | Sanity's publish webhook  |
 
 ### `BWS_ACCESS_TOKEN`
 
@@ -74,38 +72,26 @@ Lets CI (and you, locally) read every other secret. Without it nothing builds wi
 
 ### `CLOUDFLARE_API_TOKEN`
 
-Deploys the `cougars` worker and runs D1 migrations on the club's Cloudflare account.
+Deploys the workers and runs D1 migrations on the Cougars Cloudflare account: `cougars` (production and
+pull-request previews) and `cougars-preview` (design previews).
 
-- **Issued by:** Cloudflare, club account → My Profile → API Tokens, template "Edit Cloudflare Workers" plus
-  **Account → D1 → Edit**, restricted to the club account. Token name: `CLOUDFLARE_API_TOKEN`.
-- **Used by:** `deploy.yml` (`ensure-d1`, migrations, `wrangler deploy` / `versions upload`).
-- **Gets there by:** CI pull from Secrets Manager.
+- **Issued by:** Cloudflare, the Cougars account → Manage Account → **Account API Tokens** (owned by the
+  account, not a person). Permissions: **Account → Workers Scripts → Edit**, **Account → D1 → Edit**.
+  Token name: `CLOUDFLARE_API_TOKEN`.
+- **Used by:** `deploy.yml` (`ensure-d1`, migrations, `wrangler deploy` / `versions upload`) and
+  `scripts/deploy-preview.sh`.
+- **Gets there by:** CI pull from Secrets Manager. Locally:
+  `node scripts/env-pull.mjs -- bash scripts/deploy-preview.sh`.
 - **Expires:** no, unless you set a TTL.
 - **Rotate:** roll it in the Cloudflare dashboard, update the value in Secrets Manager. Nothing else holds it.
 
 ### `CLOUDFLARE_ACCOUNT_ID`
 
-Which Cloudflare account to deploy to. Not secret, kept in Secrets Manager so CI has one source.
+Which Cloudflare account to deploy to. Not secret, kept in Secrets Manager so CI has one source. Account
+tokens need it: they can't look the account up themselves.
 
-- **Issued by:** Cloudflare (Workers & Pages overview, right-hand side).
-- **Used by:** `deploy.yml`, via Wrangler.
-
-### `CLOUDFLARE_API_TOKEN__DESIGN`
-
-Deploys **design previews** (`cougars-preview` worker, `cougars-preview` D1) to a personal Cloudflare
-account, never the club's. See [ADR 0005](docs/adr/0005-deploys.md).
-
-- **Issued by:** Cloudflare, personal account → Manage Account → **Account API Tokens**. Permissions:
-  **Account → Workers Scripts → Edit**, **Account → D1 → Edit**. Token name: `CLOUDFLARE_API_TOKEN__DESIGN`.
-- **Used by:** `scripts/deploy-preview.sh`, run by hand.
-- **Gets there by:** `node scripts/env-pull.mjs --environment design -- bash scripts/deploy-preview.sh`
-  (code reads `CLOUDFLARE_API_TOKEN`), or exported in your shell for one run.
-- **Expires:** no, unless you set a TTL.
-- **Rotate:** roll it in the dashboard, update Secrets Manager.
-
-### `CLOUDFLARE_ACCOUNT_ID__DESIGN`
-
-The personal account design previews go to. Not secret. Used by `scripts/deploy-preview.sh`.
+- **Issued by:** Cloudflare (account home page, or the Workers & Pages overview).
+- **Used by:** `deploy.yml` and `scripts/deploy-preview.sh`, via Wrangler.
 
 ### `SANITY_PROJECT_ID`
 
