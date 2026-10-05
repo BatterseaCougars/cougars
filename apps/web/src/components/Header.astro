@@ -118,24 +118,24 @@ const joinCurrent = path.startsWith("/join/") ? "page" : undefined;
     border-left: 1px solid var(--rule-strong);
     white-space: nowrap;
   }
+  /* VCR clock display: red LED digits behind a dark window */
   .clock-time {
-    min-width: 3.6ch;
-    padding: 0.3em 0.45em 0.2em;
-    background: var(--text);
-    color: var(--paper);
-    font-family: var(--display);
-    font-size: 1.05rem;
+    min-width: 5ch;
+    padding: 0.15em 0.4em 0.05em;
+    border: 1px solid #000;
+    border-radius: 2px;
+    background: #070707;
+    box-shadow: inset 0 1px 3px rgb(0 0 0 / 0.8);
+    color: var(--red-hot);
+    font-family: var(--osd);
+    font-size: 1.45rem;
     line-height: 1;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.06em;
     text-align: center;
+    text-shadow:
+      0 0 4px var(--red-soft),
+      0 0 10px var(--red-soft);
     font-variant-numeric: tabular-nums;
-    transition:
-      background 0.4s ease,
-      color 0.4s ease;
-  }
-  :global(.header.night) .clock-time {
-    background: var(--red);
-    color: #fff;
   }
   .clock-label {
     font-size: 0.68rem;

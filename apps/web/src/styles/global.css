@@ -23,7 +23,7 @@
 
   --sans: var(--font-sans), system-ui, -apple-system, "Segoe UI", sans-serif;
   --display: var(--font-display), Impact, sans-serif; /* woodtype poster capitals */
-  --osd: var(--font-osd), ui-monospace, monospace; /* 404 screen only */
+  --osd: var(--font-osd), ui-monospace, monospace; /* VCR on-screen display: 404 screen, header clock */
 
   --ease-out: cubic-bezier(0.25, 0.46, 0.45, 0.94);
   --ease-smooth: cubic-bezier(0.22, 1, 0.36, 1);

@@ -54,7 +54,7 @@ const strip: [string, string][] = [
       <a class="btn btn--primary" href="/join/">
         Try a session
       </a>
-      <a class="btn" href="#fridays">
+      <a class="hero-when link" href="#fridays">
         {day}s {slot?.start}
       </a>
     </div>
@@ -338,7 +338,16 @@ const strip: [string, string][] = [
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
-    gap: 1rem 1.25rem;
+    align-items: center;
+    gap: 1rem 2rem;
+  }
+  .hero-when {
+    font-family: var(--display);
+    font-size: 1.1rem;
+    letter-spacing: 0.05em;
+    line-height: 1;
+    text-transform: uppercase;
+    color: var(--text-2);
   }
   @media (prefers-reduced-motion: no-preference) {
     .hero :global(.hero-logo) {
