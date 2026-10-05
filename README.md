@@ -76,7 +76,7 @@ Deploys the workers and runs D1 migrations on the Cougars Cloudflare account: `c
 pull-request previews) and `cougars-preview` (design previews).
 
 - **Issued by:** Cloudflare, the Cougars account → Manage Account → **Account API Tokens** (owned by the
-  account, not a person). Permissions: **Workers → Editor** role (Workers product scope), **Account → D1 → Edit**.
+  account, not a person). Permissions: scope **Entire Cougars account**, **Workers Editor**, **D1 Write**.
   Token name: `CLOUDFLARE_API_TOKEN`.
 - **Used by:** `deploy.yml` (`ensure-d1`, migrations, `wrangler deploy` / `versions upload`) and
   `scripts/deploy-preview.sh`.

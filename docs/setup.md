@@ -14,7 +14,7 @@ All secrets go into **Bitwarden Secrets Manager** and nowhere else. GitHub only 
    `https://cougars.<subdomain>.workers.dev` until we buy a domain.
 3. Copy your **Account ID** (right-hand side of the Workers & Pages overview).
 4. **Manage Account → Account API Tokens → Create Token** (an account-owned token, so it doesn't depend on one
-   person's login). Permissions: **Workers → Editor** role (Workers product scope) and **Account → D1 → Edit**. Name it
+   person's login). Permissions: scope **Entire Cougars account**, **Workers Editor** and **D1 Write**. Name it
    `CLOUDFLARE_API_TOKEN`. Copy the token.
 
 Bitwarden secrets: `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN`.
