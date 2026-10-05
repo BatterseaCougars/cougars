@@ -56,6 +56,15 @@ jobs:
           # Each GitHub environment holds only its own: BWS_ACCESS_TOKEN__PRODUCTION or BWS_ACCESS_TOKEN__DEV
           BWS_ACCESS_TOKEN: ${{ secrets.BWS_ACCESS_TOKEN__PRODUCTION || secrets.BWS_ACCESS_TOKEN__DEV }}
 
+      # Until there's a domain (GitHub variable SITE_URL), the site lives at <worker>.<account subdomain>.workers.dev
+      - name: Site URL
+        if: env.SITE_URL == ''
+        run: |
+          sub=$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/subdomain" | jq -r .result.subdomain)
+          worker=${{ env.SITE_ENV == 'production' && 'cougars' || 'cougars-dev' }}
+          echo "SITE_URL=https://$worker.$sub.workers.dev" >> "$GITHUB_ENV"
+
       - name: Build version
         run: echo "PUBLIC_BUILD_VERSION=$(date -u +%Y.%m.%d)+$(git rev-parse --short HEAD)" >> "$GITHUB_ENV"
 

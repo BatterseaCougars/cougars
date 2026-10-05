@@ -7,7 +7,7 @@ import sitemap from "@astrojs/sitemap";
 // triggers a rebuild). Only routes that opt out with `prerender = false`
 // (/api/*, later /kumite/live) run on the Worker. Admin lives in apps/ops.
 export default defineConfig({
-  site: process.env.SITE_URL ?? "https://cougars.workers.dev",
+  site: process.env.SITE_URL || "https://cougars.workers.dev",
   output: "static",
   // No Astro sessions: avoids auto-provisioning a KV namespace. Admin auth
   // (phase 3) uses its own signed cookie + D1.
