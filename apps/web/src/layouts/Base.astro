@@ -2,13 +2,13 @@
 import "../styles/global.css";
 import { ClientRouter } from "astro:transitions";
 import { Font } from "astro:assets";
-import { getImage } from "astro:assets";
 import { PUBLIC_BUILD_VERSION } from "astro:env/client";
 import { demo, getSettings } from "../lib/sanity/content";
 import Header from "../components/Header.astro";
 import Footer from "../components/Footer.astro";
 import ogDefault from "../assets/og-default.jpg";
-import carbonImage from "../assets/cougars_background.png";
+// Ready-sized files used as they are: server-rendered pages (/photos, ADR 0016) can't resize at build time.
+import carbonImage from "../assets/cougars_background.webp";
 
 interface Props {
   title?: string;
@@ -24,9 +24,9 @@ const {
   image,
 } = Astro.props;
 const fullTitle = title ? `${title} · ${site}` : `${site} · Inline hockey in Battersea, London`;
-const og = image ?? new URL((await getImage({ src: ogDefault, format: "jpg", width: 1200 })).src, Astro.site).href;
+const og = image ?? new URL(ogDefault.src, Astro.site).href;
 const canonical = new URL(Astro.url.pathname, Astro.site).href;
-const carbon = (await getImage({ src: carbonImage, width: 1920, format: "webp", quality: 70 })).src;
+const carbon = carbonImage.src;
 ---
 
 <!doctype html>

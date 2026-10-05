@@ -1,6 +1,6 @@
 ---
-import { Image } from "astro:assets";
-import logo from "../assets/cougars.png";
+// A ready-sized logo (2x), used as is: server-rendered pages (/photos, ADR 0016) can't resize at build time.
+import mark from "../assets/cougars-mark.webp";
 import { getClub } from "../lib/sanity/content";
 
 // One-page navigation: every item is a section of the home page, in page order. From any
@@ -27,7 +27,7 @@ const { founded } = await getClub();
 <header class="header" data-header transition:name="site-header">
   <div class="bar">
     <a href={home ? "#top" : "/"} class="brand" aria-label="Battersea Cougars, home">
-      <Image src={logo} alt="" width={120} class="brand-mark" loading="eager" />
+      <img src={mark.src} alt="" width="120" height={Math.round((120 * mark.height) / mark.width)} class="brand-mark" />
     </a>
     <!-- Running clock: follows the Friday night down the home page (scripts/motion.ts) -->
     <p class="clock" aria-hidden="true">

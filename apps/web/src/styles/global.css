@@ -469,8 +469,8 @@ html.is-scrollbar-dragging * {
   translate: 4px 0;
 }
 
-/* Reveal on scroll (from ark) */
-@media (prefers-reduced-motion: no-preference) {
+/* Reveal on scroll (from ark). Only with JavaScript: without it nothing would ever reveal. */
+@media (prefers-reduced-motion: no-preference) and (scripting: enabled) {
   [data-reveal] {
     opacity: 0;
     transform: translateY(14px);
