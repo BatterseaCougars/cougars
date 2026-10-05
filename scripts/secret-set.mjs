@@ -13,7 +13,7 @@ if (!key || process.argv.length > 3) {
   process.exit(2);
 }
 const projectName = projectFor(key);
-await ensureToken();
+ensureToken();
 
 const project = bws(["project", "list"]).find((p) => p.name.trim().toLowerCase() === projectName);
 if (!project) {

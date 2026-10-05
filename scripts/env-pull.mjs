@@ -14,7 +14,7 @@ const flag = (name) => argv.includes(name);
 const opt = (name, fallback) => (argv.includes(name) ? argv[argv.indexOf(name) + 1] : fallback);
 const environment = opt("--environment", "dev");
 
-await ensureToken();
+ensureToken();
 const secrets = loadSecrets(environment);
 
 if (flag("--status")) {

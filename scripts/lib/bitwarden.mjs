@@ -7,7 +7,10 @@
 // Production values live in the `cougars` project, dev and shared values in
 // `cougars-dev`; the dev CI token can't read `cougars` at all.
 import { spawnSync } from "node:child_process";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { createInterface } from "node:readline";
+import { parseEnv } from "node:util";
 
 export const ENVIRONMENTS = ["production", "dev"];
 
@@ -24,16 +27,51 @@ export function projectFor(key) {
   return env === "PRODUCTION" ? PROJECTS.production : PROJECTS.dev;
 }
 
-/**
- * Make sure there's a Secrets Manager token: BWS_ACCESS_TOKEN in CI; on your machine COUGARS_LOCAL_BW_TOKEN from
- * the shell, the vault item of that name (if the vault is unlocked), or else a hidden prompt.
- */
-export async function ensureToken() {
+// On your machine the Secrets Manager token lives only in your vault, in the secure note `cougars/.env.local`
+// (a line COUGARS_LOCAL_BW_TOKEN=...). `bw-unlock` (.devcontainer/bw-session.bashrc, as in Ark) is the login:
+// it keeps the session in RAM for the container's life, and every script reads it from there.
+const VAULT_NOTE = "cougars/.env.local";
+const sessionFile = () =>
+  process.env.BW_SESSION_FILE || join("/dev/shm", `ark-secrets-${process.getuid?.() ?? "user"}`, "bw-session");
+
+function vaultToken() {
+  if (!process.env.BW_SESSION) {
+    try {
+      process.env.BW_SESSION = readFileSync(sessionFile(), "utf8").trim();
+    } catch {
+      return ""; // never unlocked in this container
+    }
+  }
+  const res = spawnSync("bw", ["get", "item", VAULT_NOTE, "--nointeraction"], { encoding: "utf8" });
+  if (res.status !== 0) return "";
+  const notes = parseEnv(JSON.parse(res.stdout).notes ?? "");
+  return notes.COUGARS_LOCAL_BW_TOKEN?.trim() ?? "";
+}
+
+/** At a terminal with the vault locked, ask for the master password once and save the session like bw-unlock. */
+function unlock() {
+  if (process.env.CI || !process.stdin.isTTY) return false;
+  console.error("Bitwarden vault is locked. Unlock it to load secrets (same as bw-unlock).");
+  const res = spawnSync("bw", ["unlock", "--raw"], { encoding: "utf8", stdio: ["inherit", "pipe", "inherit"] });
+  const session = res.status === 0 ? res.stdout.trim() : "";
+  if (!session) return false;
+  process.env.BW_SESSION = session;
+  mkdirSync(dirname(sessionFile()), { recursive: true, mode: 0o700 });
+  writeFileSync(sessionFile(), `${session}\n`, { mode: 0o600 });
+  return true;
+}
+
+/** Make sure there's a Secrets Manager token: BWS_ACCESS_TOKEN in CI, else from your unlocked vault. */
+export function ensureToken() {
   if (process.env.BWS_ACCESS_TOKEN || process.env.COUGARS_LOCAL_BW_TOKEN) return;
-  const res = spawnSync("bw", ["get", "password", "COUGARS_LOCAL_BW_TOKEN"], { encoding: "utf8" });
-  let token = res.status === 0 ? res.stdout.trim() : "";
-  if (!token && process.stdin.isTTY) token = await promptHidden("COUGARS_LOCAL_BW_TOKEN: ");
-  if (!token) throw new Error("No Bitwarden token. See README.md#bitwarden-tokens.");
+  let token = vaultToken();
+  if (!token && unlock()) token = vaultToken();
+  if (!token) {
+    throw new Error(
+      `No Bitwarden token. Run bw-unlock, and check your vault has the secure note ${VAULT_NOTE} ` +
+        "with a line COUGARS_LOCAL_BW_TOKEN=... (README.md#bitwarden-tokens).",
+    );
+  }
   process.env.COUGARS_LOCAL_BW_TOKEN = token;
 }
 

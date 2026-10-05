@@ -27,7 +27,7 @@ To preview the design with sample events, videos, photos and players: `DEMO_CONT
 The site builds and runs **without Sanity**: until a Sanity project is configured, it uses the club copy in
 `apps/web/src/lib/sanity/fallback.ts` and shows empty states for videos, photos and events.
 
-With secrets (needs `COUGARS_LOCAL_BW_TOKEN`, see [Secrets](#secrets)):
+With secrets (run `bw-unlock` first, see [Bitwarden tokens](#bitwarden-tokens)):
 
 ```sh
 node scripts/env-pull.mjs --status          # list secret names (never values)
@@ -70,11 +70,11 @@ Rules ([ADR 0002](docs/adr/0002-secrets-in-bitwarden.md), [ADR 0010](docs/adr/00
 They let CI (and you) read the other secrets. Each is the access token of one Bitwarden machine account, named
 like the secret that holds it:
 
-| Token                          | Machine account  | `cougars`       | `cougars-dev`   | Stored in                                                       |
-| ------------------------------ | ---------------- | --------------- | --------------- | --------------------------------------------------------------- |
-| `BWS_ACCESS_TOKEN__PRODUCTION` | `cougars-ci`     | Can read        | Can read        | GitHub environment `production` (deploys `main`)                |
-| `BWS_ACCESS_TOKEN__DEV`        | `cougars-ci-dev` | No access       | Can read        | GitHub environment `preview` (pull requests)                    |
-| `COUGARS_LOCAL_BW_TOKEN`       | `cougars-local`  | Can read, write | Can read, write | your vault (item of that name); the scripts ask if it's not set |
+| Token                          | Machine account  | `cougars`       | `cougars-dev`   | Stored in                                        |
+| ------------------------------ | ---------------- | --------------- | --------------- | ------------------------------------------------ |
+| `BWS_ACCESS_TOKEN__PRODUCTION` | `cougars-ci`     | Can read        | Can read        | GitHub environment `production` (deploys `main`) |
+| `BWS_ACCESS_TOKEN__DEV`        | `cougars-ci-dev` | No access       | Can read        | GitHub environment `preview` (pull requests)     |
+| `COUGARS_LOCAL_BW_TOKEN`       | `cougars-local`  | Can read, write | Can read, write | your vault: secure note `cougars/.env.local`     |
 
 Project access is set in Secrets Manager → **Machine accounts → _account_ → Projects**. CI is read-only: it never
 changes a secret. `cougars-local` can write, so you add secrets from the shell
@@ -83,7 +83,8 @@ People (org members) get access to the projects they maintain; the free plan all
 
 - **Gets there by:** `deploy.yml` passes its environment's token to `bws` as `BWS_ACCESS_TOKEN` and runs
   `scripts/env-pull.mjs --github-env --environment production|dev`, which exports the rest (masked). Locally,
-  the scripts take `COUGARS_LOCAL_BW_TOKEN` from your shell, from your unlocked vault, or ask for it (hidden): `node scripts/env-pull.mjs -- <command>`.
+  **`bw-unlock` is the login** (once per container start, as in Ark): the scripts read the token from the vault
+  note `cougars/.env.local` (a line `COUGARS_LOCAL_BW_TOKEN=...`), and ask for your master password if it's locked: `node scripts/env-pull.mjs -- <command>`.
 - **Expires:** as set when created. Check each machine account's token list.
 - **Rotate:** new token on the machine account, `gh secret set <name> --env <environment>` (or update your vault),
   run a deploy, revoke the old token.

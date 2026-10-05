@@ -55,14 +55,17 @@ Bitwarden secrets (step 3, in `cougars-dev`, shared by both environments): `SANI
    - `cougars-ci-dev`: `cougars-dev` only. Token `BWS_ACCESS_TOKEN__DEV`, in GitHub environment `preview`.
    - `cougars-ci` and `cougars-ci-dev` get **Can read** only.
    - `cougars-local`: **Can read, write** on both, so you can add secrets from the shell. Token
-     `COUGARS_LOCAL_BW_TOKEN`, in your vault.
+     `COUGARS_LOCAL_BW_TOKEN`, in your vault as a secure note `cougars/.env.local` with the line
+     `COUGARS_LOCAL_BW_TOKEN=...`.
 4. If your vault is on the EU server (`vault.bitwarden.eu`), remember that for step 4.
 
-Locally, export your token in your shell. Don't save it in a file in the repo. Your machine is dev.
+Locally, **`bw-unlock` is the login**: once per container start, then every script finds the token itself.
 
 ```sh
-export COUGARS_LOCAL_BW_TOKEN=...      # add BWS_SERVER_URL=https://vault.bitwarden.eu for EU
-node scripts/env-pull.mjs --status     # lists secret names (dev)
+bw config server https://vault.bitwarden.eu   # once
+bw login                                      # once
+bw-unlock                                     # each container start
+node scripts/env-pull.mjs --status            # lists secret names (dev)
 ```
 
 ## 4. GitHub
