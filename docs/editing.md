@@ -75,11 +75,17 @@ the first five appear on the homepage.
 
 **Team → About the team** has the introduction, the league and the team photo.
 
-## Post Friday training videos
+## Videos
 
-1. Upload the video to YouTube (it can be _Unlisted_ if you don't want it in YouTube search).
-2. On YouTube, press **Share** and copy the link.
-3. In the Studio: **Videos → +**. Paste the link, check the date and title, then **Publish**.
+1. Upload the video to the club YouTube channel as **Public**. That's all: it appears on the website by itself,
+   within a day, or sooner if anyone presses **Publish** in the Studio.
+2. Use the Studio only to change how a video shows. **Videos → +**, paste the video's link from YouTube's
+   **Share** button, then:
+   - **Hide from the website** keeps it off the site (it stays on YouTube).
+   - **Show first** puts it at the top.
+   - **Title**, **Date** or **Description** replace YouTube's. Leave them empty to keep YouTube's.
+   - **Publish**.
+3. A video that isn't on the club channel (or is _Unlisted_) only appears if you add its link here.
 
 You don't upload video files to the website. YouTube hosts them for free.
 
