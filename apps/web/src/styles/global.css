@@ -368,9 +368,20 @@ html.is-scrollbar-dragging * {
   box-shadow: 0 1px 2px var(--shadow);
 }
 .btn--primary {
-  padding-left: 1.6rem;
+  position: relative;
+  padding-inline: 1.6rem 2.8rem;
   background: linear-gradient(to right, var(--red) 0.55rem, transparent 0.55rem), var(--label);
   rotate: 0.8deg;
+}
+/* Claw marks: three tapered slashes ripped through the right end of the label */
+.btn--primary::after {
+  content: "";
+  position: absolute;
+  inset: 0 0.5rem 0 auto;
+  width: 1.7rem;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 40' preserveAspectRatio='none'%3E%3Cg fill='%230d0d0f'%3E%3Cpath d='M12 0C11 15 7 28 1 40C6 30 11 17 15 0z'/%3E%3Cpath d='M20 0C19 15 15 28 9 40C14 30 19 17 23 0z'/%3E%3Cpath d='M28 0C27 15 23 28 17 40C22 30 27 17 30 0z'/%3E%3C/g%3E%3C/svg%3E")
+    center / 100% 100% no-repeat;
+  pointer-events: none;
 }
 
 /* Underline draws in from the left, retracts to the right (from ark) */
