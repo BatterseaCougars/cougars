@@ -1,13 +1,12 @@
 <script lang="ts">
   import { type Snippet } from "svelte";
-  import { fade } from "svelte/transition";
   import { can } from "../../access/actions";
   import { granted, impersonating, me, realMember, rolesOf, viewAs } from "../../demo/session.svelte";
   import { stripRoutes, tabHref, tabRoutes } from "../mobile-nav";
   import { type Route, type TabId } from "../nav-routes";
   import { folds, routes, tabs } from "../routes.svelte";
   import { navigate, router } from "../router.svelte";
-  import { easeOut, fadeMs, flyMs, prefersReducedMotion, zoom } from "../motion";
+  import { easeOut, flyMs, prefersReducedMotion, zoom } from "../motion";
   import { glide, pillShape, rowShape, underlineShape } from "./mark";
   import AccountMenu from "./AccountMenu.svelte";
   import Icon from "./Icon.svelte";
@@ -90,17 +89,19 @@
     else content?.querySelector(".view")?.scrollTo({ top: 0, behavior: prefersReducedMotion ? "auto" : "smooth" });
   }
 
-  // Pages fly up as they arrive and fade as they leave; full-screen pages zoom in from a blur.
+  // Pages slide up as they arrive; full-screen pages zoom in from a blur. No opacity on ordinary pages: a parent
+  // below full opacity stops the browser blurring behind the glass cards inside it, so they'd show clear until
+  // the fade ended. The page leaving goes at once, so the two never show through each other.
   function enter(node: Element, { focus }: { focus?: boolean }) {
     if (focus) return zoom(node);
     return {
       duration: flyMs,
       easing: easeOut,
-      css: (t: number, u: number) => `opacity: ${t}; transform: translateY(${10 * u}px)`,
+      css: (_t: number, u: number) => `transform: translateY(${14 * u}px)`,
     };
   }
   function leave(node: Element, { focus }: { focus?: boolean }) {
-    return focus ? zoom(node, { out: true }) : fade(node, { duration: fadeMs });
+    return focus ? zoom(node, { out: true }) : { duration: 0 };
   }
 
   // Keep the current page's strip link in view, centred where there's room.
