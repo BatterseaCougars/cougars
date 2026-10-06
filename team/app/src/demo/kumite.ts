@@ -49,7 +49,10 @@ MATCHES[2].status = "live";
 
 export const POINTS = { win: 3, draw: 1, loss: 0 };
 
-export function standings(matches: Match[]) {
+/** The sample fixtures belong to this tournament (Autumn Kumite in data.ts); others start with none. */
+export const SAMPLE_TOURNAMENT_ID = 2;
+
+export function standings(matches: Match[], points = POINTS) {
   const rows = new Map(KUMITE_TEAMS.map((t) => [t.id, { team: t, p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0 }]));
   for (const m of matches.filter((m) => m.status === "done")) {
     const h = m.goals.filter((x) => x.team === m.home).length;
@@ -64,13 +67,13 @@ export function standings(matches: Match[]) {
       r.ga += ag;
       if (f > ag) {
         r.w++;
-        r.pts += POINTS.win;
+        r.pts += points.win;
       } else if (f === ag) {
         r.d++;
-        r.pts += POINTS.draw;
+        r.pts += points.draw;
       } else {
         r.l++;
-        r.pts += POINTS.loss;
+        r.pts += points.loss;
       }
     }
   }

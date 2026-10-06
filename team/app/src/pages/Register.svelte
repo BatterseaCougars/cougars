@@ -1,12 +1,17 @@
 <script lang="ts">
   import { SvelteSet } from "svelte/reactivity";
   import { PLAYERS } from "../demo/data";
-  import { db } from "../demo/store.svelte";
+  import { nextSession, seriesById, sessionBookable } from "../demo/schedule.svelte";
   import Icon from "../app/shell/Icon.svelte";
   import Person from "../lib/Person.svelte";
   import { formatDayDate } from "../lib/dates";
 
-  const next = $derived(db.events.find((e) => e.kind === "friday")!);
+  let { seriesId }: { seriesId: number } = $props();
+
+  const series = $derived(seriesById(seriesId)!);
+  const session = $derived(nextSession(series));
+  const next = $derived(session ?? { id: 0, heldOn: "", going: [] as number[], waitlist: [] as number[] });
+  const when = $derived(session ? formatDayDate(sessionBookable(session).startsAt) : "No session coming up");
   // Everyone who signed up starts as expected; one tap marks a no-show.
   const noShows = new SvelteSet<number>();
   let walkIns = $state<number[]>([]);
@@ -33,10 +38,11 @@
 </script>
 
 <div class="page">
+  <a class="back" href="/training/{series.slug}"><Icon name="chevronLeft" size={18} />{series.name}</a>
   <div class="page-head">
     <div>
       <h1>Register</h1>
-      <p class="hint">{formatDayDate(next.startsAt)}</p>
+      <p class="hint">{series.name} · {when}</p>
     </div>
     {#if closed}<span class="badge">Closed</span>{:else}<span class="badge green live">Open</span>{/if}
   </div>
@@ -100,6 +106,16 @@
 </div>
 
 <style>
+  .back {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.1rem;
+    margin: calc(-1 * var(--s-2)) 0 calc(-1 * var(--s-3)) -0.25rem;
+    min-height: 2.25rem;
+    color: var(--red-hot);
+    font-size: var(--text-sm);
+    font-weight: 500;
+  }
   .stat .value.warn {
     color: var(--amber);
   }

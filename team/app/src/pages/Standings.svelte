@@ -1,17 +1,20 @@
 <script lang="ts">
-  import { MATCHES, leaders, standings } from "../demo/kumite";
+  import { MATCHES, SAMPLE_TOURNAMENT_ID, leaders, standings } from "../demo/kumite";
+  import { currentTournament, typeById } from "../demo/schedule.svelte";
+  import TournamentHead from "../lib/TournamentHead.svelte";
 
-  const table = standings(MATCHES);
-  const top = leaders(MATCHES).slice(0, 8);
+  let { typeId }: { typeId: number } = $props();
+
+  const type = $derived(typeById(typeId)!);
+  const tournament = $derived(currentTournament(typeId));
+  const matches = $derived(tournament?.id === SAMPLE_TOURNAMENT_ID ? MATCHES : []);
+  const points = $derived({ win: type.pointsWin, draw: type.pointsDraw, loss: type.pointsLoss });
+  const table = $derived(standings(matches, points));
+  const top = $derived(leaders(matches).slice(0, 8));
 </script>
 
 <div class="page">
-  <div class="page-head">
-    <div>
-      <h1>Standings</h1>
-      <p class="hint">Points, then goal difference, then goals for.</p>
-    </div>
-  </div>
+  <TournamentHead {type} {tournament} title="Standings" />
 
   <div class="list">
     <table class="num">
@@ -28,7 +31,10 @@
       </tbody>
     </table>
   </div>
-  <p class="hint">Win 3, draw 1: placeholders until the rules are set.</p>
+  <p class="hint">
+    Points, then goal difference, then goals for. Win {type.pointsWin}, draw {type.pointsDraw}, loss
+    {type.pointsLoss}: set under Settings → Tournaments.
+  </p>
 
   <h2 class="section-title">Points leaders</h2>
   <div class="list">

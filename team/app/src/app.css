@@ -80,6 +80,14 @@
   --amber-border: color-mix(in srgb, var(--amber) 35%, transparent);
   --ring: var(--red-hot);
 
+  /* Schedule tones: each training and tournament has one (demo/model.ts TONES) */
+  --tone-red: #ff3b45;
+  --tone-blue: #5b9bff;
+  --tone-green: #5ccb86;
+  --tone-amber: #ffb84d;
+  --tone-violet: #a78bfa;
+  --tone-teal: #2dd4bf;
+
   /* ─── Glass ─── */
   --panel-bg: color-mix(in srgb, var(--surface-1) 72%, transparent);
   --panel-bg-strong: color-mix(in srgb, var(--surface-1) 86%, transparent);

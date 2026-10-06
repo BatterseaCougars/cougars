@@ -8,24 +8,24 @@ Who uses it:
 
 - **Members** see the calendar, say if they're in on Friday, see their team, and check their tab.
 - **Contributors** also upload photos (to the website gallery) and videos (to the club YouTube channel).
-- **Admins** run members and roles, events, teams, dues, the Kumite and website content.
+- **Admins** run members and roles, trainings and tournaments, teams, dues and website content.
 
 These are starting roles, not code: every screen and API call is behind an **action**, and a role is a set of
 actions that an admin can change in the app ([ADR 0024](../adr/0024-action-based-authorization.md)).
 
 Decisions so far:
 
-| ADR                                                  | Decision                                                            |
-| ---------------------------------------------------- | ------------------------------------------------------------------- |
-| [0021](../adr/0021-website-and-team-app-projects.md) | Website and team app are separate projects in one repo              |
-| [0022](../adr/0022-team-app-svelte-pwa.md)           | The team app is a mobile-first Svelte 5 SPA on a Worker, as a PWA   |
-| [0023](../adr/0023-device-bound-sign-in.md)          | Everyone signs in with a device-bound email code or link, or Google |
-| [0024](../adr/0024-action-based-authorization.md)    | Permissions are actions; roles are data built from actions          |
-| [0025](../adr/0025-events-in-d1.md)                  | Events live in D1, one club calendar                                |
-| [0026](../adr/0026-dues-ledger.md)                   | Dues are a ledger fed by the register                               |
-| [0006](../adr/0006-monorepo-and-team-generator.md)   | The team generator runs in the browser                              |
-| [0007](../adr/0007-bank-transfer-payments.md)        | Payments by bank transfer with a reference, no card provider        |
-| [0018](../adr/0018-rebuilds-until-team-app.md)       | The team app will trigger production rebuilds                       |
+| ADR                                                    | Decision                                                                     |
+| ------------------------------------------------------ | ---------------------------------------------------------------------------- |
+| [0021](../adr/0021-website-and-team-app-projects.md)   | Website and team app are separate projects in one repo                       |
+| [0022](../adr/0022-team-app-svelte-pwa.md)             | The team app is a mobile-first Svelte 5 SPA on a Worker, as a PWA            |
+| [0023](../adr/0023-device-bound-sign-in.md)            | Everyone signs in with a device-bound email code or link, or Google          |
+| [0024](../adr/0024-action-based-authorization.md)      | Permissions are actions; roles are data built from actions                   |
+| [0028](../adr/0028-training-series-and-tournaments.md) | Training repeats as a series; tournaments are typed and scheduled one by one |
+| [0026](../adr/0026-dues-ledger.md)                     | Dues are a ledger fed by the register                                        |
+| [0006](../adr/0006-monorepo-and-team-generator.md)     | The team generator runs in the browser                                       |
+| [0007](../adr/0007-bank-transfer-payments.md)          | Payments by bank transfer with a reference, no card provider                 |
+| [0018](../adr/0018-rebuilds-until-team-app.md)         | The team app will trigger production rebuilds                                |
 
 ## The shell
 
@@ -102,17 +102,20 @@ Copied in shape from Gwenda ops (`gwenda-hackney/ark`, `ops/site/src/app/`), whi
 - [ ] Secrets, each documented in [README.md#secrets](../../README.md#secrets): `TEAM_SESSION_SECRET`, the Gmail
       OAuth client and refresh token for batterseahockey@gmail.com, and the Google sign-in OAuth client.
 
-## T2: Calendar, sign-up and the register
+## T2: Training, calendar, sign-up and the register
 
-[ADR 0025](../adr/0025-events-in-d1.md).
+[ADR 0028](../adr/0028-training-series-and-tournaments.md); tables in [the data model](../team-app-data-model.md).
 
-- [ ] Migrations: `events`, `event_series`, `attendance` (event, member, sign-up in/out/waitlist and when, attended,
-      walk-in, recorded_by, recorded_at).
-- [ ] The **Friday hockey series**: a weekly rule; a Cron Trigger keeps the next 8 Fridays created. Each Friday can
-      be edited, moved or cancelled on its own.
-- [ ] **Calendar** tab: upcoming events as a list (month view later), each with an "add to calendar" `.ics`.
-- [ ] Admins (`create:Event`, `update:Event`) add one-off events (Kumite, socials, anything) with: public or members
-      only, sign-up on/off, capacity, sign-up cutoff, fee.
+- [ ] Migrations: `training_series`, `training_sessions`, `tournament_types`, `tournaments`, `club_events`,
+      `attendance`, `club_event_entries`.
+- [ ] **Settings → Training** (`manage:Training`): add a series (name, icon and colour, every N weeks on which days,
+      first and optional last session, times, venue, places). A daily Cron Trigger makes sessions 12 weeks ahead; a
+      session can be cancelled, moved or changed on its own. Each series gets its own page and menu link.
+- [ ] **Settings → Tournaments** (`manage:Tournament`): add a tournament type (name, icon and colour, points, game
+      length, captains' draft) and schedule its editions (name, date, location, status). Each type gets a folding
+      menu section.
+- [ ] **Calendar**: sessions, tournaments and one-offs as one list, each with its icon and colour, filter chips at
+      the top, and an "add to calendar" `.ics`. Admins (`create:Event`) add one-off events here.
 - [ ] **Sign-up is the normal path.** Members tap _In_ or _Out_; a full event has a waitlist that moves up
       automatically. Teams are built from sign-ups (T3), so Home keeps asking until you answer for this Friday.
 - [ ] **The register** (`record:Attendance`), so a trusted regular can do the door, not only an admin:
@@ -121,7 +124,7 @@ Copied in shape from Gwenda ops (`gwenda-hackney/ark`, `ops/site/src/app/`), whi
   - a walk-in can be dropped straight onto a team
   - **Close the register** at the end of the night: attendance is final and feeds dues (T4). An admin can reopen it
     to correct a mistake; corrections are audited.
-- [ ] Website: the events and Fridays pages read public events from D1 live, with a cache (like the videos,
+- [ ] Website: the events and Fridays pages read public dates from D1 live, with a cache (like the videos,
       [ADR 0019](../adr/0019-live-videos.md)). Existing Sanity events are imported once, then the Sanity `event`
       type is retired.
 - [ ] Europe/London dates: `dates.ts` moves to `shared/` so both projects use it.
@@ -138,7 +141,7 @@ Copied in shape from Gwenda ops (`gwenda-hackney/ark`, `ops/site/src/app/`), whi
 - [ ] Tests with fixture rosters (6, 14, 15, 21, 22, 30 players; few defenders; many cougars).
 - [ ] After sign-up closes, an admin (`generate:Teams`) generates teams, adjusts them by drag and drop, and
       publishes (`publish:Teams`). Each member then sees their team on Home.
-- [ ] Migrations: `teams`, `team_players` (on `event_id`).
+- [ ] Migrations: `session_teams`, `session_team_players` (on `session_id`).
 
 ## T4: Dues and payments
 
@@ -152,7 +155,7 @@ Copied in shape from Gwenda ops (`gwenda-hackney/ark`, `ops/site/src/app/`), whi
 - [ ] **Charges come from the register, not from sign-ups:**
   - closing a register charges every pay-as-you-go attendee, walk-ins included; subscribers aren't charged
   - a quarterly Cron Trigger charges subscribers
-  - `charges` (member, kind, event or quarter, amount_pence, due_on, voided_at)
+  - `charges` (member, kind, session or tournament or quarter, amount_pence, due_on, voided_at)
 - [ ] **Payments** by bank transfer, quoting the member's fixed reference (for example `COU-0042`). An admin
       (`record:Payment`) records one in a couple of taps; it settles the oldest charges first
       (`payments`, `payment_allocations`).
@@ -170,8 +173,7 @@ first session is free.
 ## T5: Kumite game tracker
 
 - [ ] Migrations:
-  - `tournaments` (event, points for a win, draw and loss, game minutes)
-  - `tournament_teams`, `tournament_players`
+  - `tournament_entries`, `tournament_teams`, `tournament_team_players` (the types and editions come in T2)
   - `matches`: round-robin fixtures (circle method)
   - `match_events`: append-only, with IDs made on the phone (start, pause, resume, period, goal, assist, end, undo)
 - [ ] **The game screen** (`score:Match`), made for one hand at the rink:

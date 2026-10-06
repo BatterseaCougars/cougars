@@ -1,16 +1,21 @@
 <script lang="ts">
-  import { onDestroy } from "svelte";
+  import { onDestroy, untrack } from "svelte";
   import Icon from "../app/shell/Icon.svelte";
   import BackBar from "../app/shell/BackBar.svelte";
   import { PLAYERS } from "../demo/data";
   import { KUMITE_TEAMS, MATCHES } from "../demo/kumite";
+  import { typeById } from "../demo/schedule.svelte";
+
+  let { typeId }: { typeId: number } = $props();
+  const type = $derived(typeById(typeId)!);
 
   const match = MATCHES.find((m) => m.status === "live")!;
   const teams = [match.home, match.away].map((id) => KUMITE_TEAMS.find((t) => t.id === id)!);
-  const GAME_MS = 12 * 60_000;
+  // Game length comes from the tournament type (Settings → Tournaments).
+  const GAME_MS = $derived(type.gameMinutes * 60_000);
 
   // The clock is derived from start/pause events, so it survives a reload or a locked phone (T5 stores them).
-  let remaining = $state(GAME_MS);
+  let remaining = $state(untrack(() => GAME_MS));
   let runningSince: number | null = $state(null);
   let goals = $state([...match.goals]);
   let picking: { team: number; scorer?: number } | null = $state(null);
@@ -65,7 +70,7 @@
 </script>
 
 <BackBar
-  href="/kumite"
+  href="/tournaments/{type.slug}"
   label="Games"
   title="Game {match.id}"
   right={runningSince ? "Running" : left === 0 ? "Full time" : "Paused"}

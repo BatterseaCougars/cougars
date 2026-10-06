@@ -4,7 +4,8 @@
   import { can } from "../../access/actions";
   import { granted, impersonating, me, realMember, rolesOf, viewAs } from "../../demo/session.svelte";
   import { stripRoutes, tabHref, tabRoutes } from "../mobile-nav";
-  import { ROUTES, TABS, type Route, type TabId } from "../nav-routes";
+  import { type Route, type TabId } from "../nav-routes";
+  import { folds, routes, tabs } from "../routes.svelte";
   import { navigate, router } from "../router.svelte";
   import { easeOut, fadeMs, flyMs, prefersReducedMotion, zoom } from "../motion";
   import { glide, pillShape, rowShape, underlineShape } from "./mark";
@@ -15,60 +16,63 @@
   let { route, children }: { route: Route; children: Snippet } = $props();
 
   const perms = $derived(granted());
-  const strip = $derived(route.focus ? [] : stripRoutes(route.tab, perms));
-  const allowed = (r: Route) => !r.focus && can(perms, r.action);
+  const all = $derived(routes());
+  const tabList = $derived(tabs());
+  const strip = $derived(route.focus ? [] : stripRoutes(all, route, perms));
+  const allowed = (r: Route) => !r.focus && !r.hidden && can(perms, r.action);
 
-  // Rail: as flat as it can be. A section gets a heading only when it has more than one link, and the plain
-  // links come first, so no spacing is needed to tell them apart: a member sees Home, Friday hockey, Calendar,
-  // Teammates, then the Kumite section. Settings folds open below for admins.
-  const railSections = $derived.by(() => {
-    const sections = [
-      { label: "", routes: ROUTES.filter((r) => r.tab === "home") },
-      { label: "Friday hockey", routes: ROUTES.filter((r) => r.tab === "friday") },
-      { label: "", routes: ROUTES.filter((r) => r.tab === "calendar") },
-      { label: "", routes: ROUTES.filter((r) => r.group === "Club") },
-      { label: "Kumite", routes: ROUTES.filter((r) => r.tab === "kumite") },
-    ]
-      .map((s) => ({ ...s, routes: s.routes.filter(allowed) }))
-      .filter((s) => s.routes.length)
-      .map((s) => ({ ...s, heading: s.routes.length > 1 ? s.label : "" }));
-    return [...sections.filter((s) => !s.heading), ...sections.filter((s) => s.heading)];
-  });
-  const settings = $derived(
-    (["People", "Money"] as const)
-      .map((section) => ({ section, routes: ROUTES.filter((r) => r.section === section && allowed(r)) }))
-      .filter((s) => s.routes.length),
+  // Rail, flat: Home, a link per training, Calendar, the club pages. Then a folding section per tournament type,
+  // then Settings. Both come from what admins set up, so a new training or tournament appears here.
+  const flat = $derived(
+    all.filter(
+      (r) => allowed(r) && (r.tab === "home" || r.tab === "training" || r.tab === "calendar" || r.group === "Club"),
+    ),
   );
-  const inSettings = $derived(route.group === "Settings");
+  const railFolds = $derived(
+    [
+      ...folds()
+        .map((f) => ({ ...f, groups: [{ label: "", routes: all.filter((r) => r.fold === f.id && allowed(r)) }] }))
+        .filter((f) => f.groups[0].routes.length),
+      {
+        id: "settings",
+        name: "Settings",
+        icon: "settings" as const,
+        groups: (["People", "Schedule", "Money"] as const)
+          .map((label) => ({ label, routes: all.filter((r) => r.section === label && allowed(r)) }))
+          .filter((g) => g.routes.length),
+      },
+    ].filter((f) => f.groups.length),
+  );
+  const foldOf = (r: Route) => (r.group === "Settings" ? "settings" : r.fold);
 
-  const OPEN_KEY = "team.rail.settings";
-  let settingsOpen = $state(readOpen());
-  function readOpen() {
+  // Which folds are open, remembered. The current page's fold is always open.
+  const OPEN_KEY = "team.rail.open";
+  let opened = $state<Record<string, boolean>>(readOpen());
+  function readOpen(): Record<string, boolean> {
     try {
-      return localStorage.getItem(OPEN_KEY) === "1";
+      return JSON.parse(localStorage.getItem(OPEN_KEY) ?? "{}");
     } catch {
-      return false;
+      return {};
     }
   }
-  // A settings page is open: its group is too.
-  const showSettings = $derived(settingsOpen || inSettings);
-  function toggleSettings() {
-    settingsOpen = !showSettings;
+  const isOpen = (id: string) => Boolean(opened[id]) || foldOf(route) === id;
+  function toggle(id: string) {
+    opened = { ...opened, [id]: !isOpen(id) };
     try {
-      localStorage.setItem(OPEN_KEY, settingsOpen ? "1" : "0");
+      localStorage.setItem(OPEN_KEY, JSON.stringify(opened));
     } catch {
       // Private mode: the rail forgets.
     }
   }
 
-  // Desktop top bar: where you are. The tab, then the page when it isn't the tab's own name.
+  // Desktop top bar: where you are.
   const crumbs = $derived.by(() => {
     if (route.group === "Settings") return ["Settings", route.name];
     if (route.group === "You") return ["You", route.name];
     if (route.group) return [route.name];
-    // The phone tab is "Friday"; on desktop the section is "Friday hockey", like the rail.
-    const tab = route.tab === "friday" ? "Friday hockey" : TABS.find((t) => t.id === route.tab)!.label;
-    return tab === route.name ? [tab] : [tab, route.name];
+    const fold = folds().find((f) => f.id === route.fold);
+    if (fold) return [fold.name, route.name];
+    return [route.name];
   });
 
   let chromeH = $state(0);
@@ -78,7 +82,7 @@
   function onTab(tab: TabId, event: MouseEvent) {
     if (tab !== route.tab) return;
     event.preventDefault();
-    const first = tabRoutes(tab, perms)[0]?.path ?? "/";
+    const first = tabRoutes(all, tab, perms)[0]?.path ?? "/";
     if (router.path !== first) navigate(first);
     else content?.querySelector(".view")?.scrollTo({ top: 0, behavior: prefersReducedMotion ? "auto" : "smooth" });
   }
@@ -108,7 +112,7 @@
     return { update: run };
   }
 
-  const glideKey = $derived(`${route.id}|${showSettings}|${[...perms].join()}`);
+  const glideKey = $derived(`${route.id}|${JSON.stringify(opened)}|${[...perms].join()}|${all.length}`);
 </script>
 
 {#snippet railLink(r: Route, nested = false, short = false)}
@@ -137,33 +141,31 @@
     </a>
     <nav class="nav" use:glide={{ shape: rowShape, key: glideKey }}>
       <span class="nav-mark" data-glide aria-hidden="true"></span>
-      {#each railSections as s, i (s.label + i)}
-        {#if s.heading}<p class="nav-label eyebrow">{s.heading}</p>{/if}
-        {#each s.routes as r (r.id)}{@render railLink(r, false, Boolean(s.heading))}{/each}
-      {/each}
+      {#each flat as r (r.id)}{@render railLink(r)}{/each}
 
-      {#if settings.length}
-        <div class="group" class:open={showSettings}>
+      {#each railFolds as f (f.id)}
+        {@const open = isOpen(f.id)}
+        <div class="group" class:open class:settings={f.id === "settings"}>
           <button
             class="nav-item group-head"
-            class:in={inSettings}
-            aria-expanded={showSettings}
-            onclick={toggleSettings}
+            class:in={foldOf(route) === f.id}
+            aria-expanded={open}
+            onclick={() => toggle(f.id)}
           >
-            <Icon name="settings" size={18} />
-            <span>Settings</span>
+            <Icon name={f.icon} size={18} />
+            <span class="group-name">{f.name}</span>
             <span class="chev"><Icon name="chevronRight" size={16} /></span>
           </button>
           <div class="fold">
             <div class="fold-inner">
-              {#each settings as g (g.section)}
-                <p class="sub-label">{g.section}</p>
+              {#each f.groups as g (g.label)}
+                {#if g.label}<p class="sub-label">{g.label}</p>{/if}
                 {#each g.routes as r (r.id)}{@render railLink(r, true)}{/each}
               {/each}
             </div>
           </div>
         </div>
-      {/if}
+      {/each}
     </nav>
   </aside>
 
@@ -201,7 +203,7 @@
       {#if strip.length}
         <nav
           class="strip"
-          aria-label="{TABS.find((t) => t.id === route.tab)?.label} pages"
+          aria-label="{tabList.find((t) => t.id === route.tab)?.label} pages"
           use:glide={{ shape: underlineShape, key: glideKey }}
           use:centre={route.id}
         >
@@ -242,12 +244,12 @@
       use:glide={{ shape: pillShape, key: glideKey }}
     >
       <span class="tab-mark" data-glide aria-hidden="true"></span>
-      {#each TABS as tab (tab.id)}
+      {#each tabList as tab (tab.id)}
         {@const on = route.tab === tab.id}
         <a
           class="tab"
           class:on
-          href={tabHref(tab.id, perms, router.last)}
+          href={tabHref(all, tab.id, perms, router.last)}
           data-mark={on ? "" : undefined}
           aria-current={on ? "true" : undefined}
           onclick={(e) => onTab(tab.id, e)}
@@ -323,10 +325,6 @@
     scrollbar-gutter: stable;
     margin-right: calc(-1 * var(--scrollbar-size));
   }
-  .nav-label {
-    margin: var(--s-4) var(--s-3) var(--s-1);
-    color: var(--fg-subtle);
-  }
   .nav-item {
     position: relative;
     z-index: 1;
@@ -384,9 +382,16 @@
 
   /* Settings folds open and shut (grid-template-rows 0fr ↔ 1fr), so the rows below glide rather than jump */
   .group {
+    margin-top: var(--s-1);
+  }
+  .group.settings {
     margin-top: var(--s-4);
     padding-top: var(--s-3);
     border-top: 1px solid var(--border);
+  }
+  .group-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .group-head.in {
     color: var(--fg);

@@ -1,68 +1,93 @@
 <script lang="ts">
-  import type { ClubEvent } from "../demo/data";
+  // One session, tournament or social, with In/Out. Every kind carries its own icon and colour (set by an admin
+  // per training and tournament type), so the calendar reads at a glance.
+  import type { Bookable } from "../demo/model";
   import { impersonating, me } from "../demo/session.svelte";
+  import Icon from "../app/shell/Icon.svelte";
   import { dateBadge, formatTime } from "./dates";
 
   let {
     event,
     canSignUp = true,
     feature = false,
+    compact = false,
     onanswer,
   }: {
-    event: ClubEvent;
+    event: Bookable;
     canSignUp?: boolean;
     feature?: boolean;
+    /** Calendar rows: the type label and a link, no capacity meter. */
+    compact?: boolean;
     /** Called after a tap on In or Out with where the member ended up. */
     onanswer?: (status: "in" | "waitlist" | "out") => void;
   } = $props();
 
+  const KIND = { training: "Training", tournament: "Tournament", social: "Social" } as const;
+
+  const entries = $derived(event.entries);
   const badge = $derived(dateBadge(event.startsAt));
   const id = $derived(me().id);
   // Viewing as someone is read-only (ADR 0027): you see their answer, you can't change it.
   const locked = $derived(impersonating());
-  const inIt = $derived(event.going.includes(id));
-  const waiting = $derived(event.waitlist.includes(id));
+  const inIt = $derived(entries.going.includes(id));
+  const waiting = $derived(entries.waitlist.includes(id));
   const out = $derived(!inIt && !waiting);
-  const full = $derived(event.capacity !== undefined && event.going.length >= event.capacity);
-  const fill = $derived(event.capacity ? Math.min(1, event.going.length / event.capacity) : 0);
+  const full = $derived(event.capacity != null && entries.going.length >= event.capacity);
+  const fill = $derived(event.capacity ? Math.min(1, entries.going.length / event.capacity) : 0);
 
   function setIn(going: boolean) {
     if (locked) return;
-    event.going = event.going.filter((x) => x !== id);
-    event.waitlist = event.waitlist.filter((x) => x !== id);
+    entries.going = entries.going.filter((x) => x !== id);
+    entries.waitlist = entries.waitlist.filter((x) => x !== id);
     if (!going) {
       // Someone drops out: the first on the waitlist moves up.
-      if (event.waitlist.length && event.capacity && event.going.length < event.capacity) {
-        event.going = [...event.going, event.waitlist[0]];
-        event.waitlist = event.waitlist.slice(1);
+      if (entries.waitlist.length && event.capacity && entries.going.length < event.capacity) {
+        entries.going = [...entries.going, entries.waitlist[0]];
+        entries.waitlist = entries.waitlist.slice(1);
       }
       onanswer?.("out");
       return;
     }
     if (full) {
-      event.waitlist = [...event.waitlist, id];
+      entries.waitlist = [...entries.waitlist, id];
       onanswer?.("waitlist");
     } else {
-      event.going = [...event.going, id];
+      entries.going = [...entries.going, id];
       onanswer?.("in");
     }
   }
 </script>
 
-<article class="event panel" class:feature class:kumite={event.kind === "kumite"} class:in={inIt}>
+<article
+  class="event panel {event.kind}"
+  class:feature
+  class:compact
+  class:in={inIt}
+  class:cancelled={event.cancelled}
+  style:--tone="var(--tone-{event.tone})"
+>
   <div class="date">
     <span class="eyebrow">{badge.weekday}</span>
     <span class="display day">{badge.day}</span>
     <span class="eyebrow">{badge.month}</span>
   </div>
   <div class="body">
-    <h3>{event.title}</h3>
+    <p class="type">
+      <span class="chip"><Icon name={event.icon} size={14} /></span>
+      <span class="kind">{KIND[event.kind]}</span>
+      {#if event.cancelled}<span class="badge">Cancelled</span>{/if}
+    </p>
+    <h3>
+      {#if compact && event.href}<a href={event.href}>{event.title}</a>{:else}{event.title}{/if}
+    </h3>
     <p class="hint">{formatTime(event.startsAt)}–{formatTime(event.endsAt)} · {event.venue}</p>
     {#if event.signup}
-      <div class="meter" aria-hidden="true"><span style:width="{fill * 100}%"></span></div>
+      {#if !compact && event.capacity}
+        <div class="meter" aria-hidden="true"><span style:width="{fill * 100}%"></span></div>
+      {/if}
       <p class="count hint num">
-        <span><strong>{event.going.length}</strong>{event.capacity ? ` / ${event.capacity}` : ""} in</span>
-        {#if event.waitlist.length}<span>· {event.waitlist.length} waiting</span>{/if}
+        <span><strong>{entries.going.length}</strong>{event.capacity ? ` / ${event.capacity}` : ""} in</span>
+        {#if entries.waitlist.length}<span>· {entries.waitlist.length} waiting</span>{/if}
         {#if inIt}<span class="badge green">You're in</span>{:else if waiting}<span class="badge amber">Waitlist</span
           >{/if}
       </p>
@@ -85,12 +110,34 @@
     gap: var(--s-3) var(--s-4);
     align-items: start;
     padding: var(--s-4);
+    overflow: hidden;
+  }
+  /* The colour stripe down the left: the training's or tournament's own tone */
+  .event::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 3px;
+    background: var(--tone);
   }
   .event.in {
     border-color: var(--green-border);
   }
-  .event.kumite:not(.feature) {
-    border-color: var(--red-border);
+  /* Tournaments stand out more: a wash of their colour */
+  .event.tournament:not(.feature) {
+    border-color: color-mix(in srgb, var(--tone) 40%, transparent);
+    background:
+      linear-gradient(150deg, color-mix(in srgb, var(--tone) 16%, transparent), transparent 60%), var(--panel-bg);
+  }
+  /* Socials are lighter: a dashed edge */
+  .event.social {
+    border-style: dashed;
+  }
+  .event.cancelled {
+    opacity: 0.55;
+  }
+  .event.cancelled h3 {
+    text-decoration: line-through;
   }
   .date {
     display: grid;
@@ -104,12 +151,38 @@
     font-size: 1.9rem;
     color: var(--fg);
   }
-  .kumite .day {
-    color: var(--red-hot);
+  .tournament .day {
+    color: var(--tone);
+  }
+  .type {
+    display: flex;
+    align-items: center;
+    gap: var(--s-2);
+    margin-bottom: var(--s-1);
+  }
+  .chip {
+    display: grid;
+    place-items: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: var(--r-sm);
+    background: color-mix(in srgb, var(--tone) 18%, transparent);
+    color: var(--tone);
+  }
+  .kind {
+    font-size: var(--text-2xs);
+    font-weight: 600;
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--tone);
   }
   h3 {
     font-size: var(--text-md);
     font-weight: 600;
+  }
+  h3 a:hover {
+    text-decoration: underline;
+    text-underline-offset: 3px;
   }
   .meter {
     height: 3px;
@@ -122,7 +195,7 @@
     display: block;
     height: 100%;
     border-radius: 2px;
-    background: var(--red);
+    background: var(--tone);
     transition: width var(--t-slow) var(--ease);
   }
   .count {

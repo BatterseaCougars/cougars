@@ -2,18 +2,19 @@
   // Phones: everything that isn't a tab. You, the club, then Settings for admins, grouped People / Money.
   import { can } from "../access/actions";
   import Icon from "../app/shell/Icon.svelte";
-  import { ROUTES, type Group, type Route } from "../app/nav-routes";
+  import type { Group, Route } from "../app/nav-routes";
+  import { routes } from "../app/routes.svelte";
   import { emailFor } from "../demo/data";
   import { granted, impersonating, me, rolesOf } from "../demo/session.svelte";
   import { initials } from "../lib/initials";
 
   const perms = $derived(granted());
   const who = $derived(me());
-  const visible = (g: Group) => ROUTES.filter((r) => r.group === g && can(perms, r.action));
+  const visible = (g: Group) => routes().filter((r) => r.group === g && can(perms, r.action));
   const club = $derived(visible("Club"));
   const you = $derived(visible("You"));
   const settings = $derived(
-    (["People", "Money"] as const)
+    (["People", "Schedule", "Money"] as const)
       .map((section) => ({ section, routes: visible("Settings").filter((r) => r.section === section) }))
       .filter((s) => s.routes.length),
   );

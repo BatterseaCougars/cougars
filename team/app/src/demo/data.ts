@@ -1,6 +1,7 @@
 // Sample data for the clickable shell. Nothing here is a club fact: names, fees and dates are made up and
 // replaced by D1 data from T1 on.
 import type { Action } from "../access/actions";
+import type { OneOff, Tournament, TournamentType, TrainingSeries } from "./model";
 
 export type Position = "F" | "D";
 
@@ -50,72 +51,111 @@ export const REAL_ID = PLAYERS[0].id;
 export const emailFor = (p: Player) => `${p.name.toLowerCase().replace(" ", ".")}@example.com`;
 export const referenceFor = (id: number) => `COU-${String(id).padStart(4, "0")}`;
 
-export interface ClubEvent {
-  id: number;
-  kind: "friday" | "kumite" | "social";
-  title: string;
-  startsAt: string;
-  endsAt: string;
-  venue: string;
-  signup: boolean;
-  capacity?: number;
-  going: number[];
-  waitlist: number[];
-}
+// ─── Schedule (ADR 0028). Sample values, not club facts. ───
 
-/** The next eight Fridays at 19:30 London time, plus a Kumite and a social. */
-function upcoming(): ClubEvent[] {
-  const events: ClubEvent[] = [];
-  const d = new Date();
-  d.setDate(d.getDate() + ((5 - d.getDay() + 7) % 7));
-  for (let i = 0; i < 8; i++) {
-    const day = new Date(d);
-    day.setDate(d.getDate() + i * 7);
-    const ymd = day.toISOString().slice(0, 10);
-    events.push({
-      id: 100 + i,
-      kind: "friday",
-      title: "Friday hockey",
-      startsAt: `${ymd}T18:30:00Z`,
-      endsAt: `${ymd}T20:30:00Z`,
-      venue: "The rink",
-      signup: true,
-      capacity: 28,
-      going: i === 0 ? PLAYERS.slice(1, 17).map((p) => p.id) : i === 1 ? PLAYERS.slice(3, 9).map((p) => p.id) : [],
-      waitlist: [],
-    });
-  }
-  const kumite = new Date(d);
-  kumite.setDate(d.getDate() + 22);
-  events.push({
-    id: 200,
-    kind: "kumite",
-    title: "The Cougars Kumite",
-    startsAt: `${kumite.toISOString().slice(0, 10)}T11:00:00Z`,
-    endsAt: `${kumite.toISOString().slice(0, 10)}T16:00:00Z`,
+export const SERIES: TrainingSeries[] = [
+  {
+    id: 1,
+    slug: "friday",
+    name: "Friday Training",
+    shortName: "Friday",
+    icon: "stick",
+    tone: "blue",
+    repeatEvery: 1,
+    weekdays: ["fri"],
+    startsOn: "2026-09-04",
+    endsOn: null,
+    startTime: "19:30",
+    endTime: "21:30",
     venue: "The rink",
-    signup: true,
+    capacity: 28,
+    public: true,
+    active: true,
+  },
+];
+
+export const TOURNAMENT_TYPES: TournamentType[] = [
+  {
+    id: 1,
+    slug: "kumite",
+    name: "The Cougars Kumite",
+    shortName: "Kumite",
+    icon: "swords",
+    tone: "red",
+    format: "round_robin",
+    pointsWin: 3,
+    pointsDraw: 1,
+    pointsLoss: 0,
+    gameMinutes: 12,
+    draft: true,
+    active: true,
+  },
+];
+
+const inDays = (n: number) => {
+  const d = new Date();
+  d.setDate(d.getDate() + n);
+  return d.toISOString().slice(0, 10);
+};
+
+export const TOURNAMENTS: Tournament[] = [
+  {
+    id: 1,
+    typeId: 1,
+    name: "Summer Kumite",
+    location: "The rink",
+    heldOn: inDays(-70),
+    startTime: "11:00",
+    endTime: "16:00",
     capacity: 24,
-    going: PLAYERS.slice(0, 12).map((p) => p.id),
+    status: "finished",
+    champions: "Red",
+    going: [],
     waitlist: [],
-  });
-  const social = new Date(d);
-  social.setDate(d.getDate() + 15);
-  events.push({
-    id: 300,
-    kind: "social",
+  },
+  {
+    id: 2,
+    typeId: 1,
+    name: "Autumn Kumite",
+    location: "The rink",
+    heldOn: inDays(0),
+    startTime: "11:00",
+    endTime: "16:00",
+    capacity: 24,
+    status: "live",
+    going: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20],
+    waitlist: [],
+  },
+  {
+    id: 3,
+    typeId: 1,
+    name: "Winter Kumite",
+    location: "The rink",
+    heldOn: inDays(56),
+    startTime: "11:00",
+    endTime: "16:00",
+    capacity: 24,
+    status: "open",
+    going: [2, 3, 5, 8, 13],
+    waitlist: [],
+  },
+];
+
+export const ONE_OFFS: OneOff[] = [
+  {
+    id: 1,
     title: "End-of-season drinks",
-    startsAt: `${social.toISOString().slice(0, 10)}T19:00:00Z`,
-    endsAt: `${social.toISOString().slice(0, 10)}T22:00:00Z`,
+    startsAt: `${inDays(15)}T19:00:00Z`,
+    endsAt: `${inDays(15)}T22:00:00Z`,
     venue: "The pub",
     signup: false,
     going: [],
     waitlist: [],
-  });
-  return events.sort((a, b) => a.startsAt.localeCompare(b.startsAt));
-}
+  },
+];
 
-export const EVENTS: ClubEvent[] = upcoming();
+/** Sample sign-ups for the next two sessions of the first series. */
+export const SAMPLE_SIGNUPS = [PLAYERS.slice(1, 17).map((p) => p.id), PLAYERS.slice(3, 9).map((p) => p.id)];
 
 export interface Role {
   id: number;

@@ -6,16 +6,28 @@
   import Icon from "../app/shell/Icon.svelte";
   import EventCard from "../lib/EventCard.svelte";
   import { formatDayDate, pounds } from "../lib/dates";
+  import { currentTournament, nextSession, sessionBookable, tournamentBookable } from "../demo/schedule.svelte";
   import { ASK, IN, OUT, WAITLIST, pick, type Quip } from "../lib/quips";
 
   const perms = $derived(granted());
   const who = $derived(me());
-  const next = $derived(db.events.find((e) => e.kind === "friday")!);
+  // The main training (the first one set up) leads Home; the next tournament of each type follows.
+  const series = $derived(db.series.find((s) => s.active));
+  const session = $derived(series && nextSession(series));
+  const booking = $derived(session && sessionBookable(session));
+  const next = $derived(session ?? { id: 0, going: [] as number[], waitlist: [] as number[] });
+  const day = $derived(series?.shortName ?? "week");
+  const tournaments = $derived(
+    db.tournamentTypes
+      .filter((t) => t.active)
+      .map((type) => ({ type, t: currentTournament(type.id) }))
+      .filter((x) => x.t && x.t.status !== "finished"),
+  );
   const isIn = $derived(next.going.includes(who.id));
   const waiting = $derived(next.waitlist.includes(who.id));
   const answered = $derived(isIn || waiting);
   const position = $derived(next.going.indexOf(who.id) + 1);
-  const myTeam = $derived(db.teams?.find((t) => t.players.includes(who.id)));
+  const myTeam = $derived(db.teams[next.id]?.find((t) => t.players.includes(who.id)));
   const owed = $derived(ledgerFor(who.id).reduce((sum, l) => sum + l.pence, 0));
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Morning" : hour < 18 ? "Afternoon" : "Evening";
@@ -40,41 +52,45 @@
     <h1 class="display">{greeting}, {who.name.split(" ")[0]}</h1>
   </header>
 
-  <section>
-    <p class="eyebrow lead">{answered ? "This Friday" : "Are you in this Friday?"}</p>
-    {#if quip}
-      {#key quip.text}
-        <blockquote class="quote rise">
-          <p class="display">“{quip.text}”</p>
-          {#if quip.by}<footer class="hint">{quip.by}</footer>{/if}
-        </blockquote>
-      {/key}
-    {/if}
-    <EventCard event={next} canSignUp={can(perms, "signup:Event")} feature={!answered} {onanswer} />
-    {#if !answered}<p class="hint nag">Teams are made from sign-ups, so say in or out before Friday.</p>{/if}
-  </section>
+  {#if series && session && booking}
+    <section>
+      <p class="eyebrow lead">{answered ? `This ${day}` : `Are you in this ${day}?`}</p>
+      {#if quip}
+        {#key quip.text}
+          <blockquote class="quote rise">
+            <p class="display">“{quip.text}”</p>
+            {#if quip.by}<footer class="hint">{quip.by}</footer>{/if}
+          </blockquote>
+        {/key}
+      {/if}
+      <EventCard event={booking} canSignUp={can(perms, "signup:Event")} feature={!answered} {onanswer} />
+      {#if !answered}<p class="hint nag">Teams are made from sign-ups, so say in or out before {day}.</p>{/if}
+    </section>
+  {/if}
 
   <div class="list">
-    <a class="row" href="/friday">
-      <span class="glyph"><Icon name="teams" /></span>
-      <span class="grow">
-        {#if myTeam}
-          <span class="title">You're on {myTeam.name}</span>
-          <span class="sub">With {teammates(myTeam.players)} and {myTeam.players.length - 4} more</span>
-        {:else if isIn}
-          <span class="title">You're in, number {position} of {next.going.length}</span>
-          <span class="sub">Teams are out after sign-up closes on {formatDayDate(next.startsAt)}</span>
-        {:else if waiting}
-          <span class="title">You're on the waitlist</span>
-          <span class="sub">You'll move up if someone drops out</span>
-        {:else}
-          <span class="title">Who's in this Friday</span>
-          <span class="sub">{next.going.length} signed up so far</span>
-        {/if}
-      </span>
-      {#if myTeam}<span class="display team">{myTeam.name}</span>{/if}
-      <Icon name="chevronRight" size={18} />
-    </a>
+    {#if series && booking}
+      <a class="row" href="/training/{series.slug}">
+        <span class="glyph"><Icon name="teams" /></span>
+        <span class="grow">
+          {#if myTeam}
+            <span class="title">You're on {myTeam.name}</span>
+            <span class="sub">With {teammates(myTeam.players)} and {myTeam.players.length - 4} more</span>
+          {:else if isIn}
+            <span class="title">You're in, number {position} of {next.going.length}</span>
+            <span class="sub">Teams are out after sign-up closes on {formatDayDate(booking.startsAt)}</span>
+          {:else if waiting}
+            <span class="title">You're on the waitlist</span>
+            <span class="sub">You'll move up if someone drops out</span>
+          {:else}
+            <span class="title">Who's in this {day}</span>
+            <span class="sub">{next.going.length} signed up so far</span>
+          {/if}
+        </span>
+        {#if myTeam}<span class="display team">{myTeam.name}</span>{/if}
+        <Icon name="chevronRight" size={18} />
+      </a>
+    {/if}
     <a class="row" href="/me/tab">
       <span class="glyph"><Icon name="pound" /></span>
       <span class="grow">
@@ -86,11 +102,13 @@
     </a>
   </div>
 
-  <section class="notice">
-    <p class="eyebrow">Notice</p>
-    <h2>Kumite draft</h2>
-    <p class="hint">Captains draft their teams the week before. Rules to follow.</p>
-  </section>
+  {#each tournaments as { type, t } (type.id)}
+    {@const b = tournamentBookable(t!)}
+    <section class="next-tournament">
+      <p class="eyebrow lead">{t!.status === "live" ? `${type.shortName} today` : `Next ${type.shortName}`}</p>
+      <EventCard event={b} canSignUp={can(perms, "signup:Event")} />
+    </section>
+  {/each}
 </div>
 
 <style>
@@ -133,14 +151,5 @@
   }
   .owe.zero {
     color: var(--green);
-  }
-  .notice {
-    gap: var(--s-2);
-    padding: var(--s-4) 0 0;
-    border-top: 1px solid var(--border);
-  }
-  .notice h2 {
-    font-size: var(--text-md);
-    font-weight: 600;
   }
 </style>

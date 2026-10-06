@@ -236,6 +236,7 @@ inbox, and dev can only ever send from its own test account, never the club's.
   [team app](docs/roadmap/team-app.md)), and the free-tier budget
 - [docs/adr/](docs/adr/README.md): architecture decisions, and why
 - [db/README.md](db/README.md): database conventions
+- [docs/team-app-data-model.md](docs/team-app-data-model.md): the team app's tables, by milestone
 - [CLAUDE.md](CLAUDE.md): conventions for contributors and AI agents
 
 ## Ports (devcontainer)

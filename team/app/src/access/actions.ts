@@ -7,6 +7,8 @@ export const ACTIONS = {
   "create:Event": "Add events",
   "update:Event": "Edit, move or cancel events",
   "record:Attendance": "Run the register on the night",
+  "manage:Training": "Set up trainings: days, times, venue",
+  "manage:Tournament": "Set up tournaments and their dates",
   "generate:Teams": "Generate and adjust teams",
   "publish:Teams": "Publish teams",
   "read:Dues": "See Overdue Rentals (who owes what)",

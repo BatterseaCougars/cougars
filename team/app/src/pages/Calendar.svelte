@@ -1,41 +1,53 @@
 <script lang="ts">
+  // Everything on: training sessions, tournaments and one-offs, in date order. Each training and tournament type
+  // has its own icon and colour, and the chips at the top filter to one kind. Trainings and tournaments are set
+  // up under Settings; one-off events are added here.
   import { can } from "../access/actions";
-  import type { ClubEvent } from "../demo/data";
+  import type { IconName } from "../app/shell/icons";
+  import Icon from "../app/shell/Icon.svelte";
+  import type { Tone } from "../demo/model";
+  import { calendar } from "../demo/schedule.svelte";
   import { granted } from "../demo/session.svelte";
   import { db } from "../demo/store.svelte";
   import EventCard from "../lib/EventCard.svelte";
+  import { londonISO } from "../lib/dates";
 
   const perms = $derived(granted());
-  let adding = $state(false);
-  let draft = $state({ title: "", date: "", time: "19:30", kind: "social" as ClubEvent["kind"], signup: true });
 
-  function add(e: SubmitEvent) {
-    e.preventDefault();
-    if (!draft.title || !draft.date) return;
-    const startsAt = new Date(`${draft.date}T${draft.time}:00`).toISOString();
-    const endsAt = new Date(new Date(startsAt).getTime() + 2 * 3600_000).toISOString();
-    db.events = [
-      ...db.events,
-      {
-        id: Date.now(),
-        kind: draft.kind,
-        title: draft.title,
-        startsAt,
-        endsAt,
-        venue: "TBC",
-        signup: draft.signup,
-        going: [],
-        waitlist: [],
-      },
-    ].sort((a, b) => a.startsAt.localeCompare(b.startsAt));
-    adding = false;
-    draft = { title: "", date: "", time: "19:30", kind: "social", signup: true };
+  // ─── Filter ───
+  const FILTER_KEY = "team.calendar.filter";
+  let filter = $state(readFilter());
+  function readFilter() {
+    try {
+      return localStorage.getItem(FILTER_KEY) ?? "all";
+    } catch {
+      return "all";
+    }
   }
+  function setFilter(f: string) {
+    filter = f;
+    try {
+      localStorage.setItem(FILTER_KEY, f);
+    } catch {
+      // Private mode: the filter resets on reload.
+    }
+  }
+  const chips = $derived<{ id: string; label: string; icon?: IconName; tone?: Tone }[]>([
+    { id: "all", label: "All" },
+    ...db.series
+      .filter((s) => s.active)
+      .map((s) => ({ id: `series:${s.id}`, label: s.shortName, icon: s.icon, tone: s.tone })),
+    ...db.tournamentTypes
+      .filter((t) => t.active)
+      .map((t) => ({ id: `type:${t.id}`, label: t.shortName, icon: t.icon, tone: t.tone })),
+    { id: "social", label: "Socials", icon: "glass", tone: "amber" },
+  ]);
+  const items = $derived(calendar().filter((e) => filter === "all" || e.filter === filter));
 
   // Group by month for the running order
   const months = $derived.by(() => {
-    const out: { label: string; events: ClubEvent[] }[] = [];
-    for (const e of db.events) {
+    const out: { label: string; events: typeof items }[] = [];
+    for (const e of items) {
       const label = new Intl.DateTimeFormat("en-GB", { month: "long", timeZone: "Europe/London" }).format(
         new Date(e.startsAt),
       );
@@ -45,13 +57,34 @@
     }
     return out;
   });
+
+  // ─── Add a one-off ───
+  let adding = $state(false);
+  let draft = $state({ title: "", date: "", time: "19:30", venue: "", signup: true });
+  function add(e: SubmitEvent) {
+    e.preventDefault();
+    if (!draft.title || !draft.date) return;
+    const startsAt = londonISO(draft.date, draft.time);
+    db.oneOffs.push({
+      id: Date.now(),
+      title: draft.title,
+      startsAt,
+      endsAt: new Date(Date.parse(startsAt) + 3 * 3600_000).toISOString(),
+      venue: draft.venue || "TBC",
+      signup: draft.signup,
+      going: [],
+      waitlist: [],
+    });
+    adding = false;
+    draft = { title: "", date: "", time: "19:30", venue: "", signup: true };
+  }
 </script>
 
 <div class="page">
   <div class="page-head">
     <div>
       <h1>Calendar</h1>
-      <p class="hint">Friday hockey every week, and whatever else is on.</p>
+      <p class="hint">Training, tournaments and everything else that's on.</p>
     </div>
     {#if can(perms, "create:Event")}
       <button class="btn sm" class:primary={!adding} class:ghost={adding} onclick={() => (adding = !adding)}>
@@ -60,8 +93,26 @@
     {/if}
   </div>
 
+  <div class="filters" role="group" aria-label="Show">
+    {#each chips as c (c.id)}
+      <button
+        class="filter"
+        aria-pressed={filter === c.id}
+        style:--tone={c.tone ? `var(--tone-${c.tone})` : "var(--fg)"}
+        onclick={() => setFilter(c.id)}
+      >
+        {#if c.icon}<Icon name={c.icon} size={14} />{/if}
+        {c.label}
+      </button>
+    {/each}
+  </div>
+
   {#if adding}
     <form class="panel pad form rise" onsubmit={add}>
+      <p class="hint">
+        A one-off: a social, a kit day. Trainings and tournaments are set up under Settings, so they repeat and keep
+        their own pages.
+      </p>
       <label class="field"
         >Title <input class="input" bind:value={draft.title} placeholder="e.g. Summer social" required /></label
       >
@@ -69,14 +120,7 @@
         <label class="field">Date <input class="input" type="date" bind:value={draft.date} required /></label>
         <label class="field">Starts <input class="input" type="time" bind:value={draft.time} /></label>
       </div>
-      <label class="field">
-        Kind
-        <select class="input" bind:value={draft.kind}>
-          <option value="social">Social</option>
-          <option value="kumite">Kumite</option>
-          <option value="friday">Extra hockey</option>
-        </select>
-      </label>
+      <label class="field">Where <input class="input" bind:value={draft.venue} placeholder="e.g. The pub" /></label>
       <label class="check"><input type="checkbox" bind:checked={draft.signup} /> Members say in or out</label>
       <button class="btn primary">Add to calendar</button>
     </form>
@@ -84,13 +128,55 @@
 
   {#each months as month (month.label)}
     <h2 class="section-title">{month.label}</h2>
-    {#each month.events as event (event.id)}
-      <EventCard {event} canSignUp={can(perms, "signup:Event")} />
+    {#each month.events as event (event.key)}
+      <EventCard {event} compact canSignUp={can(perms, "signup:Event")} />
     {/each}
+  {:else}
+    <p class="hint">Nothing coming up{filter === "all" ? "" : " for this one"}.</p>
   {/each}
 </div>
 
 <style>
+  .filters {
+    display: flex;
+    gap: var(--s-2);
+    margin: calc(-1 * var(--s-1)) calc(-1 * var(--gutter));
+    padding: var(--s-1) var(--gutter);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .filters::-webkit-scrollbar {
+    display: none;
+  }
+  .filter {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s-2);
+    flex-shrink: 0;
+    height: 2.25rem;
+    padding: 0 var(--s-4);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--r-pill);
+    background: color-mix(in srgb, var(--surface-2) 55%, transparent);
+    color: var(--fg-muted);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    transition:
+      background-color var(--t) var(--ease-in-out),
+      border-color var(--t) var(--ease-in-out),
+      color var(--t) var(--ease-in-out);
+  }
+  .filter :global(svg) {
+    color: var(--tone);
+  }
+  .filter:hover {
+    color: var(--fg);
+  }
+  .filter[aria-pressed="true"] {
+    border-color: color-mix(in srgb, var(--tone) 55%, transparent);
+    background: color-mix(in srgb, var(--tone) 18%, transparent);
+    color: var(--fg);
+  }
   .check {
     display: flex;
     align-items: center;

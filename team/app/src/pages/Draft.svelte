@@ -4,8 +4,14 @@
   import { granted } from "../demo/session.svelte";
   import Icon from "../app/shell/Icon.svelte";
   import Person from "../lib/Person.svelte";
+  import TournamentHead from "../lib/TournamentHead.svelte";
+  import { currentTournament, typeById } from "../demo/schedule.svelte";
+
+  let { typeId }: { typeId: number } = $props();
 
   const perms = $derived(granted());
+  const type = $derived(typeById(typeId)!);
+  const tournament = $derived(currentTournament(typeId));
   const captains = [
     { name: "Red", captain: PLAYERS[0] },
     { name: "White", captain: PLAYERS[5] },
@@ -26,11 +32,9 @@
 </script>
 
 <div class="page">
+  <TournamentHead {type} {tournament} title="Draft" />
   <div class="page-head">
-    <div>
-      <h1>Draft</h1>
-      <p class="hint num">Pick {Math.min(picks.length + 1, pool.length)} of {pool.length} · snake order</p>
-    </div>
+    <p class="hint num">Pick {Math.min(picks.length + 1, pool.length)} of {pool.length} · snake order</p>
     {#if can(perms, "run:Draft") && picks.length}
       <button class="btn ghost sm" onclick={() => (picks = picks.slice(0, -1))}
         ><Icon name="undo" size={16} /> Undo</button

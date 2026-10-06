@@ -1,6 +1,6 @@
 # 0025. Events live in D1, one club calendar
 
-- **Status:** Accepted. Amends [0014](0014-sanity-public-content.md) (events are no longer Sanity content).
+- **Status:** Superseded by [0028](0028-training-series-and-tournaments.md). Amended [0014](0014-sanity-public-content.md) (events are no longer Sanity content).
 - **Date:** 2026-10-06
 
 ## Context

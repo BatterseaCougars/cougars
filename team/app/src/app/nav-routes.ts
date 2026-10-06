@@ -1,13 +1,11 @@
-// One route tree for phone and desktop (the Gwenda ops pattern). The phone tabs are derived from it in
-// mobile-nav.ts, so the two can't drift apart. Each route declares the action it needs (ADR 0024).
-//
-// What a member uses most comes first: Home (am I in, what team), then Friday (who's in, the teams). Club pages,
-// your account and the admin Settings live under More on a phone; on desktop the rail lists them, with Settings
-// folding open, and your account sits in the badge top right.
+// The route tree, built from the schedule (ADR 0028): one page per training series, and a section per tournament
+// type with its Games, Standings and Draft. Admins add a training or a tournament type in Settings and it appears
+// here. Phone tabs are derived from the same tree (mobile-nav.ts), so the two can't drift apart. Each route
+// declares the action it needs (ADR 0024).
 import type { Requirement } from "../access/actions";
 import type { IconName } from "./shell/icons";
 
-export type TabId = "home" | "friday" | "calendar" | "kumite" | "more";
+export type TabId = "home" | "training" | "calendar" | "tournaments" | "more";
 
 /** Groups under More (phone) and in the rail (desktop). */
 export type Group = "Club" | "You" | "Settings";
@@ -19,69 +17,63 @@ export interface Route {
   tab: TabId;
   action: Requirement;
   icon: IconName;
+  /** Which page component renders it (App.svelte), and its props. */
+  page: string;
+  params?: Record<string, number>;
   /** Label in the strip of sub-pages, when shorter than the name. */
   short?: string;
   /** Subtitle on the More page. */
   hint?: string;
   group?: Group;
   /** Sub-heading inside Settings. */
-  section?: "People" | "Money";
-  /** Full-screen: hides the tabs and shows its own back bar (editors, the game clock). */
+  section?: "People" | "Schedule" | "Money";
+  /** The folding rail section it sits in: a tournament type ("type:1"). */
+  fold?: string;
+  /** Reached from a page, not from any menu (the register). */
+  hidden?: boolean;
+  /** Full-screen: hides the tabs and shows its own back bar (the game clock). */
   focus?: boolean;
 }
 
-export const ROUTES: Route[] = [
-  { id: "home", path: "/", name: "Home", tab: "home", action: "authenticated", icon: "home" },
+export interface Fold {
+  id: string;
+  name: string;
+  icon: IconName;
+}
 
-  {
-    id: "friday",
-    path: "/friday",
-    name: "Friday hockey",
-    short: "Teams",
-    tab: "friday",
-    action: "read:Event",
-    icon: "teams",
-  },
-  {
-    id: "register",
-    path: "/friday/register",
-    name: "Register",
-    tab: "friday",
-    action: "record:Attendance",
-    icon: "check",
-  },
+/** What the menu is built from: the configured trainings and tournament types. */
+export interface NavConfig {
+  series: { id: number; slug: string; name: string; shortName: string; icon: IconName; active: boolean }[];
+  types: {
+    id: number;
+    slug: string;
+    name: string;
+    shortName: string;
+    icon: IconName;
+    draft: boolean;
+    active: boolean;
+  }[];
+}
 
-  { id: "calendar", path: "/calendar", name: "Calendar", tab: "calendar", action: "read:Event", icon: "calendar" },
-
-  { id: "kumite", path: "/kumite", name: "Games", tab: "kumite", action: "read:Event", icon: "trophy" },
-  { id: "standings", path: "/kumite/standings", name: "Standings", tab: "kumite", action: "read:Event", icon: "list" },
-  { id: "draft", path: "/kumite/draft", name: "Draft", tab: "kumite", action: "read:Event", icon: "draft" },
-  {
-    id: "game",
-    path: "/kumite/game",
-    name: "Game clock",
-    tab: "kumite",
-    action: "score:Match",
-    icon: "clock",
-    focus: true,
-  },
-
-  { id: "more", path: "/more", name: "More", tab: "more", action: "authenticated", icon: "more" },
+const STATIC_TAIL: Route[] = [
+  { id: "more", path: "/more", name: "More", tab: "more", page: "more", action: "authenticated", icon: "more" },
   {
     id: "teammates",
     path: "/more/teammates",
     name: "Teammates",
     tab: "more",
+    page: "teammates",
     action: "authenticated",
     icon: "user",
     group: "Club",
-    hint: "Everyone who plays on Fridays",
+    hint: "Everyone who plays",
   },
   {
     id: "upload",
     path: "/more/upload",
     name: "Upload",
     tab: "more",
+    page: "upload",
     action: "upload:Photo",
     icon: "upload",
     group: "Club",
@@ -92,6 +84,7 @@ export const ROUTES: Route[] = [
     path: "/me",
     name: "Profile",
     tab: "more",
+    page: "profile",
     action: "authenticated",
     icon: "user",
     group: "You",
@@ -102,6 +95,7 @@ export const ROUTES: Route[] = [
     path: "/me/tab",
     name: "My tab",
     tab: "more",
+    page: "tab",
     action: "authenticated",
     icon: "pound",
     group: "You",
@@ -112,6 +106,7 @@ export const ROUTES: Route[] = [
     path: "/settings/members",
     name: "Members",
     tab: "more",
+    page: "members",
     action: "manage:Member",
     icon: "teams",
     group: "Settings",
@@ -123,6 +118,7 @@ export const ROUTES: Route[] = [
     path: "/settings/roles",
     name: "Roles",
     tab: "more",
+    page: "roles",
     action: "manage:Role",
     icon: "key",
     group: "Settings",
@@ -130,10 +126,35 @@ export const ROUTES: Route[] = [
     hint: "What each role can do",
   },
   {
+    id: "training-settings",
+    path: "/settings/training",
+    name: "Training",
+    tab: "more",
+    page: "training-settings",
+    action: "manage:Training",
+    icon: "stick",
+    group: "Settings",
+    section: "Schedule",
+    hint: "Repeating sessions: when, where, how many",
+  },
+  {
+    id: "tournament-settings",
+    path: "/settings/tournaments",
+    name: "Tournaments",
+    tab: "more",
+    page: "tournament-settings",
+    action: "manage:Tournament",
+    icon: "trophy",
+    group: "Settings",
+    section: "Schedule",
+    hint: "Tournament types and each one's dates",
+  },
+  {
     id: "fees",
     path: "/settings/fees",
     name: "Fees",
     tab: "more",
+    page: "fees",
     action: "manage:Fees",
     icon: "pound",
     group: "Settings",
@@ -145,6 +166,7 @@ export const ROUTES: Route[] = [
     path: "/settings/overdue",
     name: "Overdue Rentals",
     tab: "more",
+    page: "overdue",
     action: "read:Dues",
     icon: "tape",
     group: "Settings",
@@ -153,13 +175,126 @@ export const ROUTES: Route[] = [
   },
 ];
 
-export const TABS: { id: TabId; label: string; icon: IconName }[] = [
-  { id: "home", label: "Home", icon: "home" },
-  { id: "friday", label: "Friday", icon: "teams" },
-  { id: "calendar", label: "Calendar", icon: "calendar" },
-  { id: "kumite", label: "Kumite", icon: "trophy" },
-  { id: "more", label: "More", icon: "more" },
-];
+export function buildRoutes(config: NavConfig): Route[] {
+  const series = config.series.filter((s) => s.active);
+  const types = config.types.filter((t) => t.active);
+  return [
+    { id: "home", path: "/", name: "Home", tab: "home", page: "home", action: "authenticated", icon: "home" },
+    ...series.flatMap((s): Route[] => [
+      {
+        id: `training:${s.id}`,
+        path: `/training/${s.slug}`,
+        name: s.name,
+        short: s.shortName,
+        tab: "training",
+        page: "training",
+        params: { seriesId: s.id },
+        action: "read:Event",
+        icon: s.icon,
+      },
+      {
+        id: `register:${s.id}`,
+        path: `/training/${s.slug}/register`,
+        name: `${s.shortName} register`,
+        tab: "training",
+        page: "register",
+        params: { seriesId: s.id },
+        action: "record:Attendance",
+        icon: "check",
+        hidden: true,
+      },
+    ]),
+    {
+      id: "calendar",
+      path: "/calendar",
+      name: "Calendar",
+      tab: "calendar",
+      page: "calendar",
+      action: "read:Event",
+      icon: "calendar",
+    },
+    ...types.flatMap((t): Route[] => {
+      const base = { tab: "tournaments" as const, params: { typeId: t.id }, fold: `type:${t.id}` };
+      return [
+        {
+          ...base,
+          id: `games:${t.id}`,
+          path: `/tournaments/${t.slug}`,
+          name: "Games",
+          page: "games",
+          action: "read:Event",
+          icon: "trophy",
+        },
+        {
+          ...base,
+          id: `standings:${t.id}`,
+          path: `/tournaments/${t.slug}/standings`,
+          name: "Standings",
+          page: "standings",
+          action: "read:Event",
+          icon: "list",
+        },
+        ...(t.draft
+          ? [
+              {
+                ...base,
+                id: `draft:${t.id}`,
+                path: `/tournaments/${t.slug}/draft`,
+                name: "Draft",
+                page: "draft",
+                action: "read:Event" as const,
+                icon: "draft" as const,
+              },
+            ]
+          : []),
+        {
+          ...base,
+          id: `game:${t.id}`,
+          path: `/tournaments/${t.slug}/game`,
+          name: "Game clock",
+          page: "game",
+          action: "score:Match",
+          icon: "clock",
+          focus: true,
+        },
+      ];
+    }),
+    ...STATIC_TAIL,
+  ];
+}
 
-export const routeFor = (path: string): Route | undefined =>
-  ROUTES.find((r) => r.path === path) ?? ROUTES.find((r) => r.path !== "/" && path.startsWith(r.path + "/"));
+/** Rail sections that fold: one per tournament type. */
+export const buildFolds = (config: NavConfig): Fold[] =>
+  config.types.filter((t) => t.active).map((t) => ({ id: `type:${t.id}`, name: t.name, icon: t.icon }));
+
+/** Phone tabs. With one training or one tournament type, the tab takes its short name ("Friday", "Kumite"). */
+export function buildTabs(config: NavConfig): { id: TabId; label: string; icon: IconName }[] {
+  const series = config.series.filter((s) => s.active);
+  const types = config.types.filter((t) => t.active);
+  return [
+    { id: "home", label: "Home", icon: "home" },
+    ...(series.length
+      ? [
+          {
+            id: "training" as const,
+            label: series.length === 1 ? series[0].shortName : "Training",
+            icon: series.length === 1 ? series[0].icon : ("stick" as IconName),
+          },
+        ]
+      : []),
+    { id: "calendar", label: "Calendar", icon: "calendar" },
+    ...(types.length
+      ? [
+          {
+            id: "tournaments" as const,
+            label: types.length === 1 ? types[0].shortName : "Tournaments",
+            icon: types.length === 1 ? types[0].icon : ("trophy" as IconName),
+          },
+        ]
+      : []),
+    { id: "more", label: "More", icon: "more" },
+  ];
+}
+
+export const routeFor = (routes: Route[], path: string): Route | undefined =>
+  routes.find((r) => r.path === path) ?? routes.find((r) => r.path !== "/" && path.startsWith(r.path + "/"));
