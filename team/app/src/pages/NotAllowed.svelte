@@ -26,10 +26,9 @@
     width: 2.75rem;
     height: 2.75rem;
     margin-bottom: var(--s-2);
-    border: 1px solid var(--border);
-    border-radius: var(--r-lg);
-    background: var(--panel-bg);
-    color: var(--fg-muted);
+    border-radius: 50%;
+    background: var(--red-wash);
+    color: var(--red-hot);
   }
   h1 {
     font-size: var(--text-md);

@@ -154,6 +154,8 @@ const seriesBody = (s: TrainingSeries) => ({
 export const createSeries = (s: TrainingSeries) =>
   save(() => api<{ id: number; slug: string }>("POST", "/api/series", seriesBody(s)), "Training added");
 export const updateSeries = (s: TrainingSeries) => save(() => api("PUT", `/api/series/${s.id}`, seriesBody(s)));
+/** The next 12 weeks of a training's sessions, past the last one made. */
+export const moreSessions = (seriesId: number) => save(() => api("POST", `/api/series/${seriesId}/more`), "");
 export const setCancelled = (sessionId: number, cancelled: boolean) =>
   save(
     () => api("POST", `/api/sessions/${sessionId}/cancelled`, { cancelled }),
@@ -188,6 +190,7 @@ const tournamentBody = (t: Tournament) => ({
   capacity: t.capacity,
   status: t.status,
   feePence: t.feePence,
+  dateConfirmed: t.dateConfirmed,
 });
 export const createTournament = (t: Tournament) =>
   save(() => api<{ id: number }>("POST", "/api/tournaments", tournamentBody(t)), "Date added");

@@ -49,9 +49,13 @@ export interface SessionDate {
  * The dates still to make for a series: what the rule gives from today to the horizon (or its last date), minus
  * dates that already have a session, including cancelled ones and the original dates of moved ones.
  */
-export function datesToMake(rule: Rule, existing: SessionDate[], today: string): string[] {
+export function datesToMake(
+  rule: Rule,
+  existing: SessionDate[],
+  today: string,
+  to = addDays(today, HORIZON_WEEKS * 7),
+): string[] {
   const taken = new Set(existing.flatMap((s) => [s.heldOn, s.movedFrom ?? ""]));
-  const to = addDays(today, HORIZON_WEEKS * 7);
   return ruleDates(rule, today, to).filter((d) => !taken.has(d));
 }
 

@@ -174,15 +174,18 @@
     position: relative;
     flex-shrink: 0;
   }
+  /* The same glass tile as the dock, so the two pieces of chrome match */
   .trigger {
     display: inline-flex;
     align-items: center;
     gap: var(--s-2);
     height: 2.25rem;
     padding: 0 var(--s-2) 0 0.2rem;
-    border: 1px solid var(--border-strong);
+    border: 1px solid rgb(236 232 225 / 0.07);
     border-radius: var(--r-md);
-    background: var(--field-bg);
+    background: color-mix(in srgb, var(--surface-1) 45%, transparent);
+    backdrop-filter: blur(14px) saturate(1.4);
+    -webkit-backdrop-filter: blur(14px) saturate(1.4);
     color: var(--fg-muted);
     transition:
       border-color var(--t-fast) var(--ease-in-out),
@@ -191,7 +194,8 @@
   }
   .trigger:hover,
   .trigger[aria-expanded="true"] {
-    background: var(--surface-3);
+    border-color: rgb(236 232 225 / 0.14);
+    background: color-mix(in srgb, var(--surface-3) 90%, transparent);
     color: var(--fg);
   }
   /* The big row at the top of More */
@@ -219,11 +223,6 @@
     font-size: var(--text-lg);
     font-weight: 600;
   }
-  .trigger.card .avatar.big {
-    width: 3.5rem;
-    height: 3.5rem;
-    font-size: var(--text-md);
-  }
   .account.wide {
     width: 100%;
   }
@@ -231,7 +230,7 @@
     display: contents;
   }
   .trigger.as {
-    border-color: var(--amber-border);
+    border-color: transparent;
     background: var(--amber-wash);
     color: var(--amber);
   }
@@ -245,20 +244,19 @@
     height: 1.75rem;
     font-size: 0.65rem;
   }
-  .trigger .avatar {
-    border-color: var(--red-border);
+  .trigger .avatar.sm {
     background: var(--red-wash-strong);
     color: var(--fg);
   }
   .trigger.as .avatar {
-    border-color: var(--amber-border);
     background: var(--amber-wash);
     color: var(--amber);
   }
-  .avatar.big {
+  /* In the menu's own header, a size down from a page's */
+  .menu .avatar.big {
     width: 2.75rem;
     height: 2.75rem;
-    font-size: var(--text-sm);
+    font-size: 1.1rem;
   }
   .menu {
     position: absolute;
@@ -316,6 +314,9 @@
     font-size: var(--text-sm);
     font-weight: 500;
     text-align: left;
+    transition:
+      background-color var(--t-fast) var(--ease-in-out),
+      color var(--t-fast) var(--ease-in-out);
   }
   .item:hover:not(:disabled),
   .item:focus-visible {
@@ -352,7 +353,6 @@
   }
   .small {
     padding: var(--s-1) var(--s-2);
-    font-size: var(--text-xs);
   }
 
   .scrim {

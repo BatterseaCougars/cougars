@@ -10,9 +10,17 @@
   let {
     open = $bindable(false),
     title,
+    onclose,
     children,
     footer,
-  }: { open?: boolean; title: string; children: Snippet; footer?: Snippet } = $props();
+  }: {
+    open?: boolean;
+    title: string;
+    /** After it closes, however it was closed (for a parent that keeps its own state rather than binding). */
+    onclose?: () => void;
+    children: Snippet;
+    footer?: Snippet;
+  } = $props();
 
   let dialog = $state<HTMLDialogElement | undefined>();
   $effect(() => {
@@ -20,13 +28,17 @@
     if (open && !dialog.open) dialog.showModal();
     else if (!open && dialog.open) dialog.close();
   });
+  function closed() {
+    open = false;
+    onclose?.();
+  }
 </script>
 
 <dialog
   bind:this={dialog}
   class="bottom-sheet"
   aria-label={title}
-  onclose={() => (open = false)}
+  onclose={closed}
   onclick={(e) => e.target === dialog && (open = false)}
 >
   <div class="body">
@@ -65,20 +77,6 @@
       translate: 0 100%;
     }
   }
-  @media (min-width: 901px) {
-    .bottom-sheet {
-      width: min(30rem, calc(100vw - 4rem));
-      max-height: 85dvh;
-      margin: auto;
-      border-radius: var(--r-xl);
-    }
-    .bottom-sheet[open] {
-      animation: pop var(--t-slow) cubic-bezier(0.22, 1, 0.36, 1);
-    }
-    .body {
-      padding: var(--s-4) var(--s-5) var(--s-5);
-    }
-  }
   @keyframes pop {
     from {
       translate: 0 12px;
@@ -89,6 +87,21 @@
     display: grid;
     gap: var(--s-4);
     padding: var(--s-3) var(--gutter) max(var(--s-5), env(safe-area-inset-bottom));
+  }
+  /* After the phone rules, so the desktop padding wins */
+  @media (min-width: 901px) {
+    .bottom-sheet {
+      width: min(30rem, calc(100vw - 4rem));
+      max-height: 85dvh;
+      margin: auto;
+      border-radius: var(--r-xl);
+    }
+    .bottom-sheet[open] {
+      animation: pop var(--t-slow) var(--ease);
+    }
+    .body {
+      padding: var(--s-4) var(--s-5) var(--s-5);
+    }
   }
   .head {
     display: flex;

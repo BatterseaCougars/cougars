@@ -106,6 +106,8 @@ export interface Tournament extends Entries {
   status: TournamentStatus;
   champions?: string | null;
   feePence: number;
+  /** False: "Date TBC". The date still decides where it sorts. */
+  dateConfirmed: boolean;
 }
 
 /** Anything else on the calendar: a social, a kit day. */
@@ -134,6 +136,8 @@ export interface Bookable {
   signup: boolean;
   capacity?: number | null;
   cancelled?: boolean;
+  /** The date isn't confirmed: shown as "TBC", sorted by the date it has. */
+  dateTbc?: boolean;
   href?: string;
   entries: Entries;
 }

@@ -3,7 +3,7 @@
   // page visible beside it on desktop. Phones get it full width. Escape, the close button or the scrim close it.
   import type { Snippet } from "svelte";
   import { fade, fly } from "svelte/transition";
-  import { cubicOut } from "svelte/easing";
+  import { easeOut, fadeMs } from "../app/motion";
   import Icon from "../app/shell/Icon.svelte";
 
   let {
@@ -34,13 +34,14 @@
 <svelte:window {onkeydown} />
 
 {#if open}
-  <button class="scrim" aria-label="Close" onclick={() => (open = false)} transition:fade={{ duration: 180 }}></button>
+  <button class="scrim" aria-label="Close" onclick={() => (open = false)} transition:fade={{ duration: fadeMs }}
+  ></button>
   <div
     class="drawer"
     role="dialog"
     aria-modal="true"
     aria-label={title}
-    transition:fly={{ x: 420, duration: 280, easing: cubicOut, opacity: 1 }}
+    transition:fly={{ x: 420, duration: 320, easing: easeOut, opacity: 1 }}
   >
     <header>
       <div class="titles">
@@ -49,7 +50,7 @@
       </div>
       {@render head?.()}
       <button class="btn ghost icon" aria-label="Close" onclick={() => (open = false)}>
-        <Icon name="x" size={20} />
+        <Icon name="x" size={18} />
       </button>
     </header>
     {#if top}<div class="top">{@render top()}</div>{/if}
@@ -94,7 +95,7 @@
     min-width: 0;
   }
   h2 {
-    font-size: var(--text-lg);
+    font-size: var(--text-md);
     font-weight: 600;
     color: var(--fg);
   }

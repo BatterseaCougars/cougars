@@ -29,13 +29,13 @@
   <form class="form" onsubmit={save}>
     <fieldset disabled={locked}>
       <label class="field">
-        Email <span class="hint">ask an admin to change it</span>
+        <span>Email <span class="hint">· ask an admin to change it</span></span>
         <input class="input" type="email" value={emailFor(who)} readonly />
       </label>
       <label class="field">Phone <input class="input" type="tel" maxlength="30" bind:value={form.phone} /></label>
       <div class="field">
         <span id="position">Position</span>
-        <div class="seg" role="group" aria-labelledby="position">
+        <div class="seg block" role="group" aria-labelledby="position">
           {#each Object.entries(POSITIONS) as [v, label] (v)}
             <button type="button" aria-pressed={form.position === v} onclick={() => (form.position = v as Position)}>
               {label}
@@ -44,7 +44,7 @@
         </div>
       </div>
       <label class="field">
-        Bio <span class="hint">on the back of your player card</span>
+        <span>Bio <span class="hint">· on the back of your player card</span></span>
         <textarea
           class="input"
           rows="3"
@@ -64,25 +64,20 @@
     align-items: center;
     gap: var(--s-4);
   }
+  /* Your name in the display face, as the member editor and the back of your card show it */
   h1 {
-    font-size: var(--text-lg);
-    font-weight: 600;
-  }
-  .avatar.big {
-    width: 4rem;
-    height: 4rem;
-    font-size: var(--text-lg);
-    border-color: var(--red-border);
-    background: var(--red-wash-strong);
-    color: var(--fg);
+    font-family: var(--font-display);
+    font-size: clamp(1.6rem, 3vw, 2.1rem);
+    font-style: italic;
+    font-weight: 400;
+    letter-spacing: 0.01em;
+    line-height: 1.05;
+    text-transform: uppercase;
   }
   .roles {
     display: flex;
     gap: var(--s-1);
     margin-top: var(--s-2);
-  }
-  .seg {
-    display: flex;
   }
   fieldset {
     display: grid;

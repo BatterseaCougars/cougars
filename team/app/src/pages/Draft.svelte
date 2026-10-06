@@ -91,7 +91,6 @@
     align-content: start;
     gap: 0.1rem;
     padding: var(--s-4) var(--s-3);
-    transition: background-color var(--t-slow) var(--ease);
   }
   .board + .board {
     border-left: 1px solid var(--border);

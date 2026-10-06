@@ -61,10 +61,17 @@ describe("opening the app", () => {
     expect(dates.every((d: string) => new Date(`${d}T12:00:00Z`).getUTCDay() === 5)).toBe(true);
   });
 
-  it("has the Kumite with no dates yet", async () => {
+  it("has the first Kumite in summer 2027, its date to be confirmed", async () => {
     const b = await boot();
     expect(b.tournamentTypes.map((t: { name: string }) => t.name)).toEqual(["The Cougars Kumite"]);
-    expect(b.tournaments).toEqual([]);
+    expect(b.tournaments).toEqual([
+      expect.objectContaining({
+        name: "The Cougars Kumite",
+        heldOn: "2027-06-12",
+        dateConfirmed: false,
+        status: "planned",
+      }),
+    ]);
   });
 
   it("knows the roster and who does what: the first admin is you, the uploader is a Contributor", async () => {
@@ -129,7 +136,7 @@ describe("the schedule", () => {
     expect(sundays).toHaveLength(12);
   });
 
-  it("schedules the first Kumite, and adds a one-off event", async () => {
+  it("schedules another Kumite, and adds a one-off event", async () => {
     const kumite = (await boot()).tournamentTypes[0];
     const t = await call("POST", "/api/tournaments", {
       typeId: kumite.id,
@@ -153,8 +160,23 @@ describe("the schedule", () => {
     });
     expect(e.status).toBe(201);
     const b = await boot();
-    expect(b.tournaments.map((x: { name: string }) => x.name)).toEqual(["Winter Kumite"]);
+    // In date order; a new one's date is confirmed unless it says otherwise
+    expect(b.tournaments.map((x: { name: string; dateConfirmed: boolean }) => [x.name, x.dateConfirmed])).toEqual([
+      ["Winter Kumite", true],
+      ["The Cougars Kumite", false],
+    ]);
     expect(b.clubEvents.map((x: { title: string }) => x.title)).toEqual(["Kit day"]);
+  });
+
+  it("looks 12 more weeks ahead each time an admin asks, up to two years", async () => {
+    const friday = (await boot()).series[0];
+    expect(ahead(await boot())).toHaveLength(12);
+    expect((await call("POST", `/api/series/${friday.id}/more`)).status).toBe(200);
+    const more = ahead(await boot());
+    expect(more).toHaveLength(24);
+    expect(more.at(-1).heldOn).toBe("2027-03-19");
+    for (let i = 0; i < 12; i++) await call("POST", `/api/series/${friday.id}/more`);
+    expect(ahead(await boot()).at(-1).heldOn <= "2028-10-05").toBe(true);
   });
 
   it("refuses a training with no days, saying why", async () => {

@@ -2,7 +2,7 @@
 // Sessions are rows, made 12 weeks ahead from each active series' rule, so each can be cancelled on its own.
 import { all, first, run, type Param } from "../../../shared/d1";
 import { SCHEDULE_ICONS, TONES } from "../src/demo/model";
-import { WEEKDAYS, datesToMake, type Weekday } from "../src/lib/recurrence";
+import { WEEKDAYS, addDays, datesToMake, type Weekday } from "../src/lib/recurrence";
 import { HttpError, bool, date, int, oneOf, text, time } from "./http";
 
 const slugify = (s: string) =>
@@ -85,6 +85,31 @@ export async function ensureSessions(db: D1Database, today: string) {
     for (const d of datesToMake(rule, existing, today))
       await run(db, "INSERT OR IGNORE INTO training_sessions (series_id, held_on) VALUES (?, ?)", [s.id, d]);
   }
+}
+
+/**
+ * An admin looks further ahead: the next 12 weeks of a training's sessions past the last one made, so a far-off
+ * date can be cancelled early. At most two years ahead.
+ */
+export async function moreSessions(db: D1Database, seriesId: number, today: string) {
+  const s = await first<SeriesRow>(db, "SELECT * FROM training_series WHERE id = ?", [seriesId]);
+  if (!s) throw new HttpError(404, "No such training.");
+  const existing = await all<{ heldOn: string; movedFrom: string | null }>(
+    db,
+    "SELECT held_on heldOn, moved_from movedFrom FROM training_sessions WHERE series_id = ?",
+    [s.id],
+  );
+  const last = existing.reduce((m, x) => (x.heldOn > m ? x.heldOn : m), today);
+  const limit = addDays(today, 2 * 365);
+  const to = addDays(last, 12 * 7) < limit ? addDays(last, 12 * 7) : limit;
+  const rule = {
+    repeatEvery: s.repeat_every,
+    weekdays: s.weekdays.split(",") as Weekday[],
+    startsOn: s.starts_on,
+    endsOn: s.ends_on,
+  };
+  for (const d of datesToMake(rule, existing, today, to))
+    await run(db, "INSERT OR IGNORE INTO training_sessions (series_id, held_on) VALUES (?, ?)", [s.id, d]);
 }
 
 export async function listSessions(db: D1Database, from: string) {
@@ -311,11 +336,12 @@ export async function listTournaments(db: D1Database) {
     status: string;
     champions: string | null;
     feePence: number;
+    dateConfirmed: number;
   }>(
     db,
     `SELECT id, type_id typeId, name, location, held_on heldOn, start_time startTime, end_time endTime, capacity,
-              status, champions, fee_pence feePence FROM tournaments ORDER BY held_on`,
-  );
+              status, champions, fee_pence feePence, date_confirmed dateConfirmed FROM tournaments ORDER BY held_on`,
+  ).then((rows) => rows.map((t) => ({ ...t, dateConfirmed: Boolean(t.dateConfirmed) })));
 }
 
 function tournamentFields(o: Record<string, unknown>) {
@@ -328,6 +354,8 @@ function tournamentFields(o: Record<string, unknown>) {
     int(o, "capacity", { min: 1, max: 500, nullable: true }),
     oneOf(o, "status", ["planned", "open", "live", "finished"] as const),
     int(o, "feePence", { max: 100_000 }),
+    // Unconfirmed: shown as "Date TBC"; the date only decides where it sorts. Confirmed unless said otherwise.
+    o.dateConfirmed === false ? 0 : 1,
   ] as Param[];
 }
 
@@ -337,8 +365,8 @@ export async function createTournament(db: D1Database, o: Record<string, unknown
     throw new HttpError(400, "No such tournament type.");
   const res = await run(
     db,
-    `INSERT INTO tournaments (type_id, name, location, held_on, start_time, end_time, capacity, status, fee_pence)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO tournaments (type_id, name, location, held_on, start_time, end_time, capacity, status, fee_pence,
+       date_confirmed) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [typeId, ...tournamentFields(o)],
   );
   return { id: Number(res.meta.last_row_id) };
@@ -348,7 +376,7 @@ export async function updateTournament(db: D1Database, id: number, o: Record<str
   const res = await run(
     db,
     `UPDATE tournaments SET name = ?, location = ?, held_on = ?, start_time = ?, end_time = ?, capacity = ?,
-       status = ?, fee_pence = ? WHERE id = ?`,
+       status = ?, fee_pence = ?, date_confirmed = ? WHERE id = ?`,
     [...tournamentFields(o), id],
   );
   if (!res.meta.changes) throw new HttpError(404, "No such tournament date.");

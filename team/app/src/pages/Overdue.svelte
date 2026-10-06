@@ -2,6 +2,7 @@
   // Overdue Rentals, the aged-receivables report (ADR 0032): every unpaid charge, added up per member and by how
   // long it's been owed. Marking a charge paid on a member's profile takes it off here.
   import Icon from "../app/shell/Icon.svelte";
+  import PageHeader from "../lib/PageHeader.svelte";
   import { PLAYERS, referenceFor } from "../demo/data";
   import { db } from "../demo/store.svelte";
   import { BUCKETS, BUCKET_HINT, aged } from "../lib/dues";
@@ -21,11 +22,11 @@
 </script>
 
 <div class="page">
-  <header class="head">
-    <p class="kicker">Aged receivables</p>
-    <h1 class="display">Overdue Rentals</h1>
-    <p class="hint">Who owes what, and how long it's been out. Be kind, rewind.</p>
-  </header>
+  <PageHeader
+    title="Overdue Rentals"
+    eyebrow="Aged receivables"
+    subtitle="Who owes what, and how long it's been out. Be kind, rewind."
+  />
 
   <div class="total">
     <span class="eyebrow">Total out</span>
@@ -68,14 +69,6 @@
 </div>
 
 <style>
-  .head {
-    display: grid;
-    gap: var(--s-3);
-  }
-  .head h1 {
-    font-size: clamp(2.2rem, 9vw, 3rem);
-    color: var(--red-hot);
-  }
   .total {
     display: grid;
     gap: var(--s-1);

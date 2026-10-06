@@ -131,7 +131,7 @@
         </label>
         <div class="field">
           <span id="join-position">Position</span>
-          <div class="seg" role="group" aria-labelledby="join-position">
+          <div class="seg block" role="group" aria-labelledby="join-position">
             {#each [["F", "Forward"], ["D", "Defence"], ["G", "Keeper"]] as [v, label] (v)}
               <button type="button" aria-pressed={join.position === v} onclick={() => (join.position = v)}>
                 {label}
@@ -202,12 +202,6 @@
     font-size: 1.5rem;
     letter-spacing: 0.3em;
     text-align: center;
-  }
-  .seg {
-    display: flex;
-  }
-  .seg > button {
-    flex: 1;
   }
   .link {
     padding: 0;

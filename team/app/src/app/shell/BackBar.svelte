@@ -20,10 +20,9 @@
     grid-template-columns: 1fr auto 1fr;
     align-items: center;
     padding: max(var(--s-2), env(safe-area-inset-top)) var(--s-2) var(--s-2);
-    background: var(--chrome-bg);
+    background: var(--chrome-bg-solid);
     backdrop-filter: var(--blur);
     -webkit-backdrop-filter: var(--blur);
-    border-bottom: 1px solid var(--border);
   }
   .back {
     display: inline-flex;

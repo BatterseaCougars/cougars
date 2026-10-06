@@ -2,6 +2,7 @@
   import { onDestroy, untrack } from "svelte";
   import Icon from "../app/shell/Icon.svelte";
   import BackBar from "../app/shell/BackBar.svelte";
+  import Sheet from "../lib/Sheet.svelte";
   import { PLAYERS } from "../demo/data";
   import { KUMITE_TEAMS, MATCHES } from "../demo/kumite";
   import { typeById } from "../demo/schedule.svelte";
@@ -127,18 +128,23 @@
   </section>
 </div>
 
-{#if picking}
-  <button class="sheet-backdrop" onclick={() => (picking = null)} aria-label="Cancel"></button>
-  <div class="sheet rise" role="dialog" aria-label="Who scored?">
-    <h2>{picking.scorer === undefined ? "Who scored?" : "Assist?"}</h2>
+<!-- Who scored, then who assisted: the same sheet every quick choice uses -->
+<Sheet
+  open={!!picking}
+  title={picking?.scorer === undefined ? "Who scored?" : "Assist?"}
+  onclose={() => (picking = null)}
+>
+  {#if picking}
     <div class="grid">
       {#each roster(picking.team).filter((p) => p.id !== picking?.scorer) as p (p.id)}
         <button class="btn outline" onclick={() => choose(p.id)}>{p.name.split(" ")[0]}</button>
       {/each}
     </div>
-    {#if picking.scorer !== undefined}<button class="btn ghost" onclick={() => choose()}>No assist</button>{/if}
-  </div>
-{/if}
+  {/if}
+  {#snippet footer()}
+    {#if picking?.scorer !== undefined}<button class="btn ghost" onclick={() => choose()}>No assist</button>{/if}
+  {/snippet}
+</Sheet>
 
 <style>
   .game {

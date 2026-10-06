@@ -94,7 +94,9 @@
     {#snippet actions()}
       <!-- + Event: in the toolbar row on desktop, a floating button on a phone -->
       {#if can(perms, "create:Event") && !phone.current}
-        <button class="btn sm primary" aria-haspopup="dialog" onclick={() => (adding = true)}>+ Event</button>
+        <button class="btn sm primary" aria-haspopup="dialog" onclick={() => (adding = true)}>
+          <Icon name="plus" size={16} />Event
+        </button>
       {/if}
     {/snippet}
     {#snippet filters()}
@@ -145,12 +147,3 @@
     </form>
   </Sheet>
 </div>
-
-<style>
-  .check {
-    display: flex;
-    align-items: center;
-    gap: var(--s-3);
-    color: var(--fg-body);
-  }
-</style>

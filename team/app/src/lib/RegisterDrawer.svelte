@@ -66,7 +66,7 @@
   </button>
 {/snippet}
 
-<Drawer bind:open title="Register" sub="{series.name} · {when}">
+<Drawer bind:open title="Add player" sub="{series.name} · {when}">
   {#snippet top()}
     <div class="stats num">
       <div class="stat">
@@ -102,7 +102,7 @@
   {/if}
 
   {#snippet footer()}
-    <button class="btn outline block" onclick={() => (open = false)}>Done</button>
+    <button class="btn primary block" onclick={() => (open = false)}>Done</button>
   {/snippet}
 </Drawer>
 

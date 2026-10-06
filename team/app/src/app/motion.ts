@@ -4,6 +4,11 @@ import { cubicOut } from "svelte/easing";
 export const prefersReducedMotion =
   typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+/** The app's curve (--ease in app.css) for scripted animations: things arriving. */
+export const EASE_OUT = "cubic-bezier(0.16, 1, 0.3, 1)";
+/** Its mirror, for things leaving. */
+export const EASE_IN = "cubic-bezier(0.7, 0, 0.84, 0)";
+
 export const easeOut = (t: number) => 1 - Math.pow(1 - t, 3.2);
 export const fadeMs = prefersReducedMotion ? 0 : 160;
 export const flyMs = prefersReducedMotion ? 0 : 320;

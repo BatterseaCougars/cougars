@@ -31,6 +31,7 @@ import {
   listSessions,
   listTournamentTypes,
   listTournaments,
+  moreSessions,
   setSessionCancelled,
   updateSeries,
   updateTournament,
@@ -202,6 +203,12 @@ export const ROUTES: Route[] = [
     path: /^\/api\/series\/(\d+)$/,
     action: "manage:Training",
     handle: async (c) => (await updateSeries(c.env.DB, id(c), await body(c.request), c.today), ok()),
+  },
+  {
+    method: "POST",
+    path: /^\/api\/series\/(\d+)\/more$/,
+    action: "manage:Training",
+    handle: async (c) => (await moreSessions(c.env.DB, id(c), c.today), ok()),
   },
   {
     method: "POST",

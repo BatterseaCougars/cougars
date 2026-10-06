@@ -130,7 +130,15 @@
     active={filter === "all" ? 0 : 1}
     onclear={() => (filter = "all")}
   >
-    {#snippet toolbar()}<SearchField bind:value={query} placeholder="Search teammates" />{/snippet}
+    {#snippet toolbar()}
+      <SearchField bind:value={query} placeholder="Search teammates" />
+      {#if admin}
+        <div class="seg sm view" role="group" aria-label="Show as">
+          <button aria-pressed={view === "cards"} onclick={() => setView("cards")}>Cards</button>
+          <button aria-pressed={view === "rows"} onclick={() => setView("rows")}>Rows</button>
+        </div>
+      {/if}
+    {/snippet}
     {#snippet filters()}
       <div class="filters" role="group" aria-label="Position">
         {#each [["all", "All"], ["F", "Forwards"], ["D", "Defence"], ["G", "Keepers"]] as [v, label] (v)}
@@ -139,14 +147,6 @@
           >
         {/each}
       </div>
-    {/snippet}
-    {#snippet actions()}
-      {#if admin}
-        <div class="seg view" role="group" aria-label="Show as">
-          <button aria-pressed={view === "cards"} onclick={() => setView("cards")}>Cards</button>
-          <button aria-pressed={view === "rows"} onclick={() => setView("rows")}>Rows</button>
-        </div>
-      {/if}
     {/snippet}
   </PageHeader>
 
@@ -207,12 +207,12 @@
       grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr));
       gap: var(--s-4);
     }
+    /* Desktop: the view toggle takes the row's right end, where a page's actions go; phones keep it by the search */
+    .view {
+      order: 1;
+      margin-left: auto;
+    }
   }
-  .view button {
-    min-height: 1.85rem;
-    font-size: var(--text-xs);
-  }
-
   /* Grid cells: the name stands out; what's owed shows in red */
   :global(.data-grid .name) {
     color: var(--fg);

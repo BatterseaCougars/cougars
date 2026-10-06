@@ -30,7 +30,7 @@
           <Icon name="check" size={14} /> Paid
         </button>
       {:else}
-        <span class="seg pay" role="group" aria-label="Mark {label.title} paid">
+        <span class="seg sm pay" role="group" aria-label="Mark {label.title} paid">
           <button onclick={() => markPaid(charge.id, "transfer")}>Transfer</button>
           <button onclick={() => markPaid(charge.id, "cash")}>Cash</button>
         </span>
@@ -69,11 +69,6 @@
   }
   .act .btn {
     color: var(--green);
-  }
-  .pay button {
-    min-height: 1.9rem;
-    padding: 0 var(--s-3);
-    font-size: var(--text-xs);
   }
   .pay button:hover {
     color: var(--fg);

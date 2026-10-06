@@ -1,10 +1,16 @@
 <script lang="ts">
   import PageHeader from "../lib/PageHeader.svelte";
+  import Sheet from "../lib/Sheet.svelte";
+  import Fab from "../lib/Fab.svelte";
+  import Icon from "../app/shell/Icon.svelte";
   import { db } from "../demo/store.svelte";
   import { pounds } from "../lib/dates";
+  import { phone } from "../lib/viewport.svelte";
 
   // The quarterly subscription. Session fees are set on each training, tournament fees on each tournament (ADR 0032).
   const kind = "Quarterly subscription";
+  // A new fee is set in a sheet (a modal on desktop), as every quick form is: the page stays where it is
+  let adding = $state(false);
   let amount = $state("");
   let from = $state("");
 
@@ -17,6 +23,7 @@
       ...db.fees.map((f) => (f.kind === kind ? { ...f, superseded: true } : f)),
     ];
     amount = "";
+    adding = false;
   }
   const current = $derived(db.fees.filter((f) => !f.superseded));
 </script>
@@ -27,6 +34,13 @@
       A new fee applies from its date; charges already made keep theirs. Session fees are set on each
       <a href="/settings/training">training</a>, tournament fees on each
       <a href="/settings/tournaments">tournament</a>.
+    {/snippet}
+    {#snippet actions()}
+      {#if !phone.current}
+        <button class="btn sm primary" aria-haspopup="dialog" onclick={() => (adding = true)}>
+          <Icon name="plus" size={16} />Fee
+        </button>
+      {/if}
     {/snippet}
   </PageHeader>
 
@@ -43,15 +57,6 @@
     </div>
   {/if}
 
-  <form class="panel pad form" onsubmit={add}>
-    <h2>New subscription fee</h2>
-    <div class="two">
-      <input class="input" inputmode="decimal" placeholder="Amount (£)" bind:value={amount} />
-      <input class="input" type="date" bind:value={from} />
-    </div>
-    <button class="btn primary">Set fee</button>
-  </form>
-
   <h2 class="section-title">History</h2>
   {#if db.fees.length}
     <div class="list">
@@ -66,13 +71,26 @@
   {:else}
     <p class="hint">No fee set yet.</p>
   {/if}
+
+  {#if phone.current}
+    <Fab label="Fee" aria-haspopup="dialog" onclick={() => (adding = true)} />
+  {/if}
+  <Sheet bind:open={adding} title="New subscription fee">
+    <form class="form" onsubmit={add}>
+      <div class="two">
+        <label class="field">
+          Amount (£)
+          <input class="input num" inputmode="decimal" placeholder="e.g. 60" required bind:value={amount} />
+        </label>
+        <label class="field">From <input class="input" type="date" required bind:value={from} /></label>
+      </div>
+      <p class="hint">Quarterly Members are charged this each quarter from that date.</p>
+      <button class="btn primary">Set fee</button>
+    </form>
+  </Sheet>
 </div>
 
 <style>
-  .form h2 {
-    font-size: var(--text-md);
-    font-weight: 600;
-  }
   .old .title,
   .old .amt {
     opacity: 0.55;

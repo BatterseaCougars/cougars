@@ -56,9 +56,6 @@
     border-radius: var(--r-md);
     background: var(--surface-2);
     color: var(--fg-muted);
-    transition:
-      background-color var(--t) var(--ease-in-out),
-      color var(--t) var(--ease-in-out);
   }
   .choice:hover {
     background: var(--surface-3);
@@ -75,7 +72,6 @@
     border-radius: 50%;
     background: var(--tone) content-box;
     padding: 3px;
-    transition: border-color var(--t) var(--ease-in-out);
   }
   .swatch[aria-checked="true"] {
     border-color: var(--fg);

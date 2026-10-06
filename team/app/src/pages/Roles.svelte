@@ -1,5 +1,6 @@
 <script lang="ts">
   import { addRole as addRoleOnServer, saveRole } from "../app/backend.svelte";
+  import Icon from "../app/shell/Icon.svelte";
   import PageHeader from "../lib/PageHeader.svelte";
   import { ACTIONS, actionsBySubject, type Action } from "../access/actions";
   import { db } from "../demo/store.svelte";
@@ -30,7 +31,9 @@
 
 <div class="page">
   <PageHeader title="Roles" subtitle="A role is a set of actions. Every page and button checks an action.">
-    {#snippet actions()}<button class="btn outline sm" onclick={addRole}>+ Role</button>{/snippet}
+    {#snippet actions()}
+      <button class="btn sm primary" onclick={addRole}><Icon name="plus" size={16} />Role</button>
+    {/snippet}
     {#snippet toolbar()}
       <div class="seg roles" role="tablist" aria-label="Roles">
         {#each db.roles as r (r.id)}
@@ -75,9 +78,6 @@
   .role {
     display: grid;
     gap: var(--s-5);
-  }
-  .check {
-    cursor: pointer;
   }
   .panel h2 {
     font-size: var(--text-md);

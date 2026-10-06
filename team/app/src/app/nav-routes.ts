@@ -195,19 +195,6 @@ export function buildRoutes(config: NavConfig): Route[] {
         icon: s.icon,
       },
     ]),
-    // Settings → Training: each training's editor, full screen (paused ones too), and one for a new training
-    ...config.series.map((s): Route => ({
-      id: `training-editor:${s.id}`,
-      path: `/settings/training/${s.slug}`,
-      name: s.name,
-      tab: "more",
-      page: "training-editor",
-      params: { seriesId: s.id },
-      action: "manage:Training",
-      icon: s.icon,
-      hidden: true,
-      focus: true,
-    })),
     ...(config.members ?? []).map((m): Route => ({
       id: `member:${m.id}`,
       path: `/more/teammates/${m.id}`,
@@ -220,17 +207,6 @@ export function buildRoutes(config: NavConfig): Route[] {
       icon: "user",
       hidden: true,
     })),
-    {
-      id: "training-editor:new",
-      path: "/settings/training/new",
-      name: "New training",
-      tab: "more",
-      page: "training-editor",
-      action: "manage:Training",
-      icon: "plus",
-      hidden: true,
-      focus: true,
-    },
     {
       id: "calendar",
       path: "/calendar",

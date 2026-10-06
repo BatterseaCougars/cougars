@@ -212,16 +212,20 @@
       translate: 0 -100%;
       pointer-events: none;
       transition:
-        translate 320ms cubic-bezier(0.22, 1, 0.36, 1),
-        opacity 200ms var(--ease);
+        translate var(--t-slow) var(--ease),
+        opacity var(--t) var(--ease);
     }
     /* The moment the row docks, the band drops down from above and catches it */
     .toolbar.docked::before {
       opacity: 1;
       translate: 0 0;
     }
+    /* The search starts small and grows into what's left, so the chips and the actions stay on the one row */
     .toolbar :global(.search) {
-      width: 14rem;
+      flex: 1 1 9rem;
+      width: auto;
+      min-width: 0;
+      max-width: 14rem;
     }
     /* Always a little taller than the window, so a shorter list can't snap the scroll back past the dock */
     :global(.page:has(> .page-toolbar)) {
@@ -230,7 +234,7 @@
     }
   }
 
-  /* Phones: the slim bar names the page; the line stays, on one line */
+  /* Phones: the slim bar names the page; the line stays, up to two lines */
   @media (max-width: 900px) {
     .page-header {
       gap: var(--s-3);
@@ -247,10 +251,13 @@
     .title-row:not(:has(> :not(h1))) {
       display: none;
     }
+    /* Two lines at most: a page's line is a sentence, so cutting it at one loses what it says */
     .line {
+      display: -webkit-box;
       overflow: hidden;
-      white-space: nowrap;
-      text-overflow: ellipsis;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      line-clamp: 2;
     }
     .page-header:not(:has(.line, .toolbar, .eyebrow-line)) {
       display: none;

@@ -6,7 +6,7 @@
   // tapped on turns away as it opens, and back as it closes. Every change saves as it's made.
   import { onMount, tick } from "svelte";
   import Icon from "../app/shell/Icon.svelte";
-  import { prefersReducedMotion } from "../app/motion";
+  import { EASE_IN, EASE_OUT, prefersReducedMotion } from "../app/motion";
   import PlayerCard from "./PlayerCard.svelte";
   import {
     attendanceOf,
@@ -216,7 +216,7 @@
         fill: "backwards",
       });
     } else {
-      grow = panel.animate(ZOOM_IN, { duration: 440, easing: "cubic-bezier(0.22, 1, 0.36, 1)" });
+      grow = panel.animate(ZOOM_IN, { duration: 440, easing: EASE_OUT });
     }
     grow.onfinish = () => (ready = true);
   });
@@ -229,11 +229,8 @@
     from = rectOf(source);
     await tick();
     if (!from || !turning) {
-      panel.animate([...ZOOM_IN].reverse(), {
-        duration: 240,
-        easing: "cubic-bezier(0.32, 0, 0.67, 0)",
-        fill: "forwards",
-      }).onfinish = () => onclose();
+      panel.animate([...ZOOM_IN].reverse(), { duration: 240, easing: EASE_IN, fill: "forwards" }).onfinish = () =>
+        onclose();
       return;
     }
     const { card, back } = turnFrames(from, panel.getBoundingClientRect());
@@ -277,7 +274,7 @@
         <div class="titles">
           <p class="eyebrow">
             Member · {POSITIONS[member.player.position]}{member.plan === "Subscription" ? " · Quarterly" : ""}
-            {#if member.player.cougar}<span class="tag">Cougar</span>{/if}
+            {#if member.player.cougar}<span class="badge red">Cougar</span>{/if}
           </p>
           <h1 id="member-name">{member.player.name}</h1>
           <p class="sub">{emailFor(member.player)} · <span class="num">{referenceFor(memberId)}</span></p>
@@ -448,7 +445,7 @@
             <div class="head-row">
               <h3 class="eyebrow">Not paid yet</h3>
               {#if unpaid.length > 1}
-                <span class="seg all" role="group" aria-label="Mark everything paid">
+                <span class="seg sm" role="group" aria-label="Mark everything paid">
                   <button onclick={() => payAll("transfer")}>All paid · transfer</button>
                   <button onclick={() => payAll("cash")}>Cash</button>
                 </span>
@@ -552,12 +549,10 @@
   .close {
     align-self: flex-start;
   }
-  .tag {
-    margin-left: var(--s-2);
-    padding: 0.1rem 0.4rem;
-    border-radius: var(--r-sm);
-    background: var(--red-wash);
-    color: var(--red-hot);
+  .eyebrow .badge {
+    margin-left: var(--s-1);
+    letter-spacing: normal;
+    text-transform: none;
   }
   h1 {
     margin: var(--s-1) 0 0;
@@ -576,16 +571,6 @@
     font-size: var(--text-sm);
     text-overflow: ellipsis;
     white-space: nowrap;
-  }
-  .avatar.big {
-    width: 3.75rem;
-    height: 3.75rem;
-    border: 0;
-    background: var(--red);
-    color: #fff;
-    font-family: var(--font-display);
-    font-size: 1.5rem;
-    font-style: italic;
   }
   /* Every field the same height, labels on one line: one row when there's room, two when not, one on a phone */
   .details {
@@ -866,9 +851,5 @@
   .day.cancelled {
     opacity: 0.35;
     text-decoration: line-through;
-  }
-  .all button {
-    min-height: 1.9rem;
-    font-size: var(--text-xs);
   }
 </style>

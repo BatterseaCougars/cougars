@@ -2,10 +2,9 @@
   import { can } from "../access/actions";
   import { granted } from "../demo/session.svelte";
   import { KUMITE_TEAMS, MATCHES, SAMPLE_TOURNAMENT_ID } from "../demo/kumite";
-  import { currentTournament, typeById } from "../demo/schedule.svelte";
+  import { currentTournament, typeById, whenOf } from "../demo/schedule.svelte";
   import { db } from "../demo/store.svelte";
   import TournamentHead from "../lib/TournamentHead.svelte";
-  import { formatDayDate, londonISO } from "../lib/dates";
 
   let { typeId }: { typeId: number } = $props();
 
@@ -71,7 +70,7 @@
         <div class="row">
           <span class="grow">
             <span class="title">{t.name}</span>
-            <span class="sub">{formatDayDate(londonISO(t.heldOn, t.startTime))} · {t.location}</span>
+            <span class="sub">{[whenOf(t), t.location].filter(Boolean).join(" · ")}</span>
           </span>
           {#if t.champions}<span class="badge red">Champions · {t.champions}</span>{/if}
         </div>

@@ -84,9 +84,16 @@
   style:--tone="var(--tone-{event.tone})"
 >
   <div class="date">
-    <span class="eyebrow">{badge.weekday}</span>
-    <span class="display day">{badge.day}</span>
-    <span class="eyebrow">{badge.month}</span>
+    {#if event.dateTbc}
+      <!-- Not confirmed: the date it has only decides where it sorts, so it isn't shown -->
+      <span class="eyebrow">Date</span>
+      <span class="display day">TBC</span>
+      <span class="eyebrow">&nbsp;</span>
+    {:else}
+      <span class="eyebrow">{badge.weekday}</span>
+      <span class="display day">{badge.day}</span>
+      <span class="eyebrow">{badge.month}</span>
+    {/if}
   </div>
   <div class="body">
     <!-- What matters first: which session (icon and name) and when. Where is a quiet second line. -->
@@ -97,7 +104,9 @@
       </h3>
       {#if event.cancelled}<span class="badge">Cancelled</span>{/if}
     </div>
-    <p class="time num">{formatTime(event.startsAt)}–{formatTime(event.endsAt)}</p>
+    <p class="time num">
+      {event.dateTbc ? "Date and time to be confirmed" : `${formatTime(event.startsAt)}–${formatTime(event.endsAt)}`}
+    </p>
     {#if event.venue}<p class="venue"><Icon name="pin" size={13} />{event.venue}</p>{/if}
     {#if event.signup}
       {#if !compact && event.capacity}
@@ -190,7 +199,6 @@
     height: 2rem;
     border-radius: var(--r-sm);
     background: color-mix(in srgb, var(--tone) 16%, transparent);
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone) 28%, transparent);
     color: var(--tone);
   }
   h3 {
@@ -274,6 +282,7 @@
     background: color-mix(in srgb, var(--fg) 10%, transparent);
     color: var(--fg);
     font-weight: 600;
+    transition: background-color var(--t-fast) var(--ease-in-out);
   }
   .answer > button:hover:not(:disabled):not([aria-pressed="true"]) {
     background: color-mix(in srgb, var(--fg) 16%, transparent);
@@ -303,14 +312,12 @@
     }
   }
   .answer > .yes[aria-pressed="true"] {
-    background: var(--green-wash);
-    border-color: var(--green-border);
+    background: color-mix(in srgb, var(--green) 22%, transparent);
     color: var(--green);
     box-shadow: none;
   }
   .answer > .no[aria-pressed="true"] {
     background: color-mix(in srgb, var(--fg) 24%, transparent);
-    border-color: var(--border-strong);
     color: var(--fg);
     box-shadow: none;
   }

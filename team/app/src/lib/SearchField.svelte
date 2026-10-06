@@ -64,9 +64,12 @@
     display: grid;
     visibility: hidden;
   }
+  /* Phones: it fills the row, leaving room for a small control beside it */
   @media (max-width: 900px) {
     .search {
-      width: 100%;
+      flex: 1 1 12rem;
+      width: auto;
+      min-width: 0;
     }
   }
 </style>

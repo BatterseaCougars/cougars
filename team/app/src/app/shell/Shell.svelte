@@ -13,7 +13,6 @@
   import { folds, routes, tabs } from "../routes.svelte";
   import { navigate, router } from "../router.svelte";
   import { prefersReducedMotion, zoom } from "../motion";
-  import { glide, pillShape, rowShape, stripShape } from "./mark";
   import type { IconName } from "./icons";
   import AccountMenu from "./AccountMenu.svelte";
   import Icon from "./Icon.svelte";
@@ -190,10 +189,9 @@
   // Keep the current page's strip link in view, centred where there's room.
   function centre(nav: HTMLElement, _key: unknown) {
     const run = () => {
-      const el = nav.querySelector<HTMLElement>("[data-mark]");
+      const el = nav.querySelector<HTMLElement>("[aria-current]");
       if (!el) return;
-      const left = el.offsetLeft - (nav.clientWidth - el.offsetWidth) / 2;
-      nav.scrollTo({ left: Math.max(0, left), behavior: prefersReducedMotion ? "auto" : "smooth" });
+      nav.scrollLeft = Math.max(0, el.offsetLeft - (nav.clientWidth - el.offsetWidth) / 2);
     };
     run();
     return { update: run };
@@ -209,20 +207,16 @@
           ? (tabList.find((t) => t.id === route.tab)?.label ?? route.name)
           : (route.short ?? route.name),
   );
-
-  const glideKey = $derived(`${route.id}|${[...perms].join()}|${all.length}`);
 </script>
 
 <div class="shell" class:focus={route.focus}>
   <!-- Desktop: the dock, floating mid-left -->
-  <nav class="dock" aria-label="Main" inert={route.focus || undefined} use:glide={{ shape: rowShape, key: glideKey }}>
-    <span class="dock-mark" data-glide aria-hidden="true"></span>
+  <nav class="dock" aria-label="Main" inert={route.focus || undefined}>
     {#each dock as item (item.id)}
       <a
         class="dock-item"
         class:on={item.on}
         href={item.href}
-        data-mark={item.on ? "" : undefined}
         aria-current={item.on ? "page" : undefined}
         aria-label={item.name}
       >
@@ -262,7 +256,8 @@
               {#if route.tab === "more" && route.id !== "more"}
                 <a class="bar-back" href="/more" aria-label="Back to More"><Icon name="chevronLeft" size={22} /></a>
               {/if}
-              <p class="bar-title" bind:this={lead}>{route.name}</p>
+              <!-- The short name where there is one (Friday), as the tabs and the dock call it: the bar is narrow -->
+              <p class="bar-title" bind:this={lead}>{route.short ?? route.name}</p>
             {/if}
             {#if pageBar.filters}
               <div class="measure" aria-hidden="true" inert>
@@ -274,12 +269,7 @@
               <div class="bar-actions">
                 {#if pageBar.actions}<span class="bar-actions" bind:this={acts}>{@render pageBar.actions()}</span>{/if}
                 {#if pageBar.filters && !filtersFit}
-                  <button
-                    class="btn sm filters-btn"
-                    class:on={pageBar.active > 0}
-                    aria-haspopup="dialog"
-                    onclick={() => (filtersOpen = true)}
-                  >
+                  <button class="btn sm filters-btn" aria-haspopup="dialog" onclick={() => (filtersOpen = true)}>
                     <Icon name="filter" size={16} />Filters<span class="count num">{pageBar.active || ""}</span>
                   </button>
                 {/if}
@@ -303,19 +293,11 @@
         bind:this={lead}
         class="strip"
         aria-label="{tabList.find((t) => t.id === route.tab)?.label} pages"
-        use:glide={{ shape: stripShape, key: glideKey }}
         use:centre={route.id}
       >
-        <span class="strip-mark" data-glide aria-hidden="true"></span>
         {#each strip as r (r.id)}
           {@const on = r.id === route.id}
-          <a
-            class="strip-link"
-            class:on
-            href={r.path}
-            data-mark={on ? "" : undefined}
-            aria-current={on ? "page" : undefined}
-          >
+          <a class="strip-link" class:on href={r.path} aria-current={on ? "page" : undefined}>
             {r.short ?? r.name}
           </a>
         {/each}
@@ -356,24 +338,17 @@
       <p class="corner clock-corner num" aria-hidden="true">Battersea <strong>{clock}</strong></p>
     {/if}
 
-    <nav
-      class="tabs"
-      aria-label="Primary"
-      inert={route.focus || undefined}
-      use:glide={{ shape: pillShape, key: glideKey }}
-    >
-      <span class="tab-mark" data-glide aria-hidden="true"></span>
+    <nav class="tabs" aria-label="Primary" inert={route.focus || undefined}>
       {#each tabList as tab (tab.id)}
         {@const on = route.tab === tab.id}
         <a
           class="tab"
           class:on
           href={tabHref(all, tab.id, perms, router.last)}
-          data-mark={on ? "" : undefined}
           aria-current={on ? "true" : undefined}
           onclick={(e) => onTab(tab.id, e)}
         >
-          <span class="tab-icon" data-mark-anchor><Icon name={tab.icon} size={22} /></span>
+          <span class="tab-icon"><Icon name={tab.icon} size={22} /></span>
           <span class="tab-label">{tab.label}</span>
         </a>
       {/each}
@@ -424,35 +399,7 @@
     position: relative;
     z-index: 1;
   }
-  /* The page's blocks settle in one after another as it arrives: transform only, and "backwards" so nothing is
-     left transformed afterwards (a transform would trap the toolbar's fixed veil). */
-  .shell:not(.focus) .view > :global(.page) > :global(*) {
-    animation: settle 560ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
-  }
-  .shell:not(.focus) .view > :global(.page) > :global(:nth-child(2)) {
-    animation-delay: 40ms;
-  }
-  .shell:not(.focus) .view > :global(.page) > :global(:nth-child(3)) {
-    animation-delay: 80ms;
-  }
-  .shell:not(.focus) .view > :global(.page) > :global(:nth-child(4)) {
-    animation-delay: 120ms;
-  }
-  .shell:not(.focus) .view > :global(.page) > :global(:nth-child(n + 5)) {
-    animation-delay: 160ms;
-  }
-  @keyframes settle {
-    from {
-      translate: 0 18px;
-    }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .shell:not(.focus) .view > :global(.page) > :global(*) {
-      animation: none;
-    }
-  }
-
-  /* ─── The dock (desktop): glass tiles, the current one raised; a label slides out on hover ─── */
+  /* ─── The dock (desktop): glass tiles, the current one raised; a label shows on hover ─── */
   .dock {
     position: fixed;
     top: 50%;
@@ -484,20 +431,22 @@
     -webkit-backdrop-filter: blur(14px) saturate(1.4);
     color: var(--fg-muted);
     transition:
-      color var(--t) var(--ease-in-out),
-      scale var(--t) var(--ease),
-      border-color var(--t) var(--ease-in-out);
+      color var(--t-fast) var(--ease-in-out),
+      border-color var(--t-fast) var(--ease-in-out),
+      background-color var(--t-fast) var(--ease-in-out);
   }
   .dock-item:hover {
     color: var(--fg);
     border-color: rgb(236 232 225 / 0.14);
   }
-  .dock-item:active {
-    scale: 0.95;
-  }
+  /* The current one, raised */
   .dock-item.on {
     color: var(--fg);
-    border-color: transparent;
+    border-color: rgb(236 232 225 / 0.18);
+    background: color-mix(in srgb, var(--surface-3) 90%, transparent);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.12),
+      0 14px 30px -14px rgb(0 0 0 / 0.9);
   }
   .dock-item.on :global(svg) {
     color: var(--red-hot);
@@ -505,27 +454,6 @@
   }
   .dock-item:focus-visible {
     outline-offset: 3px;
-  }
-  /* The raised tile glides between items */
-  .dock-mark {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 0;
-    height: 0;
-    opacity: 0;
-    pointer-events: none;
-  }
-  .dock-mark::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: var(--r-md);
-    border: 1px solid rgb(236 232 225 / 0.18);
-    background: color-mix(in srgb, var(--surface-3) 90%, transparent);
-    box-shadow:
-      inset 0 1px 0 rgb(255 255 255 / 0.12),
-      0 14px 30px -14px rgb(0 0 0 / 0.9);
   }
   .dock-badge {
     position: absolute;
@@ -544,7 +472,7 @@
     position: absolute;
     left: calc(100% + var(--s-3));
     top: 50%;
-    translate: -6px -50%;
+    translate: 0 -50%;
     padding: 0.4rem 0.7rem;
     border-radius: var(--r-sm);
     border: 1px solid rgb(236 232 225 / 0.12);
@@ -558,14 +486,11 @@
     box-shadow: var(--shadow);
     opacity: 0;
     pointer-events: none;
-    transition:
-      opacity var(--t) var(--ease),
-      translate var(--t) var(--ease);
+    transition: opacity var(--t-fast) var(--ease-in-out);
   }
   .dock-item:hover .dock-label,
   .dock-item:focus-visible .dock-label {
     opacity: 1;
-    translate: 0 -50%;
   }
 
   /* ─── The save note (toast): bottom centre, above the tabs on a phone. A solid card with a coloured edge and an
@@ -591,7 +516,7 @@
     font-size: var(--text-sm);
     font-weight: 500;
     translate: -50% 0;
-    animation: note-in 260ms cubic-bezier(0.22, 1, 0.36, 1);
+    animation: note-in var(--t-slow) var(--ease);
   }
   .note-icon {
     display: grid;
@@ -667,8 +592,7 @@
     font-weight: 600;
   }
   .viewing-back {
-    border-color: var(--amber-border);
-    background: var(--amber-wash);
+    background: color-mix(in srgb, var(--amber) 18%, transparent);
     color: var(--amber);
   }
   .viewing-back:hover {
@@ -702,7 +626,7 @@
     font-size: var(--text-sm);
     font-weight: 500;
     white-space: nowrap;
-    transition: color var(--t) var(--ease-in-out);
+    transition: color var(--t-fast) var(--ease-in-out);
   }
   .strip-link:hover,
   .strip-link.on {
@@ -711,13 +635,16 @@
   .strip-link:focus-visible {
     outline-offset: -2px;
   }
-  .strip-mark {
+  /* The current page: a red underline the width of its label */
+  .strip-link.on::after {
+    content: "";
     position: absolute;
-    top: 0;
-    left: 0;
-    opacity: 0;
+    left: var(--s-2);
+    right: var(--s-2);
+    bottom: 0;
+    height: 2px;
+    border-radius: 1px;
     background: var(--red-hot);
-    pointer-events: none;
   }
 
   /* ─── The poster word: the page's section in huge outlined capitals behind its title ─── */
@@ -738,13 +665,6 @@
     pointer-events: none;
     user-select: none;
     z-index: 0;
-    animation: ghost-in 700ms var(--ease) both;
-  }
-  @keyframes ghost-in {
-    from {
-      opacity: 0;
-      translate: calc(-50% + 1.5rem) 0;
-    }
   }
 
   /* ─── Desktop corners: the wordmark and the London clock ─── */
@@ -933,41 +853,36 @@
       color: var(--fg-muted);
       font-size: var(--text-2xs);
       font-weight: 600;
-      transition: color var(--t) var(--ease-in-out);
+      transition: color var(--t-fast) var(--ease-in-out);
     }
     .tab-icon {
+      position: relative;
       display: inline-flex;
-      transition: transform var(--t-slow) var(--ease);
     }
     .tab.on {
       color: var(--fg);
     }
     .tab.on .tab-icon {
       color: var(--red-hot);
-      transform: translateY(-1px);
     }
-    .tab:active .tab-icon {
-      transform: scale(0.9);
+    /* The current tab: a soft pill behind its icon */
+    .tab.on .tab-icon::before {
+      content: "";
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      z-index: -1;
+      width: 56px;
+      height: 30px;
+      translate: -50% -50%;
+      border-radius: var(--r-pill);
+      background: color-mix(in srgb, var(--fg) 10%, transparent);
     }
     .tab:focus-visible {
       outline-offset: -2px;
     }
     .tab-label {
       line-height: 1;
-    }
-    .tab-mark {
-      position: absolute;
-      top: 0;
-      left: 0;
-      opacity: 0;
-      pointer-events: none;
-    }
-    .tab-mark::before {
-      content: "";
-      position: absolute;
-      inset: 0;
-      border-radius: 999px;
-      background: color-mix(in srgb, var(--fg) 10%, transparent);
     }
     .ghost-word {
       font-size: clamp(4.5rem, 22vw, 6rem);

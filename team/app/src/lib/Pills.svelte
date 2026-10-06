@@ -31,8 +31,8 @@
     font-weight: 500;
     white-space: nowrap;
     transition:
-      color var(--t) var(--ease-in-out),
-      background-color var(--t) var(--ease-in-out);
+      color var(--t-fast) var(--ease-in-out),
+      background-color var(--t-fast) var(--ease-in-out);
   }
   .pill:hover,
   .pill.on {

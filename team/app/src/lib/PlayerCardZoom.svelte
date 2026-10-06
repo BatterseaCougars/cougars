@@ -1,13 +1,14 @@
 <script lang="ts">
   // A player's card, picked up: it lifts from where it lies, turns over sideways and comes up to the middle of the
   // screen, showing its dark back: who they are, their number tonight, and a line or two about them. (An admin on
-  // Teammates gets MemberSheet instead.) Closing puts it back the same way. Someone who runs events can take the player off the session from here (two
-  // taps, so a stray one can't). Without motion it just appears. Once it lands it drops its 3D turn, so fields and
+  // Teammates gets MemberSheet instead.) Closing puts it back the same way. Its actions sit as icons in the card's top band. Someone who runs events can take
+  // the player off the session from here (two taps, so a stray one can't). Without motion it just appears. Once it lands it drops its 3D turn, so fields and
   // menus on the back behave like any others.
   import { onMount, tick } from "svelte";
   import { POSITIONS, type Player } from "../demo/data";
   import mark from "../assets/cougars-mark.webp";
-  import { prefersReducedMotion } from "../app/motion";
+  import { EASE_OUT, prefersReducedMotion } from "../app/motion";
+  import Icon from "../app/shell/Icon.svelte";
   import PlayerCard from "./PlayerCard.svelte";
   import { initials } from "./initials";
 
@@ -45,7 +46,7 @@
   let sure = $state(false);
   const first = $derived(player.name.split(" ")[0]);
   const DURATION = 520;
-  const EASE = "cubic-bezier(0.22, 1, 0.36, 1)";
+  const EASE = EASE_OUT;
 
   // Leave the page for <body>: inside the view, a transform would trap a fixed layer
   function portal(node: HTMLElement) {
@@ -112,7 +113,21 @@
         <article class="cb">
           <header class="band">
             <img src={mark} alt="" width="40" height="40" />
-            <span>Battersea Cougars</span>
+            <span class="club">Battersea<br />Cougars</span>
+            <div class="actions">
+              {#if removeLabel && onremove}
+                {@const label = sure ? `Sure? Take ${first} off` : removeLabel}
+                <button class="act remove" class:sure aria-label={label} title={label} onclick={remove}>
+                  <Icon name={sure ? "check" : "userMinus"} size={18} />
+                </button>
+              {/if}
+              {#if detailsHref}<a class="act" href={detailsHref} aria-label="Full details" title="Full details"
+                  ><Icon name="open" size={18} /></a
+                >{/if}
+              <button class="act" aria-label="Close" title="Close" bind:this={closeBtn} onclick={close}>
+                <Icon name="x" size={18} />
+              </button>
+            </div>
           </header>
           <div class="who">
             <span class="avatar">{initials(player.name)}</span>
@@ -143,18 +158,6 @@
         </article>
       </div>
     </div>
-
-    <div class="actions">
-      {#if removeLabel && onremove}
-        <!-- One width for both words, so the second tap lands where the first did -->
-        <button class="btn remove" class:sure onclick={remove}>
-          <span class:hide={sure}>{removeLabel}</span>
-          <span class:hide={!sure}>Sure? Take {first} off</span>
-        </button>
-      {/if}
-      {#if detailsHref}<a class="btn outline" href={detailsHref}>Full details</a>{/if}
-      <button class="btn outline" bind:this={closeBtn} onclick={close}>Close</button>
-    </div>
   </div>
 </div>
 
@@ -180,9 +183,6 @@
   .closing .scrim {
     animation: fade-out 380ms var(--ease) both;
   }
-  .closing .actions {
-    opacity: 0;
-  }
   @keyframes fade-in {
     from {
       opacity: 0;
@@ -197,8 +197,7 @@
     position: relative;
     display: grid;
     justify-items: center;
-    gap: var(--s-5);
-    width: min(19rem, 78vw, 52svh);
+    width: min(21rem, 86vw, 60svh);
     perspective: 1600px;
   }
   /* Both faces in one turning card: the front faces you first, the back once it has turned */
@@ -266,6 +265,13 @@
   .band img {
     width: 11cqw;
     height: auto;
+  }
+  /* Stacked, so the name keeps its room beside up to three buttons */
+  .club {
+    flex: 1;
+    min-width: 0;
+    font-size: 5.4cqw;
+    line-height: 1;
   }
   .who {
     display: flex;
@@ -341,29 +347,38 @@
     font-style: italic;
   }
 
+  /* Icon buttons on the band: filled, not outlined, and one size whatever they show */
   .actions {
     display: flex;
-    gap: var(--s-2);
-    transition: opacity 200ms var(--ease);
-    animation: fade-in 300ms 260ms var(--ease) both;
+    flex-shrink: 0;
+    gap: 1.5cqw;
   }
-  .remove {
+  .act {
     display: grid;
+    place-items: center;
+    width: 10cqw;
+    height: 10cqw;
+    padding: 0;
+    border: 0;
+    border-radius: 2cqw;
+    background: rgb(231 225 213 / 0.1);
+    color: #e7e1d5;
+    font: inherit;
+    cursor: pointer;
+    transition: background-color 150ms var(--ease);
+  }
+  .act:hover {
+    background: rgb(231 225 213 / 0.18);
+  }
+  .act.remove {
     background: var(--red-wash);
     color: var(--red-hot);
   }
-  .remove:hover {
+  .act.remove:hover {
     background: var(--red-wash-strong);
   }
-  .remove.sure {
+  .act.remove.sure {
     background: var(--red);
     color: #fff;
-  }
-  /* Both labels share one cell, so the button is as wide as the longer */
-  .remove > span {
-    grid-area: 1 / 1;
-  }
-  .remove > .hide {
-    visibility: hidden;
   }
 </style>

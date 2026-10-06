@@ -55,9 +55,7 @@
   .settings {
     display: grid;
     gap: var(--s-5);
-    margin-top: var(--s-3);
-    padding-top: var(--s-5);
-    border-top: 1px solid var(--border);
+    margin-top: var(--s-6);
   }
   .settings-title {
     display: flex;

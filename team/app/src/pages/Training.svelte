@@ -14,8 +14,6 @@
   import PlayerCardZoom from "../lib/PlayerCardZoom.svelte";
   import RegisterDrawer from "../lib/RegisterDrawer.svelte";
   import { publishTeams, setPlayer } from "../app/backend.svelte";
-  import Sheet from "../lib/Sheet.svelte";
-  import { MEMBERS } from "../demo/data";
   import { formatDayDate } from "../lib/dates";
   import { describeRule } from "../lib/recurrence";
   import { snakeTeams, type Team } from "../lib/snake";
@@ -24,7 +22,9 @@
   let { seriesId }: { seriesId: number } = $props();
 
   const perms = $derived(granted());
-  const series = $derived(seriesById(seriesId)!);
+  // The last series found: while this page slides out, the next page's params (no seriesId) arrive here too
+  const last: { series?: ReturnType<typeof seriesById> } = {};
+  const series = $derived((last.series = seriesById(seriesId) ?? last.series)!);
   const session = $derived(nextSession(series));
   const info = $derived(session && resolve(session, series));
   const who = $derived(me());
@@ -34,24 +34,6 @@
 
   let proposal: Team[] | null = $state(null);
   let registering = $state(false);
-  // Admins add players themselves (someone who texted instead of tapping In): a search over everyone not in
-  let adding = $state(false);
-  let find = $state("");
-  const addable = $derived(
-    MEMBERS.filter((m) => m.status === "active" && !next.going.includes(m.player.id))
-      .map((m) => m.player)
-      .filter((p) => find.length < 2 || p.name.toLowerCase().includes(find.toLowerCase()))
-      .sort((a, b) => a.name.localeCompare(b.name)),
-  );
-  function addToSession(id: number) {
-    const s = session;
-    if (!s) return;
-    void setPlayer(s.id, id, true);
-    s.waitlist = s.waitlist.filter((x) => x !== id);
-    s.out = s.out?.filter((x) => x !== id);
-    s.going = [...s.going, id];
-  }
-
   // The card that's been picked up, and where it lies on the page
   let lifted = $state<{ id: number; el: HTMLElement; n?: number } | null>(null);
 
@@ -160,10 +142,18 @@
     title={series.name}
     subtitle="{describeRule(series)} · {series.startTime}–{series.endTime} · {series.venue}"
   >
+    {#snippet toolbar()}
+      {#if session}
+        <div class="seg sm" role="group" aria-label="Show players as">
+          <button aria-pressed={view === "cards"} onclick={() => setView("cards")}>Cards</button>
+          <button aria-pressed={view === "list"} onclick={() => setView("list")}>List</button>
+        </div>
+      {/if}
+    {/snippet}
     {#snippet actions()}
       {#if session && can(perms, "record:Attendance")}
         <button class="btn sm outline" onclick={() => (registering = true)}>
-          <Icon name="check" size={16} /> Register
+          <Icon name="userPlus" size={16} /> Add player
         </button>
       {/if}
       {#if session && can(perms, "generate:Teams")}
@@ -190,23 +180,6 @@
       <div class="stat"><span class="eyebrow">Waiting</span><span class="value">{next.waitlist.length}</span></div>
       <div class="stat">
         <span class="eyebrow">Spaces</span><span class="value">{spaces ?? "–"}</span>
-      </div>
-    </div>
-
-    <div class="view-row">
-      {#if can(perms, "update:Event")}
-        <button
-          class="btn icon add-players"
-          aria-label="Add players"
-          title="Add players"
-          onclick={() => (adding = true)}
-        >
-          <Icon name="userPlus" size={18} />
-        </button>
-      {/if}
-      <div class="seg" role="group" aria-label="Show players as">
-        <button aria-pressed={view === "cards"} onclick={() => setView("cards")}>Cards</button>
-        <button aria-pressed={view === "list"} onclick={() => setView("list")}>List</button>
       </div>
     </div>
 
@@ -281,25 +254,6 @@
   <RegisterDrawer {seriesId} bind:open={registering} />
 {/if}
 
-{#if session && can(perms, "update:Event")}
-  <Sheet bind:open={adding} title="Add players">
-    <input class="input" placeholder="Find a player" bind:value={find} aria-label="Find a player" />
-    <div class="list add-list">
-      {#each addable as p (p.id)}
-        <button class="row" onclick={() => addToSession(p.id)}>
-          <Person player={p} meta={next.waitlist.includes(p.id) ? "On the waitlist" : undefined} />
-          <span class="badge"><Icon name="plus" size={14} /> In</span>
-        </button>
-      {:else}
-        <p class="hint pad">Everyone's in already.</p>
-      {/each}
-    </div>
-    {#snippet footer()}
-      <button class="btn primary" onclick={() => ((adding = false), (find = ""))}>Done</button>
-    {/snippet}
-  </Sheet>
-{/if}
-
 {#if lifted}
   {@const id = lifted.id}
   <PlayerCardZoom
@@ -349,42 +303,6 @@
       grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr));
       gap: var(--s-4);
     }
-  }
-  /* The toggle floats over the cards on its own as you scroll, no band behind it */
-  .view-row {
-    display: flex;
-    justify-content: flex-end;
-    width: auto;
-    background: none;
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-    pointer-events: none;
-  }
-  .add-players {
-    pointer-events: auto;
-    margin-right: auto;
-    background: var(--chrome-bg-solid);
-    color: var(--fg-body);
-  }
-  .add-players:hover {
-    background: var(--surface-3);
-  }
-  .add-list {
-    max-height: 50svh;
-    overflow-y: auto;
-  }
-  .pad {
-    padding: var(--s-4);
-  }
-  .view-row .seg {
-    pointer-events: auto;
-    background: var(--chrome-bg-solid);
-    backdrop-filter: var(--blur);
-    -webkit-backdrop-filter: var(--blur);
-  }
-  .view-row .seg button {
-    min-height: 1.85rem;
-    font-size: var(--text-xs);
   }
   .n {
     width: 1.25rem;

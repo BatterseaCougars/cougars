@@ -14,6 +14,7 @@
 </script>
 
 <div class="page">
+  <h1 class="sr-only">Dues</h1>
   <header class="total">
     <p class="eyebrow">{owed > 0 ? "You owe" : "All square"}</p>
     <p class="display amount num" class:zero={owed <= 0}>{pounds(owed)}</p>
