@@ -143,6 +143,10 @@
     letter-spacing: var(--tracking-label);
     text-transform: uppercase;
   }
+  .eyebrow-line :global(.badge) {
+    letter-spacing: normal;
+    text-transform: none;
+  }
   .title-row {
     display: flex;
     align-items: center;
