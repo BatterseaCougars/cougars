@@ -51,7 +51,8 @@
 
   // The locker room has a word for you until you answer, and another once you have.
   let said: Quip | null = $state(null);
-  const quip = $derived(said ?? (answered ? null : ASK));
+  // Coming back to Home after answering still has a word for you: the first line for where you stand.
+  const quip = $derived(said ?? (isIn ? IN[0] : waiting ? WAITLIST[0] : ASK));
   function onanswer(status: "in" | "waitlist" | "out") {
     said = pick(status === "in" ? IN : status === "waitlist" ? WAITLIST : OUT);
   }

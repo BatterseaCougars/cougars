@@ -23,6 +23,7 @@
   import Teammates from "./pages/Teammates.svelte";
   import TournamentSettings from "./pages/TournamentSettings.svelte";
   import Training from "./pages/Training.svelte";
+  import TrainingEditor from "./pages/TrainingEditor.svelte";
   import TrainingSettings from "./pages/TrainingSettings.svelte";
   import Upload from "./pages/Upload.svelte";
 
@@ -45,6 +46,7 @@
     members: Members,
     roles: Roles,
     "training-settings": TrainingSettings,
+    "training-editor": TrainingEditor,
     "tournament-settings": TournamentSettings,
     fees: Fees,
     overdue: Overdue,

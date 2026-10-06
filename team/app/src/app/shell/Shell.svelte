@@ -645,7 +645,7 @@
       display: none;
     }
     /* Room for the dock on narrower desktops, mirrored so the page stays centred */
-    .view {
+    .shell:not(.focus) .view {
       padding-left: 6rem;
       padding-right: 6rem;
     }
