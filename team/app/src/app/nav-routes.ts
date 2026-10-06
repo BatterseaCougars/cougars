@@ -68,14 +68,14 @@ export const ROUTES: Route[] = [
 
   { id: "more", path: "/more", name: "More", tab: "more", action: "authenticated", icon: "more" },
   {
-    id: "roster",
-    path: "/more/roster",
-    name: "Roster",
+    id: "teammates",
+    path: "/more/teammates",
+    name: "Teammates",
     tab: "more",
     action: "authenticated",
     icon: "user",
     group: "Club",
-    hint: "Everyone in the club",
+    hint: "Everyone who plays on Fridays",
   },
   {
     id: "upload",

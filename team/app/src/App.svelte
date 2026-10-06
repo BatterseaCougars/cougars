@@ -6,7 +6,7 @@
   import { interceptLinks, remember, router } from "./app/router.svelte";
   import Shell from "./app/shell/Shell.svelte";
   import Calendar from "./pages/Calendar.svelte";
-  import Club from "./pages/Club.svelte";
+  import Teammates from "./pages/Teammates.svelte";
   import Draft from "./pages/Draft.svelte";
   import Friday from "./pages/Friday.svelte";
   import Fees from "./pages/Fees.svelte";
@@ -33,7 +33,7 @@
     standings: Standings,
     draft: Draft,
     game: Game,
-    roster: Club,
+    teammates: Teammates,
     upload: Upload,
     more: More,
     profile: Profile,

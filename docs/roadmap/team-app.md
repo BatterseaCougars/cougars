@@ -47,7 +47,7 @@ Copied in shape from Gwenda ops (`gwenda-hackney/ark`, `ops/site/src/app/`), whi
   - **Friday**: who's in (in sign-up order) and the teams, your team first; the register for the door
   - **Calendar**: every club event
   - **Kumite**: games, standings, draft
-  - **More**: the club (roster, upload), you (profile, tab) and **Settings** for admins, grouped People and Money
+  - **More**: the club (teammates, upload), you (profile, tab) and **Settings** for admins, grouped People and Money
 - **Account badge**, top right: your name, profile, tab, sign out, and **View as a member** for admins
   ([ADR 0027](../adr/0027-view-as-a-member.md)). On desktop the rail lists the same pages, with Settings folding
   open.

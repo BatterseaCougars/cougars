@@ -19,7 +19,7 @@
   const allowed = (r: Route) => !r.focus && can(perms, r.action);
 
   // Rail: as flat as it can be. A section gets a heading only when it has more than one link, so a member sees
-  // Home, Friday hockey, Calendar, the Kumite section, Roster; Settings folds open below for admins.
+  // Home, Friday hockey, Calendar, the Kumite section, Teammates; Settings folds open below for admins.
   const railSections = $derived(
     [
       { label: "", routes: ROUTES.filter((r) => r.tab === "home") },

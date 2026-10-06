@@ -14,7 +14,7 @@
   <BackLink />
   <div class="page-head">
     <div>
-      <h1>Roster</h1>
+      <h1>Teammates</h1>
       <p class="hint num">{PLAYERS.length} players · {PLAYERS.filter((p) => p.cougar).length} Cougars</p>
     </div>
   </div>
