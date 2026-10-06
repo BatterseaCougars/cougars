@@ -1,4 +1,4 @@
-import { run } from "../../../../../shared/d1";
+import { first, run } from "../../../../../shared/d1";
 
 export const EXPERIENCE = {
   never: "Never played",
@@ -57,12 +57,34 @@ export function isSpam(form: FormData): boolean {
   return Boolean(text(form, "website", 200));
 }
 
-export async function saveEnquiry(db: D1Database, e: Enquiry): Promise<number> {
+/** Save an enquiry. `verified`: Cloudflare Turnstile said a person sent it (lib/server/turnstile.ts). */
+export async function saveEnquiry(db: D1Database, e: Enquiry, { verified = false } = {}): Promise<number> {
   const result = await run(
     db,
-    `INSERT INTO enquiries (name, email, phone, experience, message, source)
-     VALUES (?, ?, ?, ?, ?, ?)`,
-    [e.name, e.email, e.phone, e.experience, e.message, e.source],
+    `INSERT INTO enquiries (name, email, phone, experience, message, source, verified)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [e.name, e.email, e.phone, e.experience, e.message, e.source, verified ? 1 : 0],
   );
   return Number(result.meta.last_row_id);
+}
+
+// The auto-reply goes to whatever address was typed in, so it's capped whatever gets past Turnstile
+// (docs/adr/0028-turnstile-and-auto-reply.md): a spammer can make the club email strangers a few times a day at most.
+export const AUTO_REPLY_CAPS = { perDay: 20, perAddressDays: 7 };
+
+/** Whether this address may get an auto-reply now: under the daily cap, and none to it in the last week. */
+export async function autoReplyAllowed(db: D1Database, email: string, now = new Date()): Promise<boolean> {
+  const since = (days: number) => new Date(now.getTime() - days * 86_400_000).toISOString();
+  const row = await first<{ today: number; toAddress: number }>(
+    db,
+    `SELECT
+       (SELECT COUNT(*) FROM enquiries WHERE auto_replied_at >= ?) AS today,
+       (SELECT COUNT(*) FROM enquiries WHERE email = ? AND auto_replied_at >= ?) AS toAddress`,
+    [since(1), email, since(AUTO_REPLY_CAPS.perAddressDays)],
+  );
+  return !!row && row.today < AUTO_REPLY_CAPS.perDay && row.toAddress === 0;
+}
+
+export async function markAutoReplied(db: D1Database, id: number, now = new Date()): Promise<void> {
+  await run(db, "UPDATE enquiries SET auto_replied_at = ? WHERE id = ?", [now.toISOString(), id]);
 }

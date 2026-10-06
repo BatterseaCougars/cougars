@@ -115,12 +115,12 @@ jobs:
 
       # Secrets the Worker reads at request time: the live video list (ADR 0019). PR previews share dev's.
       # Secrets the Worker reads at request time, from this environment's Secrets Manager project (README#secrets).
-      # One that isn't there yet is skipped: the site does without (no live YouTube; emails logged, not sent).
+      # One that isn't there yet is skipped: the site does without (no live YouTube; emails logged, not sent; no auto-replies).
       - name: Worker secrets
         if: github.event_name != 'pull_request'
         working-directory: apps/web
         run: |
-          for name in YOUTUBE_API_KEY GMAIL_CLIENT_ID GMAIL_CLIENT_SECRET GMAIL_REFRESH_TOKEN; do
+          for name in YOUTUBE_API_KEY GMAIL_CLIENT_ID GMAIL_CLIENT_SECRET GMAIL_REFRESH_TOKEN TURNSTILE_SECRET_KEY; do
             if [ -n "${!name}" ]; then
               printf '%s' "${!name}" | npx wrangler secret put "$name" -c dist/server/wrangler.json
             else

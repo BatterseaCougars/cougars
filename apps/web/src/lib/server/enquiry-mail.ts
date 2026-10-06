@@ -3,7 +3,8 @@
 import type { Mail } from "../../../../../shared/email";
 import { EXPERIENCE, type Enquiry } from "./enquiries";
 
-export function enquiryMail(e: Enquiry, id: number, club: string): Mail {
+/** `autoReply`: what happened to the auto-reply, so the club knows whether the person has heard back. */
+export function enquiryMail(e: Enquiry, id: number, club: string, autoReply = ""): Mail {
   const rows: [string, string | null][] = [
     ["Name", e.name],
     ["Email", e.email],
@@ -17,6 +18,7 @@ export function enquiryMail(e: Enquiry, id: number, club: string): Mail {
     ...rows.filter(([, v]) => v).map(([k, v]) => `${k}: ${v}`),
     ...(e.message ? ["", "Message:", e.message] : []),
     "",
+    ...(autoReply ? [autoReply] : []),
     "Reply to this email to answer them directly.",
     `Enquiry #${id}`,
   ];

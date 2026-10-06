@@ -36,3 +36,4 @@ rule, a trade-off. Copy [template.md](template.md), take the next number, keep i
 | [0025](0025-events-in-d1.md)                  | Events live in D1, one club calendar                                           | Accepted              |
 | [0026](0026-dues-ledger.md)                   | Dues are a ledger fed by the register                                          | Accepted              |
 | [0027](0027-email-through-gmail-api.md)       | Email goes through the Gmail API, and only production reaches real people      | Accepted              |
+| [0028](0028-turnstile-and-auto-reply.md)      | Auto-replies only to people Turnstile verified, and capped                     | Accepted              |

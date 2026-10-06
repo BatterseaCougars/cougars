@@ -125,3 +125,7 @@ social media links (leave one empty to hide it) and an optional homepage backgro
 
 Each one is saved in the club database and emailed to the club inbox (batterseahockey@gmail.com), with the
 person's details. Press **Reply** to answer them: the reply goes straight to the person who filled in the form.
+
+Most people also get an automatic reply straight away, with the session times, venue and kit notes from the
+Studio. The club's email says whether they did. If it says no automatic reply was sent (the form couldn't confirm
+it was a person, or the daily limit was reached), they haven't heard from the club yet: reply to them yourself.
