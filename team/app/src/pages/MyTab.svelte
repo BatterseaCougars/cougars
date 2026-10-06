@@ -1,6 +1,5 @@
 <script lang="ts">
   // Your dues (ADR 0032): every session and tournament you were charged for, and whether it's paid.
-  import BackLink from "../lib/BackLink.svelte";
   import ChargeRow from "../lib/ChargeRow.svelte";
   import { referenceFor } from "../demo/data";
   import { chargesFor, owedBy } from "../demo/dues.svelte";
@@ -15,7 +14,6 @@
 </script>
 
 <div class="page">
-  <BackLink />
   <header class="total">
     <p class="eyebrow">{owed > 0 ? "You owe" : "All square"}</p>
     <p class="display amount num" class:zero={owed <= 0}>{pounds(owed)}</p>

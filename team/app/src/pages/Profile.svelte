@@ -1,5 +1,4 @@
 <script lang="ts">
-  import BackLink from "../lib/BackLink.svelte";
   import { POSITIONS, emailFor, type Position } from "../demo/data";
   import { impersonating, me, rolesOf } from "../demo/session.svelte";
   import { initials } from "../lib/initials";
@@ -10,7 +9,6 @@
 </script>
 
 <div class="page">
-  <BackLink />
   <header class="head">
     <span class="avatar big">{initials(form.name)}</span>
     <div>

@@ -1,7 +1,6 @@
 <script lang="ts">
   // Overdue Rentals, the aged-receivables report (ADR 0032): every unpaid charge, added up per member and by how
   // long it's been owed. Marking a charge paid on a member's profile takes it off here.
-  import BackLink from "../lib/BackLink.svelte";
   import Icon from "../app/shell/Icon.svelte";
   import { PLAYERS, referenceFor } from "../demo/data";
   import { db } from "../demo/store.svelte";
@@ -22,7 +21,6 @@
 </script>
 
 <div class="page">
-  <BackLink />
   <header class="head">
     <p class="kicker">Aged receivables</p>
     <h1 class="display">Overdue Rentals</h1>

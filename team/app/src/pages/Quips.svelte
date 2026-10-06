@@ -1,9 +1,9 @@
 <script lang="ts">
   // Settings → Quips: the lines Home says before you answer and when you do. Edits save as you type; a kind
   // keeps at least one line so Home always has something to say.
+  import PageHeader from "../lib/PageHeader.svelte";
   import Icon from "../app/shell/Icon.svelte";
   import { db } from "../demo/store.svelte";
-  import BackLink from "../lib/BackLink.svelte";
   import { QUIP_KINDS, QUIP_MAX, type QuipKind } from "../lib/quips";
 
   let kind = $state<QuipKind>("ask");
@@ -24,23 +24,17 @@
 </script>
 
 <div class="page">
-  <BackLink />
-  <div class="page-head">
-    <div>
-      <h1>Quips</h1>
-      <p class="hint">Home picks one at random. Short and cheeky, never needy, never a club fact.</p>
-    </div>
-  </div>
-
-  <div class="stick">
-    <div class="seg kinds" role="tablist" aria-label="When it's said">
-      {#each QUIP_KINDS as k (k.kind)}
-        <button role="tab" aria-selected={k.kind === kind} onclick={() => (kind = k.kind)}>
-          {k.label} <span class="count num">{db.quips.filter((q) => q.kind === k.kind).length}</span>
-        </button>
-      {/each}
-    </div>
-  </div>
+  <PageHeader title="Quips" subtitle="Home picks one at random. Short and cheeky, never needy, never a club fact.">
+    {#snippet toolbar()}
+      <div class="seg kinds" role="tablist" aria-label="When it's said">
+        {#each QUIP_KINDS as k (k.kind)}
+          <button role="tab" aria-selected={k.kind === kind} onclick={() => (kind = k.kind)}>
+            {k.label} <span class="count num">{db.quips.filter((q) => q.kind === k.kind).length}</span>
+          </button>
+        {/each}
+      </div>
+    {/snippet}
+  </PageHeader>
 
   {#key kind}
     <div class="lines rise">

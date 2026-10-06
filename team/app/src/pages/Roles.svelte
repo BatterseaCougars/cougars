@@ -1,6 +1,6 @@
 <script lang="ts">
+  import PageHeader from "../lib/PageHeader.svelte";
   import { ACTIONS, actionsBySubject, type Action } from "../access/actions";
-  import BackLink from "../lib/BackLink.svelte";
   import { db } from "../demo/store.svelte";
 
   let selected = $state(db.roles[0].id);
@@ -18,22 +18,16 @@
 </script>
 
 <div class="page">
-  <BackLink />
-  <div class="page-head">
-    <div>
-      <h1>Roles</h1>
-      <p class="hint">A role is a set of actions. Every page and button checks an action.</p>
-    </div>
-    <button class="btn outline sm" onclick={addRole}>+ Role</button>
-  </div>
-
-  <div class="stick">
-    <div class="seg roles" role="tablist" aria-label="Roles">
-      {#each db.roles as r (r.id)}
-        <button role="tab" aria-selected={r.id === selected} onclick={() => (selected = r.id)}>{r.name}</button>
-      {/each}
-    </div>
-  </div>
+  <PageHeader title="Roles" subtitle="A role is a set of actions. Every page and button checks an action.">
+    {#snippet actions()}<button class="btn outline sm" onclick={addRole}>+ Role</button>{/snippet}
+    {#snippet toolbar()}
+      <div class="seg roles" role="tablist" aria-label="Roles">
+        {#each db.roles as r (r.id)}
+          <button role="tab" aria-selected={r.id === selected} onclick={() => (selected = r.id)}>{r.name}</button>
+        {/each}
+      </div>
+    {/snippet}
+  </PageHeader>
 
   {#key selected}
     <div class="role rise">

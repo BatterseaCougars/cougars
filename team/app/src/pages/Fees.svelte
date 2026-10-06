@@ -1,5 +1,5 @@
 <script lang="ts">
-  import BackLink from "../lib/BackLink.svelte";
+  import PageHeader from "../lib/PageHeader.svelte";
   import { db } from "../demo/store.svelte";
   import { pounds } from "../lib/dates";
 
@@ -22,17 +22,13 @@
 </script>
 
 <div class="page">
-  <BackLink />
-  <div class="page-head">
-    <div>
-      <h1>Subscription</h1>
-      <p class="hint">
-        A new fee applies from its date; charges already made keep theirs. Session fees are set on each
-        <a href="/settings/training">training</a>, tournament fees on each
-        <a href="/settings/tournaments">tournament</a>.
-      </p>
-    </div>
-  </div>
+  <PageHeader title="Subscription">
+    {#snippet sub()}
+      A new fee applies from its date; charges already made keep theirs. Session fees are set on each
+      <a href="/settings/training">training</a>, tournament fees on each
+      <a href="/settings/tournaments">tournament</a>.
+    {/snippet}
+  </PageHeader>
 
   <div class="stats">
     {#each current as f (f.kind)}
@@ -77,10 +73,5 @@
   .amt {
     color: var(--fg);
     font-weight: 500;
-  }
-  .hint a {
-    color: var(--fg);
-    text-decoration: underline;
-    text-underline-offset: 3px;
   }
 </style>

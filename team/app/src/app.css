@@ -108,7 +108,6 @@
   --tab-h: calc(3.75rem + env(safe-area-inset-bottom, 0px));
   --strip-h: 2.875rem;
   --topbar-h: 3.5rem;
-  --compact-h: 2.75rem; /* the slim title bar phones show once the page title scrolls away (Shell.svelte) */
   --scrollbar-size: 8px;
   --scrollbar: color-mix(in srgb, var(--fg-muted) 45%, transparent);
   --control-h: 2.75rem;
@@ -330,37 +329,6 @@ h3 {
   max-width: var(--page-max);
   margin: 0 auto;
   padding: var(--s-5) var(--gutter) var(--s-10);
-}
-/* A page's controls that stay in reach as you scroll (the Calendar filters, a page's toggle): they pin under the
-   shell's bars. The shell sets --stick-top to wherever its bars end on screen; sticky offsets count from below the
-   view's top padding, which is the chrome's height. */
-.stick {
-  position: sticky;
-  top: calc(var(--stick-top, 0px) - var(--chrome-h, 0px));
-  z-index: 3;
-  margin-inline: calc(-1 * var(--gutter));
-  padding: var(--s-2) var(--gutter);
-  background: var(--chrome-bg-solid);
-  backdrop-filter: var(--blur);
-  -webkit-backdrop-filter: var(--blur);
-  transition: top var(--t-slow) var(--ease);
-}
-/* Desktop: no band. The control floats on its own glass, like the section pills along the top. */
-@media (min-width: 901px) {
-  .stick {
-    width: fit-content;
-    max-width: 100%;
-    margin-inline: 0;
-    padding: 0;
-    background: none;
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-  }
-  .stick > .seg {
-    background: var(--chrome-bg-solid);
-    backdrop-filter: var(--blur);
-    -webkit-backdrop-filter: var(--blur);
-  }
 }
 .page-head {
   display: flex;

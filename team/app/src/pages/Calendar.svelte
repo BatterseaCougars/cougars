@@ -2,6 +2,7 @@
   // Everything on: training sessions, tournaments and one-offs, in date order. Each training and tournament type
   // has its own icon and colour, and the chips at the top filter to one kind. Trainings and tournaments are set
   // up under Settings; one-off events are added here.
+  import PageHeader from "../lib/PageHeader.svelte";
   import { can } from "../access/actions";
   import type { IconName } from "../app/shell/icons";
   import Icon from "../app/shell/Icon.svelte";
@@ -81,31 +82,35 @@
 </script>
 
 <div class="page">
-  <div class="page-head">
-    <div>
-      <h1>Calendar</h1>
-      <p class="hint">Training, tournaments and everything else that's on.</p>
-    </div>
-    {#if can(perms, "create:Event")}
-      <button class="btn sm" class:primary={!adding} class:ghost={adding} onclick={() => (adding = !adding)}>
-        {adding ? "Cancel" : "+ Event"}
-      </button>
-    {/if}
-  </div>
-
-  <div class="filters stick" role="group" aria-label="Show">
-    {#each chips as c (c.id)}
-      <button
-        class="filter"
-        aria-pressed={filter === c.id}
-        style:--tone={c.tone ? `var(--tone-${c.tone})` : "var(--fg)"}
-        onclick={() => setFilter(c.id)}
-      >
-        {#if c.icon}<Icon name={c.icon} size={14} />{/if}
-        {c.label}
-      </button>
-    {/each}
-  </div>
+  <PageHeader
+    title="Calendar"
+    subtitle="Training, tournaments and everything else that's on."
+    active={filter === "all" ? 0 : 1}
+    onclear={() => setFilter("all")}
+  >
+    {#snippet actions()}
+      {#if can(perms, "create:Event")}
+        <button class="btn sm" class:primary={!adding} class:ghost={adding} onclick={() => (adding = !adding)}>
+          {adding ? "Cancel" : "+ Event"}
+        </button>
+      {/if}
+    {/snippet}
+    {#snippet filters()}
+      <div class="filters" role="group" aria-label="Show">
+        {#each chips as c (c.id)}
+          <button
+            class="filter"
+            aria-pressed={filter === c.id}
+            style:--tone={c.tone ? `var(--tone-${c.tone})` : "var(--fg)"}
+            onclick={() => setFilter(c.id)}
+          >
+            {#if c.icon}<Icon name={c.icon} size={14} />{/if}
+            {c.label}
+          </button>
+        {/each}
+      </div>
+    {/snippet}
+  </PageHeader>
 
   {#if adding}
     <form class="panel pad form rise" onsubmit={add}>
@@ -140,23 +145,12 @@
   .filters {
     display: flex;
     gap: var(--s-2);
-    margin: calc(-1 * var(--s-1)) calc(-1 * var(--gutter));
-    padding: var(--s-1) var(--gutter);
     overflow-x: auto;
     scrollbar-width: none;
   }
-  /* Desktop: the chips sit in one glass pill, which floats over the list as you scroll */
-  @media (min-width: 901px) {
-    .filters {
-      gap: 4px;
-      margin: 0;
-      padding: 4px;
-      border: 1px solid rgb(236 232 225 / 0.1);
-      border-radius: var(--r-pill);
-      background: var(--chrome-bg-solid);
-      backdrop-filter: var(--blur);
-      -webkit-backdrop-filter: var(--blur);
-    }
+  /* In the phone's Filters sheet: wrap instead of scrolling sideways */
+  :global(.bottom-sheet) .filters {
+    flex-wrap: wrap;
   }
   .filters::-webkit-scrollbar {
     display: none;
@@ -167,16 +161,15 @@
     gap: var(--s-2);
     flex-shrink: 0;
     height: 2.25rem;
-    padding: 0 var(--s-4);
-    border: 1px solid var(--border-strong);
-    border-radius: var(--r-pill);
-    background: color-mix(in srgb, var(--surface-2) 55%, transparent);
+    padding: 0 var(--s-3);
+    border: 0;
+    border-radius: var(--r-sm);
+    background: color-mix(in srgb, var(--fg) 6%, transparent);
     color: var(--fg-muted);
     font-size: var(--text-sm);
     font-weight: 500;
     transition:
       background-color var(--t) var(--ease-in-out),
-      border-color var(--t) var(--ease-in-out),
       color var(--t) var(--ease-in-out);
   }
   .filter :global(svg) {
@@ -186,8 +179,7 @@
     color: var(--fg);
   }
   .filter[aria-pressed="true"] {
-    border-color: color-mix(in srgb, var(--tone) 55%, transparent);
-    background: color-mix(in srgb, var(--tone) 18%, transparent);
+    background: color-mix(in srgb, var(--tone) 22%, transparent);
     color: var(--fg);
   }
   .check {

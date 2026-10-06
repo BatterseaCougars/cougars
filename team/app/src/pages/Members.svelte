@@ -1,6 +1,7 @@
 <script lang="ts">
-  import BackLink from "../lib/BackLink.svelte";
+  import PageHeader from "../lib/PageHeader.svelte";
   import Person from "../lib/Person.svelte";
+  import SearchField from "../lib/SearchField.svelte";
   import { db } from "../demo/store.svelte";
   import { owedBy } from "../demo/dues.svelte";
   import Icon from "../app/shell/Icon.svelte";
@@ -8,16 +9,19 @@
 
   const pending = $derived(db.members.filter((m) => m.status === "pending"));
   const active = $derived(db.members.filter((m) => m.status === "active"));
+  let query = $state("");
+  const listed = $derived(
+    active.filter((m) => !query.trim() || m.player.name.toLowerCase().includes(query.trim().toLowerCase())),
+  );
 </script>
 
 <div class="page">
-  <BackLink />
-  <div class="page-head">
-    <div>
-      <h1>Members</h1>
-      <p class="hint num">{active.length} active{pending.length ? ` · ${pending.length} asking to join` : ""}</p>
-    </div>
-  </div>
+  <PageHeader
+    title="Members"
+    subtitle="{active.length} active{pending.length ? ` · ${pending.length} asking to join` : ''}"
+  >
+    {#snippet toolbar()}<SearchField bind:value={query} placeholder="Search members" />{/snippet}
+  </PageHeader>
 
   {#if pending.length}
     <h2 class="section-title">Asking to join</h2>
@@ -34,7 +38,7 @@
 
   <h2 class="section-title">Members</h2>
   <div class="list">
-    {#each active as m (m.player.id)}
+    {#each listed as m (m.player.id)}
       {@const owes = owedBy(m.player.id)}
       <a class="row" href="/settings/members/{m.player.id}">
         <Person player={m.player} showRating meta="{m.roles[0]} · {m.plan}" />

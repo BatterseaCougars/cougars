@@ -2,6 +2,7 @@
   // A training series' next session: who's in, and the teams. Members come here to see they're registered and
   // which team they're on, so that's what leads. Ratings drive the teams but only admins see them (read:Rating),
   // as in the old app.
+  import PageHeader from "../lib/PageHeader.svelte";
   import { can } from "../access/actions";
   import { PLAYERS, TEAM_NAMES, TEAM_ORDER, type Player } from "../demo/data";
   import { granted, me } from "../demo/session.svelte";
@@ -104,12 +105,11 @@
 {/snippet}
 
 <div class="page">
-  <div class="page-head">
-    <div>
-      <h1>{series.name}</h1>
-      <p class="hint">{describeRule(series)} · {series.startTime}–{series.endTime} · {series.venue}</p>
-    </div>
-    <div class="actions">
+  <PageHeader
+    title={series.name}
+    subtitle="{describeRule(series)} · {series.startTime}–{series.endTime} · {series.venue}"
+  >
+    {#snippet actions()}
       {#if session && can(perms, "record:Attendance")}
         <button class="btn sm outline" onclick={() => (registering = true)}>
           <Icon name="check" size={16} /> Register
@@ -120,8 +120,8 @@
           {teams ? "Regenerate" : "Make teams"}
         </button>
       {/if}
-    </div>
-  </div>
+    {/snippet}
+  </PageHeader>
 
   {#if !session}
     <p class="note">No sessions coming up. An admin can set the dates under Settings → Training.</p>
@@ -142,7 +142,7 @@
       </div>
     </div>
 
-    <div class="view-row stick">
+    <div class="view-row">
       <div class="seg" role="group" aria-label="Show players as">
         <button aria-pressed={view === "cards"} onclick={() => setView("cards")}>Cards</button>
         <button aria-pressed={view === "list"} onclick={() => setView("list")}>List</button>
@@ -221,10 +221,6 @@
 {/if}
 
 <style>
-  .actions {
-    display: flex;
-    gap: var(--s-2);
-  }
   .team {
     display: grid;
     gap: var(--s-3);

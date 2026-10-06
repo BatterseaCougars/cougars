@@ -1,5 +1,5 @@
 <script lang="ts">
-  import BackLink from "../lib/BackLink.svelte";
+  import PageHeader from "../lib/PageHeader.svelte";
   import { can } from "../access/actions";
   import { granted } from "../demo/session.svelte";
   import Icon from "../app/shell/Icon.svelte";
@@ -18,15 +18,10 @@
 </script>
 
 <div class="page">
-  <BackLink />
-  <div class="page-head">
-    <div>
-      <h1>Upload</h1>
-      <p class="hint">
-        Photos go to a website album. Videos go to the club YouTube channel, unlisted until an admin publishes.
-      </p>
-    </div>
-  </div>
+  <PageHeader
+    title="Upload"
+    subtitle="Photos go to a website album. Videos go to the club YouTube channel, unlisted until an admin publishes."
+  />
   <label class="drop">
     <span class="mark"><Icon name="upload" /></span>
     <span class="title">Add photos{can(perms, "upload:Video") ? " or videos" : ""}</span>

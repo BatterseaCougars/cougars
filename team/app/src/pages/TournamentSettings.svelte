@@ -2,10 +2,10 @@
   // Settings → Tournaments (ADR 0030). A tournament type is a kind the club hosts (The Cougars Kumite): its format
   // and rules. Each tournament is one edition, scheduled on its own with a name, location and date. A new type gets
   // its own section in the menu; a new edition shows on the calendar and the type's pages.
+  import PageHeader from "../lib/PageHeader.svelte";
   import Icon from "../app/shell/Icon.svelte";
   import type { Tournament, TournamentStatus, TournamentType } from "../demo/model";
   import { db } from "../demo/store.svelte";
-  import BackLink from "../lib/BackLink.svelte";
   import StylePicker from "../lib/StylePicker.svelte";
   import { formatDayDate, londonISO, londonToday, pounds } from "../lib/dates";
   import { collectedFor } from "../demo/dues.svelte";
@@ -117,14 +117,14 @@
 </script>
 
 <div class="page">
-  <BackLink />
-  <div class="page-head">
-    <div>
-      <h1>Tournaments</h1>
-      <p class="hint">The tournaments the club hosts. Each type gets its own section in the menu.</p>
-    </div>
-    <button class="btn sm outline" onclick={() => (selected = "new")}><Icon name="plus" size={16} /> Type</button>
-  </div>
+  <PageHeader
+    title="Tournaments"
+    subtitle="The tournaments the club hosts. Each type gets its own section in the menu."
+  >
+    {#snippet actions()}
+      <button class="btn sm outline" onclick={() => (selected = "new")}><Icon name="plus" size={16} /> Type</button>
+    {/snippet}
+  </PageHeader>
 
   <div class="list">
     {#each db.tournamentTypes as t (t.id)}

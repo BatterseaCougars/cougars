@@ -1,10 +1,10 @@
 <script lang="ts">
   // Settings → Training: every training as a card, as Gwenda ops shows its series. A card opens that training's
   // editor, full screen; "New training" opens a blank one. New trainings appear in the menu and calendar at once.
+  import PageHeader from "../lib/PageHeader.svelte";
   import Icon from "../app/shell/Icon.svelte";
   import { nextSession, sessionBookable } from "../demo/schedule.svelte";
   import { db } from "../demo/store.svelte";
-  import BackLink from "../lib/BackLink.svelte";
   import { formatDayDate, londonToday, pounds } from "../lib/dates";
   import { feeOn } from "../lib/dues";
   import { describeRule } from "../lib/recurrence";
@@ -22,13 +22,10 @@
 </script>
 
 <div class="page">
-  <BackLink />
-  <div class="page-head">
-    <div>
-      <h1>Training</h1>
-      <p class="hint">Repeating sessions. Each one gets its own page, menu link and place in the calendar.</p>
-    </div>
-  </div>
+  <PageHeader
+    title="Training"
+    subtitle="Repeating sessions. Each one gets its own page, menu link and place in the calendar."
+  />
 
   <ul class="grid">
     {#each cards as { s, next, signedUp } (s.id)}
