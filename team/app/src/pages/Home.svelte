@@ -4,6 +4,7 @@
   import { owedBy } from "../demo/dues.svelte";
   import { granted, me } from "../demo/session.svelte";
   import { db } from "../demo/store.svelte";
+  import AccountMenu from "../app/shell/AccountMenu.svelte";
   import Icon from "../app/shell/Icon.svelte";
   import EventCard from "../lib/EventCard.svelte";
   import { pounds } from "../lib/dates";
@@ -87,7 +88,11 @@
 
 <div class="page">
   <header class="hello">
-    <p class="kicker">Battersea Cougars</p>
+    <!-- Phones have no top bar, so your badge sits here; desktop keeps it in the corner -->
+    <div class="hello-top">
+      <p class="kicker">Battersea Cougars</p>
+      <span class="badge-slot"><AccountMenu /></span>
+    </div>
     <h1 class="display poster">{greeting}, {who.name.split(" ")[0]}</h1>
     {#if owed > 0}
       <!-- You owe: said up front, every visit, until it's paid -->
@@ -150,6 +155,18 @@
     display: grid;
     gap: var(--s-3);
     padding-top: var(--s-2);
+  }
+  .hello-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s-4);
+    min-height: 2.25rem;
+  }
+  @media (min-width: 901px) {
+    .badge-slot {
+      display: none;
+    }
   }
   .hello h1 {
     font-size: clamp(2.6rem, 10vw, 3.4rem);

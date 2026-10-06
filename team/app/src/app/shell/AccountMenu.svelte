@@ -2,7 +2,9 @@
   /**
    * Who's signed in, top right (the Gwenda ops account badge). Opens your account: profile, your tab, sign out,
    * and for admins "View as", which shows the app exactly as a member sees it (ADR 0029). Escape or a click
-   * outside closes it. On a phone the menu is a sheet from the bottom.
+   * outside closes it. On a phone the menu is a sheet from the bottom, moved to the end of the page so it sits
+   * above the tabs wherever the badge is placed. `card` draws the trigger as a big row with your email and roles,
+   * for the top of More.
    */
   import { tick } from "svelte";
   import { can } from "../../access/actions";
@@ -19,6 +21,15 @@
   let root = $state<HTMLDivElement | undefined>();
   let trigger = $state<HTMLButtonElement | undefined>();
   let menu = $state<HTMLDivElement | undefined>();
+  let layer = $state<HTMLDivElement | undefined>();
+
+  let { card = false }: { card?: boolean } = $props();
+
+  // The phone sheet leaves the page for <body>: inside a page it would sit under the tabs.
+  function portal(node: HTMLElement) {
+    if (matchMedia("(max-width: 900px)").matches) document.body.append(node);
+    return { destroy: () => node.remove() };
+  }
 
   const shown = $derived(me());
   const canViewAs = $derived(can(realGranted(), "impersonate:Member"));
@@ -61,14 +72,16 @@
 </script>
 
 <svelte:window
-  onpointerdown={(e) => open && root && !root.contains(e.target as Node) && close()}
+  onpointerdown={(e) =>
+    open && root && !root.contains(e.target as Node) && !layer?.contains(e.target as Node) && close()}
   onkeydown={(e) => open && e.key === "Escape" && (e.preventDefault(), close(true))}
 />
 
-<div class="account" bind:this={root}>
+<div class="account" class:wide={card} bind:this={root}>
   <button
     type="button"
     class="trigger"
+    class:card
     class:as={impersonating()}
     bind:this={trigger}
     aria-haspopup="menu"
@@ -76,62 +89,75 @@
     aria-label="Account: {shown.name}"
     onclick={toggle}
   >
-    <span class="avatar sm" aria-hidden="true">{initials(shown.name)}</span>
-    <span class="name">{shown.name.split(" ")[0]}</span>
-    <Icon name="chevronDown" size={14} />
+    {#if card}
+      <span class="avatar big" aria-hidden="true">{initials(shown.name)}</span>
+      <span class="card-text">
+        <span class="card-name">{shown.name}</span>
+        <span class="hint">{emailFor(shown)} · {roles.join(", ")}</span>
+      </span>
+      <Icon name="chevronDown" size={18} />
+    {:else}
+      <span class="avatar sm" aria-hidden="true">{initials(shown.name)}</span>
+      <span class="name">{shown.name.split(" ")[0]}</span>
+      <Icon name="chevronDown" size={14} />
+    {/if}
   </button>
 
   {#if open}
-    <div class="scrim" aria-hidden="true"></div>
-    <div class="menu rise" role="menu" aria-label="Account" bind:this={menu}>
-      {#if picking}
-        <div class="pick-head">
-          <button class="btn ghost icon" aria-label="Back" onclick={() => (picking = false)}>
-            <Icon name="chevronLeft" size={18} />
-          </button>
-          <span class="title">View as a member</span>
-        </div>
-        <input class="input" placeholder="Search members" bind:value={search} />
-        <div class="items">
-          {#each members as m (m.player.id)}
-            <button class="item" role="menuitem" onclick={() => become(m.player.id)}>
-              <span class="avatar sm">{initials(m.player.name)}</span>
-              <span class="grow">{m.player.name}</span>
-              <span class="hint">{m.roles.join(", ")}</span>
+    <div class="layer" bind:this={layer} use:portal>
+      <div class="scrim" aria-hidden="true"></div>
+      <div class="menu rise" role="menu" aria-label="Account" bind:this={menu}>
+        {#if picking}
+          <div class="pick-head">
+            <button class="btn ghost icon" aria-label="Back" onclick={() => (picking = false)}>
+              <Icon name="chevronLeft" size={18} />
             </button>
-          {/each}
-        </div>
-        <p class="hint small">Read-only: you see what they see, and can't change anything as them.</p>
-      {:else}
-        <div class="who">
-          <span class="avatar big" aria-hidden="true">{initials(shown.name)}</span>
-          <span class="who-text">
-            <span class="title">{shown.name}</span>
-            <span class="hint">{emailFor(shown)}</span>
-            <span class="roles"
-              >{#each roles as r (r)}<span class="badge" class:red={r === "Admin"}>{r}</span>{/each}</span
-            >
-          </span>
-        </div>
-        <div class="sep" role="separator"></div>
-        <button class="item" role="menuitem" onclick={() => go("/me")}><Icon name="user" size={16} /> Profile</button>
-        <button class="item" role="menuitem" onclick={() => go("/me/tab")}><Icon name="pound" size={16} /> Dues</button>
-        {#if impersonating()}
+            <span class="title">View as a member</span>
+          </div>
+          <input class="input" placeholder="Search members" bind:value={search} />
+          <div class="items">
+            {#each members as m (m.player.id)}
+              <button class="item" role="menuitem" onclick={() => become(m.player.id)}>
+                <span class="avatar sm">{initials(m.player.name)}</span>
+                <span class="grow">{m.player.name}</span>
+                <span class="hint">{m.roles.join(", ")}</span>
+              </button>
+            {/each}
+          </div>
+          <p class="hint small">Read-only: you see what they see, and can't change anything as them.</p>
+        {:else}
+          <div class="who">
+            <span class="avatar big" aria-hidden="true">{initials(shown.name)}</span>
+            <span class="who-text">
+              <span class="title">{shown.name}</span>
+              <span class="hint">{emailFor(shown)}</span>
+              <span class="roles"
+                >{#each roles as r (r)}<span class="badge" class:red={r === "Admin"}>{r}</span>{/each}</span
+              >
+            </span>
+          </div>
           <div class="sep" role="separator"></div>
-          <button class="item accent" role="menuitem" onclick={() => become(null)}>
-            <Icon name="undo" size={16} /> Back to {realMember().name.split(" ")[0]}
-          </button>
-        {:else if canViewAs}
+          <button class="item" role="menuitem" onclick={() => go("/me")}><Icon name="user" size={16} /> Profile</button>
+          <button class="item" role="menuitem" onclick={() => go("/me/tab")}
+            ><Icon name="pound" size={16} /> Dues</button
+          >
+          {#if impersonating()}
+            <div class="sep" role="separator"></div>
+            <button class="item accent" role="menuitem" onclick={() => become(null)}>
+              <Icon name="undo" size={16} /> Back to {realMember().name.split(" ")[0]}
+            </button>
+          {:else if canViewAs}
+            <div class="sep" role="separator"></div>
+            <button class="item" role="menuitem" onclick={startPicking}>
+              <Icon name="eye" size={16} /> View as a member…
+            </button>
+          {/if}
           <div class="sep" role="separator"></div>
-          <button class="item" role="menuitem" onclick={startPicking}>
-            <Icon name="eye" size={16} /> View as a member…
-          </button>
+          <button class="item" role="menuitem" disabled={impersonating()}
+            ><Icon name="signOut" size={16} /> Sign out</button
+          >
         {/if}
-        <div class="sep" role="separator"></div>
-        <button class="item" role="menuitem" disabled={impersonating()}
-          ><Icon name="signOut" size={16} /> Sign out</button
-        >
-      {/if}
+      </div>
     </div>
   {/if}
 </div>
@@ -160,6 +186,42 @@
   .trigger[aria-expanded="true"] {
     background: var(--surface-3);
     color: var(--fg);
+  }
+  /* The big row at the top of More */
+  .trigger.card {
+    gap: var(--s-4);
+    width: 100%;
+    height: auto;
+    padding: var(--s-2) var(--s-1);
+    border: 0;
+    border-radius: var(--r-md);
+    background: none;
+    text-align: left;
+  }
+  .trigger.card:hover,
+  .trigger.card[aria-expanded="true"] {
+    background: none;
+  }
+  .card-text {
+    display: grid;
+    flex: 1;
+    min-width: 0;
+  }
+  .card-name {
+    color: var(--fg);
+    font-size: var(--text-lg);
+    font-weight: 600;
+  }
+  .trigger.card .avatar.big {
+    width: 3.5rem;
+    height: 3.5rem;
+    font-size: var(--text-md);
+  }
+  .account.wide {
+    width: 100%;
+  }
+  .layer {
+    display: contents;
   }
   .trigger.as {
     border-color: var(--amber-border);

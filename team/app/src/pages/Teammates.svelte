@@ -18,10 +18,12 @@
       <p class="hint num">{PLAYERS.length} players · {PLAYERS.filter((p) => p.cougar).length} Cougars</p>
     </div>
   </div>
-  <div class="seg" role="group" aria-label="Position">
-    {#each [["all", "All"], ["F", "Forwards"], ["D", "Defence"], ["G", "Keepers"]] as [v, label] (v)}
-      <button aria-pressed={filter === v} onclick={() => (filter = v as typeof filter)}>{label}</button>
-    {/each}
+  <div class="stick">
+    <div class="seg" role="group" aria-label="Position">
+      {#each [["all", "All"], ["F", "Forwards"], ["D", "Defence"], ["G", "Keepers"]] as [v, label] (v)}
+        <button aria-pressed={filter === v} onclick={() => (filter = v as typeof filter)}>{label}</button>
+      {/each}
+    </div>
   </div>
   <div class="list">
     {#each shown as p (p.id)}

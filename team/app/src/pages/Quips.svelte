@@ -32,12 +32,14 @@
     </div>
   </div>
 
-  <div class="seg kinds" role="tablist" aria-label="When it's said">
-    {#each QUIP_KINDS as k (k.kind)}
-      <button role="tab" aria-selected={k.kind === kind} onclick={() => (kind = k.kind)}>
-        {k.label} <span class="count num">{db.quips.filter((q) => q.kind === k.kind).length}</span>
-      </button>
-    {/each}
+  <div class="stick">
+    <div class="seg kinds" role="tablist" aria-label="When it's said">
+      {#each QUIP_KINDS as k (k.kind)}
+        <button role="tab" aria-selected={k.kind === kind} onclick={() => (kind = k.kind)}>
+          {k.label} <span class="count num">{db.quips.filter((q) => q.kind === k.kind).length}</span>
+        </button>
+      {/each}
+    </div>
   </div>
 
   {#key kind}

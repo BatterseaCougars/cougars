@@ -38,7 +38,12 @@ Copied in shape from Gwenda ops (`gwenda-hackney/ark`, `ops/site/src/app/`), whi
   - a `100dvh` shell where only the content scrolls, with `viewport-fit=cover`
   - each tab remembers the last page used in it; tapping the active tab goes to its first page, then scrolls to
     the top
-  - a strip of sub-pages along the top when a tab has more than one page
+  - no top bar: a page opens with its own title (your badge sits on Home and at the top of More). Once the title
+    scrolls away, a slim bar with the page's name fades in over the content
+  - a strip of sub-pages along the top when a tab has more than one page; it slides away as you scroll down and
+    back as soon as you scroll up
+  - a page's controls (the Calendar filters, a toggle) pin under those bars (`.stick`), so you never scroll back
+    up to filter
   - **More** is a full page, and its pages show a `‹ More` back link
   - editors hide the tabs and show their own back bar, with an unsaved-changes guard
 - **Desktop:** the page has the whole screen. A dock of the main sections (Home, each training, Calendar, each

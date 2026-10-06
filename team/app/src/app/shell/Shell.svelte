@@ -1,8 +1,10 @@
 <script lang="ts">
   // The shell. Desktop: the page has the whole screen; a dock of the main sections floats mid-left, the brand
   // mark top-left, your badge top-right, the wordmark and the London clock in the bottom corners. A section's
-  // pages (Games, Standings, Draft) sit as pills along the top. Phones: the Gwenda ops pattern, five tabs at the
-  // bottom and a strip of sub-pages under the top bar.
+  // pages (Games, Standings, Draft) sit as pills along the top. Phones: five tabs at the bottom and no top bar, so
+  // a page opens with its own title. Once that title scrolls away a slim bar with its name fades in; a section's
+  // strip of sub-pages scrolls away and comes back as soon as you scroll up. Pages pin their own controls
+  // (`.stick`) under whatever bars are showing.
   import { type Snippet } from "svelte";
   import { can } from "../../access/actions";
   import { granted, impersonating, me, realMember, rolesOf, viewAs } from "../../demo/session.svelte";
@@ -101,7 +103,33 @@
   );
 
   let chromeH = $state(0);
+  let pinnedH = $state(0);
   let content: HTMLElement | undefined = $state();
+
+  // Scrolling, phones: `compact` once the page's title has gone under the bars, `stripHidden` while scrolling down.
+  // Both only move bars over the page (a fade or a slide), never the page itself.
+  const COMPACT_REM = 2.75; // --compact-h
+  let compact = $state(false);
+  let stripHidden = $state(false);
+  let lastY = 0;
+  $effect(() => {
+    void route.id;
+    compact = false;
+    stripHidden = false;
+    lastY = 0;
+  });
+  function onScroll(e: Event) {
+    const view = e.target;
+    if (!(view instanceof HTMLElement) || !view.classList.contains("view")) return;
+    const y = view.scrollTop;
+    const title = view.querySelector("h1");
+    const rem = parseFloat(getComputedStyle(document.documentElement).fontSize);
+    const line = view.getBoundingClientRect().top + pinnedH + COMPACT_REM * rem;
+    compact = title ? title.getBoundingClientRect().bottom < line : y > 24;
+    if (Math.abs(y - lastY) < 6) return;
+    stripHidden = y > lastY && y > 48;
+    lastY = y;
+  }
 
   // Tapping the tab you're on goes to its first page; on the first page, it scrolls to the top.
   function onTab(tab: TabId, event: MouseEvent) {
@@ -174,60 +202,83 @@
   </nav>
 
   <main class="main">
-    <header class="chrome" class:bare={route.focus && !impersonating()} bind:clientHeight={chromeH}>
-      {#if impersonating()}
-        <div class="viewing" role="status">
-          <Icon name="eye" size={16} />
-          <span class="viewing-text">
-            Viewing as <strong>{me().name}</strong>
-            <span class="viewing-role">· {rolesOf(me().id).join(", ")} · read-only</span>
-          </span>
-          <button class="btn sm viewing-back" onclick={() => (viewAs(null), navigate("/"))}>
-            Back to {realMember().name.split(" ")[0]}
-          </button>
-        </div>
-      {/if}
+    <header class="chrome" bind:clientHeight={chromeH}>
+      <!-- Always there: the notch, and the View-as banner (it must never scroll away) -->
+      <div class="pinned" class:bare={route.focus} bind:clientHeight={pinnedH}>
+        {#if impersonating()}
+          <div class="viewing" role="status">
+            <Icon name="eye" size={16} />
+            <span class="viewing-text">
+              Viewing as <strong>{me().name}</strong>
+              <span class="viewing-role">· {rolesOf(me().id).join(", ")} · read-only</span>
+            </span>
+            <button class="btn sm viewing-back" onclick={() => (viewAs(null), navigate("/"))}>
+              Back to {realMember().name.split(" ")[0]}
+            </button>
+          </div>
+        {/if}
+
+        <!-- Desktop: the mark and your badge float in the top corners -->
+        {#if !route.focus}
+          <div class="topbar">
+            <a class="brand" href="/" aria-label="Home">
+              <img src={logo} alt="" width="36" height="36" />
+            </a>
+            <AccountMenu />
+          </div>
+        {/if}
+      </div>
 
       {#if !route.focus}
-        <div class="topbar">
-          <a class="brand" href="/" aria-label="Home">
-            <img src={logo} alt="" width="28" height="28" />
-            <span class="display wordmark">Cougars <span class="meat">Fresh Meat</span></span>
-          </a>
-          <AccountMenu />
-        </div>
-      {/if}
-
-      {#if strip.length}
-        <nav
-          class="strip"
-          class:phone-only={!stripOnDesktop}
-          aria-label="{tabList.find((t) => t.id === route.tab)?.label} pages"
-          use:glide={{ shape: stripShape, key: glideKey }}
-          use:centre={route.id}
-        >
-          <span class="strip-mark" data-glide aria-hidden="true"></span>
-          {#each strip as r (r.id)}
-            {@const on = r.id === route.id}
-            <a
-              class="strip-link"
-              class:on
-              href={r.path}
-              data-mark={on ? "" : undefined}
-              aria-current={on ? "page" : undefined}
+        <div class="under" class:compact class:strip-hidden={stripHidden}>
+          <!-- Phones: the page's name, once its title has scrolled away -->
+          <p class="compact-bar" aria-hidden="true">
+            {#if route.id === "home"}
+              <span class="display brand-line">Cougars <span class="meat">Fresh Meat</span></span>
+            {:else}
+              {route.name}
+            {/if}
+          </p>
+          {#if strip.length}
+            <nav
+              class="strip"
+              class:phone-only={!stripOnDesktop}
+              aria-label="{tabList.find((t) => t.id === route.tab)?.label} pages"
+              use:glide={{ shape: stripShape, key: glideKey }}
+              use:centre={route.id}
             >
-              {r.short ?? r.name}
-            </a>
-          {/each}
-        </nav>
+              <span class="strip-mark" data-glide aria-hidden="true"></span>
+              {#each strip as r (r.id)}
+                {@const on = r.id === route.id}
+                <a
+                  class="strip-link"
+                  class:on
+                  href={r.path}
+                  data-mark={on ? "" : undefined}
+                  aria-current={on ? "page" : undefined}
+                >
+                  {r.short ?? r.name}
+                </a>
+              {/each}
+            </nav>
+          {/if}
+        </div>
       {/if}
     </header>
 
-    <div class="content" bind:this={content} style:--chrome-h="{chromeH}px">
+    <div
+      class="content"
+      bind:this={content}
+      style:--chrome-h="{chromeH}px"
+      style:--pinned-h="{pinnedH}px"
+      style:--strip-on={strip.length && !stripHidden ? 1 : 0}
+      onscrollcapture={onScroll}
+    >
       {#key route.id}
         <div
           class="view"
           class:under-tabs={!route.focus}
+          class:in-fold={stripOnDesktop}
           in:enter={{ focus: route.focus }}
           out:leave={{ focus: route.focus }}
         >
@@ -421,51 +472,33 @@
     translate: 0 -50%;
   }
 
-  /* ─── Chrome: the banner, the top bar and the strip; content scrolls under them ─── */
+  /* ─── Chrome: the pinned band (notch, View-as banner, desktop corners), then the bars that come and go ─── */
   .chrome {
     position: absolute;
     top: 0;
     left: 0;
     right: 0;
     z-index: 6;
+  }
+  .pinned {
+    position: relative;
+    z-index: 3;
+  }
+  .pinned:not(.bare) {
     padding-top: env(safe-area-inset-top, 0px);
   }
-  /* Phones frost the bar (content scrolls under it); desktop leaves it clear, the mark and badge just float. The
-     frost is on a pseudo-element: backdrop-filter on the bar itself would trap the account sheet. */
-  .chrome::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    z-index: -1;
-    background: var(--chrome-bg);
-    backdrop-filter: var(--blur);
-    -webkit-backdrop-filter: var(--blur);
-    border-bottom: 1px solid var(--border);
-  }
-  .chrome.bare::before {
-    display: none;
+  .under {
+    position: relative;
+    z-index: 1;
   }
   .topbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--s-4);
-    height: var(--topbar-h);
-    padding: 0 var(--gutter);
-  }
-  .brand {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--s-2);
-    font-size: 1.2rem;
-    font-style: italic;
-    color: var(--fg);
-  }
-  .brand img {
-    filter: drop-shadow(0 2px 8px rgb(229 19 31 / 0.35));
+    display: none;
   }
   .meat {
     color: var(--red-hot);
+  }
+  .compact-bar {
+    display: none;
   }
 
   .viewing {
@@ -510,7 +543,6 @@
     overflow-x: auto;
     scroll-snap-type: x proximity;
     scrollbar-width: none;
-    border-top: 1px solid var(--border);
   }
   .strip::-webkit-scrollbar {
     display: none;
@@ -604,19 +636,29 @@
   }
 
   @media (min-width: 901px) {
-    .chrome::before {
-      display: none;
-    }
-    .wordmark {
-      display: none;
-    }
-    .brand img {
-      width: 36px;
-      height: 36px;
-    }
     .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--s-4);
       height: 4.5rem;
       padding: 0 var(--s-5);
+    }
+    .brand {
+      display: inline-flex;
+    }
+    .brand img {
+      filter: drop-shadow(0 2px 8px rgb(229 19 31 / 0.35));
+    }
+    /* The strip floats as pills, placed against the chrome, not the bars under it */
+    .under {
+      position: static;
+    }
+    .view {
+      --stick-top: var(--s-4);
+    }
+    .view.in-fold {
+      --stick-top: calc(env(safe-area-inset-top, 0px) + 4rem);
     }
     .strip {
       position: absolute;
@@ -655,6 +697,75 @@
     .dock,
     .corner {
       display: none;
+    }
+    /* No top bar: the page starts with its own title, clear of the notch */
+    .pinned:not(.bare) {
+      background: var(--chrome-bg);
+      backdrop-filter: var(--blur);
+      -webkit-backdrop-filter: var(--blur);
+    }
+    .shell:not(.focus) .view > :global(.page) {
+      padding-top: var(--s-6);
+    }
+    .view {
+      --stick-top: calc(var(--pinned-h, 0px) + var(--compact-h) + var(--strip-on, 0) * var(--strip-h));
+    }
+    /* The page's name in a slim bar, once its title has gone under */
+    .compact-bar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: var(--compact-h);
+      margin: 0;
+      padding: 0 var(--gutter);
+      overflow: hidden;
+      border-bottom: 1px solid var(--border);
+      background: var(--chrome-bg-solid);
+      backdrop-filter: var(--blur);
+      -webkit-backdrop-filter: var(--blur);
+      color: var(--fg);
+      font-size: var(--text-sm);
+      font-weight: 600;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      opacity: 0;
+      translate: 0 -0.5rem;
+      pointer-events: none;
+      transition:
+        opacity var(--t) var(--ease),
+        translate var(--t) var(--ease);
+    }
+    .under.compact .compact-bar {
+      opacity: 1;
+      translate: 0 0;
+    }
+    .brand-line {
+      font-size: 1.05rem;
+      font-style: italic;
+      font-weight: 400;
+    }
+    /* The strip: under the slim bar when it's showing, away while you scroll down */
+    .strip {
+      border-bottom: 1px solid var(--border);
+      background: var(--chrome-bg-solid);
+      backdrop-filter: var(--blur);
+      -webkit-backdrop-filter: var(--blur);
+      transition:
+        translate var(--t-slow) var(--ease),
+        opacity var(--t-slow) var(--ease);
+    }
+    .under.compact .strip {
+      translate: 0 var(--compact-h);
+    }
+    .under.strip-hidden .strip {
+      translate: 0 -100%;
+      opacity: 0;
+      pointer-events: none;
     }
     .viewing-role {
       display: none;

@@ -93,7 +93,7 @@
     {/if}
   </div>
 
-  <div class="filters" role="group" aria-label="Show">
+  <div class="filters stick" role="group" aria-label="Show">
     {#each chips as c (c.id)}
       <button
         class="filter"

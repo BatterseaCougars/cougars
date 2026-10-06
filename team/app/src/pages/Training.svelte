@@ -142,7 +142,7 @@
       </div>
     </div>
 
-    <div class="view-row">
+    <div class="view-row stick">
       <div class="seg" role="group" aria-label="Show players as">
         <button aria-pressed={view === "cards"} onclick={() => setView("cards")}>Cards</button>
         <button aria-pressed={view === "list"} onclick={() => setView("list")}>List</button>
@@ -258,9 +258,20 @@
       gap: var(--s-4);
     }
   }
+  /* The toggle floats over the cards on its own as you scroll, no band behind it */
   .view-row {
     display: flex;
     justify-content: flex-end;
+    background: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    pointer-events: none;
+  }
+  .view-row .seg {
+    pointer-events: auto;
+    background: var(--chrome-bg-solid);
+    backdrop-filter: var(--blur);
+    -webkit-backdrop-filter: var(--blur);
   }
   .view-row .seg button {
     min-height: 1.85rem;

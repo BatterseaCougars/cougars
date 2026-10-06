@@ -27,10 +27,12 @@
     <button class="btn outline sm" onclick={addRole}>+ Role</button>
   </div>
 
-  <div class="seg roles" role="tablist" aria-label="Roles">
-    {#each db.roles as r (r.id)}
-      <button role="tab" aria-selected={r.id === selected} onclick={() => (selected = r.id)}>{r.name}</button>
-    {/each}
+  <div class="stick">
+    <div class="seg roles" role="tablist" aria-label="Roles">
+      {#each db.roles as r (r.id)}
+        <button role="tab" aria-selected={r.id === selected} onclick={() => (selected = r.id)}>{r.name}</button>
+      {/each}
+    </div>
   </div>
 
   {#key selected}
