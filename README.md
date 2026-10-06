@@ -106,15 +106,16 @@ Deploys the `cougars` worker and migrates the `cougars` D1 database on the **Cou
 - **Issued by:** Cloudflare, Cougars account → Manage Account → **Account API Tokens**. Token name:
   `CLOUDFLARE_API_TOKEN__PRODUCTION`.
 
-  | Scope   | Permission      | Access | Why                                                        |
-  | ------- | --------------- | ------ | ---------------------------------------------------------- |
-  | Account | Workers Scripts | Edit   | Deploy the `cougars` worker (and create it the first time) |
-  | Account | D1              | Edit   | Create and migrate the `cougars` database                  |
-  | Zone    | Zone            | Read   | Find the batterseacougars.com zone                         |
-  | Zone    | DNS             | Edit   | The deploy creates the domain's DNS records                |
-  | Zone    | Workers Routes  | Edit   | Attach the domain to the worker (`target.mjs`)             |
+  Account API tokens use role-style permissions, grouped by what they apply to:
 
-  Account Resources: Include → **Cougars**. Zone Resources: Include → **Specific zone → batterseacougars.com**.
+  | Applies to             | Permission           | Why                                                  |
+  | ---------------------- | -------------------- | ---------------------------------------------------- |
+  | Entire Cougars account | Workers Admin        | Deploy the `cougars` worker (Editor can't create it) |
+  | Entire Cougars account | Workers Editor       | (also on the token; Admin covers it)                 |
+  | Entire Cougars account | D1 Write             | Create and migrate the `cougars` database            |
+  | All zones in Cougars   | Zone Read            | Find the batterseacougars.com zone                   |
+  | All zones in Cougars   | DNS Write            | The deploy creates the domain's DNS records          |
+  | All zones in Cougars   | Workers Routes Write | Attach the domain to the worker (`target.mjs`)       |
 
 - **Used by:** `deploy.yml` on `release` and Studio publishes only (`target.mjs`, migrations, `wrangler deploy`).
 - **Gets there by:** CI pull from Secrets Manager (code reads `CLOUDFLARE_API_TOKEN`).
