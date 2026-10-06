@@ -30,15 +30,18 @@
     {/snippet}
   </PageHeader>
 
-  <div class="stats">
-    {#each current as f (f.kind)}
-      <div class="stat">
-        <span class="eyebrow">{f.kind}</span>
-        <span class="value num">{pounds(f.amountPence)}</span>
-        <span class="hint">from {f.from}</span>
-      </div>
-    {/each}
-  </div>
+  <!-- Empty, the strip and the list would be bare hairlines -->
+  {#if current.length}
+    <div class="stats">
+      {#each current as f (f.kind)}
+        <div class="stat">
+          <span class="eyebrow">{f.kind}</span>
+          <span class="value num">{pounds(f.amountPence)}</span>
+          <span class="hint">from {f.from}</span>
+        </div>
+      {/each}
+    </div>
+  {/if}
 
   <form class="panel pad form" onsubmit={add}>
     <h2>New subscription fee</h2>
@@ -50,15 +53,19 @@
   </form>
 
   <h2 class="section-title">History</h2>
-  <div class="list">
-    {#each db.fees as f, i (i)}
-      <div class="row" class:old={f.superseded}>
-        <span class="grow"><span class="title">{f.kind}</span><span class="sub">from {f.from}</span></span>
-        <span class="num amt">{pounds(f.amountPence)}</span>
-        {#if f.superseded}<span class="badge">Old</span>{/if}
-      </div>
-    {/each}
-  </div>
+  {#if db.fees.length}
+    <div class="list">
+      {#each db.fees as f, i (i)}
+        <div class="row" class:old={f.superseded}>
+          <span class="grow"><span class="title">{f.kind}</span><span class="sub">from {f.from}</span></span>
+          <span class="num amt">{pounds(f.amountPence)}</span>
+          {#if f.superseded}<span class="badge">Old</span>{/if}
+        </div>
+      {/each}
+    </div>
+  {:else}
+    <p class="hint">No fee set yet.</p>
+  {/if}
 </div>
 
 <style>

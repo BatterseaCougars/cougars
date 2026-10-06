@@ -9,6 +9,19 @@ export class HttpError extends Error {
   }
 }
 
+/**
+ * Whether a request that changes something comes from the app's own pages. Browsers send Origin on every POST, PUT
+ * and DELETE, so another site's form or script is refused even where SameSite cookies would let it through (a
+ * sibling subdomain). No Origin at all is a script or a test, not a browser, so it has no cookies to abuse.
+ */
+export function sameOrigin(request: Request): boolean {
+  if (request.method === "GET" || request.method === "HEAD") return true;
+  const origin = request.headers.get("origin");
+  if (origin) return origin === new URL(request.url).origin;
+  const site = request.headers.get("sec-fetch-site");
+  return !site || site === "same-origin" || site === "none";
+}
+
 export const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
     status,
@@ -17,6 +30,9 @@ export const json = (body: unknown, status = 200) =>
 
 /** The request's JSON body, as an object, or a 400. */
 export async function body(request: Request): Promise<Record<string, unknown>> {
+  // A form on another site can send text/plain without asking first; only JSON is accepted (with the Origin check)
+  if (!request.headers.get("content-type")?.toLowerCase().startsWith("application/json"))
+    throw new HttpError(415, "Send JSON.");
   try {
     const value = await request.json();
     if (value && typeof value === "object" && !Array.isArray(value)) return value as Record<string, unknown>;

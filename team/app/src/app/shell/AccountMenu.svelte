@@ -12,6 +12,7 @@
   import { emailFor } from "../../demo/data";
   import { impersonating, me, realGranted, realMember, rolesOf, viewAs } from "../../demo/session.svelte";
   import { initials } from "../../lib/initials";
+  import { api } from "../api";
   import { navigate } from "../router.svelte";
   import Icon from "./Icon.svelte";
 
@@ -63,6 +64,12 @@
     viewAs(id);
     close();
     navigate("/");
+  }
+  // Off this device only; the app reloads to the sign-in screen
+  async function signOut() {
+    close();
+    await api("POST", "/api/auth/sign-out").catch(() => {});
+    location.replace("/");
   }
   async function startPicking() {
     picking = true;
@@ -153,7 +160,7 @@
             </button>
           {/if}
           <div class="sep" role="separator"></div>
-          <button class="item" role="menuitem" disabled={impersonating()}
+          <button class="item" role="menuitem" disabled={impersonating()} onclick={signOut}
             ><Icon name="signOut" size={16} /> Sign out</button
           >
         {/if}

@@ -31,8 +31,8 @@ rule, a trade-off. Copy [template.md](template.md), take the next number, keep i
 | [0020](0020-drawn-share-cards.md)                 | Share pictures are drawn at build time                                         | Accepted              |
 | [0021](0021-website-and-team-app-projects.md)     | Website and team app are separate projects in one repo                         | Accepted              |
 | [0022](0022-team-app-svelte-pwa.md)               | The team app is a mobile-first Svelte 5 SPA on a Worker, as a PWA              | Accepted              |
-| [0023](0023-device-bound-sign-in.md)              | Everyone signs in with a device-bound email code or link, or Google            | Accepted              |
-| [0024](0024-action-based-authorization.md)        | Permissions are actions; roles are data built from actions                     | Accepted              |
+| [0023](0023-device-bound-sign-in.md)              | Everyone signs in with a device-bound email code or link, or Google            | Amended by 0035       |
+| [0024](0024-action-based-authorization.md)        | Permissions are actions; roles are data built from actions                     | Extended by 0036      |
 | [0025](0025-events-in-d1.md)                      | Events live in D1, one club calendar                                           | Superseded by 0030    |
 | [0026](0026-dues-ledger.md)                       | Dues are a ledger fed by the register                                          | Amended by 0032, 0034 |
 | [0027](0027-email-through-gmail-api.md)           | Email goes through the Gmail API, and only production reaches real people      | Accepted              |
@@ -43,3 +43,5 @@ rule, a trade-off. Copy [template.md](template.md), take the next number, keep i
 | [0032](0032-fees-per-session-and-tournament.md)   | Fees belong to each session and tournament; payments are marked against them   | Amended by 0034       |
 | [0033](0033-personal-data-out-of-the-repo.md)     | Personal data stays out of the repo; the roster is seeded from Secrets Manager | Accepted              |
 | [0034](0034-quarterly-members-and-the-cougars.md) | Quarterly membership is a subscription; the Cougars are a flag on the member   | Accepted              |
+| [0035](0035-sessions-are-hashed-tokens.md)        | Sessions are hashed random tokens; sign-in is a code with no link              | Accepted              |
+| [0036](0036-api-security.md)                      | Every API response sends only what that caller may see, decided on the server  | Accepted              |

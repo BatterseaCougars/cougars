@@ -8,8 +8,15 @@
   import Icon from "../app/shell/Icon.svelte";
   import { prefersReducedMotion } from "../app/motion";
   import PlayerCard from "./PlayerCard.svelte";
-  import { attendanceOf, markHere, saveMember, setQuarterly, type AttendanceRow } from "../app/backend.svelte";
-  import { POSITIONS, emailFor, referenceFor, type Position } from "../demo/data";
+  import {
+    attendanceOf,
+    markHere,
+    saveContact,
+    saveMember,
+    setQuarterly,
+    type AttendanceRow,
+  } from "../app/backend.svelte";
+  import { POSITIONS, emailFor, phoneFor, referenceFor, type Position } from "../demo/data";
   import { chargesFor, owedBy } from "../demo/dues.svelte";
   import { db, markPaid } from "../demo/store.svelte";
   import ChargeRow from "./ChargeRow.svelte";
@@ -49,6 +56,15 @@
     member.player.cougar = cougar;
     saveMember(member);
   }
+  // How to reach them; the email is what they sign in with. Saved when a field is left. The sheet is made afresh
+  // for each member (Teammates keys it), so their stored values are read once, as it opens.
+  const stored = () => ({
+    email: emailFor(member.player) === "No email yet" ? "" : emailFor(member.player),
+    phone: phoneFor(memberId) ?? "",
+  });
+  let email = $state(stored().email);
+  let phone = $state(stored().phone);
+  const saveContactNow = () => saveContact(memberId, email.trim(), phone.trim());
   function setPlan(plan: string) {
     member.plan = plan as typeof member.plan;
     setQuarterly(memberId, plan === "Subscription");
@@ -274,7 +290,8 @@
       <div class="stack">
         {#if !gone}
           <div class="details ph-layer" class:out={ready} aria-hidden="true" onanimationend={() => (gone = true)}>
-            {#each ["role", "plan", "position", "rating", "team"] as k (k)}<i class="ph field-ph {k}"></i>{/each}
+            {#each ["role", "plan", "position", "rating", "team", "email", "phone"] as k (k)}<i class="ph field-ph {k}"
+              ></i>{/each}
           </div>
         {/if}
         {#if ready}
@@ -332,6 +349,21 @@
                 <button type="button" aria-pressed={!member.player.cougar} onclick={() => setCougar(false)}>Not</button>
               </div>
             </div>
+            <label class="field email">
+              Email (they sign in with it)
+              <input
+                class="input"
+                type="email"
+                autocomplete="off"
+                placeholder="None yet"
+                bind:value={email}
+                onchange={saveContactNow}
+              />
+            </label>
+            <label class="field phone">
+              Phone
+              <input class="input" type="tel" autocomplete="off" bind:value={phone} onchange={saveContactNow} />
+            </label>
           </div>
         {/if}
       </div>
@@ -564,6 +596,13 @@
     gap: var(--s-4);
     align-items: start;
   }
+  /* A second row: how to reach them */
+  .email {
+    grid-column: 1 / 4;
+  }
+  .phone {
+    grid-column: 4 / 6;
+  }
   .seg {
     display: flex;
   }
@@ -590,6 +629,16 @@
       grid-column: span 3;
     }
     .ph.position {
+      grid-column: span 6;
+    }
+    .email,
+    .phone {
+      grid-column: span 3;
+    }
+  }
+  @container (max-width: 30rem) {
+    .email,
+    .phone {
       grid-column: span 6;
     }
   }
@@ -654,6 +703,12 @@
   }
   .details.in > :nth-child(5) {
     animation-delay: 160ms;
+  }
+  .details.in > :nth-child(6) {
+    animation-delay: 200ms;
+  }
+  .details.in > :nth-child(7) {
+    animation-delay: 240ms;
   }
   section.in {
     animation-delay: 140ms;

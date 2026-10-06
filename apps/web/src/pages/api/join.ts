@@ -8,7 +8,7 @@ import {
   saveEnquiry,
   type Enquiry,
 } from "../../lib/server/enquiries";
-import { rateLimit } from "../../lib/server/rate-limit";
+import { rateLimit } from "../../../../../shared/rate-limit";
 import { enquiryMail } from "../../lib/server/enquiry-mail";
 import { clubInbox, mailConfig, turnstileSecret } from "../../lib/server/mail-env";
 import { autoReplyMail } from "../../lib/server/auto-reply";

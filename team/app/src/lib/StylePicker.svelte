@@ -52,18 +52,20 @@
     place-items: center;
     width: 2.75rem;
     height: 2.75rem;
-    border: 1px solid var(--border-strong);
+    border: 0;
     border-radius: var(--r-md);
-    background: color-mix(in srgb, var(--surface-2) 55%, transparent);
+    background: var(--surface-2);
     color: var(--fg-muted);
     transition:
       background-color var(--t) var(--ease-in-out),
-      border-color var(--t) var(--ease-in-out),
       color var(--t) var(--ease-in-out);
   }
+  .choice:hover {
+    background: var(--surface-3);
+    color: var(--fg);
+  }
   .choice[aria-checked="true"] {
-    border-color: color-mix(in srgb, var(--tone) 60%, transparent);
-    background: color-mix(in srgb, var(--tone) 18%, transparent);
+    background: color-mix(in srgb, var(--tone) 24%, var(--surface-2));
     color: var(--tone);
   }
   .swatch {

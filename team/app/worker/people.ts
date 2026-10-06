@@ -52,7 +52,16 @@ export async function listRoles(db: D1Database): Promise<RoleJson[]> {
 
 export async function listMembers(
   db: D1Database,
-  { ratings, phonesFor, today }: { ratings: boolean; phonesFor: "all" | number; today: string },
+  {
+    ratings,
+    privateFor,
+    today,
+  }: {
+    ratings: boolean;
+    /** Whose email, phone and payment reference to send: everyone's (a member manager) or just your own. */
+    privateFor: "all" | number;
+    today: string;
+  },
 ): Promise<MemberJson[]> {
   const rows = await all<{
     id: number;
@@ -78,24 +87,42 @@ export async function listMembers(
                 AND s.held_on < ? AND s.cancelled_at IS NULL) played,
             EXISTS (SELECT 1 FROM subscriptions sub WHERE sub.member_id = m.id AND sub.starts_on <= ?
               AND (sub.ends_on IS NULL OR sub.ends_on >= ?)) quarterly
-     FROM members m ORDER BY m.name COLLATE NOCASE`,
-    [today, today, today],
+     FROM members m ${privateFor === "all" ? "" : "WHERE m.status = 'active' OR m.id = ?"}
+     ORDER BY m.name COLLATE NOCASE`,
+    privateFor === "all" ? [today, today, today] : [today, today, today, privateFor],
   );
+  // Who's asking to join, and who's left, is for member managers; so is how to reach anyone but yourself
+  const mine = (id: number) => privateFor === "all" || privateFor === id;
   return rows.map((m) => ({
     id: m.id,
     name: m.name,
-    email: m.email,
+    email: mine(m.id) ? m.email : null,
     position: m.position,
     rating: ratings ? m.rating : 0,
     cougar: Boolean(m.cougar),
     status: m.status,
-    paymentReference: m.payment_reference,
+    paymentReference: mine(m.id) ? m.payment_reference : null,
     roles: m.roles ? m.roles.split(",") : [],
     bio: m.bio,
-    phone: phonesFor === "all" || phonesFor === m.id ? m.phone : null,
+    phone: mine(m.id) ? m.phone : null,
     played: m.played,
     quarterly: Boolean(m.quarterly),
   }));
+}
+
+// ─── You can't grant what you don't have (ADR 0036) ───
+
+/** Whether someone holding `caller` may hand out (or take away) every one of `actions`. manage:all may do anything. */
+export function canGrant(caller: ReadonlySet<Action>, actions: Iterable<string>): boolean {
+  if (caller.has("manage:all")) return true;
+  for (const a of actions) if (!caller.has(a as Action)) return false;
+  return true;
+}
+
+/** Refuses changing a member who can do something the caller can't (an admin, to a member manager). */
+async function mayChange(db: D1Database, caller: ReadonlySet<Action>, memberId: number) {
+  if (!canGrant(caller, await actionsOf(db, memberId)))
+    throw new HttpError(403, "They can do things you can't, so only someone with those powers can change them.");
 }
 
 /** What a member may do: their roles' actions. */
@@ -120,9 +147,15 @@ export async function firstAdmin(db: D1Database): Promise<number | null> {
 }
 
 /** An admin edits a member: position, rating, cougar, status and roles. */
-export async function updateMember(db: D1Database, id: number, o: Record<string, unknown>) {
+export async function updateMember(
+  db: D1Database,
+  id: number,
+  o: Record<string, unknown>,
+  caller: ReadonlySet<Action>,
+) {
   const existing = await first<{ id: number }>(db, "SELECT id FROM members WHERE id = ?", [id]);
   if (!existing) throw new HttpError(404, "No such member.");
+  await mayChange(db, caller, id);
   const name = text(o, "name");
   const position = oneOf(o, "position", ["F", "D", "G"] as const);
   const rating = int(o, "rating", { max: 100 });
@@ -137,6 +170,21 @@ export async function updateMember(db: D1Database, id: number, o: Record<string,
     if (!role) throw new HttpError(400, `No role called ${r}.`);
     return role.id;
   });
+  // Every role they're given must do no more than the caller can
+  if (ids.length) {
+    const given = await all<{ action: string }>(
+      db,
+      `SELECT DISTINCT action FROM role_actions WHERE role_id IN (${ids.map(() => "?").join(",")})`,
+      ids,
+    );
+    if (
+      !canGrant(
+        caller,
+        given.map((g) => g.action),
+      )
+    )
+      throw new HttpError(403, "You can't give someone a role that can do more than you.");
+  }
   // Never leave the club without an admin
   const admin = known.find((k) => k.name === "Admin");
   if (admin && !ids.includes(admin.id)) {
@@ -174,8 +222,9 @@ function roleFields(o: Record<string, unknown>) {
   return { name, description, actions: [...new Set(actions as Action[])] };
 }
 
-export async function createRole(db: D1Database, o: Record<string, unknown>): Promise<number> {
+export async function createRole(db: D1Database, o: Record<string, unknown>, caller: ReadonlySet<Action>) {
   const f = roleFields(o);
+  if (!canGrant(caller, f.actions)) throw new HttpError(403, "A role can't do more than you can.");
   if (await first(db, "SELECT 1 FROM roles WHERE name = ?", [f.name])) throw new HttpError(409, "That name is taken.");
   const res = await run(db, "INSERT INTO roles (name, description, is_system) VALUES (?, ?, 0)", [
     f.name,
@@ -186,11 +235,15 @@ export async function createRole(db: D1Database, o: Record<string, unknown>): Pr
   return id;
 }
 
-export async function updateRole(db: D1Database, id: number, o: Record<string, unknown>) {
+export async function updateRole(db: D1Database, id: number, o: Record<string, unknown>, caller: ReadonlySet<Action>) {
   const role = await first<{ is_system: number }>(db, "SELECT is_system FROM roles WHERE id = ?", [id]);
   if (!role) throw new HttpError(404, "No such role.");
   if (role.is_system) throw new HttpError(409, "The Admin role can't be changed.");
   const f = roleFields(o);
+  // Neither what it can do now nor what it would do may be beyond the caller
+  const had = await all<{ action: string }>(db, "SELECT action FROM role_actions WHERE role_id = ?", [id]);
+  if (!canGrant(caller, [...had.map((h) => h.action), ...f.actions]))
+    throw new HttpError(403, "A role can't do more than you can.");
   if (await first(db, "SELECT 1 FROM roles WHERE name = ? AND id != ?", [f.name, id]))
     throw new HttpError(409, "That name is taken.");
   await run(db, "UPDATE roles SET name = ?, description = ? WHERE id = ?", [f.name, f.description, id]);
@@ -204,6 +257,28 @@ export async function updateProfile(db: D1Database, id: number, o: Record<string
   const phone = text(o, "phone", { optional: true, max: 30 });
   const bio = text(o, "bio", { optional: true, max: 160 });
   await run(db, "UPDATE members SET position = ?, phone = ?, bio = ? WHERE id = ?", [position, phone || null, bio, id]);
+}
+
+/**
+ * An admin sets how to reach a member: the email they sign in with (ADR 0023), and a phone. A blank email means
+ * none; an email is one member's only.
+ */
+export async function setContact(db: D1Database, id: number, o: Record<string, unknown>, caller: ReadonlySet<Action>) {
+  if (!(await first(db, "SELECT 1 FROM members WHERE id = ?", [id]))) throw new HttpError(404, "No such member.");
+  // Their email signs them in: changing a more powerful member's would be a way to become them
+  await mayChange(db, caller, id);
+  const email = text(o, "email", { optional: true, max: 254 }).toLowerCase() || null;
+  if (email && !/^[^\s@,<>]+@[^\s@,<>]+\.[^\s@,<>]+$/.test(email))
+    throw new HttpError(400, "That doesn't look like an email address.");
+  const phone = text(o, "phone", { optional: true, max: 30 }) || null;
+  if (email) {
+    const other = await first<{ name: string }>(db, "SELECT name FROM members WHERE email = ? AND id != ?", [
+      email,
+      id,
+    ]);
+    if (other) throw new HttpError(409, `${other.name} already has that email.`);
+  }
+  await run(db, "UPDATE members SET email = ?, phone = ? WHERE id = ?", [email, phone, id]);
 }
 
 /** Make someone a Quarterly Member from today, or end it today (ADR 0034). */

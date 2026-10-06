@@ -20,7 +20,7 @@ let env: Env;
 beforeEach(() => {
   const db = createTestD1();
   db.raw.exec(rosterSql(parseRoster(JSON.stringify(ROSTER)), NOW));
-  env = { DB: db, TEAM_ENV: "local" };
+  env = { DB: db, TEAM_ENV: "local", TEAM_AUTO_ADMIN: "1" };
 });
 
 async function call(method: string, path: string, payload?: unknown, e: Env = env, now = NOW) {
@@ -389,7 +389,7 @@ describe("teams, quips, profiles and attendance", () => {
 });
 
 describe("access", () => {
-  it("answers nobody until sign-in exists, except on a local dev server", async () => {
+  it("answers nobody who isn't signed in", async () => {
     expect((await call("GET", "/api/bootstrap", undefined, { DB: env.DB })).status).toBe(401);
   });
 

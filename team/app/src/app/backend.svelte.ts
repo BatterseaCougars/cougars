@@ -122,6 +122,10 @@ export const saveMember = (m: MemberRow) =>
     }),
   );
 
+/** An admin sets a member's email (what they sign in with) and phone. */
+export const saveContact = (memberId: number, email: string, phone: string) =>
+  save(() => api("PUT", `/api/members/${memberId}/contact`, { email, phone }));
+
 export const saveRole = (r: Role) =>
   save(() => api("PUT", `/api/roles/${r.id}`, { name: r.name, description: r.description, actions: r.actions }));
 export const addRole = (name: string) =>

@@ -2,6 +2,19 @@
 // club's data before anything that reads it is imported (main.ts).
 import type { Bootstrap } from "../demo/data";
 
+/** What the server refused, and how (401: nobody's signed in). */
+export class ApiError extends Error {
+  constructor(
+    readonly status: number,
+    message: string,
+  ) {
+    super(message);
+  }
+}
+
+/** Set once the app is up: from then on, a session that's gone (signed out elsewhere, revoked) reloads to sign-in. */
+export const running = { app: false };
+
 export async function api<T = unknown>(method: string, path: string, payload?: unknown): Promise<T> {
   const res = await fetch(path, {
     method,
@@ -9,7 +22,8 @@ export async function api<T = unknown>(method: string, path: string, payload?: u
     body: payload === undefined ? undefined : JSON.stringify(payload),
   });
   const data = (await res.json().catch(() => ({}))) as { error?: string };
-  if (!res.ok) throw new Error(data.error ?? `The server said ${res.status}.`);
+  if (res.status === 401 && running.app && !path.startsWith("/api/auth/")) location.replace("/");
+  if (!res.ok) throw new ApiError(res.status, data.error ?? `The server said ${res.status}.`);
   return data as T;
 }
 

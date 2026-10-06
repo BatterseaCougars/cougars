@@ -1,6 +1,8 @@
 # 0023. Everyone signs in with a device-bound email code or link, or Google
 
-- **Status:** Accepted. Supersedes [0008](0008-magic-link-admin-login.md).
+- **Status:** Accepted. Supersedes [0008](0008-magic-link-admin-login.md). Amended by
+  [0035](0035-sessions-are-hashed-tokens.md): the session is a hashed random token with no signing key, and the email
+  carries a code only, no link.
 - **Date:** 2026-10-06
 
 ## Context

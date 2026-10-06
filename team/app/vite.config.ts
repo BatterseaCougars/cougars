@@ -10,8 +10,13 @@ export default defineConfig(({ command }) => ({
     svelte(),
     cloudflare({
       persistState: { path: "../../apps/web/.wrangler/state" },
-      // Only `vite` on your machine signs you in as the first admin; a build never carries it.
-      config: command === "serve" ? { vars: { TEAM_ENV: "local" } } : undefined,
+      // `vite` on your machine is "local": nothing is emailed, so sign-in shows the code on screen. With
+      // TEAM_AUTO_ADMIN=1 in the shell (screenshots, quick looks) nobody needs to sign in: you're the first admin.
+      // A build never carries either.
+      config:
+        command === "serve"
+          ? { vars: { TEAM_ENV: "local", TEAM_AUTO_ADMIN: process.env.TEAM_AUTO_ADMIN === "1" ? "1" : "" } }
+          : undefined,
     }),
   ],
   server: { port: 4510, strictPort: true, host: true },

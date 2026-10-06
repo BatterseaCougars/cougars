@@ -2,8 +2,9 @@
 // signed-in member's roles grant it (manage:all grants everything). Anything not listed here is a 404.
 import { londonToday } from "../src/lib/dates";
 import type { Action } from "../src/access/actions";
+import { handleAuth, sessionOf, type AuthEnv } from "./auth";
 import { answer, listEntries, mark, setPlayer, type EntryKind } from "./entries";
-import { HttpError, body, json } from "./http";
+import { HttpError, body, json, sameOrigin } from "./http";
 import {
   actionsOf,
   attendanceOf,
@@ -11,6 +12,7 @@ import {
   firstAdmin,
   listMembers,
   listRoles,
+  setContact,
   setQuarterly,
   updateMember,
   updateProfile,
@@ -35,10 +37,9 @@ import {
   updateTournamentType,
 } from "./schedule";
 
-export interface Env {
-  DB: D1Database;
-  /** "local" only under `vite` on your machine: then you're the first admin. Everywhere else, sign-in decides. */
-  TEAM_ENV?: string;
+export interface Env extends AuthEnv {
+  /** "1", and only with TEAM_ENV "local" (tests, `TEAM_AUTO_ADMIN=1 npm run dev`): no session means the first admin. */
+  TEAM_AUTO_ADMIN?: string;
 }
 
 export interface Ctx {
@@ -116,7 +117,7 @@ export const ROUTES: Route[] = [
         actions: [...c.actions],
         members: await listMembers(db, {
           ratings: can("read:Rating"),
-          phonesFor: can("manage:Member") ? "all" : c.memberId,
+          privateFor: can("manage:Member") ? "all" : c.memberId,
           today: c.today,
         }),
         roles: await listRoles(db),
@@ -168,21 +169,27 @@ export const ROUTES: Route[] = [
   },
   {
     method: "PUT",
+    path: /^\/api\/members\/(\d+)\/contact$/,
+    action: "manage:Member",
+    handle: async (c) => (await setContact(c.env.DB, id(c), await body(c.request), c.actions), ok()),
+  },
+  {
+    method: "PUT",
     path: /^\/api\/members\/(\d+)$/,
     action: "manage:Member",
-    handle: async (c) => (await updateMember(c.env.DB, id(c), await body(c.request)), ok()),
+    handle: async (c) => (await updateMember(c.env.DB, id(c), await body(c.request), c.actions), ok()),
   },
   {
     method: "POST",
     path: /^\/api\/roles$/,
     action: "manage:Role",
-    handle: async (c) => json({ id: await createRole(c.env.DB, await body(c.request)) }, 201),
+    handle: async (c) => json({ id: await createRole(c.env.DB, await body(c.request), c.actions) }, 201),
   },
   {
     method: "PUT",
     path: /^\/api\/roles\/(\d+)$/,
     action: "manage:Role",
-    handle: async (c) => (await updateRole(c.env.DB, id(c), await body(c.request)), ok()),
+    handle: async (c) => (await updateRole(c.env.DB, id(c), await body(c.request), c.actions), ok()),
   },
   {
     method: "POST",
@@ -295,26 +302,47 @@ async function withTeams<T extends { id: number }>(db: D1Database, rows: T[]) {
   return rows.map((r) => ({ ...r, teams: teams.get(r.id) ?? [] }));
 }
 
-/** Who's asking. Until sign-in (T1), only a local dev server has an answer: the first admin. */
-async function whoIs(env: Env): Promise<number | null> {
-  if (env.TEAM_ENV === "local") return firstAdmin(env.DB);
+/** Who's asking: their session, or (on your own machine, when asked for) the first admin. */
+async function whoIs(request: Request, env: Env, now: Date): Promise<{ memberId: number; setCookie?: string } | null> {
+  const session = await sessionOf(request, env, now);
+  if (session) return session;
+  if (env.TEAM_ENV === "local" && env.TEAM_AUTO_ADMIN === "1") {
+    const memberId = await firstAdmin(env.DB);
+    return memberId == null ? null : { memberId };
+  }
   return null;
 }
 
-export async function handleApi(request: Request, env: Env, now = new Date()): Promise<Response> {
+export async function handleApi(
+  request: Request,
+  env: Env,
+  now = new Date(),
+  waitUntil?: (p: Promise<unknown>) => void,
+): Promise<Response> {
   const url = new URL(request.url);
   if (url.pathname === "/api/health") return json({ ok: true });
+  if (!sameOrigin(request)) return json({ error: "That came from somewhere else." }, 403);
+  if (url.pathname.startsWith("/api/auth/")) {
+    try {
+      return (await handleAuth(request, env, now, waitUntil)) ?? json({ error: "Not found." }, 404);
+    } catch (e) {
+      if (e instanceof HttpError) return json({ error: e.message }, e.status);
+      console.error(e);
+      return json({ error: "Something went wrong." }, 500);
+    }
+  }
   const match = ROUTES.map((r) => ({ r, m: url.pathname.match(r.path) })).filter((x) => x.m);
   const hit = match.find((x) => x.r.method === request.method);
   if (!hit) return json({ error: match.length ? "Method not allowed." : "Not found." }, match.length ? 405 : 404);
   try {
-    const memberId = await whoIs(env);
-    if (memberId == null) return json({ error: "Sign in first." }, 401);
+    const who = await whoIs(request, env, now);
+    if (!who) return json({ error: "Sign in first." }, 401);
+    const { memberId } = who;
     const actions = await actionsOf(env.DB, memberId);
     const { action } = hit.r;
     if (action !== "authenticated" && !actions.has("manage:all") && !actions.has(action))
       return json({ error: "Your role can't do that." }, 403);
-    return await hit.r.handle({
+    const res = await hit.r.handle({
       env,
       request,
       params: hit.m!.slice(1),
@@ -323,6 +351,9 @@ export async function handleApi(request: Request, env: Env, now = new Date()): P
       today: londonToday(now),
       now: now.toISOString(),
     });
+    // A session in use is renewed now and then
+    if (who.setCookie) res.headers.append("set-cookie", who.setCookie);
+    return res;
   } catch (e) {
     if (e instanceof HttpError) return json({ error: e.message }, e.status);
     console.error(e);

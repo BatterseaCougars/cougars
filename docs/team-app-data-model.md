@@ -7,18 +7,18 @@ shapes in memory.
 
 ## People and access (T1)
 
-[ADR 0023](adr/0023-device-bound-sign-in.md), [ADR 0024](adr/0024-action-based-authorization.md),
+[ADR 0023](adr/0023-device-bound-sign-in.md), [ADR 0035](adr/0035-sessions-are-hashed-tokens.md), [ADR 0024](adr/0024-action-based-authorization.md),
 [ADR 0029](adr/0029-view-as-a-member.md).
 
 | Table              | Columns                                                                                                                                                                                                                              |
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `members`          | name, email (unique), phone, position (F/D/G), rating, cougar (on the official team, [ADR 0034](adr/0034-quarterly-members-and-the-cougars.md)), bio, photo, status (pending/active/inactive), payment_reference (unique), joined_on |
-| `login_challenges` | email, code_hash, link_hash, nonce_hash, attempts, expires_at, used_at                                                                                                                                                               |
-| `auth_sessions`    | member_id, viewing_as_member_id (null unless viewing as someone), token_hash, created_at, last_seen_at, revoked_at                                                                                                                   |
+| `login_challenges` | member_id, code_hash, nonce_hash, attempts, expires_at, used_at (`0008`)                                                                                                                                                             |
+| `auth_sessions`    | member_id, token_hash, method (code), user_agent, created_at, last_seen_at, expires_at, revoked_at (`0008`); viewing as a member comes with [ADR 0029](adr/0029-view-as-a-member.md)                                                 |
 | `roles`            | name, description, is_system                                                                                                                                                                                                         |
 | `role_actions`     | role_id, action                                                                                                                                                                                                                      |
 | `member_roles`     | member_id, role_id                                                                                                                                                                                                                   |
-| `audit_log`        | member_id, viewing_as_member_id, action, subject, detail (JSON), at                                                                                                                                                                  |
+| `audit_log`        | at, member_id, action (sign_in, sign_out, access.requested…), detail (JSON, never a secret) (`0008`)                                                                                                                                 |
 
 ## Schedule (T2, T5)
 

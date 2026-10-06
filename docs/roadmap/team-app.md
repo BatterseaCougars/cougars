@@ -89,19 +89,21 @@ Copied in shape from Gwenda ops (`gwenda-hackney/ark`, `ops/site/src/app/`), whi
 - [x] Migrations: `members` (name, email, phone, position F/D/G, rating, cougar, photo, status
       pending/active/inactive, joined_on, payment reference), `roles`, `role_actions`, `member_roles`
       (`0003_team_people.sql`).
-- [ ] Migrations: `login_challenges` (hashed code and link token, nonce hash, attempts, expires_at, used_at),
-      `auth_sessions`, `audit_log`.
+- [x] Migrations: `login_challenges` (hashed code, nonce hash, attempts, expires_at, used_at),
+      `auth_sessions`, `audit_log` (`0008_team_sign_in.sql`).
 - [x] The team app's Worker (`team/app/worker/`): `/api/*` in code, the built app for the rest, D1 bound as `DB`.
       It runs inside Vite on :4510, sharing the website's local D1. Not deployed until sign-in exists: until then
       only a local dev server answers, signed in as the first admin.
-- [ ] `shared/email.ts` on the Gmail API (also used by the website's enquiry email, M5).
-- [ ] Sign-in: email → 6-digit code (or the link, on the same device) → session. "Sign in with Google" as a
-      shortcut for a member whose Google email matches.
+- [x] `shared/email.ts` on the Gmail API (also used by the website's enquiry email, M5).
+- [x] Sign-in: email → 6-digit code, typed in the same browser → session (`worker/auth.ts`,
+      [ADR 0035](../adr/0035-sessions-are-hashed-tokens.md)). Locally the code shows on screen.
+- [ ] "Sign in with Google" as a shortcut for a member whose Google email matches.
+- [ ] Deploy the team Worker to dev through CI, with the Gmail secrets, then production.
 - [x] The action catalog (`actions.ts`), the API wrapper that denies by default, `/api/bootstrap` returning the
       member's actions with the club's data, and a test that every route declares an action that exists.
 - [x] Seeded roles: Member, Contributor, Door, Admin. The first admin is whoever the roster makes Admin.
 - [ ] Screens:
-  - sign-in, and **request access** (name, email, phone, position)
+  - [x] sign-in, and **request access** (name, email, phone, position)
   - **Members** (admin): approve requests, assign roles, set position, rating and the cougar flag
   - **Roles** (admin): create a role, tick its actions; the last admin can't be removed
   - **Profile**: own details and photo
@@ -110,8 +112,9 @@ Copied in shape from Gwenda ops (`gwenda-hackney/ark`, `ops/site/src/app/`), whi
 - [x] Import of players from the Airtable base: the roster seed from Secrets Manager
       ([ADR 0033](../adr/0033-personal-data-out-of-the-repo.md), [db/seed/README.md](../../db/seed/README.md)).
 - [ ] Website enquiries can be turned into members.
-- [ ] Secrets, each documented in [README.md#secrets](../../README.md#secrets): `TEAM_SESSION_SECRET`, the Gmail
-      OAuth client and refresh token for batterseahockey@gmail.com, and the Google sign-in OAuth client.
+- [ ] Secrets, each documented in [README.md#secrets](../../README.md#secrets): the Gmail OAuth client and refresh
+      token (the website's, shared) and the Google sign-in OAuth client. No session key
+      ([ADR 0035](../adr/0035-sessions-are-hashed-tokens.md)).
 
 ## T2: Training, calendar, sign-up and the register
 

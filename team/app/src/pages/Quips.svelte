@@ -127,13 +127,21 @@
   .row {
     padding-block: var(--s-2);
   }
+  /* Reads as text in the list; the field's fill shows on hover and while editing */
   .line {
     flex: 1;
+    padding-inline: var(--s-3);
     border-color: transparent;
     background: none;
+    box-shadow: none;
   }
   .line:hover {
-    border-color: var(--border);
+    background: var(--field-bg);
+  }
+  .line:focus-visible {
+    border-color: var(--red-border);
+    background: var(--field-bg-focus);
+    box-shadow: 0 0 0 3px var(--red-wash);
   }
   .add {
     display: flex;
