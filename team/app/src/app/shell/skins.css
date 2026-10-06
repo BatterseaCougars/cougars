@@ -136,6 +136,15 @@
   }
 }
 
+/* The default look's extras stand down in the trial skins */
+:root[data-chrome="boards"] .nav-mark::before,
+:root[data-chrome="scoreboard"] .nav-mark::before,
+:root[data-chrome="boards"] .tab-mark::before,
+:root[data-chrome="scoreboard"] .tab-mark::before,
+:root[data-chrome="scoreboard"] .ticket {
+  display: none;
+}
+
 /* ═══ Scoreboard ═══
    An arena scoreboard: black housing, dot-matrix panels, LEDs. Unlit items are dim red bulbs; the selected one
    is lit, with a glow. The top bar carries the board: the next session, counting down, and whether you're in. */

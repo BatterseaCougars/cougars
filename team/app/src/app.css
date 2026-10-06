@@ -335,13 +335,37 @@ h3 {
   justify-content: space-between;
   gap: var(--s-4);
 }
-.page-head h1 {
+/* Page titles are posters: heavy italic capitals, with the logo's red slash drawn in under them */
+.page-head h1,
+h1.poster {
+  position: relative;
+  padding-bottom: 0.9rem;
   font-family: var(--font-display);
   font-weight: 400;
-  font-size: var(--text-xl);
-  letter-spacing: 0.01em;
+  font-size: clamp(2.4rem, 8vw, 3.4rem);
+  font-style: italic;
+  letter-spacing: 0.005em;
   text-transform: uppercase;
-  line-height: 1;
+  line-height: 0.95;
+}
+.page-head h1::after,
+h1.poster::after {
+  content: "";
+  position: absolute;
+  left: 0.1em;
+  bottom: 0;
+  width: 3.25rem;
+  height: 5px;
+  transform: skewX(-24deg);
+  transform-origin: left;
+  background: var(--red);
+  box-shadow: 0.9rem 0 0 -0.5px color-mix(in srgb, var(--red) 45%, transparent);
+  animation: slash-in 520ms var(--ease) 120ms both;
+}
+@keyframes slash-in {
+  from {
+    transform: skewX(-24deg) scaleX(0);
+  }
 }
 .page-head .hint {
   margin-top: var(--s-2);

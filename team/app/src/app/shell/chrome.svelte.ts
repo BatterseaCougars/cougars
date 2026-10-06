@@ -1,7 +1,7 @@
 // Trial chrome skins (the rail, top bar and tabs), so they can be compared in the real app before one is
 // chosen. The choice sets data-chrome on <html>; the skins live in skins.css. Remembered per device.
 export const CHROMES = [
-  { id: "glass", label: "Glass" },
+  { id: "glass", label: "Fresh" },
   { id: "boards", label: "Boards" },
   { id: "scoreboard", label: "Scoreboard" },
 ] as const;

@@ -12,7 +12,7 @@
 <header class="head" style:--tone="var(--tone-{type.tone})">
   <p class="kicker"><Icon name={type.icon} size={14} /> {type.name}</p>
   <div class="row-head">
-    <h1 class="display">{title}</h1>
+    <h1 class="display poster">{title}</h1>
     {#if tournament}
       <span
         class="badge"
@@ -49,8 +49,5 @@
     display: flex;
     align-items: center;
     gap: var(--s-3);
-  }
-  h1 {
-    font-size: clamp(2rem, 8vw, 2.75rem);
   }
 </style>

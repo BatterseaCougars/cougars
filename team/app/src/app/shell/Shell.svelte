@@ -14,7 +14,7 @@
   import logo from "../../assets/cougars-mark.webp";
   import { db } from "../../demo/store.svelte";
   import { nextSession, sessionBookable } from "../../demo/schedule.svelte";
-  import { formatTime } from "../../lib/dates";
+  import { formatDayDate, formatTime } from "../../lib/dates";
 
   let { route, children }: { route: Route; children: Snippet } = $props();
 
@@ -144,6 +144,31 @@
     };
   });
 
+  // The poster word behind each page's title: the section it's in (Friday, Kumite), else the page itself.
+  const ghost = $derived(
+    route.id === "home"
+      ? ""
+      : route.fold
+        ? (tabList.find((t) => t.id === route.tab)?.label ?? route.name)
+        : (route.short ?? route.name),
+  );
+  // The ticket stub at the foot of the rail: the next session and whether you're in.
+  const ticket = $derived.by(() => {
+    const series = db.series.find((x) => x.active);
+    const session = series && nextSession(series);
+    if (!series || !session) return null;
+    const b = sessionBookable(session);
+    const id = me().id;
+    const at = session.going.indexOf(id);
+    return {
+      href: `/training/${series.slug}`,
+      name: series.shortName,
+      when: `${formatDayDate(b.startsAt)} · ${formatTime(b.startsAt)}`,
+      status: at >= 0 ? `In · #${at + 1}` : session.waitlist.includes(id) ? "Waitlist" : "Not in yet",
+      in: at >= 0,
+    };
+  });
+
   const glideKey = $derived(`${route.id}|${JSON.stringify(opened)}|${[...perms].join()}|${all.length}`);
 </script>
 
@@ -199,6 +224,16 @@
         </div>
       {/each}
     </nav>
+    {#if ticket}
+      <a class="ticket" class:in={ticket.in} href={ticket.href}>
+        <span class="ticket-top">
+          <span class="ticket-kicker">Admit one</span>
+          <span class="display ticket-name">{ticket.name}</span>
+          <span class="ticket-when">{ticket.when}</span>
+        </span>
+        <span class="ticket-stub display">{ticket.status}</span>
+      </a>
+    {/if}
   </aside>
 
   <main class="main">
@@ -271,6 +306,7 @@
           in:enter={{ focus: route.focus }}
           out:leave={{ focus: route.focus }}
         >
+          {#if ghost && !route.focus}<span class="ghost display" aria-hidden="true">{ghost}</span>{/if}
           {@render children()}
         </div>
       {/key}
@@ -314,16 +350,28 @@
   }
 
   /* ─── Rail (desktop) ─── */
+  /* The rail: a dark strip with the club's red bleeding down its edge from the top */
   .rail {
+    position: relative;
     display: flex;
     flex-direction: column;
     min-width: 0;
     padding: 0 var(--s-3) var(--s-4);
     border-right: 1px solid var(--border);
-    background: var(--panel-bg);
-    backdrop-filter: var(--blur);
-    -webkit-backdrop-filter: var(--blur);
+    background:
+      radial-gradient(120% 40% at 0% 0%, color-mix(in srgb, var(--red) 16%, transparent), transparent 70%),
+      linear-gradient(180deg, #121215, #0b0b0d);
     overflow: hidden;
+  }
+  .rail::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: -1px;
+    width: 2px;
+    height: 45%;
+    background: linear-gradient(180deg, var(--red), transparent);
+    pointer-events: none;
   }
   .brand {
     display: flex;
@@ -332,7 +380,6 @@
     height: var(--topbar-h);
     margin: 0 calc(-1 * var(--s-3)) var(--s-3);
     padding: 0 var(--s-4);
-    border-bottom: 1px solid var(--border);
     white-space: nowrap;
   }
   .brand img,
@@ -343,13 +390,19 @@
     display: grid;
     line-height: 1.1;
   }
+  /* The wordmark, as on the logo: heavy italic capitals, the second line in red */
   .brand-title {
-    font-size: 1.3rem;
+    font-size: 1.55rem;
+    font-style: italic;
     color: var(--fg);
   }
   .brand-sub {
-    font-size: var(--text-xs);
-    color: var(--fg-muted);
+    font-family: var(--font-display);
+    font-size: 0.82rem;
+    font-style: italic;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--red-hot);
   }
   .nav {
     position: relative;
@@ -382,13 +435,16 @@
     font-weight: 500;
     text-align: left;
     white-space: nowrap;
-    transition:
-      color var(--t-fast) var(--ease-in-out),
-      background-color var(--t-fast) var(--ease-in-out);
+    transition: color var(--t-fast) var(--ease-in-out);
+  }
+  .nav-item > span {
+    transition: translate var(--t) var(--ease);
   }
   .nav-item:hover:not(.on) {
-    background: color-mix(in srgb, var(--fg) 6%, transparent);
     color: var(--fg);
+  }
+  .nav-item:hover:not(.on) > span {
+    translate: 3px 0;
   }
   .nav-item.on {
     color: var(--fg);
@@ -407,6 +463,7 @@
   .nav-item.nested :global(svg) {
     display: none;
   }
+  /* The selected item sits on the angled red plate from the player cards; it glides between items */
   .nav-mark {
     position: absolute;
     top: 0;
@@ -414,9 +471,15 @@
     width: 0;
     height: 0;
     opacity: 0;
-    background: var(--red-wash);
-    box-shadow: inset 0 0 0 1px var(--red-border);
     pointer-events: none;
+  }
+  .nav-mark::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: var(--r-md);
+    background: color-mix(in srgb, var(--fg) 8%, transparent);
+    box-shadow: inset 2px 0 0 var(--red);
   }
 
   /* Settings folds open and shut (grid-template-rows 0fr ↔ 1fr), so the rows below glide rather than jump */
@@ -470,10 +533,102 @@
   .sub-label {
     margin: var(--s-2) 0 0 2.6rem;
     font-size: var(--text-2xs);
-    font-weight: 600;
-    letter-spacing: var(--tracking-label);
+    font-weight: 700;
+    letter-spacing: 0.16em;
     text-transform: uppercase;
+    color: var(--red-hot);
+  }
+
+  /* ─── Ticket stub: this Friday, at the foot of the rail ─── */
+  .ticket {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    margin-top: var(--s-3);
+    border-radius: var(--r-md);
+    background: linear-gradient(135deg, #1d1d21, #141417);
+    box-shadow:
+      inset 0 0 0 1px var(--border-strong),
+      0 10px 24px -14px rgb(0 0 0 / 0.9);
+    color: var(--fg-muted);
+    /* the punched notches either side of the tear line */
+    mask:
+      radial-gradient(circle at calc(100% - 4.75rem) 0, transparent 6px, #000 6.5px) top / 100% 51% no-repeat,
+      radial-gradient(circle at calc(100% - 4.75rem) 100%, transparent 6px, #000 6.5px) bottom / 100% 51% no-repeat;
+    transition: translate var(--t) var(--ease);
+  }
+  .ticket:hover {
+    translate: 0 -2px;
+  }
+  .ticket-top {
+    display: grid;
+    gap: 0.15rem;
+    padding: var(--s-3) var(--s-3) var(--s-3) var(--s-4);
+    min-width: 0;
+  }
+  .ticket-kicker {
+    font-size: var(--text-2xs);
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--red-hot);
+  }
+  .ticket-name {
+    font-size: 1.35rem;
+    font-style: italic;
+    color: var(--fg);
+  }
+  .ticket-when {
+    font-size: var(--text-xs);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .ticket-stub {
+    display: grid;
+    place-items: center;
+    width: 4.75rem;
+    padding: 0 var(--s-2);
+    border-left: 1px dashed var(--border-strong);
+    font-size: 0.95rem;
+    font-style: italic;
+    line-height: 1.05;
+    text-align: center;
     color: var(--fg-subtle);
+  }
+  .ticket.in .ticket-stub {
+    color: var(--green);
+  }
+
+  /* ─── The poster word: the page's section in huge outlined capitals behind its title ─── */
+  .ghost {
+    position: absolute;
+    top: calc(var(--chrome-h, 0px) - 0.9rem);
+    left: 50%;
+    width: min(100%, calc(var(--page-max) + 8rem));
+    translate: -50% 0;
+    padding-left: 1.5rem;
+    overflow: hidden;
+    font-size: clamp(5.5rem, 17vw, 10rem);
+    font-style: italic;
+    line-height: 1;
+    white-space: nowrap;
+    color: transparent;
+    -webkit-text-stroke: 1px color-mix(in srgb, var(--fg) 9%, transparent);
+    pointer-events: none;
+    user-select: none;
+    z-index: 0;
+    animation: ghost-in 700ms var(--ease) both;
+  }
+  @keyframes ghost-in {
+    from {
+      opacity: 0;
+      translate: calc(-50% + 1.5rem) 0;
+    }
+  }
+  .view > :global(.page) {
+    position: relative;
+    z-index: 1;
   }
 
   /* ─── Main ─── */
@@ -494,6 +649,7 @@
     position: absolute;
     inset: 0;
     padding-top: var(--chrome-h, 0px);
+    overflow-x: clip;
     overflow-y: auto;
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
@@ -533,8 +689,12 @@
     display: none;
     align-items: center;
     gap: var(--s-2);
-    font-size: 1.15rem;
+    font-size: 1.2rem;
+    font-style: italic;
     color: var(--fg);
+  }
+  .topbar-brand .meat {
+    color: var(--red-hot);
   }
   /* Only the scoreboard skin shows the board (skins.css) */
   .board {
@@ -623,9 +783,6 @@
   .strip-link.on {
     color: var(--fg);
   }
-  .strip-link.on {
-    font-weight: 600;
-  }
   .strip-link:focus-visible {
     outline-offset: -2px;
   }
@@ -635,6 +792,7 @@
     left: 0;
     opacity: 0;
     background: var(--red-hot);
+    transform-origin: left;
     pointer-events: none;
   }
   @media (min-width: 901px) {
@@ -706,7 +864,6 @@
       color: var(--fg-muted);
       font-size: var(--text-2xs);
       font-weight: 600;
-      letter-spacing: 0.01em;
       transition: color var(--t) var(--ease-in-out);
     }
     .tab-icon {
@@ -729,14 +886,26 @@
     .tab-label {
       line-height: 1;
     }
+    /* The same angled red plate as the rail, behind the tab's icon */
     .tab-mark {
       position: absolute;
       top: 0;
       left: 0;
       opacity: 0;
-      background: var(--red-wash);
-      box-shadow: inset 0 0 0 1px var(--red-border);
       pointer-events: none;
+    }
+    .tab-mark::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: 999px;
+      background: color-mix(in srgb, var(--fg) 10%, transparent);
+    }
+    .ghost {
+      font-size: clamp(4.5rem, 22vw, 6rem);
+    }
+    .ticket {
+      display: none;
     }
   }
 </style>

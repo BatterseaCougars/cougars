@@ -49,7 +49,7 @@
 <div class="page">
   <header class="hello">
     <p class="kicker">Battersea Cougars</p>
-    <h1 class="display">{greeting}, {who.name.split(" ")[0]}</h1>
+    <h1 class="display poster">{greeting}, {who.name.split(" ")[0]}</h1>
   </header>
 
   {#if series && session && booking}
