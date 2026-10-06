@@ -68,6 +68,7 @@
   /* ─── Colour ─── */
   --red: #e5131f;
   --red-hot: #ff2a35; /* red text on dark */
+  --red-muted: color-mix(in srgb, var(--red-hot) 62%, var(--fg-muted)); /* headings: red, but not shouting */
   --red-hover: color-mix(in srgb, var(--red) 86%, white);
   --red-wash: color-mix(in srgb, var(--red) 16%, transparent);
   --red-wash-strong: color-mix(in srgb, var(--red) 26%, transparent);
@@ -371,7 +372,7 @@ h1.poster::after {
 }
 /* Section headings: the club's italic capitals in red, so a page reads in clear blocks */
 .section-title {
-  margin: var(--s-3) var(--s-1) calc(-1 * var(--s-2));
+  margin: var(--s-3) var(--s-1) var(--s-1);
   font-family: var(--font-display);
   font-size: 1.3rem;
   font-style: italic;
@@ -379,7 +380,7 @@ h1.poster::after {
   letter-spacing: 0.02em;
   line-height: 1.1;
   text-transform: uppercase;
-  color: var(--red-hot);
+  color: var(--red-muted);
 }
 
 /* Read by screen readers, not shown */

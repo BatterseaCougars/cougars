@@ -35,6 +35,11 @@
       .map((type) => ({ type, t: currentTournament(type.id) }))
       .filter((x) => x.t && x.t.status !== "finished"),
   );
+  const later = $derived(
+    [...others.map((o) => sessionBookable(o.session)), ...tournaments.map(({ t }) => tournamentBookable(t!))].sort(
+      (x, y) => x.startsAt.localeCompare(y.startsAt),
+    ),
+  );
   const isIn = $derived(next.going.includes(who.id));
   const waiting = $derived(next.waitlist.includes(who.id));
   const answered = $derived(isIn || waiting);
@@ -124,24 +129,15 @@
     </section>
   {/if}
 
-  {#if others.length}
+  <!-- Everything after the lead session, in date order: other trainings, then tournaments as they come -->
+  {#if later.length}
     <section>
-      <h2 class="section-title">Also coming up</h2>
-      {#each others as o (o.series.id)}
-        <EventCard event={sessionBookable(o.session)} canSignUp={can(perms, "signup:Event")} compact />
+      <h2 class="section-title">Later</h2>
+      {#each later as ev (ev.key)}
+        <EventCard event={ev} canSignUp={can(perms, "signup:Event")} compact />
       {/each}
     </section>
   {/if}
-
-  {#each tournaments as { type, t } (type.id)}
-    {@const b = tournamentBookable(t!)}
-    <section class="next-tournament">
-      <h2 class="section-title">
-        {t!.status === "live" ? `${type.shortName} today` : `Next ${type.shortName}`}
-      </h2>
-      <EventCard event={b} canSignUp={can(perms, "signup:Event")} />
-    </section>
-  {/each}
 </div>
 
 <style>
@@ -157,6 +153,10 @@
   section {
     display: grid;
     gap: var(--s-3);
+  }
+  /* Bigger breaks between blocks than within them */
+  .page {
+    gap: var(--s-8);
   }
   .owing {
     display: flex;
