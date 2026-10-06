@@ -2,7 +2,7 @@
   import BackLink from "../lib/BackLink.svelte";
   import { ledgerFor, referenceFor } from "../demo/data";
   import { me } from "../demo/session.svelte";
-  import { pounds } from "../lib/dates";
+  import { formatDayDate, pounds } from "../lib/dates";
 
   const who = me();
   const ledger = ledgerFor(who.id);
@@ -32,11 +32,13 @@
     <p class="hint">Always use your reference, so your payment is matched to you. Sample bank details.</p>
   </div>
 
-  <h2 class="section-title">History</h2>
+  <h2 class="section-title">Payment history</h2>
   <div class="list">
     {#each [...ledger].reverse() as l (l.date + l.what)}
       <div class="row">
-        <span class="grow"><span class="title">{l.what}</span><span class="sub">{l.date}</span></span>
+        <span class="grow"
+          ><span class="title">{l.what}</span><span class="sub">{formatDayDate(`${l.date}T12:00:00Z`)}</span></span
+        >
         <span class="num amt" class:paid={l.pence < 0}>{l.pence < 0 ? "−" : ""}{pounds(Math.abs(l.pence))}</span>
       </div>
     {/each}

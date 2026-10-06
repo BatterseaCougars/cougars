@@ -11,9 +11,20 @@
 
   const perms = $derived(granted());
   const who = $derived(me());
-  // The main training (the first one set up) leads Home; the next tournament of each type follows.
-  const series = $derived(db.series.find((s) => s.active));
-  const session = $derived(series && nextSession(series));
+  // The soonest session of any training leads Home; the other trainings' next sessions follow, then the next
+  // tournament of each type.
+  const nexts = $derived(
+    db.series
+      .filter((s) => s.active)
+      .flatMap((series) => {
+        const session = nextSession(series);
+        return session ? [{ series, session, at: sessionBookable(session).startsAt }] : [];
+      })
+      .sort((a, b) => a.at.localeCompare(b.at)),
+  );
+  const series = $derived(nexts[0]?.series);
+  const session = $derived(nexts[0]?.session);
+  const others = $derived(nexts.slice(1));
   const booking = $derived(session && sessionBookable(session));
   const next = $derived(session ?? { id: 0, going: [] as number[], waitlist: [] as number[] });
   const day = $derived(series?.shortName ?? "week");
@@ -50,19 +61,25 @@
   <header class="hello">
     <p class="kicker">Battersea Cougars</p>
     <h1 class="display poster">{greeting}, {who.name.split(" ")[0]}</h1>
+    <!-- The locker room's word: one line under the greeting, swapped in place when you answer -->
+    {#if owed > 0}
+      <!-- You owe: said up front, every visit, until it's paid -->
+      <a class="owing" href="/me/tab">
+        <span class="owing-text">
+          <span class="owing-head">You owe the club <strong class="display num">{pounds(owed)}</strong></span>
+          <span class="owing-sub">Bank transfer, reference <strong>{referenceFor(who.id)}</strong></span>
+        </span>
+        <span class="owing-cta">Settle up <Icon name="chevronRight" size={16} /></span>
+      </a>
+    {/if}
+    <p class="message">
+      {#if quip}{#key quip.text}<span class="rise">{quip.text}</span>{/key}{/if}
+    </p>
   </header>
 
   {#if series && session && booking}
     <section>
       <p class="eyebrow lead">{answered ? `This ${day}` : `Are you in this ${day}?`}</p>
-      {#if quip}
-        {#key quip.text}
-          <blockquote class="quote rise">
-            <p class="display">“{quip.text}”</p>
-            {#if quip.by}<footer class="hint">{quip.by}</footer>{/if}
-          </blockquote>
-        {/key}
-      {/if}
       <EventCard event={booking} canSignUp={can(perms, "signup:Event")} feature {onanswer}>
         {#snippet footer()}
           <!-- Where you stand, in one line that never changes height, and the way to the teams -->
@@ -86,6 +103,15 @@
     </section>
   {/if}
 
+  {#if others.length}
+    <section>
+      <p class="eyebrow lead">Also coming up</p>
+      {#each others as o (o.series.id)}
+        <EventCard event={sessionBookable(o.session)} canSignUp={can(perms, "signup:Event")} compact />
+      {/each}
+    </section>
+  {/if}
+
   {#each tournaments as { type, t } (type.id)}
     {@const b = tournamentBookable(t!)}
     <section class="next-tournament">
@@ -93,18 +119,6 @@
       <EventCard event={b} canSignUp={can(perms, "signup:Event")} />
     </section>
   {/each}
-
-  <div class="list">
-    <a class="row" href="/me/tab">
-      <span class="glyph"><Icon name="pound" /></span>
-      <span class="grow">
-        <span class="title">Your tab</span>
-        <span class="sub">{owed > 0 ? `Pay by bank transfer, reference ${referenceFor(who.id)}` : "All square"}</span>
-      </span>
-      <span class="display owe num" class:zero={owed <= 0}>{pounds(owed)}</span>
-      <Icon name="chevronRight" size={18} />
-    </a>
-  </div>
 </div>
 
 <style>
@@ -124,35 +138,68 @@
   .lead {
     margin-left: var(--s-1);
   }
-  .quote {
+  .owing {
+    display: flex;
+    align-items: center;
+    gap: var(--s-4);
+    margin-top: var(--s-2);
+    padding: var(--s-3) var(--s-4);
+    border: 1px solid var(--red-border);
+    border-radius: var(--r-md);
+    background:
+      linear-gradient(100deg, var(--red-wash-strong), var(--red-wash) 60%, transparent),
+      color-mix(in srgb, var(--surface-1) 50%, transparent);
+    color: var(--fg-muted);
+    transition: border-color var(--t) var(--ease-in-out);
+  }
+  .owing:hover {
+    border-color: var(--red);
+  }
+  .owing-text {
     display: grid;
-    gap: var(--s-1);
-    margin: 0 0 var(--s-1);
-    padding: 0 var(--s-1) 0 var(--s-4);
-    border-left: 3px solid var(--red);
+    flex: 1;
+    min-width: 0;
+    gap: 0.1rem;
   }
-  /* The quote changes on every answer: it always takes the same room (two lines on a phone, one on desktop),
-     sitting on the card, so a long one never pushes the card down */
-  .quote {
-    align-content: end;
-    font-size: clamp(1.5rem, 6.5vw, 2rem);
-    line-height: 1;
-    min-height: 2lh;
-  }
-  .quote p {
-    font-size: inherit;
+  .owing-head {
     color: var(--fg);
-    text-wrap: balance;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
-    overflow: hidden;
+    font-size: var(--text-md);
+    font-weight: 600;
   }
-  @media (min-width: 901px) {
-    .quote {
-      min-height: 1lh;
-    }
+  .owing-head strong {
+    margin-left: 0.15em;
+    font-size: 1.5rem;
+    font-weight: 400;
+    color: var(--red-hot);
+    vertical-align: -0.1em;
+  }
+  .owing-sub {
+    font-size: var(--text-xs);
+  }
+  .owing-sub strong {
+    color: var(--fg);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+  }
+  .owing-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.15rem;
+    color: var(--red-hot);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  /* One line, always there (empty or not), so a new message never moves the cards */
+  .message {
+    min-height: 1lh;
+    margin-top: calc(-1 * var(--s-1));
+    overflow: hidden;
+    color: var(--fg-muted);
+    font-size: var(--text-md);
+    line-height: 1.35;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .status {
     display: flex;
@@ -174,12 +221,5 @@
   }
   .status:hover {
     color: var(--fg);
-  }
-  .owe {
-    font-size: 1.35rem;
-    color: var(--red-hot);
-  }
-  .owe.zero {
-    color: var(--green);
   }
 </style>

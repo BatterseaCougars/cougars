@@ -93,13 +93,13 @@ const STATIC_TAIL: Route[] = [
   {
     id: "tab",
     path: "/me/tab",
-    name: "My tab",
+    name: "Dues",
     tab: "more",
     page: "tab",
     action: "authenticated",
     icon: "pound",
     group: "You",
-    hint: "What you owe and how to pay",
+    hint: "Pay what you owe, and what you've paid",
   },
   {
     id: "members",

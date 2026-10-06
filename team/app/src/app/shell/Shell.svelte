@@ -16,6 +16,8 @@
   import AccountMenu from "./AccountMenu.svelte";
   import Icon from "./Icon.svelte";
   import logo from "../../assets/cougars-mark.webp";
+  import { ledgerFor } from "../../demo/data";
+  import { pounds } from "../../lib/dates";
 
   let { route, children }: { route: Route; children: Snippet } = $props();
 
@@ -23,6 +25,9 @@
   const all = $derived(routes());
   const tabList = $derived(tabs());
   const strip = $derived(route.focus ? [] : stripRoutes(all, route, perms));
+  // Desktop shows the strip only inside a tournament type (Games, Standings, Draft); the dock already lists the
+  // trainings.
+  const stripOnDesktop = $derived(Boolean(route.fold));
   const allowed = (r: Route) => !r.focus && !r.hidden && can(perms, r.action);
 
   // The dock: only the main sections. Home, a tile per training, Calendar, a tile per tournament type, the club
@@ -33,6 +38,8 @@
     icon: IconName;
     href: string;
     on: boolean;
+    /** A small count on the tile: what you owe. */
+    badge?: string;
   }
   const dock = $derived.by((): DockItem[] => {
     const items: DockItem[] = [];
@@ -56,6 +63,19 @@
     for (const r of all.filter((r) => r.group === "Club" && allowed(r))) {
       items.push({ id: r.id, name: r.name, icon: r.icon, href: r.path, on: route.id === r.id });
     }
+    // Dues: always there, with what you owe on it until it's paid
+    const dues = all.find((r) => r.id === "tab");
+    if (dues) {
+      const owed = ledgerFor(me().id).reduce((sum, l) => sum + l.pence, 0);
+      items.push({
+        id: dues.id,
+        name: owed > 0 ? `Dues · you owe ${pounds(owed)}` : "Dues",
+        icon: dues.icon,
+        href: dues.path,
+        on: route.id === dues.id,
+        badge: owed > 0 ? pounds(owed) : undefined,
+      });
+    }
     const more = all.find((r) => r.id === "more");
     if (more) {
       const settings = all.some((r) => r.group === "Settings" && allowed(r));
@@ -64,7 +84,7 @@
         name: settings ? "Settings" : "More",
         icon: settings ? "settings" : "more",
         href: more.path,
-        on: route.tab === "more",
+        on: route.tab === "more" && route.id !== "tab",
       });
     }
     return items;
@@ -147,6 +167,7 @@
         aria-label={item.name}
       >
         <Icon name={item.icon} size={22} />
+        {#if item.badge}<span class="dock-badge num" aria-hidden="true">{item.badge}</span>{/if}
         <span class="dock-label" aria-hidden="true">{item.name}</span>
       </a>
     {/each}
@@ -180,6 +201,7 @@
       {#if strip.length}
         <nav
           class="strip"
+          class:phone-only={!stripOnDesktop}
           aria-label="{tabList.find((t) => t.id === route.tab)?.label} pages"
           use:glide={{ shape: stripShape, key: glideKey }}
           use:centre={route.id}
@@ -357,6 +379,19 @@
     box-shadow:
       inset 0 1px 0 rgb(255 255 255 / 0.12),
       0 14px 30px -14px rgb(0 0 0 / 0.9);
+  }
+  .dock-badge {
+    position: absolute;
+    top: -0.45rem;
+    right: -0.55rem;
+    padding: 0.1rem 0.35rem;
+    border-radius: var(--r-pill);
+    background: var(--red);
+    color: #fff;
+    font-size: 0.65rem;
+    font-weight: 700;
+    line-height: 1.3;
+    box-shadow: 0 0 0 2px var(--bg);
   }
   .dock-label {
     position: absolute;
@@ -605,6 +640,9 @@
     }
     .strip-mark {
       background: color-mix(in srgb, var(--fg) 12%, transparent);
+    }
+    .strip.phone-only {
+      display: none;
     }
     /* Room for the dock on narrower desktops, mirrored so the page stays centred */
     .view {

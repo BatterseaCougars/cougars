@@ -115,9 +115,7 @@
         </div>
         <div class="sep" role="separator"></div>
         <button class="item" role="menuitem" onclick={() => go("/me")}><Icon name="user" size={16} /> Profile</button>
-        <button class="item" role="menuitem" onclick={() => go("/me/tab")}
-          ><Icon name="pound" size={16} /> My tab</button
-        >
+        <button class="item" role="menuitem" onclick={() => go("/me/tab")}><Icon name="pound" size={16} /> Dues</button>
         {#if impersonating()}
           <div class="sep" role="separator"></div>
           <button class="item accent" role="menuitem" onclick={() => become(null)}>

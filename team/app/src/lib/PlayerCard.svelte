@@ -1,8 +1,8 @@
 <script lang="ts">
-  // A player as a trading card: the layout of the website's card (apps/web PlayerCard.astro) — photo slot, number
-  // tab, angled red name plate, position sash — made from the app's materials (dark glass, hairlines) instead of
-  // cream card stock, so it sits in the app. The photo slot shows the club mark until members add photos.
-  // The corner number is the sign-up order. Ratings only show for admins (read:Rating).
+  // A player as a physical trading card: printed card stock with a white border round the photo, a red name plate
+  // and the position printed under it, a gloss that catches the light, and a shadow as if it's lying on the table.
+  // The photo slot shows the club mark until members add photos. The corner number is the sign-up order. Ratings
+  // only show for admins (read:Rating).
   import type { Player } from "../demo/data";
   import mark from "../assets/cougars-mark.webp";
 
@@ -21,14 +21,14 @@
     <span class="photo">
       <img class="ghost" src={mark} alt="" loading="lazy" />
       {#if n !== undefined}<span class="no">{n}</span>{/if}
-      <span class="pos">{player.position === "D" ? "Defence" : "Forward"}</span>
     </span>
     <span class="plate"><strong>{first}</strong></span>
     <span class="foot">
-      <span>{player.name}</span>
-      {#if you}<span class="tag">You</span>{:else if showRating}<span>{player.rating}</span
-        >{:else if player.cougar}<span>Cougar</span>{/if}
+      <span class="pos">{player.position === "D" ? "Defence" : "Forward"}</span>
+      {#if you}<span class="tag">You</span>{:else if showRating}<span class="num">{player.rating}</span
+        >{:else if player.cougar}<span class="cougar">Cougar</span>{/if}
     </span>
+    <span class="gloss" aria-hidden="true"></span>
   </article>
 </div>
 
@@ -36,87 +36,81 @@
   .slot {
     container-type: inline-size;
   }
+  /* Card stock: warm off-white, faint grain, small rounded corners, a hairline edge and a table shadow */
   .pc {
     position: relative;
     display: flex;
     flex-direction: column;
     aspect-ratio: 5 / 7;
-    padding: 4cqw 4cqw 3.5cqw;
+    padding: 5cqw 5cqw 3.5cqw;
     overflow: hidden;
-    border: 1px solid rgb(236 232 225 / 0.12);
-    border-radius: 4cqw;
-    color: var(--fg);
+    border-radius: 3cqw;
+    color: #1b1917;
     background:
-      linear-gradient(165deg, rgb(255 255 255 / 0.08), rgb(255 255 255 / 0.015) 40%, transparent 70%),
-      color-mix(in srgb, var(--surface-1) 55%, transparent);
+      radial-gradient(130% 80% at 15% 0%, rgb(255 255 255 / 0.55), transparent 60%),
+      repeating-linear-gradient(90deg, rgb(0 0 0 / 0.012) 0 1px, transparent 1px 3px), #e7e1d5;
     box-shadow:
-      inset 0 1px 0 rgb(255 255 255 / 0.09),
-      0 14px 28px -12px rgb(0 0 0 / 0.75);
-    backdrop-filter: blur(16px) saturate(1.4);
-    -webkit-backdrop-filter: blur(16px) saturate(1.4);
+      inset 0 0 0 1px rgb(0 0 0 / 0.12),
+      0 1px 1px rgb(0 0 0 / 0.35),
+      0 8px 18px -6px rgb(0 0 0 / 0.6);
+    transition:
+      translate var(--t) var(--ease),
+      box-shadow var(--t) var(--ease);
+  }
+  .pc:hover {
+    translate: 0 -3px;
+    box-shadow:
+      inset 0 0 0 1px rgb(0 0 0 / 0.12),
+      0 2px 2px rgb(0 0 0 / 0.3),
+      0 16px 28px -8px rgb(0 0 0 / 0.65);
   }
   .pc.you {
-    border-color: var(--green-border);
     box-shadow:
-      inset 0 1px 0 rgb(255 255 255 / 0.09),
-      0 0 0 1px var(--green-border),
-      0 14px 28px -12px rgb(0 0 0 / 0.75);
+      inset 0 0 0 1px rgb(0 0 0 / 0.12),
+      0 0 0 2px var(--green),
+      0 8px 18px -6px rgb(0 0 0 / 0.6);
   }
+  /* The photo, inset in the stock with a thin printed keyline */
   .photo {
     position: relative;
     flex: 1;
     display: grid;
     place-items: center;
     overflow: hidden;
-    border-radius: 2.5cqw;
+    border-radius: 1cqw;
     background:
-      radial-gradient(circle at 50% 42%, color-mix(in srgb, var(--red) 30%, transparent), transparent 62%),
-      repeating-linear-gradient(135deg, rgb(255 255 255 / 0.03) 0 2px, transparent 2px 5px),
-      color-mix(in srgb, var(--bg) 80%, transparent);
-    box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.4);
+      radial-gradient(circle at 50% 42%, rgb(229 19 31 / 0.45), transparent 65%),
+      linear-gradient(180deg, #24242a, #121215);
+    box-shadow: 0 0 0 0.6cqw #1b1917;
   }
   .ghost {
-    width: 58%;
+    width: 62%;
     height: auto;
-    opacity: 0.55;
-    filter: grayscale(0.3) drop-shadow(0 6px 14px rgb(0 0 0 / 0.5));
+    filter: drop-shadow(0 4px 10px rgb(0 0 0 / 0.5));
   }
   .no {
     position: absolute;
-    top: 0;
-    left: 0;
-    min-width: 16cqw;
-    padding: 1.6cqw 2.4cqw 1.2cqw;
-    border-bottom-right-radius: 2.5cqw;
-    background: color-mix(in srgb, var(--bg) 70%, transparent);
-    color: var(--fg);
+    top: 3cqw;
+    left: 3cqw;
+    display: grid;
+    place-items: center;
+    width: 14cqw;
+    height: 14cqw;
+    border-radius: 50%;
+    background: #e7e1d5;
+    color: #1b1917;
     font-family: var(--font-display);
-    font-size: 10cqw;
+    font-size: 8cqw;
     line-height: 1;
-    text-align: center;
+    box-shadow: 0 1px 3px rgb(0 0 0 / 0.4);
   }
-  .pos {
-    position: absolute;
-    top: 4cqw;
-    right: -11cqw;
-    width: 42cqw;
-    padding: 1.1cqw 0;
-    rotate: 38deg;
-    background: rgb(236 232 225 / 0.14);
-    color: var(--fg-muted);
-    font-size: 4cqw;
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    text-align: center;
-    text-transform: uppercase;
-    backdrop-filter: blur(6px);
-  }
+  /* The red plate overlaps the bottom of the photo, as printed */
   .plate {
     position: relative;
     z-index: 1;
     align-self: start;
     max-width: 100%;
-    margin: -6cqw 0 0 -4cqw;
+    margin: -5.5cqw 0 0 -5cqw;
     padding: 2.2cqw 7cqw 1.8cqw 5cqw;
     background: var(--red);
     color: #fff;
@@ -125,8 +119,9 @@
   .plate strong {
     display: block;
     font-family: var(--font-display);
-    font-size: 14cqw;
+    font-size: 13cqw;
     font-weight: 400;
+    font-style: italic;
     line-height: 1;
     letter-spacing: 0.01em;
     text-transform: uppercase;
@@ -135,21 +130,40 @@
   .foot {
     display: flex;
     justify-content: space-between;
+    align-items: baseline;
     gap: 2cqw;
-    padding: 3cqw 1cqw 0;
-    color: var(--fg-subtle);
-    font-size: 4.6cqw;
-    font-weight: 600;
-    letter-spacing: 0.06em;
+    padding: 2.6cqw 0.5cqw 0;
+    font-size: 4.8cqw;
+    font-weight: 700;
+    letter-spacing: 0.1em;
     line-height: 1;
     text-transform: uppercase;
     white-space: nowrap;
   }
-  .foot span:first-child {
-    overflow: hidden;
-    text-overflow: ellipsis;
+  .pos {
+    color: #5e5850;
+  }
+  .cougar {
+    color: #b3101a;
   }
   .tag {
-    color: var(--green);
+    color: #1e7a45;
+  }
+  /* Gloss: a soft diagonal band of light across the coated front */
+  .gloss {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      115deg,
+      transparent 30%,
+      rgb(255 255 255 / 0.16) 42%,
+      rgb(255 255 255 / 0.04) 50%,
+      transparent 58%
+    );
+    pointer-events: none;
+    transition: translate 600ms var(--ease);
+  }
+  .pc:hover .gloss {
+    translate: 12% 0;
   }
 </style>

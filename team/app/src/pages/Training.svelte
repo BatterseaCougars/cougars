@@ -252,6 +252,12 @@
     grid-template-columns: repeat(auto-fill, minmax(6.4rem, 1fr));
     gap: var(--s-3);
   }
+  @media (min-width: 901px) {
+    .cards {
+      grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr));
+      gap: var(--s-4);
+    }
+  }
   .view-row {
     display: flex;
     justify-content: flex-end;
