@@ -103,10 +103,19 @@ People (org members) get access to the projects they maintain; the free plan all
 
 Deploys the `cougars` worker and migrates the `cougars` D1 database on the **Cougars** account.
 
-- **Issued by:** Cloudflare, Cougars account → Manage Account → **Account API Tokens**. Scope **Entire
-  Cougars account**; permissions **Workers Admin** (Editor can't create a new worker), **D1 Write**, and for the
-  zone **batterseacougars.com**: **Zone Read**, **DNS Edit**, **Workers Routes Edit** (the deploy attaches the
-  domain, `target.mjs`). Token name: `CLOUDFLARE_API_TOKEN__PRODUCTION`.
+- **Issued by:** Cloudflare, Cougars account → Manage Account → **Account API Tokens**. Token name:
+  `CLOUDFLARE_API_TOKEN__PRODUCTION`.
+
+  | Scope   | Permission      | Access | Why                                                        |
+  | ------- | --------------- | ------ | ---------------------------------------------------------- |
+  | Account | Workers Scripts | Edit   | Deploy the `cougars` worker (and create it the first time) |
+  | Account | D1              | Edit   | Create and migrate the `cougars` database                  |
+  | Zone    | Zone            | Read   | Find the batterseacougars.com zone                         |
+  | Zone    | DNS             | Edit   | The deploy creates the domain's DNS records                |
+  | Zone    | Workers Routes  | Edit   | Attach the domain to the worker (`target.mjs`)             |
+
+  Account Resources: Include → **Cougars**. Zone Resources: Include → **Specific zone → batterseacougars.com**.
+
 - **Used by:** `deploy.yml` on `release` and Studio publishes only (`target.mjs`, migrations, `wrangler deploy`).
 - **Gets there by:** CI pull from Secrets Manager (code reads `CLOUDFLARE_API_TOKEN`).
 - **Expires:** no, unless you set a TTL.
