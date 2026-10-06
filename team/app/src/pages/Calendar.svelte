@@ -145,6 +145,19 @@
     overflow-x: auto;
     scrollbar-width: none;
   }
+  /* Desktop: the chips sit in one glass pill, which floats over the list as you scroll */
+  @media (min-width: 901px) {
+    .filters {
+      gap: 4px;
+      margin: 0;
+      padding: 4px;
+      border: 1px solid rgb(236 232 225 / 0.1);
+      border-radius: var(--r-pill);
+      background: var(--chrome-bg-solid);
+      backdrop-filter: var(--blur);
+      -webkit-backdrop-filter: var(--blur);
+    }
+  }
   .filters::-webkit-scrollbar {
     display: none;
   }

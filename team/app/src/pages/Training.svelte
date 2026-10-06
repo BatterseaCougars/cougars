@@ -262,6 +262,7 @@
   .view-row {
     display: flex;
     justify-content: flex-end;
+    width: auto;
     background: none;
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
