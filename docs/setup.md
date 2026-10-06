@@ -96,7 +96,6 @@ In `das974/cougars` → **Settings**:
    - No repository-level secrets.
 2. **Variables → Actions** (optional):
    - `BWS_SERVER_URL`: `https://vault.bitwarden.eu` if your vault is on the EU server.
-   - `SITE_URL`: the production URL, once there is a domain.
 3. Deploy dev once, so the `cougars-dev` worker exists before the first PR preview:
    ```sh
    node scripts/env-pull.mjs -- bash scripts/deploy-dev.sh
@@ -114,9 +113,17 @@ something sooner, start a production rebuild by hand: **Actions → Deploy → R
 
 The team app ([roadmap T8](roadmap/team-app.md#t8-website-content-from-the-app)) will start rebuilds when content changes, the way Gwenda's ops does.
 
-## 6. Later: domain
+## 6. Domain
 
-Buy the domain with Cloudflare Registrar (at cost, about £10 a year), on the **Cougars** account. Then go to
-**Workers → cougars → Settings → Domains & Routes → Add custom domain**, and set the GitHub variable `SITE_URL`.
+`batterseacougars.com`, bought 2026-10-06 with Cloudflare Registrar (at cost, about $10.50 a year, auto-renew on)
+on the **Cougars** account. Registrar lock and contact privacy are on by default; turn on DNSSEC (**DNS → Settings**)
+and keep two-factor login on the account, which controls the domain.
 
-The form rate limit starts working at this point: Cloudflare's Cache API is disabled on `*.workers.dev`.
+Nothing is done by hand: `deploy.yml` sets production's `SITE_URL` to `https://batterseacougars.com`, and
+`scripts/ci/target.mjs` attaches it and `www.` to the `cougars` worker as custom domains, so the first `release`
+deploy creates the DNS records and certificates. That needs the zone permissions on
+[`CLOUDFLARE_API_TOKEN__PRODUCTION`](../README.md#cloudflare_api_token__production). Dev stays on workers.dev: it's a
+separate Cloudflare account, and a domain can only point at workers in its own.
+
+The form rate limit and the edge cache start working on the domain: Cloudflare's Cache API is disabled on
+`*.workers.dev`. At launch, switch the Google Auth Platform **Branding** URLs to the domain (README.md#gmail).

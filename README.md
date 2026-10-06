@@ -104,8 +104,9 @@ People (org members) get access to the projects they maintain; the free plan all
 Deploys the `cougars` worker and migrates the `cougars` D1 database on the **Cougars** account.
 
 - **Issued by:** Cloudflare, Cougars account → Manage Account → **Account API Tokens**. Scope **Entire
-  Cougars account**; permissions **Workers Admin** (Editor can't create a new worker), **D1 Write**. Token name:
-  `CLOUDFLARE_API_TOKEN__PRODUCTION`.
+  Cougars account**; permissions **Workers Admin** (Editor can't create a new worker), **D1 Write**, and for the
+  zone **batterseacougars.com**: **Zone Read**, **DNS Edit**, **Workers Routes Edit** (the deploy attaches the
+  domain, `target.mjs`). Token name: `CLOUDFLARE_API_TOKEN__PRODUCTION`.
 - **Used by:** `deploy.yml` on `release` and Studio publishes only (`target.mjs`, migrations, `wrangler deploy`).
 - **Gets there by:** CI pull from Secrets Manager (code reads `CLOUDFLARE_API_TOKEN`).
 - **Expires:** no, unless you set a TTL.
@@ -210,7 +211,7 @@ inbox, and dev can only ever send from its own test account, never the club's.
 
 | Name                                   | Where                       | What                                                             |
 | -------------------------------------- | --------------------------- | ---------------------------------------------------------------- |
-| `SITE_URL`                             | GitHub variable             | Production URL, once there is a domain                           |
+| `SITE_URL`                             | `deploy.yml`                | `https://batterseacougars.com` on production; dev's workers.dev  |
 | `BWS_SERVER_URL`                       | GitHub variable, your shell | `https://vault.bitwarden.eu` if the vault is on the EU server    |
 | `SANITY_PROJECT_ID` / `SANITY_DATASET` | `shared/sanity.ts`          | Picked from `SITE_ENV`: Cougars on production, Cougars Dev else  |
 | `SANITY_STUDIO_SITE_ENV`               | CI (Studio deploy)          | `production` builds the live Studio; unset is the dev project    |

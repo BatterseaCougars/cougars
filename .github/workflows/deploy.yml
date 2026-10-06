@@ -57,7 +57,8 @@ jobs:
     environment: ${{ github.ref == 'refs/heads/release' && 'production' || 'preview' }}
     env:
       SITE_ENV: ${{ github.ref == 'refs/heads/release' && 'production' || 'dev' }}
-      SITE_URL: ${{ github.ref == 'refs/heads/release' && vars.SITE_URL || '' }}
+      # Production's address; target.mjs attaches it to the worker. Dev stays on workers.dev (a separate account).
+      SITE_URL: ${{ github.ref == 'refs/heads/release' && 'https://batterseacougars.com' || '' }}
       # Dev: sample content where Sanity's dev dataset is empty, and noindex. Production too while the
       # `production` environment's variable DEMO_CONTENT is `true` (until real content is in Sanity).
       DEMO_CONTENT: ${{ github.ref == 'refs/heads/release' && (vars.DEMO_CONTENT || 'false') || 'true' }}
@@ -77,7 +78,7 @@ jobs:
           # Each GitHub environment holds only its own: BWS_ACCESS_TOKEN__PRODUCTION or BWS_ACCESS_TOKEN__DEV
           BWS_ACCESS_TOKEN: ${{ secrets.BWS_ACCESS_TOKEN__PRODUCTION || secrets.BWS_ACCESS_TOKEN__DEV }}
 
-      # Until there's a domain (GitHub variable SITE_URL), the site lives at <worker>.<account subdomain>.workers.dev
+      # Dev (no domain of its own) lives at <worker>.<account subdomain>.workers.dev
       - name: Site URL
         if: env.SITE_URL == ''
         run: |
