@@ -18,25 +18,22 @@
   const strip = $derived(route.focus ? [] : stripRoutes(route.tab, perms));
   const allowed = (r: Route) => !r.focus && can(perms, r.action);
 
-  // Rail: as flat as it can be. A section gets a heading only when it has more than one link, so a member sees
-  // Home, Friday hockey, Calendar, the Kumite section, Teammates; Settings folds open below for admins.
-  const railSections = $derived(
-    [
+  // Rail: as flat as it can be. A section gets a heading only when it has more than one link, and the plain
+  // links come first, so no spacing is needed to tell them apart: a member sees Home, Friday hockey, Calendar,
+  // Teammates, then the Kumite section. Settings folds open below for admins.
+  const railSections = $derived.by(() => {
+    const sections = [
       { label: "", routes: ROUTES.filter((r) => r.tab === "home") },
       { label: "Friday hockey", routes: ROUTES.filter((r) => r.tab === "friday") },
       { label: "", routes: ROUTES.filter((r) => r.tab === "calendar") },
-      { label: "Kumite", routes: ROUTES.filter((r) => r.tab === "kumite") },
       { label: "", routes: ROUTES.filter((r) => r.group === "Club") },
+      { label: "Kumite", routes: ROUTES.filter((r) => r.tab === "kumite") },
     ]
       .map((s) => ({ ...s, routes: s.routes.filter(allowed) }))
       .filter((s) => s.routes.length)
-      .map((s, i, all) => {
-        const heading = s.routes.length > 1 ? s.label : "";
-        const prevHeading = i > 0 && all[i - 1].routes.length > 1 && all[i - 1].label;
-        // Space after a headed section, so the next flat links don't read as part of it
-        return { ...s, heading, gapBefore: !heading && Boolean(prevHeading) };
-      }),
-  );
+      .map((s) => ({ ...s, heading: s.routes.length > 1 ? s.label : "" }));
+    return [...sections.filter((s) => !s.heading), ...sections.filter((s) => s.heading)];
+  });
   const settings = $derived(
     (["People", "Money"] as const)
       .map((section) => ({ section, routes: ROUTES.filter((r) => r.section === section && allowed(r)) }))
@@ -141,7 +138,7 @@
     <nav class="nav" use:glide={{ shape: rowShape, key: glideKey }}>
       <span class="nav-mark" data-glide aria-hidden="true"></span>
       {#each railSections as s, i (s.label + i)}
-        {#if s.heading}<p class="nav-label eyebrow">{s.heading}</p>{:else if s.gapBefore}<span class="gap"></span>{/if}
+        {#if s.heading}<p class="nav-label eyebrow">{s.heading}</p>{/if}
         {#each s.routes as r (r.id)}{@render railLink(r, false, Boolean(s.heading))}{/each}
       {/each}
 
@@ -329,10 +326,6 @@
   .nav-label {
     margin: var(--s-4) var(--s-3) var(--s-1);
     color: var(--fg-subtle);
-  }
-  .gap {
-    flex-shrink: 0;
-    height: var(--s-4);
   }
   .nav-item {
     position: relative;
