@@ -20,7 +20,7 @@ import EventList from "../components/EventList.astro";
 import Empty from "../components/Empty.astro";
 import KumitePoster from "../components/KumitePoster.astro";
 import PlayerCard from "../components/PlayerCard.astro";
-import VideoCard from "../components/VideoCard.astro";
+import VideoReel from "../components/VideoReel.astro";
 import HonoursBoard from "../components/HonoursBoard.astro";
 import Lightbox from "../components/Lightbox.astro";
 import PhotoStrip from "../components/PhotoStrip.astro";
@@ -32,7 +32,8 @@ const events = all.filter((e) => e !== kumite).slice(0, 4);
 const slot = s.training[0];
 const day = slot?.day ?? "Friday";
 const players = (await getPlayers()).slice(0, 5);
-const [latest, ...earlier] = (await getVideos()).slice(0, 3);
+// As of this build; VideoReel then swaps in the live ones (ADR 0019)
+const videos = await getVideos();
 // The newest photos across albums as of this build; PhotoStrip then fetches the live ones
 const photos = (await getAlbums()).flatMap((a) => a.photos).slice(0, 12);
 const results = await getKumiteResults();
@@ -257,25 +258,9 @@ const strip: [string, string][] = [
           All videos
         </a>
       </div>
-      {latest ? (
-        <div class="reel">
-          <div class="latest" data-reveal>
-            <p class="stamp">Latest</p>
-            <VideoCard video={latest} />
-          </div>
-          {earlier.length > 0 && (
-            <ol class="earlier" data-reveal style="--i:1">
-              {earlier.map((v) => (
-                <li>
-                  <VideoCard video={v} />
-                </li>
-              ))}
-            </ol>
-          )}
-        </div>
-      ) : (
-        <Empty>{day} night videos will appear here.</Empty>
-      )}
+      <div data-reveal>
+        <VideoReel videos={videos} day={day} />
+      </div>
     </div>
   </section>
 
@@ -578,48 +563,11 @@ const strip: [string, string][] = [
     color: var(--text);
   }
 
-  /* ---------- Videos: latest Friday big, earlier ones stacked ---------- */
-  .reel {
-    display: grid;
-    grid-template-columns: 1.7fr 1fr;
-    gap: 2rem clamp(1.5rem, 3vw, 2.5rem);
-    align-items: start;
-  }
-  /* "Latest" sits on the video like a sticker, so both columns start on the same rule */
-  .latest {
-    position: relative;
-  }
-  .latest .stamp {
-    position: absolute;
-    z-index: 2;
-    top: calc(1.5rem + 1px + 0.75rem);
-    left: 0.75rem;
-    margin: 0;
-    background: var(--red);
-    color: #fff;
-    pointer-events: none;
-  }
-  .earlier {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: grid;
-    gap: 1.5rem;
-  }
-  /* Smaller cards in the side column */
-  .earlier :global(.meta h3) {
-    font-size: 1.25rem;
-  }
-  .earlier :global(.meta .muted) {
-    display: none;
-  }
-
   /* ---------- Small screens ---------- */
   @media (max-width: 56rem) {
     .club,
     .fridays,
-    .kumite-more,
-    .reel {
+    .kumite-more {
       grid-template-columns: 1fr;
     }
   }

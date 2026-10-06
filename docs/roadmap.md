@@ -68,13 +68,14 @@ worktree under `.worktrees/`. Each stream lands on `main` when it passes the pre
 
 ## M3: YouTube channel auto-pull (stream B, parallel)
 
-- [ ] Build-time fetch of the club channel's uploads (YouTube Data API v3, free quota). Secret `YOUTUBE_API_KEY`.
-- [ ] Sanity `video` documents become optional overrides matched by YouTube ID: pin, retitle, hide.
-- [ ] A daily scheduled rebuild picks up new uploads.
-- [ ] ADR 0015.
+- [x] Live, cached list of the club's videos (YouTube Data API v3, free quota) on `/videos` and the home reel, no
+      rebuild ([ADR 0019](adr/0019-live-videos.md), replacing the build-time pull). Secret `YOUTUBE_API_KEY`.
+- [x] Sanity `video` documents become optional overrides matched by YouTube ID: pin, retitle, hide.
+- [x] ADR 0015 (superseded by 0019).
 - [ ] Club YouTube channel on batterseahockey@gmail.com, with the filmer as a manager. Today's videos are
       unlisted uploads on a member's personal channel, which the public-uploads pull can't see.
-- [ ] Read a playlist on the club channel (optional playlist ID in Club), including unlisted videos in it.
+- [x] Read a playlist on the club channel (Club → YouTube playlist), including unlisted videos in it.
+- [ ] Create `YOUTUBE_API_KEY__PRODUCTION` and `__DEV`.
 
 ## M4: Live photo gallery (stream C, parallel)
 

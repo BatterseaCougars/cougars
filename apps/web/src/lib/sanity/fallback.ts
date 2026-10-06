@@ -12,6 +12,7 @@ export const FALLBACK_CLUB: Club = {
     youtube: null,
   },
   youtubeChannelId: null,
+  youtubePlaylistId: null,
   heroImage: null,
 };
 

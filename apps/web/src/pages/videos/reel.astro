@@ -1,0 +1,20 @@
+---
+// The home page's video reel, rendered live for its script to swap in (components/VideoReel.astro, ADR 0019).
+// A partial: just the component's HTML, no page around it. The home page already has its styles.
+import VideoReel from "../../components/VideoReel.astro";
+import { getSettings } from "../../lib/sanity/content";
+import { CACHE_CONTROL, UNAVAILABLE_CACHE_CONTROL } from "../../lib/server/photos";
+import { liveVideos } from "../../lib/server/videos";
+import { videosConfig } from "../../lib/server/sanity-env";
+
+export const prerender = false;
+export const partial = true;
+
+const { data: videos, unavailable } = await liveVideos(videosConfig());
+const day = (await getSettings()).training[0]?.day ?? "Friday";
+
+Astro.response.headers.set("Cache-Control", unavailable ? UNAVAILABLE_CACHE_CONTROL : CACHE_CONTROL);
+if (unavailable) Astro.response.status = 503;
+---
+
+<VideoReel videos={videos} day={day} />

@@ -6,7 +6,7 @@ name: Deploy
 # main            -> dev: worker `cougars-dev`, Cougars Dev account
 # release         -> production: worker `cougars`, Cougars account
 # sanity-publish  -> production rebuild when content changes (from the team app, roadmap M6; ADR 0018)
-# schedule        -> daily production rebuild, to pick up new club YouTube uploads (docs/adr/0015)
+# schedule        -> daily production rebuild, so Studio changes go live (docs/adr/0018)
 # Those two run on the default branch, which the `production` environment refuses, so their only job
 # (`rebuild`) starts this workflow again on `release`, where the real production deploy runs.
 # GitHub environment `production` (release only) holds BWS_ACCESS_TOKEN__PRODUCTION; `preview` holds
@@ -111,6 +111,12 @@ jobs:
           out=$(npx wrangler deploy --message "$PUBLIC_BUILD_VERSION" 2>&1 | tee /dev/stderr)
           url=$(echo "$out" | grep -oE 'https://[^ ]+\.workers\.dev' | head -1)
           echo "url=${SITE_URL:-$url}" >> "$GITHUB_OUTPUT"
+
+      # Secrets the Worker reads at request time: the live video list (ADR 0019). PR previews share dev's.
+      - name: Worker secrets
+        if: github.event_name != 'pull_request' && env.YOUTUBE_API_KEY != ''
+        working-directory: apps/web
+        run: printf '%s' "$YOUTUBE_API_KEY" | npx wrangler secret put YOUTUBE_API_KEY -c dist/server/wrangler.json
 
       - name: Upload preview
         id: preview

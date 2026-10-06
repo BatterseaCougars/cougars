@@ -70,6 +70,20 @@ export const club = defineType({
           !v || /^UC[\w-]{22}$/.test(v) ? true : "A channel ID starts with UC and is 24 characters",
         ),
     }),
+    defineField({
+      name: "youtubePlaylistId",
+      title: "YouTube playlist",
+      type: "string",
+      description:
+        "Optional. Show the videos in one playlist on the club channel instead of all its public uploads. Videos " +
+        "in the playlist can be Unlisted. On YouTube, open the playlist → Share → Copy, and paste the link here.",
+      validation: (r) =>
+        r.custom((v?: string) =>
+          !v || /^(PL|OL|UU|FL)[\w-]{10,}$/.test(v.trim()) || /[?&]list=[\w-]{12,}/.test(v)
+            ? true
+            : "Paste the playlist's link from YouTube's Share button",
+        ),
+    }),
     imageField("heroImage", "Homepage background photo", {
       description: "Optional. A wide action shot works best. Leave empty to show the carbon-fibre background.",
     }),

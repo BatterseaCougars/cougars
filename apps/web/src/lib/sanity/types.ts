@@ -23,6 +23,8 @@ export interface Club {
   contactEmail: string;
   socials: { instagram?: string | null; facebook?: string | null; youtube?: string | null };
   youtubeChannelId?: string | null;
+  /** A playlist on the club channel; it may hold unlisted videos (ADR 0019). */
+  youtubePlaylistId?: string | null;
   heroImage?: SanityImage | null;
 }
 

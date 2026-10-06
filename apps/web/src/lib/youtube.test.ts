@@ -1,7 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import fixtures from "./fixtures/youtube.json";
 import type { Video, VideoOverride } from "./sanity/types";
-import { channelVideos, fetchChannelVideos, mergeVideos, parseChannel, toVideo, youtubeId } from "./youtube";
+import {
+  fetchChannelVideos,
+  fetchSourceVideos,
+  mergeVideos,
+  parseChannel,
+  parsePlaylist,
+  sourceKey,
+  toVideo,
+  videoSource,
+  youtubeId,
+} from "./youtube";
 
 describe("youtubeId", () => {
   it.each([
@@ -52,7 +62,12 @@ describe("toVideo", () => {
   });
 
   it("skips private, deleted and unlisted videos", () => {
-    expect([priv, deleted, unlisted].map(toVideo)).toEqual([null, null, null]);
+    expect([priv, deleted, unlisted].map((i) => toVideo(i))).toEqual([null, null, null]);
+  });
+
+  it("keeps unlisted videos from a club playlist, but never private or deleted ones", () => {
+    expect(toVideo(unlisted, { unlisted: true })?._id).toMatch(/^youtube-/);
+    expect([priv, deleted].map((i) => toVideo(i, { unlisted: true }))).toEqual([null, null]);
   });
 });
 
@@ -133,38 +148,68 @@ describe("fetchChannelVideos", () => {
   });
 });
 
-describe("channelVideos (fail soft)", () => {
-  let warn: ReturnType<typeof vi.spyOn>;
-  beforeEach(() => (warn = vi.spyOn(console, "warn").mockImplementation(() => {})));
-  afterEach(() => {
-    vi.unstubAllGlobals();
-    vi.restoreAllMocks();
-  });
+describe("parsePlaylist", () => {
+  it.each([
+    ["PLabcdefghijklmnop", "PLabcdefghijklmnop"],
+    ["https://www.youtube.com/playlist?list=PLabcdefghijklmnop", "PLabcdefghijklmnop"],
+    ["https://youtube.com/playlist?list=PLabcdefghijklmnop&si=xyz", "PLabcdefghijklmnop"],
+    ["https://www.youtube.com/watch?v=aaaaaaaaaaa&list=PLabcdefghijklmnop", "PLabcdefghijklmnop"],
+    ["https://www.youtube.com/@club", null],
+    ["not a playlist", null],
+  ])("%s", (input, expected) => expect(parsePlaylist(input)).toBe(expected));
+});
 
-  it("does nothing without a key or a channel link", async () => {
-    const fetch = vi.fn();
-    vi.stubGlobal("fetch", fetch);
-    expect(await channelVideos("https://www.youtube.com/@c00", undefined)).toEqual([]);
-    expect(await channelVideos(null, "k")).toEqual([]);
-    expect(fetch).not.toHaveBeenCalled();
-    expect(warn).not.toHaveBeenCalled();
-  });
-
-  it("warns and returns nothing on quota, network or link errors", async () => {
-    vi.stubGlobal("fetch", async () => Response.json(fixtures.quotaExceeded, { status: 403 }));
-    expect(await channelVideos("https://www.youtube.com/@c00", "SECRET")).toEqual([]);
-    vi.stubGlobal("fetch", async () => {
-      throw new TypeError("fetch failed");
+describe("videoSource", () => {
+  it("prefers the playlist, then the channel ID, then the channel link", () => {
+    const socials = { youtube: "https://www.youtube.com/@club" };
+    const playlist = "https://www.youtube.com/playlist?list=PLabcdefghijklmnop";
+    const id = "UCabcdefghijklmnopqrstuv";
+    expect(videoSource({ youtubePlaylistId: playlist, youtubeChannelId: id, socials })).toEqual({
+      playlist: "PLabcdefghijklmnop",
     });
-    expect(await channelVideos("https://www.youtube.com/@c00", "SECRET")).toEqual([]);
-    expect(await channelVideos("https://www.youtube.com/c/Cougars", "SECRET")).toEqual([]);
-    expect(warn).toHaveBeenCalledTimes(3);
-    expect(warn.mock.calls.join(" ")).not.toContain("SECRET");
+    expect(videoSource({ youtubeChannelId: id, socials })).toEqual({ channel: { id } });
+    expect(videoSource({ socials })).toEqual({ channel: { handle: "club" } });
+    expect(videoSource({ socials: { youtube: null } })).toBeNull();
   });
 
-  it("returns the channel's videos", async () => {
-    vi.stubGlobal("fetch", fakeYouTube(1).fetch);
-    expect(await channelVideos("https://www.youtube.com/@c00", "k")).toHaveLength(2);
+  it("names each source for the cache", () => {
+    expect(sourceKey({ playlist: "PLx" })).toBe("playlist:PLx");
+    expect(sourceKey({ channel: { handle: "club" } })).toBe("handle:club");
+    expect(sourceKey({ channel: { id: "UCx" } })).toBe("channel:UCx");
+  });
+});
+
+describe("fetchSourceVideos", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("reads a playlist directly, including its unlisted videos", async () => {
+    const calls: URL[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string) => {
+        calls.push(new URL(input));
+        return Response.json({ items: fixtures.playlistItems.items });
+      }),
+    );
+    const videos = await fetchSourceVideos({ playlist: "PLabcdefghijklmnop" }, "k");
+    expect(calls).toHaveLength(1);
+    expect(calls[0].pathname).toBe("/youtube/v3/playlistItems");
+    expect(calls[0].searchParams.get("playlistId")).toBe("PLabcdefghijklmnop");
+    // public, private, deleted, unlisted, ...: the public and the unlisted ones
+    expect(videos.length).toBe(
+      fixtures.playlistItems.items.filter((i) => ["public", "unlisted"].includes(i.status?.privacyStatus ?? "")).length,
+    );
+  });
+
+  it("reads a channel's uploads, public only", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) =>
+        Response.json(url.includes("/channels") ? fixtures.channels : { items: fixtures.playlistItems.items }),
+      ),
+    );
+    const videos = await fetchSourceVideos({ channel: { handle: "club" } }, "k");
+    expect(videos.map((v) => v.title)).toEqual(["Friday session, full game", "Kumite final"]);
   });
 });
 

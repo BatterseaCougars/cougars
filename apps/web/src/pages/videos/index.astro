@@ -1,12 +1,22 @@
 ---
+// Every club video, newest first (pinned ones on top). Rendered on the Worker at request time from YouTube and
+// Sanity, both cached (ADR 0019), so a new upload or a Studio change shows within minutes, with no rebuild.
 import Base from "../../layouts/Base.astro";
 import PageHeader from "../../components/PageHeader.astro";
 import VideoCard from "../../components/VideoCard.astro";
 import Empty from "../../components/Empty.astro";
-import { getSettings, getVideos } from "../../lib/sanity/content";
+import { getSettings } from "../../lib/sanity/content";
+import { CACHE_CONTROL, UNAVAILABLE_CACHE_CONTROL } from "../../lib/server/photos";
+import { liveVideos } from "../../lib/server/videos";
+import { videosConfig } from "../../lib/server/sanity-env";
 
-const videos = await getVideos();
+export const prerender = false;
+
+const { data: videos, unavailable } = await liveVideos(videosConfig());
 const s = await getSettings();
+
+Astro.response.headers.set("Cache-Control", unavailable ? UNAVAILABLE_CACHE_CONTROL : CACHE_CONTROL);
+if (unavailable) Astro.response.status = 503;
 ---
 
 <Base title="Videos" description="Footage from Friday night inline hockey in Battersea.">
@@ -27,7 +37,11 @@ const s = await getSettings();
         ))}
       </div>
     ) : (
-      <Empty>No videos yet. Footage from Friday sessions will appear here.</Empty>
+      <Empty>
+        {unavailable
+          ? "The videos won't load right now. Try again in a minute."
+          : "No videos yet. Footage from Friday sessions will appear here."}
+      </Empty>
     )}
   </div>
 </Base>

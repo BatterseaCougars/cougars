@@ -1,0 +1,103 @@
+---
+// The home page's videos: the latest big, the next two stacked beside it. The page is prerendered, so it first
+// shows the videos from its last build (all a visitor without JavaScript gets), then swaps in a fresh copy of
+// this component rendered live by /videos/reel/ (ADR 0019). Same component, same markup and styles.
+// No data-reveal in here: swapped-in elements would never be revealed. The section reveals the wrapper.
+import VideoCard from "./VideoCard.astro";
+import Empty from "./Empty.astro";
+import type { Video } from "../lib/sanity/types";
+
+interface Props {
+  videos: Video[];
+  /** The session day, for the empty state. */
+  day: string;
+}
+const { videos, day } = Astro.props;
+const [latest, ...earlier] = videos.slice(0, 3);
+---
+
+<div data-video-reel>
+  {latest ? (
+    <div class="reel">
+      <div class="latest">
+        <p class="stamp">Latest</p>
+        <VideoCard video={latest} />
+      </div>
+      {earlier.length > 0 && (
+        <ol class="earlier">
+          {earlier.map((v) => (
+            <li>
+              <VideoCard video={v} />
+            </li>
+          ))}
+        </ol>
+      )}
+    </div>
+  ) : (
+    <Empty>{day} night videos will appear here.</Empty>
+  )}
+</div>
+
+<style>
+  .reel {
+    display: grid;
+    grid-template-columns: 1.7fr 1fr;
+    gap: 2rem clamp(1.5rem, 3vw, 2.5rem);
+    align-items: start;
+  }
+  /* "Latest" sits on the video like a sticker, so both columns start on the same rule */
+  .latest {
+    position: relative;
+  }
+  .latest .stamp {
+    position: absolute;
+    z-index: 2;
+    top: calc(1.5rem + 1px + 0.75rem);
+    left: 0.75rem;
+    margin: 0;
+    background: var(--red);
+    color: #fff;
+    pointer-events: none;
+  }
+  .earlier {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 1.5rem;
+  }
+  /* Smaller cards in the side column */
+  .earlier :global(.meta h3) {
+    font-size: 1.25rem;
+  }
+  .earlier :global(.meta .muted) {
+    display: none;
+  }
+  @media (max-width: 56rem) {
+    .reel {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+
+<script>
+  // Swap in the live reel. Nothing happens if it fails (offline, blocked) or nothing changed. VideoCard's Play
+  // button uses a document-wide click handler, so swapped-in cards play too.
+  async function refresh() {
+    const reel = document.querySelector<HTMLElement>("[data-video-reel]");
+    if (!reel) return;
+    let html: string;
+    try {
+      const res = await fetch("/videos/reel/", { headers: { Accept: "text/html" } });
+      if (!res.ok) return;
+      html = await res.text();
+    } catch {
+      return;
+    }
+    const fresh = new DOMParser().parseFromString(html, "text/html").querySelector("[data-video-reel]");
+    if (!fresh || !reel.isConnected || fresh.innerHTML.trim() === reel.innerHTML.trim()) return;
+    reel.replaceChildren(...fresh.childNodes);
+  }
+
+  document.addEventListener("astro:page-load", refresh);
+</script>

@@ -1,7 +1,7 @@
 // All GROQ lives here. Keep projections explicit so the shape matches types.ts.
 
 // Club facts: one singleton each, found by its fixed _id (apps/studio/structure.ts).
-export const CLUB = /* groq */ `*[_id == "club"][0]{founded, contactEmail, socials, youtubeChannelId, heroImage}`;
+export const CLUB = /* groq */ `*[_id == "club"][0]{founded, contactEmail, socials, youtubeChannelId, youtubePlaylistId, heroImage}`;
 export const FRIDAYS = /* groq */ `*[_id == "fridays"][0]{
   training[]{title, day, start, end, description}, venue{name, address, mapUrl}, kitNotes, firstSessionKit, feesText
 }`;
@@ -16,6 +16,11 @@ export const KUMITE_RESULTS = /* groq */ `*[_type == "kumiteResult" && defined(s
 // Overrides for channel videos, and videos that aren't on the channel. Merged and sorted in lib/youtube.ts.
 export const VIDEOS = /* groq */ `*[_type == "video" && defined(youtubeUrl)]{
   _id, _createdAt, youtubeUrl, title, recordedOn, description, hidden, pinned
+}`;
+/** Everything the live video list needs from Sanity, in one request (lib/server/videos.ts). */
+export const VIDEO_DATA = /* groq */ `{
+  "club": *[_id == "club"][0]{socials, youtubeChannelId, youtubePlaylistId},
+  "videos": ${VIDEOS}
 }`;
 
 const EVENT_FIELDS = `title, "slug": slug.current, type, startsAt, endsAt, location, summary, cover, ctaLabel, ctaUrl`;

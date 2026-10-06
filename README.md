@@ -64,8 +64,8 @@ Rules ([ADR 0002](docs/adr/0002-secrets-in-bitwarden.md), [ADR 0010](docs/adr/00
 | [`CLOUDFLARE_API_TOKEN__DEV`](#cloudflare_api_token__dev)                 | `cougars-dev` | Cloudflare, Cougars Dev     | PR previews, `deploy-dev.sh` |
 | [`CLOUDFLARE_ACCOUNT_ID__DEV`](#cloudflare_account_id__dev)               | `cougars-dev` | Cloudflare, Cougars Dev     | PR previews, `deploy-dev.sh` |
 | [`SANITY_DEPLOY_TOKEN__PRODUCTION`](#sanity_deploy_token__production)     | `cougars`     | Sanity                      | Studio deploys               |
-| [`YOUTUBE_API_KEY__PRODUCTION`](#youtube-api-keys)                        | `cougars`     | Google Cloud                | Website build (production)   |
-| [`YOUTUBE_API_KEY__DEV`](#youtube-api-keys)                               | `cougars-dev` | Google Cloud                | Website build (dev)          |
+| [`YOUTUBE_API_KEY__PRODUCTION`](#youtube-api-keys)                        | `cougars`     | Google Cloud                | Website (production)         |
+| [`YOUTUBE_API_KEY__DEV`](#youtube-api-keys)                               | `cougars-dev` | Google Cloud                | Website (dev)                |
 
 ### Bitwarden tokens
 
@@ -140,19 +140,20 @@ Lets CI deploy the Studio to https://battersea-cougars.sanity.studio on every pu
 
 ### YouTube API keys
 
-Lets the website build list the club YouTube channel's videos (`apps/web/src/lib/youtube.ts`,
-[ADR 0015](docs/adr/0015-youtube-channel-pull.md)). One key per environment, so a leaked dev key can be revoked
-without touching production. Without a key the build still passes and shows only the videos in Sanity.
+Lets the website list the club's YouTube videos live (`apps/web/src/lib/server/videos.ts`,
+[ADR 0019](docs/adr/0019-live-videos.md)). One key per environment, so a leaked dev key can be revoked without
+touching production. Without a key the site still works and shows only the videos in Sanity.
 
 - **Issued by:** Google Cloud console, one project for the club (free, no billing account). **APIs & Services →
   Library → YouTube Data API v3 → Enable**, then **Credentials → Create credentials → API key**. Name it like
   the secret, and under **API restrictions** pick **Restrict key → YouTube Data API v3** only. No application
   restriction: CI has no fixed IP address. Both keys can live in the same project; they share its free quota of
-  10,000 units a day, and a build uses about 5.
-- **Used by:** the website build (code reads `YOUTUBE_API_KEY`). It reads public data only and is never sent to the
-  browser.
-- **Gets there by:** CI pull from Secrets Manager (`env-pull.mjs --github-env` exports it to the Build step), or
-  `node scripts/env-pull.mjs -- npm run build` locally (dev key).
+  10,000 units a day; with the 10-minute cache the site uses a few hundred at most.
+- **Used by:** the Worker's `/videos` page and home video reel, and the build (code reads `YOUTUBE_API_KEY`). It
+  reads public data only and is never sent to the browser.
+- **Gets there by:** CI pull from Secrets Manager (`env-pull.mjs --github-env`), then `deploy.yml` pushes it to the
+  Worker as a secret on every deploy (`wrangler secret put`). Locally, `node scripts/env-pull.mjs -- npm run dev`
+  (dev key).
 - **Expires:** no.
 - **Rotate:** Credentials → the key → **Regenerate key**, update Secrets Manager, run a deploy.
 

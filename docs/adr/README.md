@@ -23,7 +23,8 @@ rule, a trade-off. Copy [template.md](template.md), take the next number, keep i
 | [0012](0012-secrets-manager-projects.md)    | Two Secrets Manager projects, shared by every app                              | Accepted              |
 | [0013](0013-main-deploys-dev.md)            | `main` deploys dev; `release` deploys production                               | Amended by 0018       |
 | [0014](0014-sanity-public-content.md)       | Sanity is the source for public content; only club facts are editable          | Amended by 0017       |
-| [0015](0015-youtube-channel-pull.md)        | Videos come from the club YouTube channel, with Sanity as overrides            | Accepted              |
+| [0015](0015-youtube-channel-pull.md)        | Videos come from the club YouTube channel, with Sanity as overrides            | Superseded by 0019    |
 | [0016](0016-live-photo-gallery.md)          | Photos are read live from Sanity, not at build time                            | Accepted              |
 | [0017](0017-two-sanity-projects.md)         | Two Sanity projects, one per environment                                       | Accepted              |
-| [0018](0018-rebuilds-until-team-app.md)     | Studio changes go live at the daily rebuild until the team app triggers builds | Accepted              |
+| [0018](0018-rebuilds-until-team-app.md)     | Studio changes go live at the daily rebuild until the team app triggers builds | Amended by 0019       |
+| [0019](0019-live-videos.md)                 | Videos are read live from YouTube and Sanity, cached                           | Accepted              |

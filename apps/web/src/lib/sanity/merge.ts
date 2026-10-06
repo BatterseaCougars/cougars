@@ -37,7 +37,14 @@ function mergeObject(fallback: Doc, doc: Doc, optional: readonly string[], prefi
 
 // Which fields are optional in each Studio singleton (apps/studio/schemaTypes/settings.ts).
 export const OPTIONAL = {
-  club: ["socials.instagram", "socials.facebook", "socials.youtube", "youtubeChannelId", "heroImage"],
+  club: [
+    "socials.instagram",
+    "socials.facebook",
+    "socials.youtube",
+    "youtubeChannelId",
+    "youtubePlaylistId",
+    "heroImage",
+  ],
   fridays: ["firstSessionKit", "feesText"],
   pub: ["mapUrl"],
   team: ["league", "photo"],

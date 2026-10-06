@@ -21,9 +21,10 @@ export const thumbnailUrl = (id: string) => `https://i.ytimg.com/vi/${id}/hqdefa
 export const embedUrl = (id: string) => `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0`;
 
 // ---------------------------------------------------------------------------------------------------------------
-// The club channel, pulled at build time (docs/adr/0015-youtube-channel-pull.md). YouTube Data API v3 with an API
-// key: one `channels` call finds the uploads playlist, then one `playlistItems` call per 50 videos. Each call costs
-// 1 unit of the free 10,000 a day.
+// The club's videos from YouTube, read live and cached (lib/server/videos.ts, docs/adr/0019-live-videos.md).
+// YouTube Data API v3 with an API key: a club playlist is read directly; a channel costs one `channels` call to find
+// its uploads playlist first. Then one `playlistItems` call per 50 videos. Each call is 1 unit of the free 10,000 a
+// day.
 
 export type Channel = { handle: string } | { id: string };
 
@@ -43,6 +44,43 @@ export function parseChannel(url: string): Channel | null {
   }
 }
 
+/** A playlist ID, from the ID itself or any YouTube link with `list=` in it. */
+export function parsePlaylist(input: string): string | null {
+  const s = input.trim();
+  if (/^(PL|OL|UU|FL)[\w-]{10,}$/.test(s)) return s;
+  try {
+    const id = new URL(s).searchParams.get("list");
+    return id && /^[\w-]{12,}$/.test(id) ? id : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Where the club's videos come from: its playlist if one is set (it may hold unlisted videos), otherwise the
+ * channel's public uploads, from the channel ID or the channel link. Null when there's neither.
+ */
+export type VideoSource = { playlist: string } | { channel: Channel };
+export function videoSource(club: {
+  youtubePlaylistId?: string | null;
+  youtubeChannelId?: string | null;
+  socials?: { youtube?: string | null };
+}): VideoSource | null {
+  const playlist = club.youtubePlaylistId && parsePlaylist(club.youtubePlaylistId);
+  if (playlist) return { playlist };
+  if (club.youtubeChannelId) return { channel: { id: club.youtubeChannelId } };
+  const channel = club.socials?.youtube ? parseChannel(club.socials.youtube) : null;
+  return channel ? { channel } : null;
+}
+
+/** A stable name for a source, for cache keys and logs. */
+export const sourceKey = (source: VideoSource) =>
+  "playlist" in source
+    ? `playlist:${source.playlist}`
+    : "handle" in source.channel
+      ? `handle:${source.channel.handle}`
+      : `channel:${source.channel.id}`;
+
 const API = "https://www.googleapis.com/youtube/v3";
 const PAGE = 50; // the API's maximum per page
 
@@ -52,12 +90,16 @@ interface PlaylistItem {
   status?: { privacyStatus?: string };
 }
 
-/** A channel upload as a Video, or null for private, unlisted and deleted ones. */
-export function toVideo(item: PlaylistItem): Video | null {
+/**
+ * A playlist item as a Video, or null for private and deleted ones. Unlisted videos only count when
+ * `unlisted` is set: the club put them in its playlist on purpose, whereas a channel's uploads list them too.
+ */
+export function toVideo(item: PlaylistItem, { unlisted = false } = {}): Video | null {
   const id = item.contentDetails?.videoId ?? item.snippet?.resourceId?.videoId;
-  // Deleted videos have no videoPublishedAt; private and unlisted ones aren't for the website.
+  // Deleted videos have no videoPublishedAt; private ones (and unlisted uploads) aren't for the website.
   const published = item.contentDetails?.videoPublishedAt;
-  if (!id || !published || item.status?.privacyStatus !== "public") return null;
+  const privacy = item.status?.privacyStatus;
+  if (!id || !published || !(privacy === "public" || (unlisted && privacy === "unlisted"))) return null;
   return {
     _id: `youtube-${id}`,
     title: item.snippet?.title?.trim() || "Untitled video",
@@ -74,16 +116,15 @@ const firstParagraph = (text?: string) =>
     .split(/\n\s*\n/)[0]
     .trim() || null;
 
-/**
- * The channel's public uploads, newest first, at most `max`. Throws on any API or network error, with a message
- * that never contains the key.
- */
-export async function fetchChannelVideos(
-  channel: Channel,
-  key: string,
-  { max = 200, fetch = globalThis.fetch } = {},
-): Promise<Video[]> {
-  const get = async <T>(path: string, params: Record<string, string>): Promise<T> => {
+interface FetchOptions {
+  max?: number;
+  fetch?: typeof globalThis.fetch;
+}
+
+// One API call. Throws on any API or network error, with a message that never contains the key.
+const apiGet =
+  (key: string, fetch: typeof globalThis.fetch) =>
+  async <T>(path: string, params: Record<string, string>): Promise<T> => {
     const res = await fetch(`${API}/${path}?${new URLSearchParams({ ...params, key })}`, {
       signal: AbortSignal.timeout(15_000),
     });
@@ -92,25 +133,24 @@ export async function fetchChannelVideos(
     return body;
   };
 
-  const which: Record<string, string> = "handle" in channel ? { forHandle: `@${channel.handle}` } : { id: channel.id };
-  const { items = [] } = await get<{ items?: { contentDetails?: { relatedPlaylists?: { uploads?: string } } }[] }>(
-    "channels",
-    { part: "contentDetails", ...which },
-  );
-  const uploads = items[0]?.contentDetails?.relatedPlaylists?.uploads;
-  if (!uploads) throw new Error(`YouTube channel not found: ${JSON.stringify(which)}`);
-
+/** A playlist's videos in playlist order, at most `max`. Unlisted ones count when `unlisted` is set. Throws. */
+export async function fetchPlaylistVideos(
+  playlistId: string,
+  key: string,
+  { max = 200, fetch = globalThis.fetch, unlisted = false }: FetchOptions & { unlisted?: boolean } = {},
+): Promise<Video[]> {
+  const get = apiGet(key, fetch);
   const videos: Video[] = [];
   let pageToken: string | undefined;
   do {
     const page = await get<{ items?: PlaylistItem[]; nextPageToken?: string }>("playlistItems", {
       part: "snippet,contentDetails,status",
-      playlistId: uploads,
+      playlistId,
       maxResults: String(PAGE),
       ...(pageToken ? { pageToken } : {}),
     });
     for (const item of page.items ?? []) {
-      const v = toVideo(item);
+      const v = toVideo(item, { unlisted });
       if (v) videos.push(v);
     }
     pageToken = page.nextPageToken;
@@ -118,28 +158,28 @@ export async function fetchChannelVideos(
   return videos.slice(0, max);
 }
 
-/**
- * The club channel's videos for the build, or [] when there's no key or link, or YouTube fails. Never throws: the
- * site still builds, with the Sanity videos only.
- */
-export async function channelVideos(
-  url: string | null | undefined,
-  key: string | undefined,
-  options?: Parameters<typeof fetchChannelVideos>[2],
+/** The channel's public uploads, newest first, at most `max`. Throws. */
+export async function fetchChannelVideos(
+  channel: Channel,
+  key: string,
+  { max = 200, fetch = globalThis.fetch }: FetchOptions = {},
 ): Promise<Video[]> {
-  if (!key || !url) return [];
-  const channel = parseChannel(url);
-  if (!channel) {
-    console.warn(`[youtube] Can't find a channel in "${url}". Use youtube.com/@handle. Showing Sanity videos only.`);
-    return [];
-  }
-  try {
-    return await fetchChannelVideos(channel, key, options);
-  } catch (e) {
-    console.warn(`[youtube] ${(e as Error).message.replace(/\.$/, "")}. Showing Sanity videos only.`);
-    return [];
-  }
+  const get = apiGet(key, fetch);
+  const which: Record<string, string> = "handle" in channel ? { forHandle: `@${channel.handle}` } : { id: channel.id };
+  const { items = [] } = await get<{ items?: { contentDetails?: { relatedPlaylists?: { uploads?: string } } }[] }>(
+    "channels",
+    { part: "contentDetails", ...which },
+  );
+  const uploads = items[0]?.contentDetails?.relatedPlaylists?.uploads;
+  if (!uploads) throw new Error(`YouTube channel not found: ${JSON.stringify(which)}`);
+  return fetchPlaylistVideos(uploads, key, { max, fetch });
 }
+
+/** The videos from a source: a club playlist (unlisted ones included) or a channel's public uploads. Throws. */
+export const fetchSourceVideos = (source: VideoSource, key: string, options: FetchOptions = {}) =>
+  "playlist" in source
+    ? fetchPlaylistVideos(source.playlist, key, { ...options, unlisted: true })
+    : fetchChannelVideos(source.channel, key, options);
 
 /**
  * Channel videos plus Sanity `video` documents, for the website. A document with the same YouTube id overrides the
