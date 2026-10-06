@@ -41,8 +41,11 @@ Worker ([ADR 0022](docs/adr/0022-team-app-svelte-pwa.md)); its permissions follo
 
 ## Tests
 
-- Vitest, colocated `*.test.ts`. Database tests use `shared/testing/d1-sqlite.ts` (in-memory SQLite with all
-  migrations applied). Test behaviour through real functions, not mocks of our own code.
+- **Use cases first** ([ADR 0031](docs/adr/0031-use-case-tests.md), [docs/testing.md](docs/testing.md)): tests
+  describe what someone does, drive the real handlers, and fake outside services in one fake world. Unit tests only
+  for tricky pure logic. Known bugs stay as `it.fails("… (known bug #N)")`.
+- Vitest, colocated `*.test.ts`. D1 is in-memory SQLite with all migrations applied (`shared/testing/d1-sqlite.ts`).
+  Don't mock our own code.
 - Before pushing: `npm run lint && npm test && npm run check -w @cougars/web && npm run build`.
 
 ## Ports

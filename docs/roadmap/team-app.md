@@ -21,7 +21,7 @@ Decisions so far:
 | [0022](../adr/0022-team-app-svelte-pwa.md)             | The team app is a mobile-first Svelte 5 SPA on a Worker, as a PWA            |
 | [0023](../adr/0023-device-bound-sign-in.md)            | Everyone signs in with a device-bound email code or link, or Google          |
 | [0024](../adr/0024-action-based-authorization.md)      | Permissions are actions; roles are data built from actions                   |
-| [0028](../adr/0028-training-series-and-tournaments.md) | Training repeats as a series; tournaments are typed and scheduled one by one |
+| [0030](../adr/0030-training-series-and-tournaments.md) | Training repeats as a series; tournaments are typed and scheduled one by one |
 | [0026](../adr/0026-dues-ledger.md)                     | Dues are a ledger fed by the register                                        |
 | [0006](../adr/0006-monorepo-and-team-generator.md)     | The team generator runs in the browser                                       |
 | [0007](../adr/0007-bank-transfer-payments.md)          | Payments by bank transfer with a reference, no card provider                 |
@@ -49,7 +49,7 @@ Copied in shape from Gwenda ops (`gwenda-hackney/ark`, `ops/site/src/app/`), whi
   - **Kumite**: games, standings, draft
   - **More**: the club (teammates, upload), you (profile, tab) and **Settings** for admins, grouped People and Money
 - **Account badge**, top right: your name, profile, tab, sign out, and **View as a member** for admins
-  ([ADR 0027](../adr/0027-view-as-a-member.md)). On desktop the rail lists the same pages, with Settings folding
+  ([ADR 0029](../adr/0029-view-as-a-member.md)). On desktop the rail lists the same pages, with Settings folding
   open.
 - **Look:** the club's red, white and carbon, and the logo, in a plain readable app font. The video-shop styling
   stays on the website and in names (Overdue Rentals); working screens stay plain.
@@ -96,7 +96,7 @@ Copied in shape from Gwenda ops (`gwenda-hackney/ark`, `ops/site/src/app/`), whi
   - **Members** (admin): approve requests, assign roles, set position, rating and the cougar flag
   - **Roles** (admin): create a role, tick its actions; the last admin can't be removed
   - **Profile**: own details and photo
-- [ ] **View as a member** (`impersonate:Member`, [ADR 0027](../adr/0027-view-as-a-member.md)): an admin sees the
+- [ ] **View as a member** (`impersonate:Member`, [ADR 0029](../adr/0029-view-as-a-member.md)): an admin sees the
       app exactly as a member does, read-only, from the account badge.
 - [ ] One-off import of players from the archived Airtable base. Website enquiries can be turned into members.
 - [ ] Secrets, each documented in [README.md#secrets](../../README.md#secrets): `TEAM_SESSION_SECRET`, the Gmail
@@ -104,7 +104,7 @@ Copied in shape from Gwenda ops (`gwenda-hackney/ark`, `ops/site/src/app/`), whi
 
 ## T2: Training, calendar, sign-up and the register
 
-[ADR 0028](../adr/0028-training-series-and-tournaments.md); tables in [the data model](../team-app-data-model.md).
+[ADR 0030](../adr/0030-training-series-and-tournaments.md); tables in [the data model](../team-app-data-model.md).
 
 - [ ] Migrations: `training_series`, `training_sessions`, `tournament_types`, `tournaments`, `club_events`,
       `attendance`, `club_event_entries`.

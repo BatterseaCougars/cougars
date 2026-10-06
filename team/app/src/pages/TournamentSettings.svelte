@@ -1,5 +1,5 @@
 <script lang="ts">
-  // Settings → Tournaments (ADR 0028). A tournament type is a kind the club hosts (The Cougars Kumite): its format
+  // Settings → Tournaments (ADR 0030). A tournament type is a kind the club hosts (The Cougars Kumite): its format
   // and rules. Each tournament is one edition, scheduled on its own with a name, location and date. A new type gets
   // its own section in the menu; a new edition shows on the calendar and the type's pages.
   import Icon from "../app/shell/Icon.svelte";

@@ -87,11 +87,14 @@ worktree under `.worktrees/`. Each stream lands on `main` when it passes the pre
 ## M5: Launch
 
 - [ ] Real content entered in Sanity (production dataset).
-- [ ] Domain on Cloudflare Registrar. This also switches on form rate limiting and the Cache API for photo
-      pages.
-- [ ] Email to the club inbox on each new enquiry, plus an auto-reply to the enquirer. This uses the Gmail
-      API with an OAuth refresh token for batterseahockey@gmail.com (free, about 500 emails a day), behind a
-      small `shared/email.ts`, so it can be switched to Resend once there's a domain.
+- [x] Domain: batterseacougars.com, attached by the first `release` deploy (docs/setup.md §6). This also switches
+      on form rate limiting and the Cache API for photo pages.
+- [x] Email to the club inbox on each new enquiry: Gmail API, `shared/email.ts`, only production reaches real
+      people ([ADR 0027](../adr/0027-email-through-gmail-api.md)). Production needs the club account's token
+      (`node scripts/gmail-auth.mjs production`).
+- [x] Auto-reply to the enquirer: only when Cloudflare Turnstile says it's a person, capped at 20 a day and one
+      per address a week ([ADR 0028](../adr/0028-turnstile-and-auto-reply.md)).
+- [ ] Turnstile widgets: one per Cloudflare account, secrets in Bitwarden, site keys in `deploy.yml` (README#turnstile).
 - [ ] Cloudflare Web Analytics (free, no cookie banner needed).
 - [ ] "I'm interested" RSVP on events (stored in D1, counts shown to the admin).
 - [x] Per-page share pictures for WhatsApp and Facebook, drawn at build time ([ADR 0020](../adr/0020-drawn-share-cards.md)).

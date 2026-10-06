@@ -1,5 +1,5 @@
 <script lang="ts">
-  // Settings → Training: the repeating sessions (ADR 0028). A series is a rule (every N weeks on some days, from a
+  // Settings → Training: the repeating sessions (ADR 0030). A series is a rule (every N weeks on some days, from a
   // first date, optionally to a last one) plus what every session shares. Saving makes its sessions; each one can
   // then be cancelled on its own. New trainings appear in the menu and the calendar straight away.
   import Icon from "../app/shell/Icon.svelte";

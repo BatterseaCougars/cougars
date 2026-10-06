@@ -1,4 +1,4 @@
-// The route tree, built from the schedule (ADR 0028): one page per training series, and a section per tournament
+// The route tree, built from the schedule (ADR 0030): one page per training series, and a section per tournament
 // type with its Games, Standings and Draft. Admins add a training or a tournament type in Settings and it appears
 // here. Phone tabs are derived from the same tree (mobile-nav.ts), so the two can't drift apart. Each route
 // declares the action it needs (ADR 0024).

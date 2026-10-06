@@ -3,6 +3,7 @@ import Base from "../../layouts/Base.astro";
 import PageHeader from "../../components/PageHeader.astro";
 import { getSettings, kitText } from "../../lib/sanity/content";
 import { EXPERIENCE } from "../../lib/server/enquiries";
+import { TURNSTILE_SITE_KEY } from "astro:env/client";
 
 const s = await getSettings();
 const slot = s.training[0];
@@ -61,11 +62,18 @@ const slot = s.training[0];
         </span>
         <textarea name="message" rows="3" maxlength="2000"></textarea>
       </label>
+      <!-- Cloudflare Turnstile: checks a person is sending this (ADR 0028). Without JavaScript the form still works. -->
+      <div class="turnstile" data-turnstile data-sitekey={TURNSTILE_SITE_KEY}></div>
       <div class="submit">
         <button class="btn btn--primary" type="submit">
           Send
         </button>
-        <p class="muted small">We only use your details to get in touch about the club.</p>
+        <p class="muted small">
+          We only use your details to get in touch about the club.{" "}
+          <a class="link" href="/privacy/">
+            Privacy
+          </a>
+        </p>
       </div>
     </form>
 
@@ -216,6 +224,9 @@ const slot = s.training[0];
     margin: 0;
     font-size: 0.85rem;
   }
+  .turnstile:empty {
+    display: none;
+  }
   .hp {
     position: absolute;
     left: -9999px;
@@ -232,6 +243,28 @@ const slot = s.training[0];
 </style>
 
 <script>
+  // Turnstile, rendered by hand so it also appears after a client-side page change (ClientRouter).
+  type Turnstile = { render: (el: HTMLElement, o: object) => string; reset: (id: string) => void };
+  const w = window as unknown as { turnstile?: Turnstile };
+  let widget: string | undefined;
+  function renderTurnstile() {
+    const el = document.querySelector<HTMLElement>("[data-turnstile]");
+    if (!el || el.childElementCount) return;
+    const render = () => {
+      widget = w.turnstile!.render(el, { sitekey: el.dataset.sitekey, theme: "dark", action: "join" });
+    };
+    if (w.turnstile) return render();
+    const script = document.createElement("script");
+    script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+    script.async = true;
+    script.onload = render;
+    document.head.appendChild(script);
+  }
+  document.addEventListener("astro:page-load", renderTurnstile);
+  renderTurnstile();
+  // A Turnstile token works once: get a fresh one after a submit that didn't go through.
+  const resetTurnstile = () => widget && w.turnstile?.reset(widget);
+
   const form = document.querySelector<HTMLFormElement>("form.form")!;
   const alert = form.querySelector<HTMLElement>(".alert")!;
   const params = new URLSearchParams(location.search);
@@ -263,9 +296,11 @@ const slot = s.training[0];
         form.querySelector(`.err[data-for="${field}"]`)!.textContent = msg;
         form.querySelector(`[name="${field}"]`)?.setAttribute("aria-invalid", "true");
       }
+      resetTurnstile();
       showAlert(body.error ?? messages.invalid);
       (form.querySelector<HTMLElement>("[aria-invalid]") ?? alert).focus();
     } catch {
+      resetTurnstile();
       showAlert("Something went wrong sending the form. Please try again or email us.");
     } finally {
       button.disabled = false;

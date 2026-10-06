@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { createTestD1 } from "../../../../../shared/testing/d1-sqlite";
-import { isSpam, parseEnquiry, saveEnquiry } from "./enquiries";
+import { AUTO_REPLY_CAPS, autoReplyAllowed, isSpam, markAutoReplied, parseEnquiry, saveEnquiry } from "./enquiries";
 
 const form = (fields: Record<string, string>) => {
   const f = new FormData();
@@ -53,5 +53,40 @@ describe("saveEnquiry", () => {
     const row = db.raw.prepare("SELECT * FROM enquiries WHERE id = ?").get(id) as Record<string, unknown>;
     expect(row).toMatchObject({ name: "Sam", experience: "never", status: "new", source: "/join/" });
     expect(row.created_at).toMatch(/^\d{4}-\d\d-\d\dT.*Z$/);
+  });
+});
+
+describe("auto-reply caps", () => {
+  let db: ReturnType<typeof createTestD1>;
+  beforeEach(() => (db = createTestD1()));
+  const now = new Date("2026-10-06T12:00:00Z");
+  const hoursAgo = (h: number) => new Date(now.getTime() - h * 3_600_000);
+  const enquiry = (email: string) => ({
+    name: "Sam",
+    email,
+    phone: null,
+    experience: null,
+    message: null,
+    source: null,
+  });
+  const replied = async (email: string, at: Date) => markAutoReplied(db, await saveEnquiry(db, enquiry(email)), at);
+
+  it("records whether Turnstile verified the sender", async () => {
+    const id = await saveEnquiry(db, enquiry("a@example.com"), { verified: true });
+    expect(db.raw.prepare("SELECT verified FROM enquiries WHERE id = ?").get(id)).toEqual({ verified: 1 });
+  });
+
+  it("allows one auto-reply per address per week", async () => {
+    expect(await autoReplyAllowed(db, "a@example.com", now)).toBe(true);
+    await replied("a@example.com", hoursAgo(24 * 6));
+    expect(await autoReplyAllowed(db, "a@example.com", now)).toBe(false);
+    expect(await autoReplyAllowed(db, "b@example.com", now)).toBe(true);
+    expect(await autoReplyAllowed(db, "a@example.com", new Date(now.getTime() + 2 * 86_400_000))).toBe(true);
+  });
+
+  it(`stops after ${AUTO_REPLY_CAPS.perDay} auto-replies in a day, whoever they're to`, async () => {
+    for (let i = 0; i < AUTO_REPLY_CAPS.perDay; i++) await replied(`p${i}@example.com`, hoursAgo(1));
+    expect(await autoReplyAllowed(db, "new@example.com", now)).toBe(false);
+    expect(await autoReplyAllowed(db, "new@example.com", new Date(now.getTime() + 86_400_000))).toBe(true);
   });
 });

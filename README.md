@@ -74,6 +74,8 @@ Rules ([ADR 0002](docs/adr/0002-secrets-in-bitwarden.md), [ADR 0010](docs/adr/00
 | [`GMAIL_CLIENT_SECRET`](#gmail)                                           | `cougars-dev` | Google Cloud                | Website (both)               |
 | [`GMAIL_REFRESH_TOKEN__PRODUCTION`](#gmail)                               | `cougars`     | Google, club Gmail          | Website (production)         |
 | [`GMAIL_REFRESH_TOKEN`](#gmail)                                           | `cougars-dev` | Google, dev Gmail           | Website (dev)                |
+| [`TURNSTILE_SECRET_KEY__PRODUCTION`](#turnstile)                          | `cougars`     | Cloudflare, Cougars         | Website (production)         |
+| [`TURNSTILE_SECRET_KEY`](#turnstile)                                      | `cougars-dev` | Cloudflare, Cougars Dev     | Website (dev)                |
 
 ### Bitwarden tokens
 
@@ -211,11 +213,31 @@ inbox, and dev can only ever send from its own test account, never the club's.
 
 - **Used by:** the website's enquiry form (Worker), to send mail. The refresh token can send mail as its account
   and nothing else: it can't read the mailbox.
-- **Gets there by:** to be added with the email feature: `deploy.yml` pushes them to the Worker as secrets.
+- **Gets there by:** CI pull from Secrets Manager (`GMAIL_REFRESH_TOKEN__PRODUCTION` becomes `GMAIL_REFRESH_TOKEN`),
+  then `deploy.yml` pushes all three to the Worker as secrets on every deploy. Locally,
+  `node scripts/env-pull.mjs -- npm run dev` (dev account). Without them, emails are logged, not sent
+  ([ADR 0027](docs/adr/0027-email-through-gmail-api.md)).
 - **Expires:** no, but Google cancels a refresh token when the account's password changes, access is removed in
   [the account's third-party access](https://myaccount.google.com/connections), or it's unused for 6 months.
 - **Rotate:** re-run `gmail-auth.mjs` for that environment, then deploy. Client secret: **Clients → the client →
   Add secret**, update Secrets Manager, delete the old one.
+
+### Turnstile
+
+Cloudflare Turnstile on the "Try a session" form: it tells people from bots, and only people get the automatic
+reply ([ADR 0028](docs/adr/0028-turnstile-and-auto-reply.md)). Free. Without the secret nobody counts as verified:
+enquiries are still saved and emailed to the club, but nobody gets an auto-reply.
+
+- **Issued by:** Cloudflare, one widget per account. Sidebar **Turnstile** (under _Application security_ in the new
+  dashboard) → **Add widget**: name `cougars-website`, hostname the site's (Cougars Dev: `cougars-dev.cougars-dev.workers.dev`;
+  Cougars: `batterseacougars.com`), widget mode **Managed**, pre-clearance **No** → **Create**. It shows a **site
+  key** (public: it goes in `deploy.yml` as `TURNSTILE_SITE_KEY` for that environment) and a **secret key**:
+  `node scripts/secret-set.mjs TURNSTILE_SECRET_KEY` (dev) or `TURNSTILE_SECRET_KEY__PRODUCTION`.
+- **Used by:** the website's `/api/join` (Worker), to check each form's token with Cloudflare.
+- **Gets there by:** CI pull from Secrets Manager, then `deploy.yml` pushes it to the Worker as a secret on every
+  deploy. A laptop uses Cloudflare's test site key (always passes) and no secret, so no auto-replies locally.
+- **Expires:** no.
+- **Rotate:** the widget → **Rotate secret key**, update Secrets Manager, deploy.
 
 ### Settings that aren't secret
 
@@ -231,6 +253,7 @@ inbox, and dev can only ever send from its own test account, never the club's.
 ## Docs
 
 - [docs/setup.md](docs/setup.md): one-time account setup (Cloudflare, Sanity, Bitwarden, GitHub)
+- [docs/testing.md](docs/testing.md): how we test (use cases first, the fake world)
 - [docs/editing.md](docs/editing.md): guide for club editors (no coding)
 - [docs/roadmap.md](docs/roadmap.md): what's next, per project ([website](docs/roadmap/website.md),
   [team app](docs/roadmap/team-app.md)), and the free-tier budget

@@ -1,4 +1,4 @@
-# 0028. Training repeats as a series; tournaments are typed and scheduled one by one
+# 0030. Training repeats as a series; tournaments are typed and scheduled one by one
 
 - **Status:** Accepted. Supersedes [0025](0025-events-in-d1.md) (its single `events` + `event_series` model). Keeps
   0025's decision that the schedule lives in D1 and the website reads public dates live.

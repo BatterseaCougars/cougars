@@ -1,4 +1,4 @@
-// The team app's schedule model (ADR 0028). These are the shapes the D1 tables will have; the demo keeps them in
+// The team app's schedule model (ADR 0030). These are the shapes the D1 tables will have; the demo keeps them in
 // memory. Training repeats (series → sessions); tournaments are scheduled one by one under a type; anything else
 // is a one-off event. The calendar is all three together.
 import type { IconName } from "../app/shell/icons";

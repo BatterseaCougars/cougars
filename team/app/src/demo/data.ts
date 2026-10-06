@@ -51,7 +51,7 @@ export const REAL_ID = PLAYERS[0].id;
 export const emailFor = (p: Player) => `${p.name.toLowerCase().replace(" ", ".")}@example.com`;
 export const referenceFor = (id: number) => `COU-${String(id).padStart(4, "0")}`;
 
-// ─── Schedule (ADR 0028). Sample values, not club facts. ───
+// ─── Schedule (ADR 0030). Sample values, not club facts. ───
 
 export const SERIES: TrainingSeries[] = [
   {

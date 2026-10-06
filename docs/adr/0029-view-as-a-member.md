@@ -1,4 +1,4 @@
-# 0027. Admins can view the app as a member, read-only
+# 0029. Admins can view the app as a member, read-only
 
 - **Status:** Accepted
 - **Date:** 2026-10-06

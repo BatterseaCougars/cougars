@@ -8,7 +8,7 @@ shapes in memory.
 ## People and access (T1)
 
 [ADR 0023](adr/0023-device-bound-sign-in.md), [ADR 0024](adr/0024-action-based-authorization.md),
-[ADR 0027](adr/0027-view-as-a-member.md).
+[ADR 0029](adr/0029-view-as-a-member.md).
 
 | Table              | Columns                                                                                                                                     |
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -22,7 +22,7 @@ shapes in memory.
 
 ## Schedule (T2, T5)
 
-[ADR 0028](adr/0028-training-series-and-tournaments.md).
+[ADR 0030](adr/0030-training-series-and-tournaments.md).
 
 | Table               | Columns                                                                                                                                                                                                |
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |

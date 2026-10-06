@@ -1,5 +1,5 @@
 // Who's signed in, and who they're viewing the app as. Real sessions arrive in T1 (ADR 0023); impersonation is
-// ADR 0027: an admin sees exactly what a member sees, read-only.
+// ADR 0029: an admin sees exactly what a member sees, read-only.
 import type { Action } from "../access/actions";
 import { PLAYERS, REAL_ID, type Player } from "./data";
 import { db } from "./store.svelte";

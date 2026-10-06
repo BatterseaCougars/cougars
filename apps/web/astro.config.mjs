@@ -21,7 +21,10 @@ export default defineConfig({
   // Old Wix addresses. /gallery/<album> is a server route (pages/gallery/[slug].ts): a config redirect to a
   // server-rendered page would point at a prerendered file that doesn't exist.
   redirects: { "/gallery": "/photos" },
-  integrations: [sitemap({ filter: (page) => !page.includes("/join/thanks") })],
+  // Not in the sitemap: the thanks page, the reel fragment the home page fetches, and the design prototypes (noindex).
+  integrations: [
+    sitemap({ filter: (page) => !/\/(join\/thanks|videos\/reel|concepts)(\/|$)/.test(new URL(page).pathname) }),
+  ],
   adapter: cloudflare({
     // Resize local assets at build time with sharp; Sanity's CDN resizes CMS
     // images. Avoids the paid Cloudflare Images binding.
@@ -34,8 +37,20 @@ export default defineConfig({
       SANITY_DATASET: envField.string({ context: "server", access: "public", default: sanity.dataset }),
       // Not needed: both projects' datasets are public. Only for a private dataset or drafts later.
       SANITY_API_TOKEN: envField.string({ context: "server", access: "secret", optional: true }),
-      // Pulls the club channel's videos at build time (lib/youtube.ts). Without it: Sanity videos only.
+      // The club's YouTube videos, read live on the Worker (lib/server/videos.ts). Without it: Sanity videos only.
       YOUTUBE_API_KEY: envField.string({ context: "server", access: "secret", optional: true }),
+      // Enquiry emails through the Gmail API (shared/email.ts, README.md#gmail). Worker secrets; without them the
+      // email is logged instead of sent.
+      GMAIL_CLIENT_ID: envField.string({ context: "server", access: "secret", optional: true }),
+      GMAIL_CLIENT_SECRET: envField.string({ context: "server", access: "secret", optional: true }),
+      GMAIL_REFRESH_TOKEN: envField.string({ context: "server", access: "secret", optional: true }),
+      // Where every email goes outside production; unset, the sending account itself (cougars.dev).
+      MAIL_SAFE_TO: envField.string({ context: "server", access: "public", optional: true }),
+      // Cloudflare Turnstile on /join (lib/server/turnstile.ts, ADR 0028). The site key is public, one per Cloudflare
+      // account (deploy.yml); the default is Cloudflare's test key, which always passes, for a laptop. The secret is a
+      // Worker secret; unset, nobody counts as verified (no auto-replies).
+      TURNSTILE_SITE_KEY: envField.string({ context: "client", access: "public", default: "1x00000000000000000000AA" }),
+      TURNSTILE_SECRET_KEY: envField.string({ context: "server", access: "secret", optional: true }),
       PUBLIC_BUILD_VERSION: envField.string({ context: "client", access: "public", default: "dev" }),
       // Sample content + noindex for dev builds (local, PR previews, scripts/deploy-dev.sh). Never in production.
       DEMO_CONTENT: envField.boolean({ context: "server", access: "public", default: false }),

@@ -1,0 +1,76 @@
+# Testing
+
+Why we test this way: [ADR 0031](adr/0031-use-case-tests.md). The approach comes from Gwenda ops
+(`gwenda-hackney/ark`, `docs/testing.md`).
+
+## Running tests
+
+Every test runs with **Vitest** from the root `vitest.config.ts`. Tests are found by glob, so a new `*.test.ts`
+next to the code runs without editing config.
+
+| Command                        | Runs                                |
+| ------------------------------ | ----------------------------------- |
+| `npm test`                     | everything                          |
+| `npx vitest run team/app`      | one project (any path filter works) |
+| `npx vitest run -t "walk-in"`  | tests whose name matches            |
+| VS Code test explorer (Vitest) | any file or single test             |
+
+Before pushing: `npm run lint && npm test && npm run check -w @cougars/web && npm run build`.
+
+## Use cases first
+
+The most important tests describe **what someone does** and check what they'd see and what reached the outside
+world:
+
+- "a member says they're in, and sees their place in the sign-up order"
+- "the door adds a walk-in, and closing the register charges them the session fee"
+- "someone joins on the website, and the club gets an email but they don't get two auto-replies"
+
+They drive the **real Worker handlers** with a real `Request`, end to end. Put them next to the feature as
+`use-cases.test.ts` (for example `team/app/src/schedule/use-cases.test.ts`), named in plain words.
+
+Function-level unit tests are for tricky pure logic where covering every case in isolation is easier: recurrence
+rules, the team solver, standings, slugs, permissions. Don't add them by default.
+
+Don't mock our own code. If a test needs to stub one of our functions, it's testing at the wrong level.
+
+## The fake world
+
+`shared/testing/fake-world.ts` (built with the first API handlers in team-app T1) gives each test a fresh world:
+
+| Service        | Faked as                                                                      |
+| -------------- | ----------------------------------------------------------------------------- |
+| D1             | In-memory SQLite with every migration applied (`shared/testing/d1-sqlite.ts`) |
+| Gmail API      | An outbox: `world.mail.sent()`                                                |
+| Sanity         | Documents in memory, queried with groq-js (the real GROQ engine)              |
+| YouTube        | Upload sessions and playlist items                                            |
+| Turnstile      | A token list: tokens the test marks as passed verify, everything else fails   |
+| Google sign-in | An OAuth server that signs in whichever verified email the test chooses       |
+
+It replaces global `fetch` while installed. Any outside call it doesn't know **throws with its URL**: a new
+integration shows up as a failing test, not a silent network call. Every world has fresh random secrets, so
+module-level caches never carry one test's data into another.
+
+```ts
+const world = await createFakeWorld();
+world.install();
+const alex = await world.signIn("alex@example.com", { roles: ["Admin"] });
+const res = await world.call(alex, "POST", "/api/training", { name: "Sunday Skills", weekdays: ["sun"] });
+expect(res.status).toBe(201);
+expect(world.db.all("SELECT held_on FROM training_sessions")).toHaveLength(12);
+world.restore();
+```
+
+Give each area a small helper for the person doing it (`admin(world)`, `member(world, "Jo")`) with the actions
+they take and a `sees()` for what's on their screen, so the test reads like the use case.
+
+## Known bugs
+
+A use case that finds a real bug stays in the suite, written as `it.fails("… (known bug #N)", …)` with a comment
+linking the issue. It still runs and doesn't fail the build, and it starts failing the day the bug is fixed. The
+PR that fixes the bug changes it back to `it`.
+
+## Older tests
+
+Tests written before ADR 0031 are function-level. They stay until they're rewritten as use cases (see the GitHub
+issue "Rewrite existing tests as use cases"); don't block new work on it.

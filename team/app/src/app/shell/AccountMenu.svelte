@@ -1,7 +1,7 @@
 <script lang="ts">
   /**
    * Who's signed in, top right (the Gwenda ops account badge). Opens your account: profile, your tab, sign out,
-   * and for admins "View as", which shows the app exactly as a member sees it (ADR 0027). Escape or a click
+   * and for admins "View as", which shows the app exactly as a member sees it (ADR 0029). Escape or a click
    * outside closes it. On a phone the menu is a sheet from the bottom.
    */
   import { tick } from "svelte";
