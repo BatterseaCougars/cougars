@@ -168,7 +168,7 @@
       <img src={logo} alt="" width="34" height="34" />
       <span class="brand-text">
         <span class="display brand-title">Cougars</span>
-        <span class="brand-sub">Den</span>
+        <span class="brand-sub">Fresh Meat</span>
       </span>
     </a>
     <nav class="nav" use:glide={{ shape: rowShape, key: glideKey }}>
@@ -220,7 +220,7 @@
         <div class="topbar">
           <a class="topbar-brand" href="/" aria-label="Home">
             <img src={logo} alt="" width="28" height="28" />
-            <span class="display">Cougars <span class="den">Den</span></span>
+            <span class="display">Cougars <span class="meat">Fresh Meat</span></span>
           </a>
           {#if board}
             <a class="board" href="/" aria-label="Next session">

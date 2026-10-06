@@ -94,7 +94,7 @@
 :root[data-chrome="boards"] .topbar-brand .display {
   font-style: italic;
 }
-:root[data-chrome="boards"] .den {
+:root[data-chrome="boards"] .meat {
   color: var(--red-hot);
 }
 :root[data-chrome="boards"] .strip-link {
