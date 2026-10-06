@@ -172,14 +172,15 @@ Lets the website email the club inbox about each enquiry, and auto-reply to the 
 inbox, and dev can only ever send from its own test account, never the club's.
 
 - **Issued by:**
-  - `GMAIL_CLIENT_ID` / `GMAIL_CLIENT_SECRET`: Google Cloud console, signed in as batterseahockey@gmail.com (never
-    the dev account, which needs no Cloud access). One project for the whole club, website and team app:
-    _Battersea Cougars_, ID `battersea-cougars` (permanent, so no "website" or "dev" in it). The club account owns
-    it; add a maintainer's own Google account as a second Owner (**IAM → Grant access**). Each app gets its own
-    client in it, so either can be cut off alone; the YouTube keys go here too.
+  - `GMAIL_CLIENT_ID` / `GMAIL_CLIENT_SECRET`: Google Cloud console, signed in as the developer account (the dev
+    Gmail account, which owns the club's Google Cloud work). One project for the whole club, website and team app:
+    _Battersea Cougars_, ID `battersea-cougars` (permanent, so no "website" or "dev" in it). Add
+    batterseahockey@gmail.com as a second Owner (**IAM → Grant access**), so the club can always reach the project
+    production email depends on. Each app gets its own client in it, so either can be cut off alone; the YouTube
+    keys go here too.
     1. **APIs & Services → Library → Gmail API → Enable**.
-    2. **Google Auth Platform → Get started**: app name _Battersea Cougars_ (both apps share it), support email the club's,
-       audience **External**, contact email the club's.
+    2. **Google Auth Platform → Get started**: app name _Battersea Cougars_ (both apps share it), support and
+       contact email the developer account's, audience **External**.
     3. **Data access → Add or remove scopes**: `.../auth/gmail.send` only (_Send email on your behalf_). Save.
     4. **Audience → Publish app**, to **In production**. In _Testing_, Google cancels the tokens after 7 days.
        It stays unverified (Google warns on the consent screen, which is fine: only the club's two accounts ever
