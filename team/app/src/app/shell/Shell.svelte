@@ -1,8 +1,8 @@
 <script lang="ts">
   // The shell. Desktop: the page has the whole screen; a dock of the main sections floats mid-left, the brand
   // mark top-left, your badge top-right, the wordmark and the London clock in the bottom corners. A section's
-  // pages (Games, Standings, Draft) sit as pills along the top, and a page's own header (PageHeader) stays pinned
-  // while it scrolls. Phones: five tabs at the bottom, and a slim bar along the top with the page's name (or its
+  // pages (Games, Standings, Draft) sit in the page header's toolbar row, which pins as the page scrolls
+  // (PageHeader). Phones: five tabs at the bottom, and a slim bar along the top with the page's name (or its
   // section's strip of pages), its actions, and a Filters button that opens its filters in a sheet. Home has
   // neither: it starts with the greeting.
   import { type Snippet } from "svelte";
@@ -21,7 +21,7 @@
   import { owedBy } from "../../demo/dues.svelte";
   import { pounds } from "../../lib/dates";
   import Sheet from "../../lib/Sheet.svelte";
-  import { phone, wide } from "../../lib/viewport.svelte";
+  import { phone } from "../../lib/viewport.svelte";
   import { pageBar } from "./page-bar.svelte";
 
   let { route, children }: { route: Route; children: Snippet } = $props();
@@ -30,9 +30,6 @@
   const all = $derived(routes());
   const tabList = $derived(tabs());
   const strip = $derived(route.focus ? [] : stripRoutes(all, route, perms));
-  // Desktop shows the strip only inside a tournament type (Games, Standings, Draft); the dock already lists the
-  // trainings.
-  const stripOnDesktop = $derived(Boolean(route.fold));
   const allowed = (r: Route) => !r.focus && !r.hidden && can(perms, r.action);
 
   // The dock: only the main sections. Home, a tile per training, Calendar, a tile per tournament type, the club
@@ -109,6 +106,11 @@
   let content: HTMLElement | undefined = $state();
 
   let filtersOpen = $state(false);
+  // The desktop header shows the section's pages in its toolbar row
+  $effect(() => {
+    pageBar.strip = strip.map((r) => ({ id: r.id, path: r.path, label: r.short ?? r.name }));
+    pageBar.current = route.id;
+  });
   const showBar = $derived(!route.focus && route.id !== "home");
 
   // Tapping the tab you're on goes to its first page; on the first page, it scrolls to the top.
@@ -181,14 +183,6 @@
     {/each}
   </nav>
 
-  <!-- Wide desktop: the page's actions and filters float down the right edge, the dock's mirror -->
-  {#if (pageBar.filters || pageBar.actions) && !phone.current && wide.current}
-    <aside class="filter-dock" aria-label="Page actions and filters" inert={route.focus || undefined}>
-      {#if pageBar.actions}<div class="dock-actions">{@render pageBar.actions()}</div>{/if}
-      {#if pageBar.filters}{@render pageBar.filters()}{/if}
-    </aside>
-  {/if}
-
   <main class="main">
     <header class="chrome" bind:clientHeight={chromeH}>
       <!-- Always there: the notch, and the View-as banner (it must never scroll away) -->
@@ -238,12 +232,11 @@
           </div>
         {/if}
       {:else if !route.focus}
-        <!-- Desktop: the mark and your badge in the top corners, a tournament's pages as pills between them -->
+        <!-- Desktop: the mark and your badge in the top corners -->
         <div class="topbar">
           <a class="brand" href="/" aria-label="Home">
             <img src={logo} alt="" width="36" height="36" />
           </a>
-          {#if strip.length && stripOnDesktop}{@render stripNav()}{/if}
           <AccountMenu />
         </div>
       {/if}
@@ -289,7 +282,6 @@
         <div
           class="view"
           class:under-tabs={!route.focus}
-          class:in-fold={stripOnDesktop}
           in:enter={{ focus: route.focus }}
           out:leave={{ focus: route.focus }}
         >
@@ -483,50 +475,6 @@
     translate: 0 -50%;
   }
 
-  /* ─── The filter dock (wide desktop): floating buttons down the right edge, centred like the dock ─── */
-  .filter-dock {
-    position: fixed;
-    top: 50%;
-    right: var(--s-5);
-    z-index: 7;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: var(--s-1);
-    translate: 0 -50%;
-  }
-  .filter-dock .dock-actions {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: var(--s-1);
-    margin-bottom: var(--s-3);
-  }
-  .filter-dock :global(.filters) {
-    flex-direction: column;
-    align-items: flex-end;
-    gap: var(--s-1);
-  }
-  /* Small floating buttons, each as wide as its label, glass like the dock */
-  .filter-dock :global(.filter),
-  .filter-dock .dock-actions :global(.btn) {
-    height: 2.1rem;
-    padding: 0 var(--s-3);
-    border-radius: var(--r-sm);
-    font-size: var(--text-sm);
-  }
-  .filter-dock :global(.filter) {
-    background: color-mix(in srgb, var(--surface-1) 45%, transparent);
-    backdrop-filter: blur(14px) saturate(1.4);
-    -webkit-backdrop-filter: blur(14px) saturate(1.4);
-  }
-  .filter-dock :global(.filter:hover) {
-    background: color-mix(in srgb, var(--surface-2) 70%, transparent);
-  }
-  .filter-dock :global(.filter[aria-pressed="true"]) {
-    background: color-mix(in srgb, var(--tone) 22%, transparent);
-  }
-
   /* ─── Chrome: the pinned band (notch, View-as banner), then the phone bar or the desktop corners ─── */
   .chrome {
     position: absolute;
@@ -702,34 +650,6 @@
     }
     .brand img {
       filter: drop-shadow(0 2px 8px rgb(229 19 31 / 0.35));
-    }
-    /* A tournament's pages: one tinted pill, no outline */
-    .strip {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      translate: -50% -50%;
-      height: auto;
-      padding: 3px;
-      gap: 2px;
-      border-radius: var(--r-md);
-      background: color-mix(in srgb, var(--surface-2) 75%, transparent);
-      backdrop-filter: var(--blur);
-      -webkit-backdrop-filter: var(--blur);
-      overflow: visible;
-    }
-    .strip-link {
-      height: 2.1rem;
-      padding: 0 var(--s-4);
-      border-radius: var(--r-sm);
-    }
-    .strip-mark {
-      border-radius: var(--r-sm);
-      background: color-mix(in srgb, var(--fg) 12%, transparent);
-    }
-    /* A tournament's pills sit along the top: pages without a PageHeader start below them */
-    .view.in-fold > :global(.page:not(:has(> .page-header))) {
-      padding-top: 4.5rem;
     }
     /* Room for the dock on narrower desktops, mirrored so the page stays centred */
     .shell:not(.focus) .view {
