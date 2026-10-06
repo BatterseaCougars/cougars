@@ -44,9 +44,10 @@ Copied in shape from Gwenda ops (`gwenda-hackney/ark`, `ops/site/src/app/`), whi
   - editors hide the tabs and show their own back bar, with an unsaved-changes guard
 - **Desktop:** the page has the whole screen. A dock of the main sections (Home, each training, Calendar, each
   tournament type, the club pages, Settings) floats mid-left as glass tiles with a label on hover; the brand mark
-  sits top-left, your badge top-right. Every page opens with its title, which scrolls away like content; the
-  toolbar row under it (a section's pages as pills, search, filter chips, the page's buttons) pins at the top of
-  the column as the page scrolls, with a veil of the page's own background behind it rather than a bar.
+  sits top-left, your badge top-right, and between them, over the page column, the page's controls: a section's
+  pages as pills, search, filter chips, the page's buttons. They're always there, so they're in reach however far
+  the page has scrolled and whatever a filter does to its length; once the page scrolls, a veil of its own
+  background fades in behind them rather than a bar. The title scrolls away like content.
 - **Tabs**, most-used first:
   - **Home**: am I in this Friday, my team, my tab, notices
   - **Friday**: who's in (in sign-up order) and the teams, your team first; the register for the door

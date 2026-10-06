@@ -107,15 +107,20 @@
   let content: HTMLElement | undefined = $state();
 
   let filtersOpen = $state(false);
-  // The desktop bar stays while you're typing in its search: a shorter list could otherwise scroll the page back
-  // and take the field away mid-word.
-  let toolsFocus = $state(false);
-  const barOn = $derived(pageBar.pinned || toolsFocus);
-  // The desktop header shows the section's pages in its toolbar row
+  // Desktop: what the top bar shows for this page, and the veil behind it once the page has scrolled
+  const stripItems = $derived(strip.map((r) => ({ id: r.id, path: r.path, label: r.short ?? r.name })));
+  const hasTools = $derived(
+    !phone.current && Boolean(stripItems.length > 1 || pageBar.toolbar || pageBar.filters || pageBar.actions),
+  );
+  let scrolled = $state(false);
   $effect(() => {
-    pageBar.strip = strip.map((r) => ({ id: r.id, path: r.path, label: r.short ?? r.name }));
-    pageBar.current = route.id;
+    void route.id;
+    scrolled = false;
   });
+  function onScroll(e: Event) {
+    const view = e.target;
+    if (view instanceof HTMLElement && view.classList.contains("view")) scrolled = view.scrollTop > 8;
+  }
   const showBar = $derived(!route.focus && route.id !== "home");
 
   // Tapping the tab you're on goes to its first page; on the first page, it scrolls to the top.
@@ -237,25 +242,20 @@
           </div>
         {/if}
       {:else if !route.focus}
-        <!-- Desktop: the mark and your badge in the top corners, and the page's toolbar row between them once it has
-             scrolled away -->
-        <div class="topbar" class:pinned={barOn}>
+        <!-- Desktop: the mark and your badge in the top corners, the page's controls between them -->
+        <div class="topbar" class:scrolled>
           <a class="brand" href="/" aria-label="Home">
             <img src={logo} alt="" width="36" height="36" />
           </a>
-          <!-- The page's toolbar row, once its own has scrolled away: the same pills, search, chips and buttons -->
-          <div
-            class="tools"
-            aria-hidden={!barOn}
-            inert={!barOn || undefined}
-            onfocusin={() => (toolsFocus = true)}
-            onfocusout={(e) => (toolsFocus = e.currentTarget.contains(e.relatedTarget as Node))}
-          >
-            {#if pageBar.strip.length > 1}<Pills items={pageBar.strip} current={pageBar.current} />{/if}
-            {#if pageBar.toolbar}{@render pageBar.toolbar()}{/if}
-            {#if pageBar.filters}{@render pageBar.filters()}{/if}
-            {#if pageBar.actions}<div class="tools-actions">{@render pageBar.actions()}</div>{/if}
-          </div>
+          <!-- The page's controls: a section's pages as pills, search or tabs, filter chips, its buttons -->
+          {#if hasTools}
+            <div class="tools">
+              {#if stripItems.length > 1}<Pills items={stripItems} current={route.id} />{/if}
+              {#if pageBar.toolbar}{@render pageBar.toolbar()}{/if}
+              {#if pageBar.filters}{@render pageBar.filters()}{/if}
+              {#if pageBar.actions}<div class="tools-actions">{@render pageBar.actions()}</div>{/if}
+            </div>
+          {/if}
           <AccountMenu />
         </div>
       {/if}
@@ -296,11 +296,12 @@
       </Sheet>
     {/if}
 
-    <div class="content" bind:this={content} style:--chrome-h="{chromeH}px">
+    <div class="content" bind:this={content} style:--chrome-h="{chromeH}px" onscrollcapture={onScroll}>
       {#key route.id}
         <div
           class="view"
           class:under-tabs={!route.focus}
+          class:has-tools={hasTools}
           in:enter={{ focus: route.focus }}
           out:leave={{ focus: route.focus }}
         >
@@ -664,8 +665,8 @@
     .topbar > :global(*) {
       pointer-events: auto;
     }
-    /* Behind the bar, a veil: the page's background in from the top with a blur that fades out, so cards dissolve
-       under the controls. No edge. */
+    /* Behind the bar once the page has scrolled, a veil: the page's background in from the top with a blur that
+       fades out, so cards dissolve under the controls. No edge. */
     .topbar::before {
       content: "";
       position: absolute;
@@ -688,10 +689,10 @@
       pointer-events: none;
       transition: opacity var(--t-slow) var(--ease);
     }
-    .topbar.pinned::before {
+    .topbar.scrolled::before {
       opacity: 1;
     }
-    /* The row sits over the page column, where the page's own row was */
+    /* The controls sit over the page column, left-aligned with its title */
     .tools {
       display: flex;
       align-items: center;
@@ -700,15 +701,10 @@
       max-width: var(--page-max);
       margin: 0 auto;
       padding: 0 var(--gutter);
-      opacity: 0;
-      translate: 0 -0.4rem;
-      transition:
-        opacity var(--t-slow) var(--ease),
-        translate var(--t-slow) var(--ease);
     }
-    .topbar.pinned .tools {
-      opacity: 1;
-      translate: 0 0;
+    /* The page starts under the bar when there is one */
+    .view.has-tools > :global(.page) {
+      padding-top: 4.5rem;
     }
     .tools > :global(*) {
       min-width: 0;

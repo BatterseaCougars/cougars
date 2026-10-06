@@ -1,16 +1,14 @@
 <script lang="ts">
   /**
-   * The top of a page: an eyebrow, the title (with a badge beside it), one line under it, then the toolbar row:
-   * the section's pages (Games, Standings, Draft), the page's search or tabs, its filters, and its actions on
-   * the right. All of it scrolls away like content. On desktop, the moment the toolbar row has gone, the shell
-   * shows the same row as a top bar between the mark and your badge (Shell.svelte): two states, nothing slides.
-   * Phones show the title in the shell's slim bar (so here it's for screen readers only), and the shell takes
-   * the actions and filters too; the line and the search or tabs stay here. Home has no header.
+   * The top of a page: an eyebrow, the title (with a badge beside it) and one line under it. The page's controls
+   * (search or tabs, filters, actions) go to the shell: on desktop they sit in the top bar, always, so they're in
+   * reach however far the page has scrolled and whatever a filter does to its length. On phones the slim bar
+   * shows the actions and puts the filters in a sheet, and the search or tabs stay here, under the line. Phones
+   * also show the title in that bar, so here it's for screen readers only. Home has no header.
    */
   import type { Snippet } from "svelte";
   import Icon from "../app/shell/Icon.svelte";
   import type { IconName } from "../app/shell/icons";
-  import Pills from "./Pills.svelte";
   import { pageBar } from "../app/shell/page-bar.svelte";
   import { phone } from "./viewport.svelte";
 
@@ -60,36 +58,8 @@
         filters: undefined,
         toolbar: undefined,
         active: 0,
-        pinned: false,
         onclear: undefined,
       });
-  });
-
-  const strip = $derived(!phone.current && pageBar.strip.length > 1 ? pageBar.strip : []);
-  const hasToolbar = $derived(Boolean(toolbar || strip.length || (!phone.current && (filters || actions))));
-
-  // The moment the toolbar row reaches where the shell's bar sits (its top crosses 18px from the view's top), the
-  // bar takes over, in the same place: a swap, not a slide.
-  let row = $state<HTMLElement | undefined>();
-  $effect(() => {
-    const el = row;
-    if (!el || phone.current) {
-      pageBar.pinned = false;
-      return;
-    }
-    const root = el.closest(".view");
-    const io = new IntersectionObserver(
-      ([e]) => {
-        const top = root?.getBoundingClientRect().top ?? 0;
-        pageBar.pinned = e.intersectionRatio < 1 && e.boundingClientRect.top < top + 20;
-      },
-      { root, rootMargin: "-18px 0px 0px 0px", threshold: [1] },
-    );
-    io.observe(el);
-    return () => {
-      io.disconnect();
-      pageBar.pinned = false;
-    };
   });
 </script>
 
@@ -108,13 +78,8 @@
     {#if sub}<p class="line hint">{@render sub()}</p>{:else if subtitle}<p class="line hint">{subtitle}</p>{/if}
   </div>
 </header>
-{#if hasToolbar}
-  <div class="toolbar" bind:this={row}>
-    {#if strip.length}<Pills items={strip} current={pageBar.current} />{/if}
-    {#if toolbar}{@render toolbar()}{/if}
-    {#if filters && !phone.current}{@render filters()}{/if}
-    {#if actions && !phone.current}<div class="actions">{@render actions()}</div>{/if}
-  </div>
+{#if toolbar && phone.current}
+  <div class="toolbar">{@render toolbar()}</div>
 {/if}
 
 <style>
@@ -160,21 +125,6 @@
     flex-wrap: wrap;
     gap: var(--s-3);
     min-width: 0;
-  }
-  .toolbar > :global(*) {
-    min-width: 0;
-  }
-  .actions {
-    display: flex;
-    align-items: center;
-    gap: var(--s-2);
-    margin-left: auto;
-  }
-
-  @media (min-width: 901px) {
-    .toolbar :global(.search) {
-      width: 14rem;
-    }
   }
 
   /* Phones: the slim bar names the page; the line stays, on one line */
