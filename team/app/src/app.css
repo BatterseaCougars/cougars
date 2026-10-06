@@ -330,6 +330,41 @@ h3 {
   margin: 0 auto;
   padding: var(--s-5) var(--gutter) var(--s-10);
 }
+/* Filter chips: a tinted fill, no outline. In a row under a title, wrapping in the phone's Filters sheet, and
+   stacked in the desktop aside (PageHeader restyles them there). Each sets --tone for its icon and its "on" fill. */
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+}
+.filter {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  flex-shrink: 0;
+  height: 2.25rem;
+  padding: 0 var(--s-3);
+  border: 0;
+  border-radius: var(--r-sm);
+  background: color-mix(in srgb, var(--fg) 6%, transparent);
+  color: var(--fg-muted);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  --tone: var(--fg);
+  transition:
+    background-color var(--t) var(--ease-in-out),
+    color var(--t) var(--ease-in-out);
+}
+.filter svg {
+  color: var(--tone);
+}
+.filter:hover {
+  color: var(--fg);
+}
+.filter[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--tone) 22%, transparent);
+  color: var(--fg);
+}
 .page-head {
   display: flex;
   align-items: flex-end;

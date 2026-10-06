@@ -38,17 +38,15 @@ Copied in shape from Gwenda ops (`gwenda-hackney/ark`, `ops/site/src/app/`), whi
   - a `100dvh` shell where only the content scrolls, with `viewport-fit=cover`
   - each tab remembers the last page used in it; tapping the active tab goes to its first page, then scrolls to
     the top
-  - no top bar: a page opens with its own title (your badge sits on Home and at the top of More). Once the title
-    scrolls away, a slim bar with the page's name fades in over the content
-  - a strip of sub-pages along the top when a tab has more than one page; it slides away as you scroll down and
-    back as soon as you scroll up
-  - a page's controls (the Calendar filters, a toggle) pin under those bars (`.stick`), so you never scroll back
-    up to filter
+  - a slim top bar with the page's name (or its section's pages), its actions, and a Filters button that opens
+    the page's filters in a bottom sheet; lists that need it have a search field at the top. Home has no bar.
   - **More** is a full page, and its pages show a `‹ More` back link
   - editors hide the tabs and show their own back bar, with an unsaved-changes guard
 - **Desktop:** the page has the whole screen. A dock of the main sections (Home, each training, Calendar, each
   tournament type, the club pages, Settings) floats mid-left as glass tiles with a label on hover; the brand mark
   sits top-left, your badge top-right. A section's pages (Games, Standings, Draft) are pills along the top.
+  A page's header scrolls with the page; its filters sit in a column to the left of the content, pinned as the
+  list scrolls (inline under the title when the window is narrower than 1200px).
 - **Tabs**, most-used first:
   - **Home**: am I in this Friday, my team, my tab, notices
   - **Friday**: who's in (in sign-up order) and the teams, your team first; the register for the door

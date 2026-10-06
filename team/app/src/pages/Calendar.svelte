@@ -142,46 +142,6 @@
 </div>
 
 <style>
-  .filters {
-    display: flex;
-    gap: var(--s-2);
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-  /* In the phone's Filters sheet: wrap instead of scrolling sideways */
-  :global(.bottom-sheet) .filters {
-    flex-wrap: wrap;
-  }
-  .filters::-webkit-scrollbar {
-    display: none;
-  }
-  .filter {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--s-2);
-    flex-shrink: 0;
-    height: 2.25rem;
-    padding: 0 var(--s-3);
-    border: 0;
-    border-radius: var(--r-sm);
-    background: color-mix(in srgb, var(--fg) 6%, transparent);
-    color: var(--fg-muted);
-    font-size: var(--text-sm);
-    font-weight: 500;
-    transition:
-      background-color var(--t) var(--ease-in-out),
-      color var(--t) var(--ease-in-out);
-  }
-  .filter :global(svg) {
-    color: var(--tone);
-  }
-  .filter:hover {
-    color: var(--fg);
-  }
-  .filter[aria-pressed="true"] {
-    background: color-mix(in srgb, var(--tone) 22%, transparent);
-    color: var(--fg);
-  }
   .check {
     display: flex;
     align-items: center;

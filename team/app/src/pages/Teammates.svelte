@@ -25,9 +25,11 @@
   >
     {#snippet toolbar()}<SearchField bind:value={query} placeholder="Search teammates" />{/snippet}
     {#snippet filters()}
-      <div class="seg" role="group" aria-label="Position">
+      <div class="filters" role="group" aria-label="Position">
         {#each [["all", "All"], ["F", "Forwards"], ["D", "Defence"], ["G", "Keepers"]] as [v, label] (v)}
-          <button aria-pressed={filter === v} onclick={() => (filter = v as typeof filter)}>{label}</button>
+          <button class="filter" aria-pressed={filter === v} onclick={() => (filter = v as typeof filter)}
+            >{label}</button
+          >
         {/each}
       </div>
     {/snippet}
@@ -44,7 +46,4 @@
 </div>
 
 <style>
-  .seg {
-    display: flex;
-  }
 </style>

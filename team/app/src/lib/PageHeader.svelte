@@ -1,13 +1,14 @@
 <script lang="ts">
   /**
-   * The top of a page: its title, one line under it, its actions on the right, and a toolbar row (search, tabs) with
-   * the page's filters. Desktop pins it while the page scrolls under it, so the filters never go out of reach and
-   * never move. Phones show the title in the shell's slim top bar instead, and move the actions and filters there
-   * too (the filters into a sheet), leaving the line and the toolbar here. Home has no header.
+   * The top of a page: its title, one line under it, its actions on the right, and a toolbar row (search, a page's
+   * tabs). It scrolls away with the page, like any content. The page's filters live where they stay in reach:
+   * on a wide desktop in a column beside the content, pinned as the list scrolls, with nothing behind it; on a
+   * narrower desktop in a row under the title; on phones behind the shell's Filters button, in a sheet. Phones
+   * show the title in the shell's slim bar, so here it's for screen readers only. Home has no header.
    */
   import type { Snippet } from "svelte";
   import { pageBar } from "../app/shell/page-bar.svelte";
-  import { phone } from "./viewport.svelte";
+  import { phone, wide } from "./viewport.svelte";
 
   let {
     title,
@@ -51,6 +52,15 @@
   });
 </script>
 
+{#if filters && wide.current}
+  <!-- Beside the page, pinned: a stacked copy of the filters -->
+  <aside class="page-aside" aria-label="Filters">
+    <div class="aside-pin">
+      <p class="eyebrow">Show</p>
+      <div class="stack-in">{@render filters()}</div>
+    </div>
+  </aside>
+{/if}
 <header class="page-header">
   <div class="top">
     <div class="titles">
@@ -59,10 +69,10 @@
     </div>
     {#if actions && !phone.current}<div class="actions">{@render actions()}</div>{/if}
   </div>
-  {#if toolbar || (filters && !phone.current)}
+  {#if toolbar || (filters && !phone.current && !wide.current)}
     <div class="toolbar">
       {#if toolbar}{@render toolbar()}{/if}
-      {#if filters && !phone.current}{@render filters()}{/if}
+      {#if filters && !phone.current && !wide.current}{@render filters()}{/if}
     </div>
   {/if}
 </header>
@@ -105,25 +115,41 @@
     min-width: 0;
   }
 
-  /* Desktop: pinned. Clear over the page's poster word at the top; frosted once the page scrolls under it, edge to
-     edge, with no line: the frost is the edge. */
+  /* Wide desktop: the filters in a column to the left of the page, pinned as it scrolls. The column lives in the
+     empty space beside the page, so nothing else moves. */
+  .page-aside {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: calc(100% + var(--s-8));
+    width: 11rem;
+  }
+  .aside-pin {
+    position: sticky;
+    top: var(--s-6);
+    display: grid;
+    gap: var(--s-3);
+    padding-top: 0.6rem;
+  }
+  .stack-in :global(.filters) {
+    flex-direction: column;
+    gap: 2px;
+  }
+  .stack-in :global(.filter) {
+    justify-content: flex-start;
+    height: 2.1rem;
+    background: none;
+  }
+  .stack-in :global(.filter:hover) {
+    background: color-mix(in srgb, var(--fg) 5%, transparent);
+  }
+  .stack-in :global(.filter[aria-pressed="true"]) {
+    background: color-mix(in srgb, var(--tone) 18%, transparent);
+  }
   @media (min-width: 901px) {
-    .page-header {
-      position: sticky;
-      top: 0;
-      z-index: 4;
-      margin: calc(-1 * var(--s-5)) calc(50% - 50vw) 0;
-      padding: var(--s-6) calc(50vw - 50%) var(--s-4);
-      transition: background-color var(--t-slow) var(--ease);
-    }
     /* The section's pills float along the top of a tournament; leave them room */
     :global(.view.in-fold) .page-header {
       padding-top: 4.5rem;
-    }
-    :global(.view.scrolled) .page-header {
-      background: var(--chrome-bg-solid);
-      backdrop-filter: var(--blur);
-      -webkit-backdrop-filter: var(--blur);
     }
   }
 

@@ -108,17 +108,6 @@
   let chromeH = $state(0);
   let content: HTMLElement | undefined = $state();
 
-  // Once a page has scrolled at all, the bars over it frost (the desktop page header, the phone bar). Only the
-  // frost changes: nothing moves.
-  let scrolled = $state(false);
-  $effect(() => {
-    void route.id;
-    scrolled = false;
-  });
-  function onScroll(e: Event) {
-    const view = e.target;
-    if (view instanceof HTMLElement && view.classList.contains("view")) scrolled = view.scrollTop > 2;
-  }
   let filtersOpen = $state(false);
   const showBar = $derived(!route.focus && route.id !== "home");
 
@@ -213,7 +202,7 @@
       {#if phone.current}
         {#if showBar}
           <!-- Phones: the page's name or its section's pages, then its actions and filters -->
-          <div class="phone-bar" class:scrolled>
+          <div class="phone-bar">
             {#if strip.length}
               {@render stripNav()}
             {:else}
@@ -287,13 +276,12 @@
       </Sheet>
     {/if}
 
-    <div class="content" bind:this={content} style:--chrome-h="{chromeH}px" onscrollcapture={onScroll}>
+    <div class="content" bind:this={content} style:--chrome-h="{chromeH}px">
       {#key route.id}
         <div
           class="view"
           class:under-tabs={!route.focus}
           class:in-fold={stripOnDesktop}
-          class:scrolled
           in:enter={{ focus: route.focus }}
           out:leave={{ focus: route.focus }}
         >
