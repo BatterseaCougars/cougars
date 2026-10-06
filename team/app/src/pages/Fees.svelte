@@ -3,7 +3,8 @@
   import { db } from "../demo/store.svelte";
   import { pounds } from "../lib/dates";
 
-  let kind = $state("Per session");
+  // The quarterly subscription. Session fees are set on each training, tournament fees on each tournament (ADR 0032).
+  const kind = "Quarterly subscription";
   let amount = $state("");
   let from = $state("");
 
@@ -24,8 +25,12 @@
   <BackLink />
   <div class="page-head">
     <div>
-      <h1>Fees</h1>
-      <p class="hint">A new fee applies from its date. Charges already made keep the amount they had.</p>
+      <h1>Subscription</h1>
+      <p class="hint">
+        A new fee applies from its date; charges already made keep theirs. Session fees are set on each
+        <a href="/settings/training">training</a>, tournament fees on each
+        <a href="/settings/tournaments">tournament</a>.
+      </p>
     </div>
   </div>
 
@@ -40,11 +45,7 @@
   </div>
 
   <form class="panel pad form" onsubmit={add}>
-    <h2>New fee</h2>
-    <select class="input" bind:value={kind}>
-      <option>Per session</option>
-      <option>Quarterly subscription</option>
-    </select>
+    <h2>New subscription fee</h2>
     <div class="two">
       <input class="input" inputmode="decimal" placeholder="Amount (£)" bind:value={amount} />
       <input class="input" type="date" bind:value={from} />
@@ -76,5 +77,10 @@
   .amt {
     color: var(--fg);
     font-weight: 500;
+  }
+  .hint a {
+    color: var(--fg);
+    text-decoration: underline;
+    text-underline-offset: 3px;
   }
 </style>

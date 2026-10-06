@@ -3,7 +3,8 @@
 import type { Action } from "../access/actions";
 import type { OneOff, Tournament, TournamentType, TrainingSeries } from "./model";
 
-export type Position = "F" | "D";
+export type Position = "F" | "D" | "G";
+export const POSITIONS: Record<Position, string> = { F: "Forward", D: "Defence", G: "Keeper" };
 
 export interface Player {
   id: number;
@@ -63,7 +64,7 @@ export const SERIES: TrainingSeries[] = [
     tone: "blue",
     repeatEvery: 1,
     weekdays: ["fri"],
-    startsOn: "2026-09-04",
+    startsOn: "2026-04-03",
     endsOn: null,
     startTime: "19:30",
     endTime: "21:30",
@@ -71,6 +72,10 @@ export const SERIES: TrainingSeries[] = [
     capacity: 28,
     public: true,
     active: true,
+    fees: [
+      { pence: 800, from: "2025-09-01" },
+      { pence: 1000, from: "2026-07-01" },
+    ],
   },
   {
     id: 2,
@@ -89,6 +94,7 @@ export const SERIES: TrainingSeries[] = [
     capacity: 16,
     public: false,
     active: true,
+    fees: [{ pence: 600, from: "2026-09-01" }],
   },
 ];
 
@@ -107,6 +113,7 @@ export const TOURNAMENT_TYPES: TournamentType[] = [
     gameMinutes: 12,
     draft: true,
     active: true,
+    defaultFeePence: 1500,
   },
   {
     id: 2,
@@ -122,6 +129,7 @@ export const TOURNAMENT_TYPES: TournamentType[] = [
     gameMinutes: 10,
     draft: false,
     active: true,
+    defaultFeePence: 2000,
   },
 ];
 
@@ -135,6 +143,7 @@ export const TOURNAMENTS: Tournament[] = [
   {
     id: 1,
     typeId: 1,
+    feePence: 1500,
     name: "Summer Kumite",
     location: "The rink",
     heldOn: inDays(-70),
@@ -149,6 +158,7 @@ export const TOURNAMENTS: Tournament[] = [
   {
     id: 2,
     typeId: 1,
+    feePence: 1500,
     name: "Autumn Kumite",
     location: "The rink",
     heldOn: inDays(0),
@@ -162,6 +172,7 @@ export const TOURNAMENTS: Tournament[] = [
   {
     id: 3,
     typeId: 1,
+    feePence: 1500,
     name: "Winter Kumite",
     location: "The rink",
     heldOn: inDays(56),
@@ -175,6 +186,7 @@ export const TOURNAMENTS: Tournament[] = [
   {
     id: 4,
     typeId: 2,
+    feePence: 2500,
     name: "Cougars Cup 2026",
     location: "Battersea Park courts",
     heldOn: inDays(24),
@@ -257,41 +269,13 @@ export const MEMBERS: MemberRow[] = [
   })),
 ];
 
+/** The quarterly subscription, from a date. Session fees live on each training (ADR 0032). */
 export const FEES = [
   { kind: "Quarterly subscription", amountPence: 9000, from: "2026-07-01" },
-  { kind: "Per session", amountPence: 1000, from: "2026-07-01" },
-  { kind: "Per session", amountPence: 800, from: "2025-09-01", superseded: true },
+  { kind: "Quarterly subscription", amountPence: 8000, from: "2025-09-01", superseded: true },
 ];
 
 /** Age buckets for Overdue Rentals, oldest unpaid charge decides. */
-export const BUCKETS = ["Due back", "Late", "Very late", "Lost tape"] as const;
-export const BUCKET_HINT = ["0–30 days", "31–60", "61–90", "over 90"];
-
-export const OVERDUE = PLAYERS.slice(1, 10)
-  .map((p, i) => {
-    const amounts = [0, 0, 0, 0];
-    amounts[i % 4] = 1000 * ((i % 3) + 1);
-    if (i % 3 === 0) amounts[0] += 1000;
-    return {
-      player: p,
-      amounts,
-      total: amounts.reduce((a, b) => a + b, 0),
-      reference: `COU-${String(p.id).padStart(4, "0")}`,
-    };
-  })
-  .sort((a, b) => b.amounts.findLastIndex((x) => x > 0) - a.amounts.findLastIndex((x) => x > 0) || b.total - a.total);
-
-/** A member's ledger: three Fridays and a payment, topped up to what Overdue Rentals says they owe. */
-export function ledgerFor(id: number) {
-  const owed = OVERDUE.find((r) => r.player.id === id)?.total ?? (id === REAL_ID ? 2000 : 0);
-  const lines = [
-    { date: "2026-09-18", what: "Friday hockey", pence: 1000 },
-    { date: "2026-09-25", what: "Friday hockey", pence: 1000 },
-    { date: "2026-09-28", what: `Bank transfer, ${referenceFor(id)}`, pence: -2000 },
-  ];
-  if (owed > 0) lines.push({ date: "2026-10-02", what: "Friday hockey", pence: owed });
-  return lines;
-}
 
 /** The old app's names: the Cougar players' team is "Cougars", the rest are colours (archive/team-manager). */
 export const TEAM_NAMES = ["Cougars", "White", "Black", "Red", "Gold"];

@@ -7,7 +7,9 @@
   import { db } from "../demo/store.svelte";
   import BackLink from "../lib/BackLink.svelte";
   import StylePicker from "../lib/StylePicker.svelte";
-  import { formatDayDate, londonISO, londonToday } from "../lib/dates";
+  import { formatDayDate, londonISO, londonToday, pounds } from "../lib/dates";
+  import { collectedFor } from "../demo/dues.svelte";
+  import Select from "../lib/Select.svelte";
   import { slugify } from "../lib/slug";
 
   const STATUSES: { id: TournamentStatus; label: string }[] = [
@@ -35,6 +37,7 @@
     gameMinutes: 12,
     draft: false,
     active: true,
+    defaultFeePence: 1500,
   });
 
   $effect(() => {
@@ -75,7 +78,20 @@
       : [],
   );
   let adding = $state(false);
-  let edition = $state({ name: "", heldOn: "", startTime: "11:00", endTime: "16:00", location: "", capacity: 24 });
+  let edition = $state({
+    name: "",
+    heldOn: "",
+    startTime: "11:00",
+    endTime: "16:00",
+    location: "",
+    capacity: 24,
+    fee: "",
+  });
+  // A new edition starts at the type's default fee, and can be changed before it's scheduled.
+  function startAdding() {
+    adding = !adding;
+    if (adding && form) edition.fee = String(form.defaultFeePence / 100);
+  }
 
   function addEdition(e: SubmitEvent) {
     e.preventDefault();
@@ -90,12 +106,13 @@
       endTime: edition.endTime,
       capacity: edition.capacity || null,
       status: "planned",
+      feePence: Math.round(Number(edition.fee || 0) * 100),
       going: [],
       waitlist: [],
     };
     db.tournaments.push(t);
     adding = false;
-    edition = { name: "", heldOn: "", startTime: "11:00", endTime: "16:00", location: "", capacity: 24 };
+    edition = { name: "", heldOn: "", startTime: "11:00", endTime: "16:00", location: "", capacity: 24, fee: "" };
   }
 </script>
 
@@ -160,6 +177,16 @@
           Game length (minutes)
           <input class="input num" type="number" min="1" max="60" bind:value={form.gameMinutes} />
         </label>
+        <label class="field">
+          Default fee (£)
+          <input
+            class="input num"
+            inputmode="decimal"
+            value={form.defaultFeePence / 100}
+            onchange={(e) => form && (form.defaultFeePence = Math.round(Number(e.currentTarget.value || 0) * 100))}
+          />
+          <span class="hint small">Each new date starts at this; change it there if one costs more or less.</span>
+        </label>
         <label class="check"><input type="checkbox" bind:checked={form.draft} /> Captains draft the teams</label>
         <label class="check"
           ><input type="checkbox" bind:checked={form.active} /> Running (untick to hide it from the menu)</label
@@ -174,7 +201,7 @@
     {#if typeof selected === "number"}
       <div class="editions-head">
         <h2 class="section-title">Dates</h2>
-        <button class="btn sm" class:primary={!adding} class:ghost={adding} onclick={() => (adding = !adding)}>
+        <button class="btn sm" class:primary={!adding} class:ghost={adding} onclick={startAdding}>
           {adding ? "Cancel" : `+ ${form.shortName || "Tournament"}`}
         </button>
       </div>
@@ -202,22 +229,43 @@
               >Places <input class="input num" type="number" min="0" bind:value={edition.capacity} /></label
             >
           </div>
+          <label class="field">Fee (£) <input class="input num" inputmode="decimal" bind:value={edition.fee} /></label>
           <button class="btn primary">Schedule it</button>
         </form>
       {/if}
 
       <div class="list">
         {#each editions as t (t.id)}
+          {@const c = collectedFor("tournament", t.id)}
           <div class="row">
             <span class="grow">
               <span class="title">{t.name}</span>
               <span class="sub"
                 >{formatDayDate(londonISO(t.heldOn, t.startTime))} · {t.startTime}–{t.endTime} · {t.location}</span
               >
+              <span class="sub num">
+                {pounds(t.feePence)} each{c.people ? ` · collected ${pounds(c.paid)} of ${pounds(c.due)}` : ""}
+              </span>
             </span>
-            <select class="input status" bind:value={t.status} aria-label="Status of {t.name}">
-              {#each STATUSES as s (s.id)}<option value={s.id}>{s.label}</option>{/each}
-            </select>
+            <label class="fee">
+              <span class="sr-only">Fee for {t.name} (£)</span>
+              <input
+                class="input num"
+                inputmode="decimal"
+                value={t.feePence / 100}
+                disabled={c.people > 0}
+                title={c.people ? "Already charged: the fee is fixed" : "Fee (£)"}
+                onchange={(e) => (t.feePence = Math.round(Number(e.currentTarget.value || 0) * 100))}
+              />
+            </label>
+            <Select
+              id="status-{t.id}"
+              size="sm"
+              class="status"
+              bind:value={t.status}
+              options={STATUSES.map((s) => ({ value: s.id, label: s.label }))}
+              aria-label="Status of {t.name}"
+            />
           </div>
         {:else}
           <p class="row hint">None scheduled yet.</p>
@@ -242,9 +290,18 @@
     background: color-mix(in srgb, var(--tone) 18%, transparent);
     color: var(--tone);
   }
-  h2 {
+  .form h2 {
     font-size: var(--text-md);
     font-weight: 600;
+  }
+  .fee input {
+    width: 4.5rem;
+    height: var(--control-h-sm);
+    padding: 0 var(--s-2);
+    text-align: right;
+  }
+  .small {
+    font-size: var(--text-xs);
   }
   .three {
     display: grid;
@@ -273,10 +330,8 @@
   .editions-head .section-title {
     margin: 0 var(--s-1);
   }
-  .status {
-    width: auto;
-    height: var(--control-h-sm);
-    padding: 0 var(--s-3);
-    font-size: var(--text-sm);
+  .row :global(.status) {
+    flex-shrink: 0;
+    width: 9rem;
   }
 </style>

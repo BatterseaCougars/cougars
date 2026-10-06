@@ -26,7 +26,7 @@ export interface Route {
   hint?: string;
   group?: Group;
   /** Sub-heading inside Settings. */
-  section?: "People" | "Schedule" | "Money";
+  section?: "People" | "Schedule" | "Money" | "Club";
   /** The folding rail section it sits in: a tournament type ("type:1"). */
   fold?: string;
   /** Reached from a page, not from any menu (the register). */
@@ -53,6 +53,8 @@ export interface NavConfig {
     draft: boolean;
     active: boolean;
   }[];
+  /** Members, for their profile pages under Settings → Members. */
+  members?: { id: number; name: string }[];
 }
 
 const STATIC_TAIL: Route[] = [
@@ -152,14 +154,14 @@ const STATIC_TAIL: Route[] = [
   {
     id: "fees",
     path: "/settings/fees",
-    name: "Fees",
+    name: "Subscription",
     tab: "more",
     page: "fees",
     action: "manage:Fees",
     icon: "pound",
     group: "Settings",
     section: "Money",
-    hint: "Quarterly subscription and per-session fee",
+    hint: "The quarterly fee (session fees are on each training)",
   },
   {
     id: "overdue",
@@ -172,6 +174,18 @@ const STATIC_TAIL: Route[] = [
     group: "Settings",
     section: "Money",
     hint: "Who owes what, and for how long",
+  },
+  {
+    id: "quips",
+    path: "/settings/quips",
+    name: "Quips",
+    tab: "more",
+    page: "quips",
+    action: "manage:Quip",
+    icon: "chat",
+    group: "Settings",
+    section: "Club",
+    hint: "What Home says when people sign up",
   },
 ];
 
@@ -203,6 +217,18 @@ export function buildRoutes(config: NavConfig): Route[] {
       params: { seriesId: s.id },
       action: "manage:Training",
       icon: s.icon,
+      hidden: true,
+      focus: true,
+    })),
+    ...(config.members ?? []).map((m): Route => ({
+      id: `member:${m.id}`,
+      path: `/settings/members/${m.id}`,
+      name: m.name,
+      tab: "more",
+      page: "member",
+      params: { memberId: m.id },
+      action: "manage:Member",
+      icon: "user",
       hidden: true,
       focus: true,
     })),

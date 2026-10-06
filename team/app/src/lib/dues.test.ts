@@ -1,0 +1,82 @@
+import { describe, expect, it } from "vitest";
+import { aged, bucketOf, collected, feeOn, owed, type Charge } from "./dues";
+
+const charge = (over: Partial<Charge>): Charge => ({
+  id: 1,
+  memberId: 1,
+  kind: "session",
+  refId: 1,
+  pence: 1000,
+  dueOn: "2026-10-02",
+  paidOn: null,
+  paidVia: null,
+  ...over,
+});
+
+describe("feeOn", () => {
+  const fees = [
+    { pence: 800, from: "2025-09-01" },
+    { pence: 1000, from: "2026-07-01" },
+  ];
+  it("uses the fee in force on the day, going forward", () => {
+    expect(feeOn(fees, "2026-06-30")).toBe(800);
+    expect(feeOn(fees, "2026-07-01")).toBe(1000);
+    expect(feeOn(fees, "2027-01-01")).toBe(1000);
+  });
+  it("is free before the first fee, whatever order they were added in", () => {
+    expect(feeOn([...fees].reverse(), "2025-01-01")).toBe(0);
+    expect(feeOn([...fees].reverse(), "2026-08-01")).toBe(1000);
+  });
+});
+
+describe("bucketOf", () => {
+  it("splits at 30, 60 and 90 days", () => {
+    const today = "2026-10-06";
+    expect(bucketOf("2026-10-06", today)).toBe(0);
+    expect(bucketOf("2026-09-06", today)).toBe(0); // 30 days
+    expect(bucketOf("2026-09-05", today)).toBe(1); // 31
+    expect(bucketOf("2026-08-07", today)).toBe(1); // 60
+    expect(bucketOf("2026-08-06", today)).toBe(2); // 61
+    expect(bucketOf("2026-07-08", today)).toBe(2); // 90
+    expect(bucketOf("2026-07-07", today)).toBe(3); // 91
+  });
+  it("counts London days across the clock change", () => {
+    expect(bucketOf("2026-09-25", "2026-10-26")).toBe(1); // 31 days, BST ends on the 25th
+  });
+});
+
+describe("aged", () => {
+  const today = "2026-10-06";
+  const charges = [
+    charge({ id: 1, memberId: 1, dueOn: "2026-10-02" }),
+    charge({ id: 2, memberId: 1, dueOn: "2026-08-01" }),
+    charge({ id: 3, memberId: 2, dueOn: "2026-10-02", pence: 2500 }),
+    charge({ id: 4, memberId: 3, dueOn: "2026-06-01", paidOn: "2026-06-05", paidVia: "cash" }),
+  ];
+  it("adds up only unpaid charges, per member and by age", () => {
+    const rows = aged(charges, today);
+    expect(rows.map((r) => r.memberId)).toEqual([1, 2]);
+    expect(rows[0]).toEqual({ memberId: 1, amounts: [1000, 0, 1000, 0], total: 2000, oldest: 2 });
+    expect(rows[1].total).toBe(2500);
+  });
+  it("puts the oldest debt first, then the biggest", () => {
+    const rows = aged([...charges, charge({ id: 5, memberId: 4, dueOn: "2026-10-01", pence: 9000 })], today);
+    expect(rows.map((r) => r.memberId)).toEqual([1, 4, 2]);
+  });
+  it("matches what each member owes", () => {
+    for (const r of aged(charges, today)) expect(r.total).toBe(owed(charges, r.memberId));
+  });
+});
+
+describe("collected", () => {
+  it("shows what a session was due and what it brought in", () => {
+    const charges = [
+      charge({ id: 1, memberId: 1, refId: 7 }),
+      charge({ id: 2, memberId: 2, refId: 7, paidOn: "2026-10-03", paidVia: "transfer" }),
+      charge({ id: 3, memberId: 3, refId: 7, paidOn: "2026-10-03", paidVia: "cash" }),
+      charge({ id: 4, memberId: 3, refId: 8 }),
+      charge({ id: 5, memberId: 3, kind: "tournament", refId: 7, pence: 1500 }),
+    ];
+    expect(collected(charges, "session", 7)).toEqual({ due: 3000, paid: 2000, people: 3, paidPeople: 2 });
+  });
+});

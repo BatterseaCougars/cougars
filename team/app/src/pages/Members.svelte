@@ -2,6 +2,9 @@
   import BackLink from "../lib/BackLink.svelte";
   import Person from "../lib/Person.svelte";
   import { db } from "../demo/store.svelte";
+  import { owedBy } from "../demo/dues.svelte";
+  import Icon from "../app/shell/Icon.svelte";
+  import { pounds } from "../lib/dates";
 
   const pending = $derived(db.members.filter((m) => m.status === "pending"));
   const active = $derived(db.members.filter((m) => m.status === "active"));
@@ -32,21 +35,12 @@
   <h2 class="section-title">Members</h2>
   <div class="list">
     {#each active as m (m.player.id)}
-      <div class="row">
-        <Person player={m.player} showRating meta={m.plan} />
-        <select class="input role" bind:value={m.roles[0]} aria-label="Role for {m.player.name}">
-          {#each db.roles as r (r.id)}<option>{r.name}</option>{/each}
-        </select>
-      </div>
+      {@const owes = owedBy(m.player.id)}
+      <a class="row" href="/settings/members/{m.player.id}">
+        <Person player={m.player} showRating meta="{m.roles[0]} · {m.plan}" />
+        {#if owes > 0}<span class="badge red num">Owes {pounds(owes)}</span>{/if}
+        <Icon name="chevronRight" size={18} />
+      </a>
     {/each}
   </div>
 </div>
-
-<style>
-  .role {
-    width: auto;
-    height: var(--control-h-sm);
-    padding: 0 var(--s-3);
-    font-size: var(--text-sm);
-  }
-</style>

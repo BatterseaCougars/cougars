@@ -1,11 +1,23 @@
 <script lang="ts">
+  // Overdue Rentals, the aged-receivables report (ADR 0032): every unpaid charge, added up per member and by how
+  // long it's been owed. Marking a charge paid on a member's profile takes it off here.
   import BackLink from "../lib/BackLink.svelte";
-  import { BUCKETS, BUCKET_HINT, OVERDUE } from "../demo/data";
-  import { pounds } from "../lib/dates";
+  import Icon from "../app/shell/Icon.svelte";
+  import { PLAYERS, referenceFor } from "../demo/data";
+  import { db } from "../demo/store.svelte";
+  import { BUCKETS, BUCKET_HINT, aged } from "../lib/dues";
+  import { londonToday, pounds } from "../lib/dates";
 
-  const totals = BUCKETS.map((_, i) => OVERDUE.reduce((s, r) => s + r.amounts[i], 0));
-  const grand = totals.reduce((a, b) => a + b, 0);
-  const max = Math.max(...totals);
+  const rows = $derived(
+    aged(db.charges, londonToday()).map((r) => ({
+      ...r,
+      player: PLAYERS.find((p) => p.id === r.memberId)!,
+      reference: referenceFor(r.memberId),
+    })),
+  );
+  const totals = $derived(BUCKETS.map((_, i) => rows.reduce((s, r) => s + r.amounts[i], 0)));
+  const grand = $derived(totals.reduce((a, b) => a + b, 0));
+  const max = $derived(Math.max(1, ...totals));
   const tone = ["", "amber", "red", "red"];
 </script>
 
@@ -39,13 +51,15 @@
   </div>
 
   <div class="list">
-    {#each OVERDUE as r (r.player.id)}
-      {@const oldest = r.amounts.findLastIndex((x) => x > 0)}
-      <div class="row">
+    {#each rows as r (r.memberId)}
+      <a class="row" href="/settings/members/{r.memberId}">
         <span class="grow"><span class="title">{r.player.name}</span><span class="sub num">{r.reference}</span></span>
-        <span class="badge {tone[oldest]}">{BUCKETS[oldest]}</span>
+        <span class="badge {tone[r.oldest]}">{BUCKETS[r.oldest]}</span>
         <span class="num amt">{pounds(r.total)}</span>
-      </div>
+        <Icon name="chevronRight" size={18} />
+      </a>
+    {:else}
+      <p class="row hint">Nobody owes anything. Be kind, rewind.</p>
     {/each}
   </div>
 

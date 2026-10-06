@@ -5,7 +5,8 @@
   import { nextSession, sessionBookable } from "../demo/schedule.svelte";
   import { db } from "../demo/store.svelte";
   import BackLink from "../lib/BackLink.svelte";
-  import { formatDayDate } from "../lib/dates";
+  import { formatDayDate, londonToday, pounds } from "../lib/dates";
+  import { feeOn } from "../lib/dues";
   import { describeRule } from "../lib/recurrence";
 
   const cards = $derived(
@@ -42,6 +43,7 @@
           <span class="name">{s.name}</span>
           <span class="line"><span class="label">Next</span> {next}</span>
           <span class="line muted">{s.startTime}–{s.endTime} · {s.venue || "No venue"}</span>
+          <span class="line muted num">{pounds(feeOn(s.fees, londonToday())) || "Free"} a session</span>
           {#if signedUp}<span class="line muted num">{signedUp}</span>{/if}
           <span class="go"><Icon name="chevronRight" size={18} /></span>
         </a>

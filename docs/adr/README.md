@@ -34,9 +34,10 @@ rule, a trade-off. Copy [template.md](template.md), take the next number, keep i
 | [0023](0023-device-bound-sign-in.md)            | Everyone signs in with a device-bound email code or link, or Google            | Accepted              |
 | [0024](0024-action-based-authorization.md)      | Permissions are actions; roles are data built from actions                     | Accepted              |
 | [0025](0025-events-in-d1.md)                    | Events live in D1, one club calendar                                           | Superseded by 0030    |
-| [0026](0026-dues-ledger.md)                     | Dues are a ledger fed by the register                                          | Accepted              |
+| [0026](0026-dues-ledger.md)                     | Dues are a ledger fed by the register                                          | Amended by 0032       |
 | [0027](0027-email-through-gmail-api.md)         | Email goes through the Gmail API, and only production reaches real people      | Accepted              |
 | [0028](0028-turnstile-and-auto-reply.md)        | Auto-replies only to people Turnstile verified, and capped                     | Accepted              |
 | [0029](0029-view-as-a-member.md)                | Admins can view the app as a member, read-only                                 | Accepted              |
 | [0030](0030-training-series-and-tournaments.md) | Training repeats as a series; tournaments are typed and scheduled one by one   | Accepted              |
 | [0031](0031-use-case-tests.md)                  | Tests describe what people do, against a fake world                            | Accepted              |
+| [0032](0032-fees-per-session-and-tournament.md) | Fees belong to each session and tournament; payments are marked against them   | Accepted              |

@@ -12,12 +12,14 @@
   import Game from "./pages/Game.svelte";
   import Games from "./pages/Games.svelte";
   import Home from "./pages/Home.svelte";
+  import MemberProfile from "./pages/MemberProfile.svelte";
   import Members from "./pages/Members.svelte";
   import More from "./pages/More.svelte";
   import MyTab from "./pages/MyTab.svelte";
   import NotAllowed from "./pages/NotAllowed.svelte";
   import Overdue from "./pages/Overdue.svelte";
   import Profile from "./pages/Profile.svelte";
+  import Quips from "./pages/Quips.svelte";
   import Roles from "./pages/Roles.svelte";
   import Standings from "./pages/Standings.svelte";
   import Teammates from "./pages/Teammates.svelte";
@@ -44,12 +46,14 @@
     profile: Profile,
     tab: MyTab,
     members: Members,
+    member: MemberProfile,
     roles: Roles,
     "training-settings": TrainingSettings,
     "training-editor": TrainingEditor,
     "tournament-settings": TournamentSettings,
     fees: Fees,
     overdue: Overdue,
+    quips: Quips,
   };
 
   const all = $derived(routes());

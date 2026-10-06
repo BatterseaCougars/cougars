@@ -1,12 +1,17 @@
 <script lang="ts">
+  // Your dues (ADR 0032): every session and tournament you were charged for, and whether it's paid.
   import BackLink from "../lib/BackLink.svelte";
-  import { ledgerFor, referenceFor } from "../demo/data";
+  import ChargeRow from "../lib/ChargeRow.svelte";
+  import { referenceFor } from "../demo/data";
+  import { chargesFor, owedBy } from "../demo/dues.svelte";
   import { me } from "../demo/session.svelte";
-  import { formatDayDate, pounds } from "../lib/dates";
+  import { pounds } from "../lib/dates";
 
-  const who = me();
-  const ledger = ledgerFor(who.id);
-  const owed = ledger.reduce((sum, l) => sum + l.pence, 0);
+  const who = $derived(me());
+  const charges = $derived(chargesFor(who.id));
+  const unpaid = $derived(charges.filter((c) => !c.paidOn));
+  const paid = $derived(charges.filter((c) => c.paidOn));
+  const owed = $derived(owedBy(who.id));
 </script>
 
 <div class="page">
@@ -14,7 +19,9 @@
   <header class="total">
     <p class="eyebrow">{owed > 0 ? "You owe" : "All square"}</p>
     <p class="display amount num" class:zero={owed <= 0}>{pounds(owed)}</p>
-    <p class="hint">Pay as you go · per-session fee</p>
+    <p class="hint">
+      {unpaid.length ? `${unpaid.length} ${unpaid.length === 1 ? "session" : "sessions"} not paid yet` : "Nothing owed"}
+    </p>
   </header>
 
   <div class="panel feature pad pay">
@@ -32,16 +39,16 @@
     <p class="hint">Always use your reference, so your payment is matched to you. Sample bank details.</p>
   </div>
 
+  {#if unpaid.length}
+    <h2 class="section-title">Not paid yet</h2>
+    <div class="list">
+      {#each unpaid as c (c.id)}<ChargeRow charge={c} />{/each}
+    </div>
+  {/if}
+
   <h2 class="section-title">Payment history</h2>
   <div class="list">
-    {#each [...ledger].reverse() as l (l.date + l.what)}
-      <div class="row">
-        <span class="grow"
-          ><span class="title">{l.what}</span><span class="sub">{formatDayDate(`${l.date}T12:00:00Z`)}</span></span
-        >
-        <span class="num amt" class:paid={l.pence < 0}>{l.pence < 0 ? "−" : ""}{pounds(Math.abs(l.pence))}</span>
-      </div>
-    {/each}
+    {#each paid as c (c.id)}<ChargeRow charge={c} />{:else}<p class="row hint">No payments yet.</p>{/each}
   </div>
 </div>
 
@@ -78,12 +85,5 @@
   .ref {
     font-weight: 700;
     letter-spacing: 0.04em;
-  }
-  .amt {
-    color: var(--fg);
-    font-weight: 500;
-  }
-  .paid {
-    color: var(--green);
   }
 </style>

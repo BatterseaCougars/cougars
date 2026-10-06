@@ -16,7 +16,7 @@
   import AccountMenu from "./AccountMenu.svelte";
   import Icon from "./Icon.svelte";
   import logo from "../../assets/cougars-mark.webp";
-  import { ledgerFor } from "../../demo/data";
+  import { owedBy } from "../../demo/dues.svelte";
   import { pounds } from "../../lib/dates";
 
   let { route, children }: { route: Route; children: Snippet } = $props();
@@ -66,7 +66,7 @@
     // Dues: always there, with what you owe on it until it's paid
     const dues = all.find((r) => r.id === "tab");
     if (dues) {
-      const owed = ledgerFor(me().id).reduce((sum, l) => sum + l.pence, 0);
+      const owed = owedBy(me().id);
       items.push({
         id: dues.id,
         name: owed > 0 ? `Dues · you owe ${pounds(owed)}` : "Dues",

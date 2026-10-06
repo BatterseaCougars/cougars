@@ -1,0 +1,81 @@
+// Dues (ADR 0032): every charge is one person for one session or tournament. What someone owes, what a session
+// collected and Overdue Rentals are all sums over charges. Pure, so the D1 queries can be checked against it.
+
+export interface Charge {
+  id: number;
+  memberId: number;
+  kind: "session" | "tournament";
+  /** The training session's or tournament's id. */
+  refId: number;
+  pence: number;
+  /** The day it was held: a charge is due from then. */
+  dueOn: string;
+  paidOn: string | null;
+  paidVia: "transfer" | "cash" | null;
+}
+
+/** A fee that applies from a date, going forward. */
+export interface DatedFee {
+  pence: number;
+  from: string;
+}
+
+/** The fee in force on a date: the latest one that had started. Nothing before the first. */
+export function feeOn(fees: DatedFee[], date: string): number {
+  let best: DatedFee | undefined;
+  for (const f of fees) if (f.from <= date && (!best || f.from > best.from)) best = f;
+  return best?.pence ?? 0;
+}
+
+/** Overdue Rentals' columns, by how long a charge has been owed. */
+export const BUCKETS = ["Due back", "Late", "Very late", "Lost tape"] as const;
+export const BUCKET_HINT = ["0–30 days", "31–60", "61–90", "over 90"] as const;
+
+const DAY = 86_400_000;
+export const daysBetween = (from: string, to: string) =>
+  Math.round((Date.parse(`${to}T12:00:00Z`) - Date.parse(`${from}T12:00:00Z`)) / DAY);
+
+/** 0 Due back (0–30 days), 1 Late (31–60), 2 Very late (61–90), 3 Lost tape (over 90). */
+export function bucketOf(dueOn: string, today: string): 0 | 1 | 2 | 3 {
+  const age = daysBetween(dueOn, today);
+  return age <= 30 ? 0 : age <= 60 ? 1 : age <= 90 ? 2 : 3;
+}
+
+export interface AgedRow {
+  memberId: number;
+  amounts: [number, number, number, number];
+  total: number;
+  /** The bucket of their oldest unpaid charge. */
+  oldest: 0 | 1 | 2 | 3;
+}
+
+/** Overdue Rentals: everyone with unpaid charges, worst first (oldest debt, then most owed). */
+export function aged(charges: Charge[], today: string): AgedRow[] {
+  const rows = new Map<number, AgedRow>();
+  for (const c of charges) {
+    if (c.paidOn) continue;
+    const row = rows.get(c.memberId) ?? { memberId: c.memberId, amounts: [0, 0, 0, 0], total: 0, oldest: 0 };
+    const b = bucketOf(c.dueOn, today);
+    row.amounts[b] += c.pence;
+    row.total += c.pence;
+    row.oldest = Math.max(row.oldest, b) as AgedRow["oldest"];
+    rows.set(c.memberId, row);
+  }
+  return [...rows.values()].sort((a, b) => b.oldest - a.oldest || b.total - a.total);
+}
+
+/** What someone owes: their unpaid charges. */
+export const owed = (charges: Charge[], memberId: number) =>
+  charges.reduce((sum, c) => sum + (c.memberId === memberId && !c.paidOn ? c.pence : 0), 0);
+
+/** What a session or tournament was due, and what it has collected. */
+export function collected(charges: Charge[], kind: Charge["kind"], refId: number) {
+  const mine = charges.filter((c) => c.kind === kind && c.refId === refId);
+  const paid = mine.filter((c) => c.paidOn);
+  return {
+    due: mine.reduce((s, c) => s + c.pence, 0),
+    paid: paid.reduce((s, c) => s + c.pence, 0),
+    people: mine.length,
+    paidPeople: paid.length,
+  };
+}

@@ -1,6 +1,7 @@
 # 0026. Dues are a ledger fed by the register
 
-- **Status:** Accepted. Amends [0007](0007-bank-transfer-payments.md) (no monthly invoices).
+- **Status:** Accepted. Amends [0007](0007-bank-transfer-payments.md) (no monthly invoices). Amended by
+  [0032](0032-fees-per-session-and-tournament.md) (fees per session and tournament, payments per charge).
 - **Date:** 2026-10-06
 
 ## Context

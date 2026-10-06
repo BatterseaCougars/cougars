@@ -1,13 +1,14 @@
 <script lang="ts">
   import { can } from "../access/actions";
-  import { PLAYERS, ledgerFor, referenceFor } from "../demo/data";
+  import { PLAYERS, referenceFor } from "../demo/data";
+  import { owedBy } from "../demo/dues.svelte";
   import { granted, me } from "../demo/session.svelte";
   import { db } from "../demo/store.svelte";
   import Icon from "../app/shell/Icon.svelte";
   import EventCard from "../lib/EventCard.svelte";
   import { pounds } from "../lib/dates";
   import { currentTournament, nextSession, sessionBookable, tournamentBookable } from "../demo/schedule.svelte";
-  import { ASK, IN, OUT, WAITLIST, pick, type Quip } from "../lib/quips";
+  import { pick, type Quip, type QuipKind } from "../lib/quips";
   import { prefersReducedMotion } from "../app/motion";
 
   const perms = $derived(granted());
@@ -45,16 +46,19 @@
   const answered = $derived(isIn || waiting);
   const position = $derived(next.going.indexOf(who.id) + 1);
   const myTeam = $derived(db.teams[next.id]?.find((t) => t.players.includes(who.id)));
-  const owed = $derived(ledgerFor(who.id).reduce((sum, l) => sum + l.pence, 0));
+  const owed = $derived(owedBy(who.id));
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Morning" : hour < 18 ? "Afternoon" : "Evening";
 
   // The locker room has a word for you until you answer, and another once you have.
-  let said: Quip | null = $state(null);
-  // Coming back to Home after answering still has a word for you: the first line for where you stand.
-  const quip = $derived(said ?? (isIn ? IN[0] : waiting ? WAITLIST[0] : ASK));
+  // Admins write the lines (Settings → Quips). One of each is picked per visit, so coming back after answering
+  // still has a word for you, and it doesn't change under you.
+  const lines = (kind: QuipKind) => db.quips.filter((q) => q.kind === kind && q.text.trim());
+  const standing = { ask: pick(lines("ask")), in: pick(lines("in")), waitlist: pick(lines("waitlist")) };
+  let said: Quip | undefined = $state();
+  const quip = $derived(said ?? (isIn ? standing.in : waiting ? standing.waitlist : standing.ask));
   function onanswer(status: "in" | "waitlist" | "out") {
-    said = pick(status === "in" ? IN : status === "waitlist" ? WAITLIST : OUT);
+    said = pick(lines(status));
   }
   // The message types itself out, a letter at a time, each time it changes.
   let typed = $state("");

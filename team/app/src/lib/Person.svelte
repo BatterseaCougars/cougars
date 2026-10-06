@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { Player } from "../demo/data";
+  import { POSITIONS, type Player } from "../demo/data";
 
   let { player, showRating = false, meta }: { player: Player; showRating?: boolean; meta?: string } = $props();
   const initials = $derived(
@@ -8,7 +8,7 @@
       .map((w) => w[0])
       .join(""),
   );
-  const position = $derived(player.position === "D" ? "Defence" : "Forward");
+  const position = $derived(POSITIONS[player.position]);
 </script>
 
 <span class="avatar">{initials}</span>

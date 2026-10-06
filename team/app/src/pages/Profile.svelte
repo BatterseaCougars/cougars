@@ -1,6 +1,6 @@
 <script lang="ts">
   import BackLink from "../lib/BackLink.svelte";
-  import { emailFor } from "../demo/data";
+  import { POSITIONS, emailFor, type Position } from "../demo/data";
   import { impersonating, me, rolesOf } from "../demo/session.svelte";
   import { initials } from "../lib/initials";
 
@@ -25,13 +25,16 @@
       <label class="field">Name <input class="input" bind:value={form.name} /></label>
       <label class="field">Email <input class="input" type="email" bind:value={form.email} /></label>
       <label class="field">Phone <input class="input" type="tel" bind:value={form.phone} /></label>
-      <label class="field">
-        Position
-        <select class="input" bind:value={form.position}>
-          <option value="F">Forward</option>
-          <option value="D">Defence</option>
-        </select>
-      </label>
+      <div class="field">
+        <span id="position">Position</span>
+        <div class="seg" role="group" aria-labelledby="position">
+          {#each Object.entries(POSITIONS) as [v, label] (v)}
+            <button type="button" aria-pressed={form.position === v} onclick={() => (form.position = v as Position)}>
+              {label}
+            </button>
+          {/each}
+        </div>
+      </div>
       <button class="btn primary">Save</button>
     </fieldset>
     {#if locked}<p class="hint">Read-only while you're viewing as {who.name.split(" ")[0]}.</p>{/if}
@@ -60,6 +63,9 @@
     display: flex;
     gap: var(--s-1);
     margin-top: var(--s-2);
+  }
+  .seg {
+    display: flex;
   }
   fieldset {
     display: grid;

@@ -6,7 +6,7 @@
   import Person from "../lib/Person.svelte";
 
   const perms = $derived(granted());
-  let filter = $state<"all" | "F" | "D">("all");
+  let filter = $state<"all" | "F" | "D" | "G">("all");
   const shown = $derived(PLAYERS.filter((p) => filter === "all" || p.position === filter));
 </script>
 
@@ -19,7 +19,7 @@
     </div>
   </div>
   <div class="seg" role="group" aria-label="Position">
-    {#each [["all", "All"], ["F", "Forwards"], ["D", "Defence"]] as [v, label] (v)}
+    {#each [["all", "All"], ["F", "Forwards"], ["D", "Defence"], ["G", "Keepers"]] as [v, label] (v)}
       <button aria-pressed={filter === v} onclick={() => (filter = v as typeof filter)}>{label}</button>
     {/each}
   </div>

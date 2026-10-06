@@ -2,6 +2,7 @@
 // memory. Training repeats (series → sessions); tournaments are scheduled one by one under a type; anything else
 // is a one-off event. The calendar is all three together.
 import type { IconName } from "../app/shell/icons";
+import type { DatedFee } from "../lib/dues";
 import type { Weekday } from "../lib/recurrence";
 
 /** The colours an admin can give a training or tournament, so each is easy to spot (app.css --tone-*). */
@@ -38,6 +39,8 @@ export interface TrainingSeries {
   /** Listed on the public website calendar. */
   public: boolean;
   active: boolean;
+  /** The fee per session, going forward from each date (ADR 0032). */
+  fees: DatedFee[];
 }
 
 /** One night of a series. Null fields follow the series. */
@@ -52,6 +55,11 @@ export interface TrainingSession extends Entries {
   capacity?: number | null;
   note?: string | null;
   cancelledAt?: string | null;
+  /** The fee for this session: written when the register closes, or an admin's override. */
+  feePence?: number | null;
+  /** Who came, once the register is closed. */
+  attended?: number[];
+  registerClosedAt?: string | null;
 }
 
 /** A kind of tournament the club hosts, e.g. The Cougars Kumite: the format and rules every edition shares. */
@@ -70,6 +78,8 @@ export interface TournamentType {
   /** Captains draft the teams (otherwise the team generator makes them). */
   draft: boolean;
   active: boolean;
+  /** Copied onto each new edition, where it can be changed. */
+  defaultFeePence: number;
 }
 
 export type TournamentStatus = "planned" | "open" | "live" | "finished";
@@ -86,6 +96,7 @@ export interface Tournament extends Entries {
   capacity: number | null;
   status: TournamentStatus;
   champions?: string | null;
+  feePence: number;
 }
 
 /** Anything else on the calendar: a social, a kit day. */

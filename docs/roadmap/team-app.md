@@ -149,25 +149,28 @@ Copied in shape from Gwenda ops (`gwenda-hackney/ark`, `ops/site/src/app/`), whi
 
 [ADR 0026](../adr/0026-dues-ledger.md), [ADR 0007](../adr/0007-bank-transfer-payments.md).
 
-- [ ] **Fees**, set by an admin (`manage:Fees`) on a dated schedule (`fees`: kind, amount_pence, effective_from). A
-      new fee applies from its date; charges already made keep their amount.
-  - **Quarterly subscription:** covers every Friday in the quarter; charged at the start of the quarter.
-  - **Per session:** pay as you go; charged for each session attended.
+- [ ] **Fees** ([ADR 0032](../adr/0032-fees-per-session-and-tournament.md)), set by an admin (`manage:Fees`):
+  - **Each training** has a fee that applies from a date going forward (`series_fees`); a session keeps the fee
+    it was held at, and one session's fee can be overridden.
+  - **Each tournament type** has a default fee; scheduling an edition copies it, and it can be changed there.
+  - **Quarterly subscription:** covers every training session in the quarter; charged at the start of it.
 - [ ] **Plans:** `member_plans` (member, subscription or pay as you go, from, to).
-- [ ] **Charges come from the register, not from sign-ups:**
+- [ ] **Charges are one person for one session or tournament**, made from the register, not from sign-ups:
   - closing a register charges every pay-as-you-go attendee, walk-ins included; subscribers aren't charged
+  - tournament entrants are all charged the edition's fee
   - a quarterly Cron Trigger charges subscribers
-  - `charges` (member, kind, session or tournament or quarter, amount_pence, due_on, voided_at)
-- [ ] **Payments** by bank transfer, quoting the member's fixed reference (for example `COU-0042`). An admin
-      (`record:Payment`) records one in a couple of taps; it settles the oldest charges first
+- [ ] **Marking payments**: on a member's profile an admin ticks which sessions and tournaments they paid for
+      (transfer or cash), or "Mark all paid"; each session shows what it collected against what it was due.
+- [ ] **Payments** by bank transfer, quoting the member's fixed reference (for example `COU-0042`). Uploading a
+      bank statement creates payments by reference and allocates them oldest first; an admin can re-point them
       (`payments`, `payment_allocations`).
-- [ ] **My tab**: what I owe, my charges and payments, and the bank details with my reference.
-- [ ] **Overdue Rentals**, the club's aged-receivables report (`read:Dues`):
+- [ ] **Dues**: what I owe, each session and tournament I was charged for and whether it's paid, and the bank
+      details with my reference.
+- [ ] **Overdue Rentals**, the club's aged-receivables report (`read:Dues`): the unpaid charges, added up.
   - everyone who owes, with their total split by how long it's been owed: **Due back** (0–30 days), **Late**
     (31–60), **Very late** (61–90), **Lost tape** (over 90)
   - column totals, a drill-down to each member's ledger, CSV export
   - an optional reminder email from the report
-- [ ] Later: paste a bank-statement CSV and match lines by reference.
 
 Open questions: calendar quarters or a club season; what someone joining mid-quarter pays; concessions; whether a
 first session is free.

@@ -3,7 +3,7 @@
   // and the position printed under it, a gloss that catches the light, and a shadow as if it's lying on the table.
   // The photo slot shows the club mark until members add photos. The corner number is the sign-up order. Ratings
   // only show for admins (read:Rating).
-  import type { Player } from "../demo/data";
+  import { POSITIONS, type Player } from "../demo/data";
   import mark from "../assets/cougars-mark.webp";
 
   let {
@@ -24,7 +24,7 @@
     </span>
     <span class="plate"><strong>{first}</strong></span>
     <span class="foot">
-      <span class="pos">{player.position === "D" ? "Defence" : "Forward"}</span>
+      <span class="pos">{POSITIONS[player.position]}</span>
       {#if you}<span class="tag">You</span>{:else if showRating}<span class="num">{player.rating}</span
         >{:else if player.cougar}<span class="cougar">Cougar</span>{/if}
     </span>

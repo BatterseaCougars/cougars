@@ -32,7 +32,7 @@ export function snakeTeams(players: Player[], names: string[]): Team[] {
 
   // 2. Defenders, then forwards, best first: each to the team with room, fewest of that position, then fewest
   //    players, then the lowest rating.
-  for (const position of ["D", "F"] as const) {
+  for (const position of ["G", "D", "F"] as const) {
     const pool = players
       .filter((p) => p.position === position && !placed.has(p.id))
       .sort((a, b) => b.rating - a.rating);
