@@ -211,7 +211,10 @@ inbox, and dev can only ever send from its own test account, never the club's.
 
 - **Used by:** the website's enquiry form (Worker), to send mail. The refresh token can send mail as its account
   and nothing else: it can't read the mailbox.
-- **Gets there by:** to be added with the email feature: `deploy.yml` pushes them to the Worker as secrets.
+- **Gets there by:** CI pull from Secrets Manager (`GMAIL_REFRESH_TOKEN__PRODUCTION` becomes `GMAIL_REFRESH_TOKEN`),
+  then `deploy.yml` pushes all three to the Worker as secrets on every deploy. Locally,
+  `node scripts/env-pull.mjs -- npm run dev` (dev account). Without them, emails are logged, not sent
+  ([ADR 0027](docs/adr/0027-email-through-gmail-api.md)).
 - **Expires:** no, but Google cancels a refresh token when the account's password changes, access is removed in
   [the account's third-party access](https://myaccount.google.com/connections), or it's unused for 6 months.
 - **Rotate:** re-run `gmail-auth.mjs` for that environment, then deploy. Client secret: **Clients → the client →

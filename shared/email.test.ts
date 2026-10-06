@@ -1,0 +1,134 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { CLUB_ADDRESS, clearTokenCache, MailRefused, mime, safeMail, sendMail, type MailConfig } from "./email";
+
+const gmail = { clientId: "id", clientSecret: "secret", refreshToken: "refresh" };
+const enquiry = {
+  to: [CLUB_ADDRESS],
+  subject: "New enquiry: Zoë",
+  text: "Hello",
+  replyTo: "zoe@example.com",
+};
+
+const idToken = (email: string) =>
+  `x.${btoa(JSON.stringify({ email })).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "")}.y`;
+
+// The network boundary: Google's token endpoint and the Gmail API. Records every email that would leave.
+function fakeGoogle({ account = "cougars.dev@gmail.com", tokenStatus = 200 } = {}) {
+  const sent: { to: string; subject: string; raw: string }[] = [];
+  let tokenCalls = 0;
+  const fetch = vi.fn(async (input: string | URL, init?: RequestInit) => {
+    const url = String(input);
+    if (url.startsWith("https://oauth2.googleapis.com/token")) {
+      tokenCalls++;
+      if (tokenStatus !== 200) return Response.json({ error: "invalid_grant" }, { status: tokenStatus });
+      return Response.json({ access_token: "at", expires_in: 3600, id_token: idToken(account) });
+    }
+    const raw = atob(JSON.parse(String(init?.body)).raw.replace(/-/g, "+").replace(/_/g, "/"));
+    sent.push({ to: raw.match(/^To: (.*)$/m)![1], subject: raw.match(/^Subject: (.*)$/m)![1], raw });
+    return Response.json({ id: `msg${sent.length}` });
+  });
+  return { fetch: fetch as unknown as typeof globalThis.fetch, mock: fetch, sent, tokenCalls: () => tokenCalls };
+}
+
+const config = (extra: Partial<MailConfig> = {}): MailConfig => ({ siteEnv: "dev", gmail, ...extra });
+
+describe("safeMail", () => {
+  it("leaves production email alone", () => {
+    expect(safeMail(enquiry, { siteEnv: "production", safeTo: "x@example.com" })).toBe(enquiry);
+  });
+
+  it("sends everything else to the safe address, saying who it was for", () => {
+    for (const siteEnv of ["dev", "prod", "Production", "", undefined]) {
+      const safe = safeMail({ ...enquiry, to: [CLUB_ADDRESS, "b@example.com"] }, { siteEnv, safeTo: "Me@Example.com" });
+      expect(safe.to).toEqual(["me@example.com"]);
+      expect(safe.subject).toBe(`[${siteEnv || "unset"}, for ${CLUB_ADDRESS}, b@example.com] New enquiry: Zoë`);
+      expect(safe.headers).toEqual({ "X-Cougars-Original-To": `${CLUB_ADDRESS}, b@example.com` });
+    }
+  });
+
+  it("refuses without a safe address, or with the club's inbox as it", () => {
+    expect(() => safeMail(enquiry, { siteEnv: "dev", safeTo: "" })).toThrow(MailRefused);
+    expect(() => safeMail(enquiry, { siteEnv: "dev", safeTo: CLUB_ADDRESS.toUpperCase() })).toThrow(MailRefused);
+  });
+});
+
+describe("sendMail", () => {
+  beforeEach(() => {
+    clearTokenCache();
+    vi.spyOn(console, "log").mockImplementation(() => {});
+  });
+  afterEach(() => vi.restoreAllMocks());
+
+  it("on dev, sends from the dev account to itself, never to the club", async () => {
+    const google = fakeGoogle();
+    const result = await sendMail(enquiry, config(), { fetch: google.fetch });
+    expect(result).toEqual({ status: "sent", id: "msg1", to: ["cougars.dev@gmail.com"] });
+    expect(google.sent).toHaveLength(1);
+    expect(google.sent[0].to).toBe("cougars.dev@gmail.com");
+    expect(google.sent[0].raw).toMatch(/^From: Battersea Cougars <cougars\.dev@gmail\.com>$/m);
+    expect(google.sent[0].raw).toMatch(/^Reply-To: zoe@example\.com$/m);
+  });
+
+  it("uses MAIL_SAFE_TO over the account when it's set", async () => {
+    const google = fakeGoogle();
+    await sendMail(enquiry, config({ safeTo: "dev@example.com" }), { fetch: google.fetch });
+    expect(google.sent[0].to).toBe("dev@example.com");
+  });
+
+  it("in production, sends to the real recipients", async () => {
+    const google = fakeGoogle({ account: CLUB_ADDRESS });
+    await sendMail(enquiry, config({ siteEnv: "production", safeTo: "dev@example.com" }), { fetch: google.fetch });
+    expect(google.sent[0].to).toBe(CLUB_ADDRESS);
+  });
+
+  it("outside production, refuses to send as the club's account", async () => {
+    const google = fakeGoogle({ account: CLUB_ADDRESS });
+    await expect(sendMail(enquiry, config({ safeTo: "dev@example.com" }), { fetch: google.fetch })).rejects.toThrow(
+      MailRefused,
+    );
+    expect(google.sent).toHaveLength(0);
+  });
+
+  it("logs instead of sending without credentials, and never calls Google", async () => {
+    const google = fakeGoogle();
+    const result = await sendMail(enquiry, config({ gmail: null }), { fetch: google.fetch });
+    expect(result.status).toBe("logged");
+    expect(google.mock).not.toHaveBeenCalled();
+  });
+
+  it("reuses the access token until it's nearly expired", async () => {
+    const google = fakeGoogle();
+    let t = 0;
+    const now = () => t;
+    await sendMail(enquiry, config(), { fetch: google.fetch, now });
+    await sendMail(enquiry, config(), { fetch: google.fetch, now });
+    expect(google.tokenCalls()).toBe(1);
+    t = 3600_000;
+    await sendMail(enquiry, config(), { fetch: google.fetch, now });
+    expect(google.tokenCalls()).toBe(2);
+  });
+
+  it("fails with Google's error code, never the token", async () => {
+    const google = fakeGoogle({ tokenStatus: 400 });
+    await expect(sendMail(enquiry, config(), { fetch: google.fetch })).rejects.toThrow(
+      "Gmail token: 400 invalid_grant",
+    );
+  });
+});
+
+describe("mime", () => {
+  it("encodes non-ASCII subjects and bodies", () => {
+    const raw = mime({ ...enquiry, text: "Café ☕" }, "a@example.com");
+    expect(raw).toMatch(/^Subject: =\?UTF-8\?B\?.+\?=$/m);
+    const body = raw.split("\r\n\r\n")[1].replace(/\r\n/g, "");
+    expect(new TextDecoder().decode(Uint8Array.from(atob(body), (c) => c.charCodeAt(0)))).toBe("Café ☕");
+  });
+
+  it("keeps form input from adding headers", () => {
+    const raw = mime({ ...enquiry, subject: "Hi\r\nBcc: victim@example.com" }, "a@example.com");
+    expect(raw).not.toMatch(/^Bcc:/m);
+    expect(() => mime({ ...enquiry, replyTo: "x@example.com\r\nBcc: v@example.com" }, "a@example.com")).toThrow(
+      MailRefused,
+    );
+  });
+});

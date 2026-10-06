@@ -114,10 +114,19 @@ jobs:
           echo "url=${SITE_URL:-$url}" >> "$GITHUB_OUTPUT"
 
       # Secrets the Worker reads at request time: the live video list (ADR 0019). PR previews share dev's.
+      # Secrets the Worker reads at request time, from this environment's Secrets Manager project (README#secrets).
+      # One that isn't there yet is skipped: the site does without (no live YouTube; emails logged, not sent).
       - name: Worker secrets
-        if: github.event_name != 'pull_request' && env.YOUTUBE_API_KEY != ''
+        if: github.event_name != 'pull_request'
         working-directory: apps/web
-        run: printf '%s' "$YOUTUBE_API_KEY" | npx wrangler secret put YOUTUBE_API_KEY -c dist/server/wrangler.json
+        run: |
+          for name in YOUTUBE_API_KEY GMAIL_CLIENT_ID GMAIL_CLIENT_SECRET GMAIL_REFRESH_TOKEN; do
+            if [ -n "${!name}" ]; then
+              printf '%s' "${!name}" | npx wrangler secret put "$name" -c dist/server/wrangler.json
+            else
+              echo "$name: not in Secrets Manager for $SITE_ENV, skipped"
+            fi
+          done
 
       - name: Upload preview
         id: preview

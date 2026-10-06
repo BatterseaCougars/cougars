@@ -123,5 +123,5 @@ social media links (leave one empty to hide it) and an optional homepage backgro
 
 ## Who sees the enquiries from "Try a session"?
 
-For now they're stored safely in the club database. Email notifications to the club inbox come in a later
-phase (see the roadmap).
+Each one is saved in the club database and emailed to the club inbox (batterseahockey@gmail.com), with the
+person's details. Press **Reply** to answer them: the reply goes straight to the person who filled in the form.

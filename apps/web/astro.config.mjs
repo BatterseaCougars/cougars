@@ -34,8 +34,15 @@ export default defineConfig({
       SANITY_DATASET: envField.string({ context: "server", access: "public", default: sanity.dataset }),
       // Not needed: both projects' datasets are public. Only for a private dataset or drafts later.
       SANITY_API_TOKEN: envField.string({ context: "server", access: "secret", optional: true }),
-      // Pulls the club channel's videos at build time (lib/youtube.ts). Without it: Sanity videos only.
+      // The club's YouTube videos, read live on the Worker (lib/server/videos.ts). Without it: Sanity videos only.
       YOUTUBE_API_KEY: envField.string({ context: "server", access: "secret", optional: true }),
+      // Enquiry emails through the Gmail API (shared/email.ts, README.md#gmail). Worker secrets; without them the
+      // email is logged instead of sent.
+      GMAIL_CLIENT_ID: envField.string({ context: "server", access: "secret", optional: true }),
+      GMAIL_CLIENT_SECRET: envField.string({ context: "server", access: "secret", optional: true }),
+      GMAIL_REFRESH_TOKEN: envField.string({ context: "server", access: "secret", optional: true }),
+      // Where every email goes outside production; unset, the sending account itself (cougars.dev).
+      MAIL_SAFE_TO: envField.string({ context: "server", access: "public", optional: true }),
       PUBLIC_BUILD_VERSION: envField.string({ context: "client", access: "public", default: "dev" }),
       // Sample content + noindex for dev builds (local, PR previews, scripts/deploy-dev.sh). Never in production.
       DEMO_CONTENT: envField.boolean({ context: "server", access: "public", default: false }),
