@@ -182,10 +182,13 @@ inbox, and dev can only ever send from its own test account, never the club's.
     2. **Google Auth Platform → Get started**: app name _Battersea Cougars_ (both apps share it), support and
        contact email the developer account's, audience **External**.
     3. **Data access → Add or remove scopes**: `.../auth/gmail.send` only (_Send email on your behalf_). Save.
-    4. **Audience → Publish app**, to **In production**. In _Testing_, Google cancels the tokens after 7 days.
+    4. **Branding**: application home page and privacy policy, the site's `/` and `/privacy/` (the dev site's
+       `https://cougars-dev.cougars-dev.workers.dev` until there's a domain; switch them, and the authorised
+       domain, when there is). Save.
+    5. **Audience → Publish app**, to **In production**. In _Testing_, Google cancels the tokens after 7 days.
        It stays unverified (Google warns on the consent screen, which is fine: only the club's two accounts ever
        sign in).
-    5. **Clients → Create client → Desktop app**, named `cougars-website`. Save both values:
+    6. **Clients → Create client → Desktop app**, named `cougars-website`. Save both values:
        `node scripts/secret-set.mjs GMAIL_CLIENT_ID`, then `GMAIL_CLIENT_SECRET` (shared by both environments).
   - `GMAIL_REFRESH_TOKEN`: `node scripts/gmail-auth.mjs dev`, signed in as the dev Gmail account. It refuses the
     club's account.

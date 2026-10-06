@@ -1,0 +1,46 @@
+// The action catalog (ADR 0024). Every route and API handler declares one of these, `authenticated` or
+// `anonymous`. Roles are data: sets of actions an admin ticks in the app. `manage:all` means everything.
+
+export const ACTIONS = {
+  "read:Event": "See the calendar",
+  "signup:Event": "Say in or out for events",
+  "create:Event": "Add events",
+  "update:Event": "Edit, move or cancel events",
+  "record:Attendance": "Run the register on the night",
+  "generate:Teams": "Generate and adjust teams",
+  "publish:Teams": "Publish teams",
+  "read:Dues": "See Overdue Rentals (who owes what)",
+  "manage:Fees": "Set fees",
+  "record:Payment": "Record payments",
+  "score:Match": "Score Kumite games",
+  "run:Draft": "Run a Kumite draft",
+  "pick:Draft": "Pick in a draft (captains only)",
+  "upload:Photo": "Upload photos",
+  "upload:Video": "Upload videos",
+  "publish:Media": "Publish photos and videos",
+  "read:Rating": "See player ratings",
+  "manage:Member": "Approve and edit members",
+  "manage:Role": "Edit roles",
+  "edit:Content": "Edit website content",
+  "manage:all": "Everything",
+} as const;
+
+export type Action = keyof typeof ACTIONS;
+export type Requirement = Action | "authenticated" | "anonymous";
+
+export const can = (granted: ReadonlySet<Action>, needed: Requirement | undefined): boolean =>
+  needed === undefined ||
+  needed === "anonymous" ||
+  needed === "authenticated" ||
+  granted.has("manage:all") ||
+  granted.has(needed);
+
+/** Group actions by subject ("Event", "Teams", ...) for the Roles screen. */
+export function actionsBySubject(): [string, Action[]][] {
+  const groups = new Map<string, Action[]>();
+  for (const action of Object.keys(ACTIONS) as Action[]) {
+    const subject = action.split(":")[1];
+    groups.set(subject, [...(groups.get(subject) ?? []), action]);
+  }
+  return [...groups];
+}

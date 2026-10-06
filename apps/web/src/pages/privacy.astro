@@ -1,0 +1,56 @@
+---
+// What the site does with personal data. Every line describes something the code actually does; change it in the
+// same commit as the behaviour. Google needs this page's URL to let the website send email (README.md#gmail).
+import Base from "../layouts/Base.astro";
+import PageHeader from "../components/PageHeader.astro";
+import { getSettings } from "../lib/sanity/content";
+
+const s = await getSettings();
+const email = s.contactEmail;
+---
+
+<Base title="Privacy" description="What the Battersea Cougars website does with your details.">
+  <PageHeader eyebrow="Small print" title="Privacy" lede="Short, because the site collects very little." />
+  <div class="wrap page-body">
+    <div class="prose">
+      <h2>Who we are</h2>
+      <p>
+        Battersea Cougars Inline Hockey Club, a roller hockey club in South West London. Questions about your details go
+        to <a href={`mailto:${email}`}>{email}</a>.
+      </p>
+
+      <h2>What we collect</h2>
+      <p>
+        Only what you send us through the <a href="/join/">Try a session</a> form: your name, email address, and, if you
+        give them, your phone number, your hockey experience and your message. We use them to reply to you and help you
+        get started at the club, and for nothing else. We don't sell or share them.
+      </p>
+      <p>
+        Your details are emailed to the club's inbox, and the club replies to you from it. That email goes through
+        Google's Gmail.
+      </p>
+
+      <h2>Where it's kept</h2>
+      <p>
+        On Cloudflare, which runs this website, and in the club's Gmail inbox. To stop spam, the site briefly remembers
+        the internet address a form came from (for 15 minutes).
+      </p>
+
+      <h2>Cookies</h2>
+      <p>
+        None. The site doesn't set cookies or track you, and stores nothing in your browser. Videos come from YouTube's
+        privacy-enhanced player, and only load when you press play.
+      </p>
+
+      <h2>Your rights</h2>
+      <p>
+        You can ask to see, correct or delete the details we hold about you: email{" "}
+        <a href={`mailto:${email}`}>{email}</a>. If you're unhappy with how we've handled them, the
+        <a href="https://ico.org.uk/make-a-complaint/" rel="noopener">
+          Information Commissioner's Office
+        </a>{" "}
+        takes complaints from anyone in the UK.
+      </p>
+    </div>
+  </div>
+</Base>

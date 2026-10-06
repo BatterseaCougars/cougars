@@ -1,0 +1,29 @@
+// 24×24 stroke icons (inline SVG paths), so the shell needs no icon font.
+export const ICONS = {
+  home: "M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z",
+  calendar: "M4 6a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1zM4 10h16M8 3v4M16 3v4",
+  trophy: "M8 4h8v5a4 4 0 0 1-8 0zM8 6H4v1a3 3 0 0 0 4 3M16 6h4v1a3 3 0 0 1-4 3M12 13v4M8 21h8M9 17h6v4H9z",
+  teams:
+    "M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 6.5M18 14a6.5 6.5 0 0 1 3.5 6",
+  more: "M5 12h.01M12 12h.01M19 12h.01",
+  check: "M4 12.5 9 17.5 20 6.5",
+  list: "M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01",
+  draft: "M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM15.5 14v5M13 16.5h5",
+  clock: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2",
+  upload: "M12 16V4M7 9l5-5 5 5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3",
+  user: "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0",
+  pound: "M17 6.5A4 4 0 0 0 9.5 8v4.5c0 3-1.5 5.5-3.5 6.5h12M6.5 12.5h8",
+  key: "M15 9a3 3 0 1 0 0-.01M13 11 4 20M7 17l2 2M9.5 14.5l2 2",
+  tape: "M3 6h18v12H3zM8 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM16 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM10 12h4M6 18l2-2h8l2 2",
+  chevronLeft: "M15 5l-7 7 7 7",
+  chevronRight: "M9 5l7 7-7 7",
+  plus: "M12 5v14M5 12h14",
+  undo: "M9 14 4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3",
+  play: "M7 4v16l13-8z",
+  pause: "M7 4h3v16H7zM14 4h3v16h-3z",
+  search: "M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM20 20l-4-4",
+  x: "M6 6l12 12M18 6 6 18",
+  signOut: "M15 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4M10 16l4-4-4-4M14 12H4",
+} as const;
+
+export type IconName = keyof typeof ICONS;
