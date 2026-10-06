@@ -43,7 +43,7 @@ const heroBg = s.heroImage ? imageUrl(s.heroImage, 2000, 1200) : null;
 // "Kit up": who we are. Page wording, not club facts, so it lives here rather than in Sanity (ADR 0014).
 const headline = "Tough crowd. Soft centre.";
 const about = [
-  "Take a Van Damme film, put it on skates, hand everyone a stick and set it in South London. That's " +
+  "Take a Van Damme film, put it on skates, hand everyone a stick and set it in South West London. That's " +
     "us: inline hockey at Battersea Sports Centre since 1996. Nearly 30 years on the same sport court has " +
     "made us part of the furniture of London's inline hockey scene.",
   "First-timers, league players and everyone in between, all on one rink. Nobody cares where you're from " +
@@ -70,7 +70,7 @@ const strip: [string, string][] = [
     <h1 class="visually-hidden">Battersea Cougars inline hockey club</h1>
     <Image class="hero-logo" src={logo} alt="Battersea Cougars" width={720} loading="eager" fetchpriority="high" />
     <p class="hero-line">
-      {day} night roller hockey <span>·</span> South London <span>·</span> Since {s.founded}
+      Roller hockey club <span>·</span> South West London <span>·</span> Since {s.founded}
     </p>
     <div class="hero-actions">
       <a class="btn btn--primary" href="/join/">
