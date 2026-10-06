@@ -8,6 +8,7 @@
   import { pounds } from "../lib/dates";
   import { currentTournament, nextSession, sessionBookable, tournamentBookable } from "../demo/schedule.svelte";
   import { ASK, IN, OUT, WAITLIST, pick, type Quip } from "../lib/quips";
+  import { prefersReducedMotion } from "../app/motion";
 
   const perms = $derived(granted());
   const who = $derived(me());
@@ -49,6 +50,23 @@
   function onanswer(status: "in" | "waitlist" | "out") {
     said = pick(status === "in" ? IN : status === "waitlist" ? WAITLIST : OUT);
   }
+  // The message types itself out, a letter at a time, each time it changes.
+  let typed = $state("");
+  $effect(() => {
+    const text = quip?.text ?? "";
+    if (prefersReducedMotion) {
+      typed = text;
+      return;
+    }
+    typed = "";
+    let i = 0;
+    const timer = setInterval(() => {
+      i += 1;
+      typed = text.slice(0, i);
+      if (i >= text.length) clearInterval(timer);
+    }, 34);
+    return () => clearInterval(timer);
+  });
   const teammates = (ids: number[]) =>
     ids
       .filter((id) => id !== who.id)
@@ -61,7 +79,6 @@
   <header class="hello">
     <p class="kicker">Battersea Cougars</p>
     <h1 class="display poster">{greeting}, {who.name.split(" ")[0]}</h1>
-    <!-- The locker room's word: one line under the greeting, swapped in place when you answer -->
     {#if owed > 0}
       <!-- You owe: said up front, every visit, until it's paid -->
       <a class="owing" href="/me/tab">
@@ -72,14 +89,18 @@
         <span class="owing-cta">Settle up <Icon name="chevronRight" size={16} /></span>
       </a>
     {/if}
-    <p class="message">
-      {#if quip}{#key quip.text}<span class="rise">{quip.text}</span>{/key}{/if}
-    </p>
   </header>
 
   {#if series && session && booking}
     <section>
-      <p class="eyebrow lead">{answered ? `This ${day}` : `Are you in this ${day}?`}</p>
+      <h2 class="section-title">{answered ? `This ${day}` : `Are you in this ${day}?`}</h2>
+      <!-- The locker room's word, swapped in place when you answer. Its room is fixed, so nothing moves. -->
+      <p class="message" aria-live="polite">
+        <span class="sr-only">{quip?.text ?? ""}</span>
+        <span aria-hidden="true"
+          >{typed}{#if quip}<span class="caret" class:done={typed === quip.text}></span>{/if}</span
+        >
+      </p>
       <EventCard event={booking} canSignUp={can(perms, "signup:Event")} feature {onanswer}>
         {#snippet footer()}
           <!-- Where you stand, in one line that never changes height, and the way to the teams -->
@@ -105,7 +126,7 @@
 
   {#if others.length}
     <section>
-      <p class="eyebrow lead">Also coming up</p>
+      <h2 class="section-title">Also coming up</h2>
       {#each others as o (o.series.id)}
         <EventCard event={sessionBookable(o.session)} canSignUp={can(perms, "signup:Event")} compact />
       {/each}
@@ -115,7 +136,9 @@
   {#each tournaments as { type, t } (type.id)}
     {@const b = tournamentBookable(t!)}
     <section class="next-tournament">
-      <p class="eyebrow lead">{t!.status === "live" ? `${type.shortName} today` : `Next ${type.shortName}`}</p>
+      <h2 class="section-title">
+        {t!.status === "live" ? `${type.shortName} today` : `Next ${type.shortName}`}
+      </h2>
       <EventCard event={b} canSignUp={can(perms, "signup:Event")} />
     </section>
   {/each}
@@ -134,9 +157,6 @@
   section {
     display: grid;
     gap: var(--s-3);
-  }
-  .lead {
-    margin-left: var(--s-1);
   }
   .owing {
     display: flex;
@@ -190,16 +210,61 @@
     font-weight: 600;
     white-space: nowrap;
   }
-  /* One line, always there (empty or not), so a new message never moves the cards */
+  /* The message: big enough to read as the club talking to you, right under its heading. Two lines' room on a
+     phone, one on desktop, so a new one never moves anything. */
   .message {
-    min-height: 1lh;
-    margin-top: calc(-1 * var(--s-1));
-    overflow: hidden;
-    color: var(--fg-muted);
-    font-size: var(--text-md);
-    line-height: 1.35;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    display: flex;
+    align-items: flex-start;
+    min-height: 2lh;
+    margin: 0 var(--s-1);
+    color: var(--fg);
+    font-size: var(--text-lg);
+    font-weight: 500;
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+  .caret {
+    display: inline-block;
+    width: 0.12em;
+    height: 1em;
+    margin-left: 0.08em;
+    vertical-align: -0.12em;
+    background: var(--red-hot);
+    animation: blink 1s steps(1) infinite;
+  }
+  /* Blinking while it types, then a few blinks and gone */
+  .caret.done {
+    animation: caret-out 2.4s steps(1) forwards;
+  }
+  @keyframes caret-out {
+    0%,
+    20% {
+      opacity: 1;
+    }
+    21%,
+    40% {
+      opacity: 0;
+    }
+    41%,
+    60% {
+      opacity: 1;
+    }
+    61%,
+    100% {
+      opacity: 0;
+    }
+  }
+  @keyframes blink {
+    50% {
+      opacity: 0;
+    }
+  }
+  @media (min-width: 901px) {
+    .message {
+      min-height: 1lh;
+      white-space: nowrap;
+    }
   }
   .status {
     display: flex;

@@ -369,13 +369,27 @@ h1.poster::after {
 .page-head .hint {
   margin-top: var(--s-2);
 }
+/* Section headings: the club's italic capitals in red, so a page reads in clear blocks */
 .section-title {
-  margin: var(--s-2) var(--s-1) calc(-1 * var(--s-2));
-  font-size: var(--text-2xs);
-  font-weight: 600;
-  letter-spacing: var(--tracking-label);
+  margin: var(--s-3) var(--s-1) calc(-1 * var(--s-2));
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-style: italic;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  line-height: 1.1;
   text-transform: uppercase;
-  color: var(--fg-muted);
+  color: var(--red-hot);
+}
+
+/* Read by screen readers, not shown */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 /* ─── Surfaces ─── */
