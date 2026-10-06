@@ -18,7 +18,6 @@
   import NotAllowed from "./pages/NotAllowed.svelte";
   import Overdue from "./pages/Overdue.svelte";
   import Profile from "./pages/Profile.svelte";
-  import Register from "./pages/Register.svelte";
   import Roles from "./pages/Roles.svelte";
   import Standings from "./pages/Standings.svelte";
   import Teammates from "./pages/Teammates.svelte";
@@ -34,7 +33,6 @@
     home: Home,
     calendar: Calendar,
     training: Training,
-    register: Register,
     games: Games,
     standings: Standings,
     draft: Draft,

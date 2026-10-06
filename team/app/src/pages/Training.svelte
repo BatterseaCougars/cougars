@@ -9,6 +9,8 @@
   import Icon from "../app/shell/Icon.svelte";
   import EventCard from "../lib/EventCard.svelte";
   import Person from "../lib/Person.svelte";
+  import PlayerCard from "../lib/PlayerCard.svelte";
+  import RegisterDrawer from "../lib/RegisterDrawer.svelte";
   import { formatDayDate } from "../lib/dates";
   import { describeRule } from "../lib/recurrence";
   import { snakeTeams, type Team } from "../lib/snake";
@@ -26,6 +28,26 @@
   const byId = (id: number): Player => PLAYERS.find((p) => p.id === id)!;
 
   let proposal: Team[] | null = $state(null);
+  let registering = $state(false);
+
+  // Trial: players as trading cards, or the plain list. Remembered per device.
+  const VIEW_KEY = "team.training.view";
+  let view = $state<"cards" | "list">(readView());
+  function readView(): "cards" | "list" {
+    try {
+      return localStorage.getItem(VIEW_KEY) === "list" ? "list" : "cards";
+    } catch {
+      return "cards";
+    }
+  }
+  function setView(v: "cards" | "list") {
+    view = v;
+    try {
+      localStorage.setItem(VIEW_KEY, v);
+    } catch {
+      // Private mode: the choice just isn't remembered.
+    }
+  }
   const teams = $derived(proposal ?? db.teams[next.id] ?? null);
   // Your team first, then the old app's order: Cougars, Black, White, then the rest.
   const ordered = $derived(
@@ -67,6 +89,20 @@
   </div>
 {/snippet}
 
+{#snippet players(ids: number[], numbered = false)}
+  {#if view === "cards"}
+    <div class="cards">
+      {#each ids as id, i (id)}
+        <PlayerCard player={byId(id)} n={numbered ? i + 1 : undefined} you={id === who.id} showRating={ratings} />
+      {/each}
+    </div>
+  {:else}
+    <div class="list">
+      {#each ids as id, i (id)}{@render player(id, numbered ? i + 1 : undefined)}{/each}
+    </div>
+  {/if}
+{/snippet}
+
 <div class="page">
   <div class="page-head">
     <div>
@@ -75,7 +111,9 @@
     </div>
     <div class="actions">
       {#if session && can(perms, "record:Attendance")}
-        <a class="btn sm outline" href="/training/{series.slug}/register"><Icon name="check" size={16} /> Register</a>
+        <button class="btn sm outline" onclick={() => (registering = true)}>
+          <Icon name="check" size={16} /> Register
+        </button>
       {/if}
       {#if session && can(perms, "generate:Teams")}
         <button class="btn sm" class:primary={!teams} class:outline={!!teams} onclick={generate}>
@@ -104,6 +142,13 @@
       </div>
     </div>
 
+    <div class="view-row">
+      <div class="seg" role="group" aria-label="Show players as">
+        <button aria-pressed={view === "cards"} onclick={() => setView("cards")}>Cards</button>
+        <button aria-pressed={view === "list"} onclick={() => setView("list")}>List</button>
+      </div>
+    </div>
+
     {#if proposal}
       <p class="note rise">
         Draft teams, not published yet. Move a player with the arrow; drag and drop comes with the solver in T3.
@@ -121,25 +166,29 @@
               {team.players.length} players{ratings ? ` · rating ${rating(team.players)}` : ""}
             </span>
           </header>
-          <div class="list">
-            {#each team.players as id (id)}
-              {#if proposal}
-                <div class="row">
-                  <Person player={byId(id)} showRating={ratings} />
-                  {#if byId(id).cougar}<span class="badge red">Cougar</span>{/if}
-                  <button
-                    class="btn ghost icon"
-                    aria-label="Move to the next team"
-                    onclick={() => move(id, team, ordered[(ordered.indexOf(team) + 1) % ordered.length])}
-                  >
-                    <Icon name="chevronRight" size={18} />
-                  </button>
-                </div>
-              {:else}
-                {@render player(id)}
-              {/if}
-            {/each}
-          </div>
+          {#if !proposal}
+            {@render players(team.players)}
+          {:else}
+            <div class="list">
+              {#each team.players as id (id)}
+                {#if proposal}
+                  <div class="row">
+                    <Person player={byId(id)} showRating={ratings} />
+                    {#if byId(id).cougar}<span class="badge red">Cougar</span>{/if}
+                    <button
+                      class="btn ghost icon"
+                      aria-label="Move to the next team"
+                      onclick={() => move(id, team, ordered[(ordered.indexOf(team) + 1) % ordered.length])}
+                    >
+                      <Icon name="chevronRight" size={18} />
+                    </button>
+                  </div>
+                {:else}
+                  {@render player(id)}
+                {/if}
+              {/each}
+            </div>
+          {/if}
         </section>
       {/each}
       {#if proposal && can(perms, "publish:Teams")}
@@ -148,16 +197,12 @@
 
       {#if unplaced.length}
         <h2 class="section-title">In, not on a team yet</h2>
-        <div class="list">
-          {#each unplaced as id (id)}{@render player(id)}{/each}
-        </div>
+        {@render players(unplaced)}
       {/if}
     {:else}
       <h2 class="section-title">Who's in · first come, first served</h2>
       {#if next.going.length}
-        <div class="list">
-          {#each next.going as id, i (id)}{@render player(id, i + 1)}{/each}
-        </div>
+        {@render players(next.going, true)}
       {:else}
         <p class="hint">Nobody yet. If you ain't first, you last.</p>
       {/if}
@@ -166,12 +211,14 @@
 
     {#if next.waitlist.length}
       <h2 class="section-title">Waitlist</h2>
-      <div class="list">
-        {#each next.waitlist as id, i (id)}{@render player(id, i + 1)}{/each}
-      </div>
+      {@render players(next.waitlist, true)}
     {/if}
   {/if}
 </div>
+
+{#if session && can(perms, "record:Attendance")}
+  <RegisterDrawer {seriesId} bind:open={registering} />
+{/if}
 
 <style>
   .actions {
@@ -199,6 +246,19 @@
   }
   .row.you {
     background: color-mix(in srgb, var(--green) 7%, transparent);
+  }
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(6.4rem, 1fr));
+    gap: var(--s-3);
+  }
+  .view-row {
+    display: flex;
+    justify-content: flex-end;
+  }
+  .view-row .seg button {
+    min-height: 1.85rem;
+    font-size: var(--text-xs);
   }
   .n {
     width: 1.25rem;

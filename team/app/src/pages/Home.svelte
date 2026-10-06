@@ -5,7 +5,7 @@
   import { db } from "../demo/store.svelte";
   import Icon from "../app/shell/Icon.svelte";
   import EventCard from "../lib/EventCard.svelte";
-  import { formatDayDate, pounds } from "../lib/dates";
+  import { pounds } from "../lib/dates";
   import { currentTournament, nextSession, sessionBookable, tournamentBookable } from "../demo/schedule.svelte";
   import { ASK, IN, OUT, WAITLIST, pick, type Quip } from "../lib/quips";
 
@@ -63,34 +63,38 @@
           </blockquote>
         {/key}
       {/if}
-      <EventCard event={booking} canSignUp={can(perms, "signup:Event")} feature={!answered} {onanswer} />
-      {#if !answered}<p class="hint nag">Teams are made from sign-ups, so say in or out before {day}.</p>{/if}
+      <EventCard event={booking} canSignUp={can(perms, "signup:Event")} feature {onanswer}>
+        {#snippet footer()}
+          <!-- Where you stand, in one line that never changes height, and the way to the teams -->
+          <a class="status" href="/training/{series.slug}">
+            <Icon name="teams" size={18} />
+            <span class="grow">
+              {#if myTeam}
+                You're on <strong>{myTeam.name}</strong> with {teammates(myTeam.players)}
+              {:else if isIn}
+                You're <strong>number {position}</strong> · teams out after sign-up closes
+              {:else if waiting}
+                <strong>Waitlist</strong> · you'll move up if someone drops out
+              {:else}
+                See who's in · say in or out before {day}
+              {/if}
+            </span>
+            <Icon name="chevronRight" size={18} />
+          </a>
+        {/snippet}
+      </EventCard>
     </section>
   {/if}
 
+  {#each tournaments as { type, t } (type.id)}
+    {@const b = tournamentBookable(t!)}
+    <section class="next-tournament">
+      <p class="eyebrow lead">{t!.status === "live" ? `${type.shortName} today` : `Next ${type.shortName}`}</p>
+      <EventCard event={b} canSignUp={can(perms, "signup:Event")} />
+    </section>
+  {/each}
+
   <div class="list">
-    {#if series && booking}
-      <a class="row" href="/training/{series.slug}">
-        <span class="glyph"><Icon name="teams" /></span>
-        <span class="grow">
-          {#if myTeam}
-            <span class="title">You're on {myTeam.name}</span>
-            <span class="sub">With {teammates(myTeam.players)} and {myTeam.players.length - 4} more</span>
-          {:else if isIn}
-            <span class="title">You're in, number {position} of {next.going.length}</span>
-            <span class="sub">Teams are out after sign-up closes on {formatDayDate(booking.startsAt)}</span>
-          {:else if waiting}
-            <span class="title">You're on the waitlist</span>
-            <span class="sub">You'll move up if someone drops out</span>
-          {:else}
-            <span class="title">Who's in this {day}</span>
-            <span class="sub">{next.going.length} signed up so far</span>
-          {/if}
-        </span>
-        {#if myTeam}<span class="display team">{myTeam.name}</span>{/if}
-        <Icon name="chevronRight" size={18} />
-      </a>
-    {/if}
     <a class="row" href="/me/tab">
       <span class="glyph"><Icon name="pound" /></span>
       <span class="grow">
@@ -101,14 +105,6 @@
       <Icon name="chevronRight" size={18} />
     </a>
   </div>
-
-  {#each tournaments as { type, t } (type.id)}
-    {@const b = tournamentBookable(t!)}
-    <section class="next-tournament">
-      <p class="eyebrow lead">{t!.status === "live" ? `${type.shortName} today` : `Next ${type.shortName}`}</p>
-      <EventCard event={b} canSignUp={can(perms, "signup:Event")} />
-    </section>
-  {/each}
 </div>
 
 <style>
@@ -125,8 +121,7 @@
     display: grid;
     gap: var(--s-3);
   }
-  .lead,
-  .nag {
+  .lead {
     margin-left: var(--s-1);
   }
   .quote {
@@ -136,13 +131,48 @@
     padding: 0 var(--s-1) 0 var(--s-4);
     border-left: 3px solid var(--red);
   }
-  .quote p {
+  /* The quote changes on every answer: it always takes the same room (two lines on a phone, one on desktop),
+     sitting on the card, so a long one never pushes the card down */
+  .quote {
+    align-content: end;
     font-size: clamp(1.5rem, 6.5vw, 2rem);
+    line-height: 1;
+    min-height: 2lh;
+  }
+  .quote p {
+    font-size: inherit;
     color: var(--fg);
     text-wrap: balance;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
   }
-  .team {
-    font-size: 1.25rem;
+  @media (min-width: 901px) {
+    .quote {
+      min-height: 1lh;
+    }
+  }
+  .status {
+    display: flex;
+    align-items: center;
+    gap: var(--s-3);
+    min-height: 3rem;
+    padding: 0 var(--s-4);
+    color: var(--fg-muted);
+    font-size: var(--text-sm);
+  }
+  .status .grow {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .status strong {
+    color: var(--fg);
+    font-weight: 600;
+  }
+  .status:hover {
     color: var(--fg);
   }
   .owe {

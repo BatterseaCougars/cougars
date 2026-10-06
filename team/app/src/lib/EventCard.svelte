@@ -1,6 +1,7 @@
 <script lang="ts">
   // One session, tournament or social, with In/Out. Every kind carries its own icon and colour (set by an admin
   // per training and tournament type), so the calendar reads at a glance.
+  import type { Snippet } from "svelte";
   import type { Bookable } from "../demo/model";
   import { impersonating, me } from "../demo/session.svelte";
   import Icon from "../app/shell/Icon.svelte";
@@ -12,6 +13,7 @@
     feature = false,
     compact = false,
     onanswer,
+    footer,
   }: {
     event: Bookable;
     canSignUp?: boolean;
@@ -20,6 +22,8 @@
     compact?: boolean;
     /** Called after a tap on In or Out with where the member ended up. */
     onanswer?: (status: "in" | "waitlist" | "out") => void;
+    /** A link row along the bottom of the card (Home: where you stand, and the way to the teams). */
+    footer?: Snippet;
   } = $props();
 
   const KIND = { training: "Training", tournament: "Tournament", social: "Social" } as const;
@@ -59,10 +63,9 @@
 </script>
 
 <article
-  class="event panel {event.kind}"
+  class="event panel glass {event.kind}"
   class:feature
   class:compact
-  class:in={inIt}
   class:cancelled={event.cancelled}
   style:--tone="var(--tone-{event.tone})"
 >
@@ -72,19 +75,21 @@
     <span class="eyebrow">{badge.month}</span>
   </div>
   <div class="body">
-    <p class="type">
-      <span class="chip"><Icon name={event.icon} size={14} /></span>
-      <span class="kind">{KIND[event.kind]}</span>
+    <!-- What matters first: which session (icon and name) and when. Where is a quiet second line. -->
+    <div class="head">
+      <span class="chip" title={KIND[event.kind]}><Icon name={event.icon} size={18} /></span>
+      <h3>
+        {#if compact && event.href}<a href={event.href}>{event.title}</a>{:else}{event.title}{/if}
+      </h3>
       {#if event.cancelled}<span class="badge">Cancelled</span>{/if}
-    </p>
-    <h3>
-      {#if compact && event.href}<a href={event.href}>{event.title}</a>{:else}{event.title}{/if}
-    </h3>
-    <p class="hint">{formatTime(event.startsAt)}–{formatTime(event.endsAt)} · {event.venue}</p>
+    </div>
+    <p class="time num">{formatTime(event.startsAt)}–{formatTime(event.endsAt)}</p>
+    {#if event.venue}<p class="venue"><Icon name="pin" size={13} />{event.venue}</p>{/if}
     {#if event.signup}
       {#if !compact && event.capacity}
         <div class="meter" aria-hidden="true"><span style:width="{fill * 100}%"></span></div>
       {/if}
+      <!-- One fixed-height line: the badge swaps in place, so answering never moves anything -->
       <p class="count hint num">
         <span><strong>{entries.going.length}</strong>{event.capacity ? ` / ${event.capacity}` : ""} in</span>
         {#if entries.waitlist.length}<span>· {entries.waitlist.length} waiting</span>{/if}
@@ -94,13 +99,15 @@
     {/if}
   </div>
   {#if event.signup && canSignUp}
-    <div class="seg red" role="group" aria-label="Are you in?">
-      <button aria-pressed={inIt || waiting} disabled={locked} onclick={() => setIn(true)}>
-        {full && out ? "Waitlist" : "In"}
+    <div class="seg answer" role="group" aria-label="Are you in?">
+      <button class="yes" aria-pressed={inIt || waiting} disabled={locked} onclick={() => setIn(true)}>
+        {#if inIt}<Icon name="check" size={16} />{/if}
+        {waiting ? "Waitlist" : full && out ? "Join waitlist" : "In"}
       </button>
-      <button aria-pressed={out} disabled={locked} onclick={() => setIn(false)}>Out</button>
+      <button class="no" aria-pressed={out} disabled={locked} onclick={() => setIn(false)}>Out</button>
     </div>
   {/if}
+  {#if footer}<div class="foot">{@render footer()}</div>{/if}
 </article>
 
 <style>
@@ -110,28 +117,6 @@
     gap: var(--s-3) var(--s-4);
     align-items: start;
     padding: var(--s-4);
-    overflow: hidden;
-  }
-  /* The colour stripe down the left: the training's or tournament's own tone */
-  .event::before {
-    content: "";
-    position: absolute;
-    inset: 0 auto 0 0;
-    width: 3px;
-    background: var(--tone);
-  }
-  .event.in {
-    border-color: var(--green-border);
-  }
-  /* Tournaments stand out more: a wash of their colour */
-  .event.tournament:not(.feature) {
-    border-color: color-mix(in srgb, var(--tone) 40%, transparent);
-    background:
-      linear-gradient(150deg, color-mix(in srgb, var(--tone) 16%, transparent), transparent 60%), var(--panel-bg);
-  }
-  /* Socials are lighter: a dashed edge */
-  .event.social {
-    border-style: dashed;
   }
   .event.cancelled {
     opacity: 0.55;
@@ -140,6 +125,7 @@
     text-decoration: line-through;
   }
   .date {
+    position: relative;
     display: grid;
     justify-items: center;
     gap: 0.1rem;
@@ -147,38 +133,67 @@
     border-right: 1px solid var(--border);
     text-align: center;
   }
+  /* Calendar rows: the divider beside the date takes the type's colour, a short lit bar, so a month reads at a
+     glance without colouring the whole card */
+  .compact .date {
+    border-right-color: transparent;
+  }
+  .compact .date::after {
+    content: "";
+    position: absolute;
+    top: 0.2rem;
+    bottom: 0.2rem;
+    right: -1px;
+    width: 2px;
+    border-radius: 2px;
+    background: var(--tone);
+    box-shadow: 0 0 10px color-mix(in srgb, var(--tone) 55%, transparent);
+  }
   .day {
     font-size: 1.9rem;
     color: var(--fg);
   }
-  .tournament .day {
-    color: var(--tone);
-  }
-  .type {
+  .head {
     display: flex;
     align-items: center;
-    gap: var(--s-2);
-    margin-bottom: var(--s-1);
+    gap: var(--s-3);
   }
+  /* The only colour on the card: the type's icon */
   .chip {
     display: grid;
     place-items: center;
-    width: 1.5rem;
-    height: 1.5rem;
+    flex: none;
+    width: 2rem;
+    height: 2rem;
     border-radius: var(--r-sm);
-    background: color-mix(in srgb, var(--tone) 18%, transparent);
-    color: var(--tone);
-  }
-  .kind {
-    font-size: var(--text-2xs);
-    font-weight: 600;
-    letter-spacing: var(--tracking-label);
-    text-transform: uppercase;
+    background: color-mix(in srgb, var(--tone) 16%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone) 28%, transparent);
     color: var(--tone);
   }
   h3 {
+    flex: 1;
+    min-width: 0;
     font-size: var(--text-md);
     font-weight: 600;
+    line-height: 1.2;
+    color: var(--fg);
+  }
+  .time {
+    margin-top: var(--s-2);
+    font-size: var(--text-md);
+    font-weight: 500;
+    color: var(--fg);
+  }
+  .venue {
+    display: flex;
+    align-items: center;
+    gap: var(--s-1);
+    margin-top: 0.15rem;
+    font-size: var(--text-xs);
+    color: var(--fg-subtle);
+  }
+  .feature h3 {
+    font-size: var(--text-lg);
   }
   h3 a:hover {
     text-decoration: underline;
@@ -188,32 +203,62 @@
     height: 3px;
     margin-top: var(--s-3);
     border-radius: 2px;
-    background: color-mix(in srgb, var(--fg) 10%, transparent);
+    background: color-mix(in srgb, var(--fg) 9%, transparent);
     overflow: hidden;
   }
   .meter span {
     display: block;
     height: 100%;
     border-radius: 2px;
-    background: var(--tone);
+    background: color-mix(in srgb, var(--fg) 55%, transparent);
     transition: width var(--t-slow) var(--ease);
   }
   .count {
     display: flex;
-    flex-wrap: wrap;
     align-items: center;
     gap: var(--s-2);
+    min-height: 1.5rem;
     margin-top: var(--s-2);
+    white-space: nowrap;
   }
   .count strong {
     color: var(--fg);
   }
-  .seg button:disabled {
-    cursor: not-allowed;
-    opacity: 0.6;
+  .count .badge {
+    margin-left: auto;
   }
   .seg {
     grid-column: 1 / -1;
     display: flex;
+  }
+  .seg > button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--s-1);
+    min-height: 2.5rem;
+    border: 1px solid transparent;
+  }
+  /* In and Out read differently: In lights up green, Out is a quiet neutral tile */
+  .answer > .yes[aria-pressed="true"] {
+    background: var(--green-wash);
+    border-color: var(--green-border);
+    color: var(--green);
+    box-shadow: none;
+  }
+  .answer > .no[aria-pressed="true"] {
+    background: color-mix(in srgb, var(--fg) 12%, transparent);
+    border-color: var(--border-strong);
+    color: var(--fg);
+    box-shadow: none;
+  }
+  .foot {
+    grid-column: 1 / -1;
+    margin: 0 calc(-1 * var(--s-4)) calc(-1 * var(--s-4));
+    border-top: 1px solid var(--border);
+  }
+  .seg button:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
   }
 </style>

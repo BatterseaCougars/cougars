@@ -27,6 +27,7 @@ export const ICONS = {
   pause: "M7 4h3v16H7zM14 4h3v16h-3z",
   search: "M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM20 20l-4-4",
   x: "M6 6l12 12M18 6 6 18",
+  pin: "M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11Zm0-8.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z",
   // Schedule icons, picked per training and tournament
   stick:
     "M15 3l-6.5 13.5a2 2 0 0 1-1.8 1.1H4.5a1 1 0 0 0-1 1V20a1 1 0 0 0 1 1h4.3a2 2 0 0 0 1.8-1.1L18 4.5M17 18.5a2 1.2 0 1 0 4 0 2 1.2 0 1 0-4 0",

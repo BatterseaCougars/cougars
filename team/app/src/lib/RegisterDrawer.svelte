@@ -3,10 +3,13 @@
   import { PLAYERS } from "../demo/data";
   import { nextSession, seriesById, sessionBookable } from "../demo/schedule.svelte";
   import Icon from "../app/shell/Icon.svelte";
-  import Person from "../lib/Person.svelte";
-  import { formatDayDate } from "../lib/dates";
+  import Drawer from "./Drawer.svelte";
+  import Person from "./Person.svelte";
+  import { formatDayDate } from "./dates";
 
-  let { seriesId }: { seriesId: number } = $props();
+  // The register for the night, in a drawer over the training page: everyone who signed up, tap a no-show, search
+  // to add a walk-in, close. It stays mounted, so closing the drawer keeps what was ticked.
+  let { seriesId, open = $bindable(false) }: { seriesId: number; open?: boolean } = $props();
 
   const series = $derived(seriesById(seriesId)!);
   const session = $derived(nextSession(series));
@@ -37,15 +40,10 @@
   }
 </script>
 
-<div class="page">
-  <a class="back" href="/training/{series.slug}"><Icon name="chevronLeft" size={18} />{series.name}</a>
-  <div class="page-head">
-    <div>
-      <h1>Register</h1>
-      <p class="hint">{series.name} · {when}</p>
-    </div>
+<Drawer bind:open title="Register" sub="{series.name} · {when}">
+  {#snippet head()}
     {#if closed}<span class="badge">Closed</span>{:else}<span class="badge green live">Open</span>{/if}
-  </div>
+  {/snippet}
 
   <div class="stats num">
     <div class="stat"><span class="eyebrow">Here</span><span class="value">{here}</span></div>
@@ -56,21 +54,21 @@
   </div>
 
   {#if closed}
-    <div class="panel pad feature rise">
-      <h2>Register closed</h2>
+    <div class="panel pad rise">
+      <h3>Register closed</h3>
       <p class="hint">Attendance is final. Pay-as-you-go players are charged for tonight; subscribers aren't.</p>
       <button class="btn outline sm" onclick={() => (closed = false)}>Reopen (admin)</button>
     </div>
   {:else}
     <label class="search">
       <Icon name="search" size={18} />
-      <input class="input" placeholder="Add a walk-in: search by name" bind:value={search} />
+      <input class="input" placeholder="Add someone: search by name" bind:value={search} />
     </label>
     {#if matches.length}
       <div class="list rise">
         {#each matches as p (p.id)}
           <button class="row" onclick={() => ((walkIns = [...walkIns, p.id]), (search = ""))}>
-            <Person player={p} /><span class="badge">Add walk-in</span>
+            <Person player={p} /><span class="badge"><Icon name="plus" size={14} /> Add</span>
           </button>
         {/each}
       </div>
@@ -80,7 +78,7 @@
   {/if}
 
   {#if walkIns.length}
-    <h2 class="section-title">Walk-ins</h2>
+    <h3 class="section-title">Walk-ins</h3>
     <div class="list rise">
       {#each walkIns as id (id)}
         <div class="row">
@@ -90,7 +88,7 @@
     </div>
   {/if}
 
-  <h2 class="section-title">Signed up · tap a no-show</h2>
+  <h3 class="section-title">Signed up · tap a no-show</h3>
   <div class="list">
     {#each expected as p (p.id)}
       <button class="row" class:off={noShows.has(p.id)} onclick={() => toggle(p.id)} disabled={closed}>
@@ -100,22 +98,16 @@
     {/each}
   </div>
 
-  {#if !closed}
-    <button class="btn primary block" onclick={() => (closed = true)}>Close the register</button>
-  {/if}
-</div>
+  {#snippet footer()}
+    {#if closed}
+      <button class="btn outline block" onclick={() => (open = false)}>Done</button>
+    {:else}
+      <button class="btn primary block" onclick={() => (closed = true)}>Close the register</button>
+    {/if}
+  {/snippet}
+</Drawer>
 
 <style>
-  .back {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.1rem;
-    margin: calc(-1 * var(--s-2)) 0 calc(-1 * var(--s-3)) -0.25rem;
-    min-height: 2.25rem;
-    color: var(--red-hot);
-    font-size: var(--text-sm);
-    font-weight: 500;
-  }
   .stat .value.warn {
     color: var(--amber);
   }
@@ -137,7 +129,7 @@
   .row.off :global(.avatar) {
     opacity: 0.5;
   }
-  .panel h2 {
+  .panel h3 {
     font-size: var(--text-md);
     font-weight: 600;
     margin-bottom: var(--s-2);

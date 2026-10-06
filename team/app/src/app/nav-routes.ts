@@ -192,17 +192,6 @@ export function buildRoutes(config: NavConfig): Route[] {
         action: "read:Event",
         icon: s.icon,
       },
-      {
-        id: `register:${s.id}`,
-        path: `/training/${s.slug}/register`,
-        name: `${s.shortName} register`,
-        tab: "training",
-        page: "register",
-        params: { seriesId: s.id },
-        action: "record:Attendance",
-        icon: "check",
-        hidden: true,
-      },
     ]),
     {
       id: "calendar",
