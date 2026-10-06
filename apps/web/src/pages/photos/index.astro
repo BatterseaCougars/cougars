@@ -21,7 +21,7 @@ Astro.response.headers.set("Cache-Control", unavailable ? UNAVAILABLE_CACHE_CONT
 if (unavailable) Astro.response.status = 503;
 ---
 
-<Base title="Photos" description={`Photos from Cougars ${day} nights, the Kumite and the rest.`}>
+<Base title="Photos" card="photos" description={`Photos from Cougars ${day} nights, the Kumite and the rest.`}>
   <PageHeader
     eyebrow="Photos"
     title="The evidence"

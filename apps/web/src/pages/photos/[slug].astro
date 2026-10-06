@@ -20,7 +20,7 @@ Astro.response.headers.set("Cache-Control", unavailable ? UNAVAILABLE_CACHE_CONT
 if (unavailable) Astro.response.status = 503;
 ---
 
-<Base title={album?.title ?? "Photos"} image={album ? imageUrl(album.cover, 1200, 630) : null}>
+<Base title={album?.title ?? "Photos"} card="photos" image={album ? imageUrl(album.cover, 1200, 630) : null}>
   <PageHeader eyebrow={album?.date ? formatDate(album.date) : "Photos"} title={album?.title ?? "The evidence"} />
   <div class="wrap page-body">
     {album ? (

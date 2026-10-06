@@ -28,3 +28,4 @@ rule, a trade-off. Copy [template.md](template.md), take the next number, keep i
 | [0017](0017-two-sanity-projects.md)         | Two Sanity projects, one per environment                                       | Accepted              |
 | [0018](0018-rebuilds-until-team-app.md)     | Studio changes go live at the daily rebuild until the team app triggers builds | Amended by 0019       |
 | [0019](0019-live-videos.md)                 | Videos are read live from YouTube and Sanity, cached                           | Accepted              |
+| [0020](0020-drawn-share-cards.md)           | Share pictures are drawn at build time                                         | Accepted              |

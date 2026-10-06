@@ -97,7 +97,7 @@ worktree under `.worktrees/`. Each stream lands on `main` when it passes the pre
       small `shared/email.ts`, so it can be switched to Resend once there's a domain.
 - [ ] Cloudflare Web Analytics (free, no cookie banner needed).
 - [ ] "I'm interested" RSVP on events (stored in D1, counts shown to the admin).
-- [ ] Per-page Open Graph images for WhatsApp/Instagram sharing.
+- [x] Per-page share pictures for WhatsApp and Facebook, drawn at build time ([ADR 0020](adr/0020-drawn-share-cards.md)).
 - [ ] Go live: `git push origin main:release`.
 
 ## M6: Team app: members, attendance, site content

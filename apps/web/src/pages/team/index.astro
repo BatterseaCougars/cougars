@@ -12,7 +12,7 @@ const photo = imageUrl(s.team.photo, 1600, 900);
 const roster = [...players].sort((a, b) => (a.number ?? 999) - (b.number ?? 999));
 ---
 
-<Base title="Team" description="The official Battersea Cougars team: roster and player cards.">
+<Base title="Team" card="team" description="The official Battersea Cougars team: roster and player cards.">
   <PageHeader eyebrow="The official team" title="Battersea Cougars" lede={s.team.intro} />
 
   <div class="wrap page-body">

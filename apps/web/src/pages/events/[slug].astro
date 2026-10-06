@@ -19,7 +19,12 @@ const TYPE = { training: "Training", social: "Social", tournament: "Tournament",
 const body = renderPortableText(event.body);
 ---
 
-<Base title={event.title} description={event.summary ?? undefined} image={imageUrl(event.cover, 1200, 630)}>
+<Base
+  title={event.title}
+  card={`events/${event.slug}`}
+  description={event.summary ?? undefined}
+  image={imageUrl(event.cover, 1200, 630)}
+>
   <article class="wrap page-body">
     <header class="head">
       <a class="label link back" href={event.type === "kumite" ? "/kumite/" : "/events/"} data-reveal>

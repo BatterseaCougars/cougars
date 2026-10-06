@@ -60,6 +60,9 @@ live in the code. If a sentence on the site is wrong, tell the developer.
 
 Kumite dates are events with the type _Cougars Kumite_: they also appear on the Kumite poster with a countdown.
 
+When someone shares an event's link (WhatsApp, Facebook), the preview shows its cover photo. Without one, the
+site draws a picture with the event's title, date and place, so you don't need to make one.
+
 ## Record a Kumite result
 
 **Kumite → Results → +**. Fill in the season (e.g. "Winter 2026"), the date it was played, the winning team and
