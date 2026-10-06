@@ -10,15 +10,15 @@ shapes in memory.
 [ADR 0023](adr/0023-device-bound-sign-in.md), [ADR 0024](adr/0024-action-based-authorization.md),
 [ADR 0029](adr/0029-view-as-a-member.md).
 
-| Table              | Columns                                                                                                                                       |
-| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| `members`          | name, email (unique), phone, position (F/D/G), rating, cougar, photo, status (pending/active/inactive), payment_reference (unique), joined_on |
-| `login_challenges` | email, code_hash, link_hash, nonce_hash, attempts, expires_at, used_at                                                                        |
-| `auth_sessions`    | member_id, viewing_as_member_id (null unless viewing as someone), token_hash, created_at, last_seen_at, revoked_at                            |
-| `roles`            | name, description, is_system                                                                                                                  |
-| `role_actions`     | role_id, action                                                                                                                               |
-| `member_roles`     | member_id, role_id                                                                                                                            |
-| `audit_log`        | member_id, viewing_as_member_id, action, subject, detail (JSON), at                                                                           |
+| Table              | Columns                                                                                                                                                                                                                              |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `members`          | name, email (unique), phone, position (F/D/G), rating, cougar (on the official team, [ADR 0034](adr/0034-quarterly-members-and-the-cougars.md)), bio, photo, status (pending/active/inactive), payment_reference (unique), joined_on |
+| `login_challenges` | email, code_hash, link_hash, nonce_hash, attempts, expires_at, used_at                                                                                                                                                               |
+| `auth_sessions`    | member_id, viewing_as_member_id (null unless viewing as someone), token_hash, created_at, last_seen_at, revoked_at                                                                                                                   |
+| `roles`            | name, description, is_system                                                                                                                                                                                                         |
+| `role_actions`     | role_id, action                                                                                                                                                                                                                      |
+| `member_roles`     | member_id, role_id                                                                                                                                                                                                                   |
+| `audit_log`        | member_id, viewing_as_member_id, action, subject, detail (JSON), at                                                                                                                                                                  |
 
 ## Schedule (T2, T5)
 
@@ -60,20 +60,20 @@ The calendar is a union of the three: sessions (with series defaults filled in),
 [ADR 0026](adr/0026-dues-ledger.md), amended by [ADR 0032](adr/0032-fees-per-session-and-tournament.md): fees belong to
 each session and tournament, payments are marked against charges, and Overdue Rentals is the unpaid charges.
 
-| Table                 | Columns                                                                            |
-| --------------------- | ---------------------------------------------------------------------------------- |
-| `series_fees`         | series_id, amount_pence, effective_from (a training's fee, going forward)          |
-| `subscription_fees`   | amount_pence, effective_from (the quarterly subscription)                          |
-| `member_plans`        | member_id, plan (subscription/payg), starts_on, ends_on                            |
-| `charges`             | member_id, session_id or tournament_id or quarter, amount_pence, due_on, voided_at |
-| `payments`            | member_id, amount_pence, received_on, via (transfer/cash), reference, recorded_by  |
-| `payment_allocations` | payment_id, charge_id, amount_pence                                                |
+| Table                 | Columns                                                                                                                                                      |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `series_fees`         | series_id, amount_pence, effective_from (a training's fee, going forward)                                                                                    |
+| `subscription_fees`   | amount_pence, effective_from (the quarterly subscription)                                                                                                    |
+| `subscriptions`       | member_id, starts_on, ends_on (a Quarterly Member while one covers the date; none: pay as you go, [ADR 0034](adr/0034-quarterly-members-and-the-cougars.md)) |
+| `charges`             | member_id, session_id or tournament_id or quarter, amount_pence, due_on, voided_at                                                                           |
+| `payments`            | member_id, amount_pence, received_on, via (transfer/cash), reference, recorded_by                                                                            |
+| `payment_allocations` | payment_id, charge_id, amount_pence                                                                                                                          |
 
 Also: `training_sessions.fee_pence` (written when the register closes, or an admin's override),
 `tournament_types.default_fee_pence`, `tournaments.fee_pence` (copied from the type's default when scheduled).
 
 ## Club (T1)
 
-| Table   | Columns                                                                                      |
-| ------- | -------------------------------------------------------------------------------------------- |
-| `quips` | kind (ask/in/waitlist/out), text (≤ 56 characters), created_by, created_at; admins edit them |
+| Table   | Columns                                                                                                                                                                                       |
+| ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `quips` | kind (replies: ask/in/waitlist/out; greetings: morning/afternoon/evening/late/training/nag), text (each kind its own limit, lib/quips.ts); admins edit them, and each kind keeps at least one |

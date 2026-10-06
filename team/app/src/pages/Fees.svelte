@@ -22,7 +22,7 @@
 </script>
 
 <div class="page">
-  <PageHeader title="Subscription">
+  <PageHeader title="Quarterly rate">
     {#snippet sub()}
       A new fee applies from its date; charges already made keep theirs. Session fees are set on each
       <a href="/settings/training">training</a>, tournament fees on each

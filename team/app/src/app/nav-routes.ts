@@ -104,18 +104,6 @@ const STATIC_TAIL: Route[] = [
     hint: "Pay what you owe, and what you've paid",
   },
   {
-    id: "members",
-    path: "/settings/members",
-    name: "Members",
-    tab: "more",
-    page: "members",
-    action: "manage:Member",
-    icon: "teams",
-    group: "Settings",
-    section: "People",
-    hint: "Approve requests, assign roles",
-  },
-  {
     id: "roles",
     path: "/settings/roles",
     name: "Roles",
@@ -154,7 +142,7 @@ const STATIC_TAIL: Route[] = [
   {
     id: "fees",
     path: "/settings/fees",
-    name: "Subscription",
+    name: "Quarterly rate",
     tab: "more",
     page: "fees",
     action: "manage:Fees",
@@ -222,15 +210,15 @@ export function buildRoutes(config: NavConfig): Route[] {
     })),
     ...(config.members ?? []).map((m): Route => ({
       id: `member:${m.id}`,
-      path: `/settings/members/${m.id}`,
+      path: `/more/teammates/${m.id}`,
       name: m.name,
       tab: "more",
-      page: "member",
+      // Teammates, with this member's big card open
+      page: "teammates",
       params: { memberId: m.id },
       action: "manage:Member",
       icon: "user",
       hidden: true,
-      focus: true,
     })),
     {
       id: "training-editor:new",

@@ -132,9 +132,9 @@ Copied in shape from Gwenda ops (`gwenda-hackney/ark`, `ops/site/src/app/`), whi
       menu section.
 - [ ] **Calendar**: sessions, tournaments and one-offs as one list, each with its icon and colour, filter chips at
       the top, and an "add to calendar" `.ics`. Admins (`create:Event`) add one-off events here.
-- [ ] **Sign-up is the normal path.** Members tap _In_ or _Out_; a full event has a waitlist that moves up
+- [x] **Sign-up is the normal path.** Members tap _In_ or _Out_; a full event has a waitlist that moves up
       automatically. Teams are built from sign-ups (T3), so Home keeps asking until you answer for this Friday.
-- [ ] **The register** (`record:Attendance`), so a trusted regular can do the door, not only an admin:
+- [x] **The register** (`record:Attendance`), so a trusted regular can do the door, not only an admin:
   - one phone screen for the night; everyone signed up is listed as expected
   - one tap marks a no-show; search and tap adds a **walk-in**; a first-timer is added in one step
   - a walk-in can be dropped straight onto a team
@@ -157,7 +157,8 @@ Copied in shape from Gwenda ops (`gwenda-hackney/ark`, `ops/site/src/app/`), whi
 - [ ] Tests with fixture rosters (6, 14, 15, 21, 22, 30 players; few defenders; many cougars).
 - [ ] After sign-up closes, an admin (`generate:Teams`) generates teams, adjusts them by drag and drop, and
       publishes (`publish:Teams`). Each member then sees their team on Home.
-- [ ] Migrations: `session_teams`, `session_team_players` (on `session_id`).
+- [x] Migrations: `session_teams`, `session_team_players` (on `session_id`) (`0006_team_teams_quips_bios.sql`): published teams are stored; dropping out or being taken off
+      takes you off your team.
 
 ## T4: Dues and payments
 
@@ -168,7 +169,8 @@ Copied in shape from Gwenda ops (`gwenda-hackney/ark`, `ops/site/src/app/`), whi
     it was held at, and one session's fee can be overridden.
   - **Each tournament type** has a default fee; scheduling an edition copies it, and it can be changed there.
   - **Quarterly subscription:** covers every training session in the quarter; charged at the start of it.
-- [ ] **Plans:** `member_plans` (member, subscription or pay as you go, from, to).
+- [ ] **Quarterly Members:** `subscriptions` (member, from, to); no subscription is pay as you go
+      ([ADR 0034](../adr/0034-quarterly-members-and-the-cougars.md)).
 - [ ] **Charges are one person for one session or tournament**, made from the register, not from sign-ups:
   - closing a register charges every pay-as-you-go attendee, walk-ins included; subscribers aren't charged
   - tournament entrants are all charged the edition's fee

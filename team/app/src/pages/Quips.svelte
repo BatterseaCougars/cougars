@@ -1,10 +1,11 @@
 <script lang="ts">
   // Settings → Quips: Home's lines. Replies: what it says before you answer and when you do. Greetings: its title,
-  // by the time of day, on a training night, or after too many looks. Edits save as you type; a kind keeps at least
-  // one line so Home always has something to say.
+  // by the time of day, on a training night, or after too many looks. A line saves when you leave it, so a refresh
+  // never lands mid-word; a kind keeps at least one line so Home always has something to say.
   import PageHeader from "../lib/PageHeader.svelte";
   import Icon from "../app/shell/Icon.svelte";
   import { db } from "../demo/store.svelte";
+  import { addQuip, deleteQuip, saveQuip } from "../app/backend.svelte";
   import { NAG_FROM } from "../lib/greetings";
   import { QUIP_KINDS, type QuipGroup, type QuipKind } from "../lib/quips";
 
@@ -27,11 +28,12 @@
     e.preventDefault();
     const text = draft.trim();
     if (!text) return;
-    db.quips.push({ id: Math.max(0, ...db.quips.map((q) => q.id)) + 1, kind, text });
+    addQuip(kind, text);
     draft = "";
   }
   function remove(id: number) {
     db.quips = db.quips.filter((q) => q.id !== id);
+    deleteQuip(id);
   }
 </script>
 
@@ -65,7 +67,13 @@
       <div class="list">
         {#each lines as q (q.id)}
           <div class="row">
-            <input class="input line" maxlength={about.max} bind:value={q.text} aria-label="Quip" />
+            <input
+              class="input line"
+              maxlength={about.max}
+              bind:value={q.text}
+              onchange={() => saveQuip(q)}
+              aria-label="Quip"
+            />
             <button
               class="btn ghost icon"
               onclick={() => remove(q.id)}

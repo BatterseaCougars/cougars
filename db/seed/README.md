@@ -13,16 +13,17 @@ git ignores (`db/seed/*.local.*`).
 ```json
 [
   { "name": "Pat Example", "position": "D", "rating": 75, "email": "pat@example.com", "roles": ["Admin"] },
-  { "name": "Sam Example", "position": "F", "rating": 40 }
+  { "name": "Sam Example", "position": "F", "rating": 40, "cougar": true }
 ]
 ```
 
 - `position`: `F`, `D` or `G`. `rating`: 0–100, for balancing teams; only `read:Rating` sees it.
-- `email` and `roles` are optional. Everyone gets Member; `roles` adds more (Admin, Contributor, Door).
+- `email`, `roles` and `cougar` are optional. Everyone gets Member; `roles` adds more (Admin, Contributor, Door).
+- `cougar: true`: on the club's official team, the Cougars. Teams are made with the Cougars together on one team.
 
 `scripts/seed-roster.mjs` turns it into SQL that **only adds**: a player already in `members` (same name, any
-case) is left alone, an email is filled in only where there's none, and roles are added, never removed. So what
-admins change in the app always wins, and it's safe to run on every deploy.
+case) is left alone (its rating, position and Cougar flag included), an email is filled in only where there's
+none, and roles are added, never removed. So what admins change in the app always wins, and it's safe to run on every deploy.
 
 - Local: `npm run db:migrate:local && npm run db:seed:local` (local D1 is shared by the website and the team app).
 - Dev and production: the "Seed the team roster" step in `.github/workflows/deploy.yml`, after the migrations.

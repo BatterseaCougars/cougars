@@ -77,9 +77,7 @@
     flex-direction: column;
     width: min(26rem, 100vw);
     border-left: 1px solid var(--border-strong);
-    background:
-      linear-gradient(180deg, rgb(255 255 255 / 0.04), transparent 30%),
-      color-mix(in srgb, var(--surface-1) 88%, transparent);
+    background: color-mix(in srgb, var(--surface-1) 92%, transparent);
     backdrop-filter: var(--blur);
     -webkit-backdrop-filter: var(--blur);
     box-shadow: var(--shadow-pop);

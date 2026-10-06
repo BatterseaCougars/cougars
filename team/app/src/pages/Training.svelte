@@ -13,7 +13,7 @@
   import PlayerCard from "../lib/PlayerCard.svelte";
   import PlayerCardZoom from "../lib/PlayerCardZoom.svelte";
   import RegisterDrawer from "../lib/RegisterDrawer.svelte";
-  import { setPlayer } from "../app/backend.svelte";
+  import { publishTeams, setPlayer } from "../app/backend.svelte";
   import Sheet from "../lib/Sheet.svelte";
   import { MEMBERS } from "../demo/data";
   import { formatDayDate } from "../lib/dates";
@@ -118,6 +118,7 @@
   function publish() {
     if (!proposal) return;
     db.teams[next.id] = proposal;
+    void publishTeams(next.id, proposal);
     proposal = null;
   }
   const rating = (ids: number[]) => ids.reduce((s, id) => s + byId(id).rating, 0);
@@ -307,9 +308,10 @@
     n={lifted.n}
     you={id === who.id}
     showRating={ratings}
-    bio={db.bios[id]}
+    bio={byId(id).bio}
     removeLabel={can(perms, "update:Event") ? `Remove from ${series.shortName}` : undefined}
     onremove={() => removeFromSession(id)}
+    detailsHref={can(perms, "manage:Member") ? `/more/teammates/${id}` : undefined}
     onclose={() => (lifted = null)}
   />
 {/if}

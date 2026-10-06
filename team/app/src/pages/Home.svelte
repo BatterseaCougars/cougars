@@ -220,9 +220,7 @@
     padding: var(--s-3) var(--s-4);
     border: 1px solid var(--red-border);
     border-radius: var(--r-md);
-    background:
-      linear-gradient(100deg, var(--red-wash-strong), var(--red-wash) 60%, transparent),
-      color-mix(in srgb, var(--surface-1) 50%, transparent);
+    background: color-mix(in srgb, var(--red) 12%, var(--surface-1));
     color: var(--fg-muted);
     transition: border-color var(--t) var(--ease-in-out);
   }

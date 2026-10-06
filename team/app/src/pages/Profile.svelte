@@ -1,26 +1,26 @@
 <script lang="ts">
-  import { POSITIONS, emailFor, type Position } from "../demo/data";
+  // Your profile. You change your phone, position and bio (the back of your player card); your name and email
+  // are an admin's to change, since sign-in and the roster go by them.
+  import { POSITIONS, emailFor, phoneFor, type Position } from "../demo/data";
   import { impersonating, me, rolesOf } from "../demo/session.svelte";
   import { initials } from "../lib/initials";
-  import { db } from "../demo/store.svelte";
+  import { saveProfile } from "../app/backend.svelte";
 
   const who = me();
-  let form = $state({ name: who.name, email: emailFor(who), phone: "07700 900000", position: who.position });
+  let form = $state({ phone: phoneFor(who.id) ?? "", position: who.position, bio: who.bio ?? "" });
   const locked = impersonating();
-  // The bio goes on the back of your player card. It lives in this browser until profiles are saved (T1).
-  let bio = $state(db.bios[who.id] ?? "");
   const BIO_MAX = 160;
   function save(e: SubmitEvent) {
     e.preventDefault();
-    db.bios[who.id] = bio.trim();
+    saveProfile({ ...form, phone: form.phone.trim(), bio: form.bio.trim() });
   }
 </script>
 
 <div class="page">
   <header class="head">
-    <span class="avatar big">{initials(form.name)}</span>
+    <span class="avatar big">{initials(who.name)}</span>
     <div>
-      <h1>{form.name}</h1>
+      <h1>{who.name}</h1>
       <p class="roles">
         {#each rolesOf(who.id) as r (r)}<span class="badge" class:red={r === "Admin"}>{r}</span>{/each}
       </p>
@@ -28,9 +28,11 @@
   </header>
   <form class="form" onsubmit={save}>
     <fieldset disabled={locked}>
-      <label class="field">Name <input class="input" bind:value={form.name} /></label>
-      <label class="field">Email <input class="input" type="email" bind:value={form.email} /></label>
-      <label class="field">Phone <input class="input" type="tel" bind:value={form.phone} /></label>
+      <label class="field">
+        Email <span class="hint">ask an admin to change it</span>
+        <input class="input" type="email" value={emailFor(who)} readonly />
+      </label>
+      <label class="field">Phone <input class="input" type="tel" maxlength="30" bind:value={form.phone} /></label>
       <div class="field">
         <span id="position">Position</span>
         <div class="seg" role="group" aria-labelledby="position">
@@ -43,8 +45,12 @@
       </div>
       <label class="field">
         Bio <span class="hint">on the back of your player card</span>
-        <textarea class="input" rows="3" maxlength={BIO_MAX} placeholder="Shoots left. Blames the ice." bind:value={bio}
-        ></textarea>
+        <textarea
+          class="input"
+          rows="3"
+          maxlength={BIO_MAX}
+          placeholder="Shoots left. Blames the ice."
+          bind:value={form.bio}></textarea>
       </label>
       <button class="btn primary">Save</button>
     </fieldset>

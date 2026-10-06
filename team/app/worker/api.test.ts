@@ -23,7 +23,7 @@ beforeEach(() => {
   env = { DB: db, TEAM_ENV: "local" };
 });
 
-async function call(method: string, path: string, payload?: unknown, e: Env = env) {
+async function call(method: string, path: string, payload?: unknown, e: Env = env, now = NOW) {
   const res = await handleApi(
     new Request(`http://team.test${path}`, {
       method,
@@ -31,13 +31,15 @@ async function call(method: string, path: string, payload?: unknown, e: Env = en
       body: payload === undefined ? undefined : JSON.stringify(payload),
     }),
     e,
-    NOW,
+    now,
   );
   // The tests read whatever the API sent back; its shapes are checked by the assertions themselves.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return { status: res.status, body: (await res.json()) as Record<string, any> };
 }
 const boot = async () => (await call("GET", "/api/bootstrap")).body;
+/** The sessions still to come (bootstrap also sends the last four weeks, for what's just been held). */
+const ahead = (b: { sessions: { heldOn: string }[] }) => b.sessions.filter((s) => s.heldOn >= "2026-10-06");
 
 describe("opening the app", () => {
   it("shows every Friday for the next 12 weeks at Battersea Sports Centre, 21 skaters and 3 goalies", async () => {
@@ -53,7 +55,7 @@ describe("opening the app", () => {
         goalieCapacity: 3,
       }),
     ]);
-    const dates = b.sessions.map((s: { heldOn: string }) => s.heldOn);
+    const dates = ahead(b).map((s: { heldOn: string }) => s.heldOn);
     expect(dates[0]).toBe("2026-10-09");
     expect(dates).toHaveLength(12);
     expect(dates.every((d: string) => new Date(`${d}T12:00:00Z`).getUTCDay() === 5)).toBe(true);
@@ -76,7 +78,7 @@ describe("opening the app", () => {
 
   it("doesn't make the Fridays twice when opened again", async () => {
     await boot();
-    expect((await boot()).sessions).toHaveLength(12);
+    expect(ahead(await boot())).toHaveLength(12);
   });
 });
 
@@ -97,9 +99,9 @@ describe("the schedule", () => {
     const res = await call("PUT", `/api/series/${friday.id}`, { ...friday, weekdays: ["thu"] });
     expect(res.status).toBe(200);
     const days = (await boot()).sessions.map((s: { heldOn: string }) => s.heldOn);
-    // Thursdays from the series' first date on (8 October is before it)
+    // Thursdays from today on
+    expect(days).toContain("2026-10-08");
     expect(days).toContain("2026-10-15");
-    expect(days).not.toContain("2026-10-08");
     expect(days).toContain("2026-12-25");
     expect(days).not.toContain("2026-10-09");
   });
@@ -203,7 +205,7 @@ describe("who's in", () => {
     const byName = Object.fromEntries(b.members.map((m: { name: string; id: number }) => [m.name, m.id]));
     return { b, dana: byName["Dana Admin"], alt: byName["Alt Uploader"], reg: byName["Reg Player"] };
   };
-  const friday = async () => (await boot()).sessions[0];
+  const friday = async () => ahead(await boot())[0];
 
   it("you say you're in for Friday, and it's still there when the app opens again", async () => {
     const { dana } = await people();
@@ -270,11 +272,119 @@ describe("who's in", () => {
 
   it("moving training to Thursdays keeps a Friday someone already said they're in for", async () => {
     const b = await boot();
-    const first = b.sessions[0];
+    const first = ahead(b)[0];
     await call("POST", `/api/sessions/${first.id}/answer`, { answer: "in" });
     await call("PUT", `/api/series/${b.series[0].id}`, { ...b.series[0], weekdays: ["thu"] });
     const days = (await boot()).sessions.map((s: { heldOn: string }) => s.heldOn);
     expect(days).toContain(first.heldOn);
+  });
+});
+
+describe("teams, quips, profiles and attendance", () => {
+  const ids = async () => {
+    const b = await boot();
+    const byName = Object.fromEntries(b.members.map((m: { name: string; id: number }) => [m.name, m.id]));
+    return { b, dana: byName["Dana Admin"], alt: byName["Alt Uploader"], reg: byName["Reg Player"] };
+  };
+  const friday = async () => ahead(await boot())[0];
+
+  it("an admin publishes Friday's teams; everyone sees them, and someone dropping out comes off theirs", async () => {
+    const { dana, alt, reg } = await ids();
+    const s = await friday();
+    for (const m of [alt, reg]) await call("POST", `/api/sessions/${s.id}/players`, { memberId: m, in: true });
+    await call("POST", `/api/sessions/${s.id}/answer`, { answer: "in" });
+    const teams = [
+      { name: "Cougars", players: [dana, alt] },
+      { name: "White", players: [reg] },
+    ];
+    expect((await call("POST", `/api/sessions/${s.id}/teams`, { teams })).status).toBe(200);
+    expect((await friday()).teams).toEqual(teams);
+    await call("POST", `/api/sessions/${s.id}/answer`, { answer: "out" });
+    expect((await friday()).teams).toEqual([
+      { name: "Cougars", players: [alt] },
+      { name: "White", players: [reg] },
+    ]);
+  });
+
+  it("won't put someone on two teams", async () => {
+    const { dana } = await ids();
+    const s = await friday();
+    const res = await call("POST", `/api/sessions/${s.id}/teams`, {
+      teams: [
+        { name: "Cougars", players: [dana] },
+        { name: "White", players: [dana] },
+      ],
+    });
+    expect(res).toEqual({ status: 400, body: { error: "Someone's on two teams." } });
+  });
+
+  it("Home's quips start with the club's lines; an admin adds, edits and removes them, keeping one of each", async () => {
+    const quips = async () => (await boot()).quips as { id: number; kind: string; text: string }[];
+    const late = (await quips()).filter((q) => q.kind === "late");
+    expect(late.map((q) => q.text)).toContain("Go to bed, {name}");
+    const added = await call("POST", "/api/quips", { kind: "late", text: "Lights out, {name}" });
+    expect(added.status).toBe(201);
+    await call("PUT", `/api/quips/${added.body.id}`, { text: "Lights out, {name}." });
+    expect((await quips()).find((q) => q.id === added.body.id)?.text).toBe("Lights out, {name}.");
+    for (const q of [...late, { id: added.body.id }].slice(0, -1)) await call("DELETE", `/api/quips/${q.id}`);
+    expect(await call("DELETE", `/api/quips/${added.body.id}`)).toEqual({
+      status: 409,
+      body: { error: "Keep at least one." },
+    });
+  });
+
+  it("you write your bio and phone; others see the bio but not the phone", async () => {
+    const { dana } = await ids();
+    await call("PUT", "/api/me", { position: "G", phone: "07700 900123", bio: "Blames the ice." });
+    const me = (await boot()).members.find((m: { id: number }) => m.id === dana);
+    expect(me).toMatchObject({ position: "G", phone: "07700 900123", bio: "Blames the ice." });
+  });
+
+  it("an admin makes someone a Quarterly Member, and can take it back", async () => {
+    const { reg } = await ids();
+    const quarterly = async () => (await boot()).members.find((m: { id: number }) => m.id === reg).quarterly;
+    expect(await quarterly()).toBe(false);
+    await call("POST", `/api/members/${reg}/quarterly`, { quarterly: true });
+    expect(await quarterly()).toBe(true);
+    await call("POST", `/api/members/${reg}/quarterly`, { quarterly: false });
+    expect(await quarterly()).toBe(false);
+  });
+
+  it("counts the Fridays someone played, and an admin sees their attendance", async () => {
+    const { alt, reg } = await ids();
+    const s = await friday();
+    await call("POST", `/api/sessions/${s.id}/players`, { memberId: reg, in: true });
+    await call("POST", `/api/sessions/${s.id}/register`, { memberId: alt, here: true });
+    await call("POST", `/api/sessions/${s.id}/register`, { memberId: reg, here: false });
+    // The Saturday after
+    const later = new Date("2026-10-10T11:00:00Z");
+    const b = (await call("GET", "/api/bootstrap", undefined, env, later)).body;
+    const played = (id: number) => b.members.find((m: { id: number }) => m.id === id).played;
+    expect([played(alt), played(reg)]).toEqual([1, 0]);
+    const history = (await call("GET", `/api/members/${reg}/attendance`, undefined, env, later)).body;
+    expect(history[0]).toMatchObject({
+      heldOn: "2026-10-09",
+      series: "Friday Training",
+      signup: "in",
+      attended: false,
+    });
+    // Every Friday of the year so far is there, answered or not
+    expect(history.at(-1)).toMatchObject({ heldOn: "2026-01-02", signup: null, attended: null });
+  });
+
+  it("an admin records who came to a Friday back in March, and takes it back", async () => {
+    const { reg } = await ids();
+    const history = async () => (await call("GET", `/api/members/${reg}/attendance`)).body;
+    const march = (await history()).find((r: { heldOn: string }) => r.heldOn === "2026-03-13");
+    await call("POST", `/api/sessions/${march.sessionId}/register`, { memberId: reg, here: true });
+    const played = async () => (await boot()).members.find((m: { id: number }) => m.id === reg).played;
+    expect(await played()).toBe(1);
+    expect((await history()).find((r: { heldOn: string }) => r.heldOn === "2026-03-13")).toMatchObject({
+      signup: "in",
+      attended: true,
+    });
+    await call("POST", `/api/sessions/${march.sessionId}/register`, { memberId: reg, here: false });
+    expect(await played()).toBe(0);
   });
 });
 

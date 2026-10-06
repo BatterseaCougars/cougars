@@ -29,7 +29,16 @@ export function parseRoster(text) {
     const roles = r.roles ?? [];
     if (!Array.isArray(roles) || roles.some((x) => typeof x !== "string"))
       throw new Error(`${at} (${name}): roles should be a list of role names.`);
-    return { name, position: r.position, rating: r.rating, email: r.email?.trim().toLowerCase() || null, roles };
+    if (r.cougar != null && typeof r.cougar !== "boolean")
+      throw new Error(`${at} (${name}): cougar should be true or false.`);
+    return {
+      name,
+      position: r.position,
+      rating: r.rating,
+      email: r.email?.trim().toLowerCase() || null,
+      roles,
+      cougar: r.cougar === true,
+    };
   });
 }
 
@@ -43,8 +52,8 @@ export function rosterSql(players, now = new Date()) {
   const out = [];
   for (const p of players) {
     out.push(
-      `INSERT INTO members (name, position, rating, status, joined_on, created_at) ` +
-        `SELECT ${q(p.name)}, ${q(p.position)}, ${p.rating}, 'active', ${q(on)}, ${q(at)} ` +
+      `INSERT INTO members (name, position, rating, cougar, status, joined_on, created_at) ` +
+        `SELECT ${q(p.name)}, ${q(p.position)}, ${p.rating}, ${p.cougar ? 1 : 0}, 'active', ${q(on)}, ${q(at)} ` +
         `WHERE NOT EXISTS (SELECT 1 FROM members WHERE ${same(p.name)});`,
     );
     if (p.email)

@@ -382,7 +382,10 @@
 
   <!-- What the last save did: "Saved", or what went wrong. Floats over the page, so nothing moves. -->
   {#if saving.message}
-    <p class="save-note" class:failed={saving.failed} role={saving.failed ? "alert" : "status"}>{saving.message}</p>
+    <p class="save-note" class:failed={saving.failed} role={saving.failed ? "alert" : "status"}>
+      <span class="note-icon" aria-hidden="true"><Icon name={saving.failed ? "alert" : "check"} size={16} /></span>
+      <span>{saving.message}</span>
+    </p>
   {/if}
 </div>
 
@@ -519,9 +522,7 @@
     inset: 0;
     border-radius: var(--r-md);
     border: 1px solid rgb(236 232 225 / 0.18);
-    background:
-      linear-gradient(160deg, rgb(255 255 255 / 0.1), rgb(255 255 255 / 0.02) 60%),
-      color-mix(in srgb, var(--surface-2) 85%, transparent);
+    background: color-mix(in srgb, var(--surface-3) 90%, transparent);
     box-shadow:
       inset 0 1px 0 rgb(255 255 255 / 0.12),
       0 14px 30px -14px rgb(0 0 0 / 0.9);
@@ -567,29 +568,55 @@
     translate: 0 -50%;
   }
 
-  /* ─── The save note: bottom centre, above the tabs on a phone ─── */
+  /* ─── The save note (toast): bottom centre, above the tabs on a phone. A solid card with a coloured edge and an
+     icon, so "Saved" and a failure read at a glance. ─── */
   .save-note {
     position: fixed;
     left: 50%;
     bottom: calc(var(--s-6) + env(safe-area-inset-bottom, 0px));
     z-index: 70;
+    display: flex;
+    align-items: center;
+    gap: var(--s-3);
+    max-width: min(26rem, calc(100vw - 2 * var(--gutter)));
     margin: 0;
-    padding: var(--s-2) var(--s-4);
-    border-radius: var(--r-md);
-    background: var(--surface-3);
+    padding: var(--s-3) var(--s-4) var(--s-3) var(--s-3);
+    border-radius: var(--r-lg);
+    background: var(--surface-2);
+    box-shadow:
+      inset 3px 0 0 var(--green),
+      inset 0 1px 0 rgb(255 255 255 / 0.05),
+      var(--shadow-pop);
     color: var(--fg);
     font-size: var(--text-sm);
     font-weight: 500;
-    box-shadow: var(--shadow-pop);
     translate: -50% 0;
-    animation: note-in 220ms cubic-bezier(0.22, 1, 0.36, 1);
+    animation: note-in 260ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .note-icon {
+    display: grid;
+    flex-shrink: 0;
+    place-items: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: var(--r-sm);
+    background: var(--green-wash);
+    color: var(--green);
   }
   .save-note.failed {
-    background: color-mix(in srgb, var(--red) 30%, var(--surface-2));
+    box-shadow:
+      inset 3px 0 0 var(--red-hot),
+      inset 0 1px 0 rgb(255 255 255 / 0.05),
+      var(--shadow-pop);
+  }
+  .save-note.failed .note-icon {
+    background: var(--red-wash);
+    color: var(--red-hot);
   }
   @keyframes note-in {
     from {
-      translate: -50% 8px;
+      opacity: 0;
+      translate: -50% 10px;
     }
   }
   @media (max-width: 900px) {

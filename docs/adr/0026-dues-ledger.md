@@ -1,7 +1,8 @@
 # 0026. Dues are a ledger fed by the register
 
 - **Status:** Accepted. Amends [0007](0007-bank-transfer-payments.md) (no monthly invoices). Amended by
-  [0032](0032-fees-per-session-and-tournament.md) (fees per session and tournament, payments per charge).
+  [0032](0032-fees-per-session-and-tournament.md) (fees per session and tournament, payments per charge) and
+  [0034](0034-quarterly-members-and-the-cougars.md) (quarterly membership is a subscription).
 - **Date:** 2026-10-06
 
 ## Context

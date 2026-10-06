@@ -97,7 +97,7 @@
     border-left: 1px solid var(--border);
   }
   .board.clock {
-    background: linear-gradient(180deg, var(--red-wash), transparent);
+    background: var(--red-wash);
   }
   .board.clock::before {
     content: "";

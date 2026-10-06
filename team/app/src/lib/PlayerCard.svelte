@@ -1,6 +1,6 @@
 <script lang="ts">
-  // A player as a physical trading card: printed card stock with a white border round the photo, a red name plate
-  // and the position printed under it, a gloss that catches the light, and a shadow as if it's lying on the table.
+  // A player as a physical trading card: printed card stock with a border round the photo, a red name plate and
+  // the position printed under it, and a shadow as if it's lying on the table. Flat colour, no sheen.
   // The photo slot shows the club mark until members add photos. The corner number is the sign-up order. Ratings
   // only show for admins (read:Rating). With `onopen` it's a button: the page flips it over (PlayerCardZoom), and
   // hides this one meanwhile, as if it's been picked up.
@@ -40,7 +40,6 @@
       {#if you}<span class="tag">You</span>{:else if showRating}<span class="num">{player.rating}</span
         >{:else if player.cougar}<span class="cougar">Cougar</span>{/if}
     </span>
-    <span class="gloss" aria-hidden="true"></span>
   </article>
 {/snippet}
 
@@ -86,9 +85,7 @@
     overflow: hidden;
     border-radius: 3cqw;
     color: #1b1917;
-    background:
-      radial-gradient(130% 80% at 15% 0%, rgb(255 255 255 / 0.55), transparent 60%),
-      repeating-linear-gradient(90deg, rgb(0 0 0 / 0.012) 0 1px, transparent 1px 3px), #e7e1d5;
+    background: #e7e1d5;
     box-shadow:
       inset 0 0 0 1px rgb(0 0 0 / 0.12),
       0 1px 1px rgb(0 0 0 / 0.35),
@@ -118,9 +115,7 @@
     place-items: center;
     overflow: hidden;
     border-radius: 1cqw;
-    background:
-      radial-gradient(circle at 50% 42%, rgb(229 19 31 / 0.45), transparent 65%),
-      linear-gradient(180deg, #24242a, #121215);
+    background: #1c1c21;
     box-shadow: 0 0 0 0.6cqw #1b1917;
   }
   .ghost {
@@ -188,22 +183,5 @@
   }
   .tag {
     color: #1e7a45;
-  }
-  /* Gloss: a soft diagonal band of light across the coated front */
-  .gloss {
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(
-      115deg,
-      transparent 30%,
-      rgb(255 255 255 / 0.16) 42%,
-      rgb(255 255 255 / 0.04) 50%,
-      transparent 58%
-    );
-    pointer-events: none;
-    transition: translate 600ms var(--ease);
-  }
-  .pc:hover .gloss {
-    translate: 12% 0;
   }
 </style>

@@ -4,6 +4,7 @@
 // waitlist moves up. Admins can put someone in past the limit.
 import { all, first, run } from "../../../shared/d1";
 import { HttpError } from "./http";
+import { offTeams } from "./teams";
 
 export type EntryKind = "session" | "tournament" | "event";
 export type Answer = "in" | "out";
@@ -59,35 +60,42 @@ async function current(db: D1Database, kind: EntryKind, id: number, memberId: nu
   );
 }
 
-async function countIn(db: D1Database, kind: EntryKind, id: number) {
-  const { table, key } = TABLES[kind];
-  const row = await first<{ n: number }>(db, `SELECT COUNT(*) n FROM ${table} WHERE ${key} = ? AND signup = 'in'`, [
-    id,
-  ]);
-  return row?.n ?? 0;
-}
+// Two people at once: each statement is atomic, but two requests' statements can interleave. So whether there's a
+// place is decided inside the statement that takes it, never counted first and written after (entries.test.ts).
+const roomIn = (table: string, key: string) =>
+  `(? IS NULL OR (SELECT COUNT(*) FROM ${table} WHERE ${key} = ? AND signup = 'in') < ?)`;
 
-async function put(db: D1Database, kind: EntryKind, id: number, memberId: number, signup: string, now: string) {
+/** Write someone's answer. `join` is in if there's a place, else the waitlist, decided in the same statement. */
+async function put(
+  db: D1Database,
+  kind: EntryKind,
+  id: number,
+  memberId: number,
+  signup: "in" | "out" | { join: number | null },
+  now: string,
+) {
   const { table, key } = TABLES[kind];
   // A fresh answer clears what the register said about an old one
   const reset = kind === "session" ? ", attended = NULL, walk_in = 0" : "";
+  const join = typeof signup === "object";
   await run(
     db,
-    `INSERT INTO ${table} (${key}, member_id, signup, signed_up_at) VALUES (?, ?, ?, ?)
+    `INSERT INTO ${table} (${key}, member_id, signup, signed_up_at)
+     VALUES (?, ?, ${join ? `CASE WHEN ${roomIn(table, key)} THEN 'in' ELSE 'waitlist' END` : "?"}, ?)
      ON CONFLICT (${key}, member_id) DO UPDATE SET signup = excluded.signup, signed_up_at = excluded.signed_up_at${reset}`,
-    [id, memberId, signup, now],
+    join ? [id, memberId, signup.join, id, signup.join, now] : [id, memberId, signup, now],
   );
 }
 
-/** A place came free: the first on the waitlist moves up, if there's room. */
+/** A place came free: the first on the waitlist moves up, if there's still room as it does. */
 async function moveUp(db: D1Database, kind: EntryKind, id: number, limit: number | null, now: string) {
-  if (limit != null && (await countIn(db, kind, id)) >= limit) return;
   const { table, key } = TABLES[kind];
   await run(
     db,
     `UPDATE ${table} SET signup = 'in', signed_up_at = ?
-     WHERE id = (SELECT id FROM ${table} WHERE ${key} = ? AND signup = 'waitlist' ORDER BY signed_up_at, id LIMIT 1)`,
-    [now, id],
+     WHERE id = (SELECT id FROM ${table} WHERE ${key} = ? AND signup = 'waitlist' ORDER BY signed_up_at, id LIMIT 1)
+       AND ${roomIn(table, key)}`,
+    [now, id, limit, id, limit],
   );
 }
 
@@ -98,12 +106,14 @@ export async function answer(db: D1Database, kind: EntryKind, id: number, member
   if (a === "out") {
     if (was?.signup === "out") return;
     await put(db, kind, id, memberId, "out", now);
-    if (was?.signup === "in") await moveUp(db, kind, id, limit, now);
+    if (was?.signup === "in") {
+      if (kind === "session") await offTeams(db, id, memberId);
+      await moveUp(db, kind, id, limit, now);
+    }
     return;
   }
   if (was?.signup === "in" || was?.signup === "waitlist") return;
-  const full = limit != null && (await countIn(db, kind, id)) >= limit;
-  await put(db, kind, id, memberId, full ? "waitlist" : "in", now);
+  await put(db, kind, id, memberId, { join: limit }, now);
 }
 
 /** An admin puts someone in (past the limit, if need be) or takes them off altogether. */
@@ -124,6 +134,7 @@ export async function setPlayer(
   if (!was) return;
   const { table, key } = TABLES[kind];
   await run(db, `DELETE FROM ${table} WHERE ${key} = ? AND member_id = ?`, [id, memberId]);
+  if (kind === "session") await offTeams(db, id, memberId);
   if (was.signup === "in") await moveUp(db, kind, id, limit, now);
 }
 
@@ -162,6 +173,7 @@ export async function mark(
   }
   if (was?.walkIn) {
     await run(db, "DELETE FROM attendance WHERE session_id = ? AND member_id = ?", [sessionId, memberId]);
+    await offTeams(db, sessionId, memberId);
     await moveUp(db, "session", sessionId, limit, now);
   }
 }

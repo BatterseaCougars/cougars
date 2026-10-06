@@ -174,8 +174,8 @@
     height: 2.25rem;
     padding: 0 var(--s-2) 0 0.2rem;
     border: 1px solid var(--border-strong);
-    border-radius: var(--r-pill);
-    background: color-mix(in srgb, var(--surface-2) 55%, transparent);
+    border-radius: var(--r-md);
+    background: var(--field-bg);
     color: var(--fg-muted);
     transition:
       border-color var(--t-fast) var(--ease-in-out),

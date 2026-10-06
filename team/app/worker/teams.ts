@@ -1,0 +1,83 @@
+// Teams for a session (T3): made in the app (lib/snake.ts), published here, so everyone sees the same ones.
+// Publishing replaces whatever was there. Someone who drops out or is taken off comes off their team too
+// (entries.ts).
+import { all, run } from "../../../shared/d1";
+import { HttpError } from "./http";
+
+export interface TeamJson {
+  name: string;
+  players: number[];
+}
+
+/** Each session's published teams, in order. */
+export async function listTeams(db: D1Database, sessionIds: number[]): Promise<Map<number, TeamJson[]>> {
+  const out = new Map<number, TeamJson[]>();
+  if (!sessionIds.length) return out;
+  const rows = await all<{ sessionId: number; teamId: number; name: string; memberId: number | null }>(
+    db,
+    `SELECT t.session_id sessionId, t.id teamId, t.name, p.member_id memberId
+     FROM session_teams t LEFT JOIN session_team_players p ON p.team_id = t.id
+     WHERE t.session_id IN (SELECT value FROM json_each(?)) ORDER BY t.position, t.id, p.rowid`,
+    [JSON.stringify(sessionIds)],
+  );
+  const byTeam = new Map<number, TeamJson>();
+  for (const r of rows) {
+    let team = byTeam.get(r.teamId);
+    if (!team) {
+      team = { name: r.name, players: [] };
+      byTeam.set(r.teamId, team);
+      out.set(r.sessionId, [...(out.get(r.sessionId) ?? []), team]);
+    }
+    if (r.memberId != null) team.players.push(r.memberId);
+  }
+  return out;
+}
+
+export async function publishTeams(
+  db: D1Database,
+  sessionId: number,
+  o: Record<string, unknown>,
+  by: number,
+  now: string,
+) {
+  const teams = o.teams;
+  if (!Array.isArray(teams) || !teams.length || teams.length > 8) throw new HttpError(400, "teams should be a list.");
+  const seen = new Set<number>();
+  const clean = teams.map((t) => {
+    const name = typeof t?.name === "string" ? t.name.trim() : "";
+    if (!name || name.length > 30) throw new HttpError(400, "Each team needs a name.");
+    if (!Array.isArray(t.players) || t.players.some((p: unknown) => !Number.isInteger(p)))
+      throw new HttpError(400, `${name}: players should be member ids.`);
+    for (const p of t.players as number[]) {
+      if (seen.has(p)) throw new HttpError(400, "Someone's on two teams.");
+      seen.add(p);
+    }
+    return { name, players: t.players as number[] };
+  });
+  const session = await all(db, "SELECT 1 FROM training_sessions WHERE id = ?", [sessionId]);
+  if (!session.length) throw new HttpError(404, "No such session.");
+  await run(db, "DELETE FROM session_teams WHERE session_id = ?", [sessionId]);
+  for (const [i, t] of clean.entries()) {
+    const res = await run(
+      db,
+      "INSERT INTO session_teams (session_id, name, position, published_at, published_by) VALUES (?, ?, ?, ?, ?)",
+      [sessionId, t.name, i, now, by],
+    );
+    const teamId = Number(res.meta.last_row_id);
+    for (const p of t.players)
+      await run(db, "INSERT INTO session_team_players (team_id, member_id) SELECT ?, id FROM members WHERE id = ?", [
+        teamId,
+        p,
+      ]);
+  }
+}
+
+/** Off any team for this session: they dropped out or were taken off. */
+export async function offTeams(db: D1Database, sessionId: number, memberId: number) {
+  await run(
+    db,
+    `DELETE FROM session_team_players
+     WHERE member_id = ? AND team_id IN (SELECT id FROM session_teams WHERE session_id = ?)`,
+    [memberId, sessionId],
+  );
+}

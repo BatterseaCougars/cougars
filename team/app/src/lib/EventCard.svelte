@@ -5,9 +5,6 @@
   import type { Bookable } from "../demo/model";
   import { impersonating, me } from "../demo/session.svelte";
   import { answerFor } from "../app/backend.svelte";
-  import { prefersReducedMotion } from "../app/motion";
-  import { db } from "../demo/store.svelte";
-  import { pick } from "./quips";
   import Icon from "../app/shell/Icon.svelte";
   import { dateBadge, formatTime } from "./dates";
 
@@ -29,8 +26,8 @@
     onanswer?: (status: "in" | "waitlist" | "out") => void;
     /** A link row along the bottom of the card (Home: where you stand, and the way to the teams). */
     footer?: Snippet;
-    /** The session you're being asked about (Home's next one, a training's page): until you're in, In pulses once
-     * and then its label types out a nudge ("Do it…"). Saying out starts both again. */
+    /** The session you're being asked about (Home's next one, a training's page): until you're in, In pulses once,
+     * and again if you say out. */
     beckon?: boolean;
   } = $props();
 
@@ -48,35 +45,8 @@
   const full = $derived(event.capacity != null && entries.going.length >= event.capacity);
   const fill = $derived(event.capacity ? Math.min(1, entries.going.length / event.capacity) : 0);
 
-  // Not in yet, whether unanswered or out: Out doesn't get you off the hook. A full session's In says "Join
-  // waitlist", which matters more than a nudge.
-  const nudging = $derived(beckon && canSignUp && event.signup && !inIt && !waiting && !full && !locked);
-  // One line per visit: once In has pulsed, its label clears and types this out instead
-  const nudge = pick(db.quips.filter((q) => q.kind === "nudge" && q.text.trim()))?.text ?? "";
-  let typed = $state("");
-  let typing = $state(false);
-  $effect(() => {
-    void out; // saying out starts it again
-    typing = false;
-    typed = "";
-    if (!nudging || !nudge) return;
-    if (prefersReducedMotion) {
-      typing = true;
-      typed = nudge;
-      return;
-    }
-    let i = 0;
-    let timer: ReturnType<typeof setInterval> | undefined;
-    const start = setTimeout(() => {
-      typing = true;
-      timer = setInterval(() => {
-        i += 1;
-        typed = nudge.slice(0, i);
-        if (i >= nudge.length) clearInterval(timer);
-      }, 70);
-    }, 1500);
-    return () => (clearTimeout(start), clearInterval(timer));
-  });
+  // Not in yet, whether unanswered or out: In pulses once to ask, and again if you say out
+  const beckoning = $derived(beckon && canSignUp && event.signup && !inIt && !waiting && !locked);
 
   // The card answers at once; the server's word (in, or the waitlist) arrives with the refresh.
   function setIn(going: boolean) {
@@ -146,19 +116,14 @@
     <div class="seg answer" role="group" aria-label="Are you in?">
       <button
         class="yes"
-        class:beckon={nudging && !out}
-        class:beckon-again={nudging && out}
+        class:beckon={beckoning && !out}
+        class:beckon-again={beckoning && out}
         aria-pressed={inIt || waiting}
         disabled={locked}
-        aria-label={typing ? "In" : undefined}
         onclick={() => setIn(true)}
       >
-        {#if typing}
-          <span class="nudge" aria-hidden="true">{typed}<span class="caret" class:done={typed === nudge}></span></span>
-        {:else}
-          {#if inIt}<Icon name="check" size={16} />{/if}
-          {waiting ? "Waitlist" : full && !inIt ? "Join waitlist" : "In"}
-        {/if}
+        {#if inIt}<Icon name="check" size={16} />{/if}
+        {waiting ? "Waitlist" : full && !inIt ? "Join waitlist" : "In"}
       </button>
       <button class="no" aria-pressed={out} disabled={locked} onclick={() => setIn(false)}>
         {#if out}<Icon name="x" size={16} />{/if}Out
@@ -284,37 +249,6 @@
   }
   .count .badge {
     margin-left: auto;
-  }
-  /* The nudge on In: typed in the page-title face, leaning in, then its caret blinks out */
-  .nudge {
-    color: var(--green);
-    font-family: var(--font-display);
-    font-size: var(--text-md);
-    font-style: italic;
-    letter-spacing: 0.01em;
-    line-height: 1;
-  }
-  .caret {
-    display: inline-block;
-    width: 2px;
-    height: 0.95em;
-    margin-left: 2px;
-    vertical-align: -0.1em;
-    background: currentColor;
-  }
-  .caret.done {
-    animation: caret-out 2.4s steps(1) forwards;
-  }
-  @keyframes caret-out {
-    0%,
-    40% {
-      opacity: 1;
-    }
-    20%,
-    60%,
-    100% {
-      opacity: 0;
-    }
   }
   .seg {
     grid-column: 1 / -1;

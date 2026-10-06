@@ -1,6 +1,7 @@
 # 0032. Fees belong to each session and tournament; payments are marked against what they paid for
 
-- **Status:** Accepted. Amends [0026](0026-dues-ledger.md).
+- **Status:** Accepted. Amends [0026](0026-dues-ledger.md). Amended by [0034](0034-quarterly-members-and-the-cougars.md)
+  (quarterly membership is a subscription).
 - **Date:** 2026-10-06
 
 ## Context

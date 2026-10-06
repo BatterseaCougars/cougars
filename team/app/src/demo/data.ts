@@ -2,6 +2,8 @@
 // and refreshed after each change. The shapes match the D1 tables (docs/team-app-data-model.md).
 import type { Action } from "../access/actions";
 import type { OneOff, Tournament, TournamentType, TrainingSeries, TrainingSession } from "./model";
+import type { Quip } from "../lib/quips";
+import type { Team } from "../lib/snake";
 
 export type Position = "F" | "D" | "G";
 export const POSITIONS: Record<Position, string> = { F: "Forward", D: "Defence", G: "Keeper" };
@@ -12,6 +14,10 @@ export interface Player {
   position: Position;
   rating: number;
   cougar: boolean;
+  /** On the back of their card. */
+  bio?: string;
+  /** Training sessions they came to. */
+  played?: number;
 }
 
 /** Everyone in the club. Filled by hydrate(). */
@@ -22,6 +28,9 @@ export let REAL_ID = 0;
 
 const EMAILS = new Map<number, string | null>();
 const REFERENCES = new Map<number, string | null>();
+const PHONES = new Map<number, string | null>();
+/** Only yours, unless you manage members. */
+export const phoneFor = (id: number) => PHONES.get(id) ?? null;
 export const emailFor = (p: Player) => EMAILS.get(p.id) ?? "No email yet";
 export const referenceFor = (id: number) => REFERENCES.get(id) ?? `COU-${String(id).padStart(4, "0")}`;
 
@@ -45,7 +54,7 @@ export interface MemberRow {
   status: "pending" | "active" | "inactive";
   /** Highest first: Admin, then the others, Member last. */
   roles: string[];
-  /** Plans come with dues (T4); everyone is pay as you go until then. */
+  /** A Quarterly Member today, from `subscriptions` (ADR 0034); everyone else pays as they go. */
   plan: "Subscription" | "Pay as you go";
 }
 export const MEMBERS: MemberRow[] = [];
@@ -67,14 +76,24 @@ export interface Bootstrap {
     status: MemberRow["status"];
     paymentReference: string | null;
     roles: string[];
+    bio: string;
+    phone: string | null;
+    played: number;
+    quarterly: boolean;
   }[];
   roles: Role[];
   series: TrainingSeries[];
-  sessions: TrainingSession[];
+  sessions: (TrainingSession & { teams: Team[] })[];
   tournamentTypes: TournamentType[];
   tournaments: Tournament[];
   clubEvents: OneOff[];
+  quips: Quip[];
 }
+
+/** Home's lines, from D1. */
+export const QUIPS: Quip[] = [];
+/** Published teams, by session id. */
+export const TEAMS: Record<number, Team[]> = {};
 
 const fill = <T>(list: T[], items: T[]) => list.splice(0, list.length, ...items);
 
@@ -83,19 +102,33 @@ export function hydrate(b: Bootstrap) {
   REAL_ID = b.me;
   EMAILS.clear();
   REFERENCES.clear();
+  PHONES.clear();
   const players = b.members.map((m) => {
     EMAILS.set(m.id, m.email);
     REFERENCES.set(m.id, m.paymentReference);
-    return { id: m.id, name: m.name, position: m.position, rating: m.rating, cougar: m.cougar };
+    PHONES.set(m.id, m.phone);
+    const { id, name, position, rating, cougar, bio, played } = m;
+    return { id, name, position, rating, cougar, bio, played };
   });
   fill(PLAYERS, players);
   fill(
     MEMBERS,
-    b.members.map((m, i) => ({ player: players[i], status: m.status, roles: m.roles, plan: "Pay as you go" as const })),
+    b.members.map((m, i) => ({
+      player: players[i],
+      status: m.status,
+      roles: m.roles,
+      plan: m.quarterly ? ("Subscription" as const) : ("Pay as you go" as const),
+    })),
   );
   fill(ROLES, b.roles);
   fill(SERIES, b.series);
-  fill(SESSIONS, b.sessions);
+  fill(
+    SESSIONS,
+    b.sessions.map(({ teams: _, ...s }) => s),
+  );
+  for (const k of Object.keys(TEAMS)) delete TEAMS[Number(k)];
+  for (const s of b.sessions) if (s.teams.length) TEAMS[s.id] = s.teams;
+  fill(QUIPS, b.quips);
   fill(TOURNAMENT_TYPES, b.tournamentTypes);
   fill(TOURNAMENTS, b.tournaments);
   fill(ONE_OFFS, b.clubEvents);

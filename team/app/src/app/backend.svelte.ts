@@ -2,7 +2,21 @@
 // copy (demo/store.svelte.ts) is refreshed from /api/bootstrap, so what you see is what's stored. Screens change
 // the copy at once for a quick answer, then the refresh brings back what the server decided (the waitlist, say).
 import type { MemberRow, Role } from "../demo/data";
-import { hydrate, MEMBERS, ONE_OFFS, ROLES, SERIES, SESSIONS, TOURNAMENTS, TOURNAMENT_TYPES } from "../demo/data";
+import {
+  hydrate,
+  MEMBERS,
+  ONE_OFFS,
+  QUIPS,
+  ROLES,
+  SERIES,
+  SESSIONS,
+  TEAMS,
+  TOURNAMENTS,
+  TOURNAMENT_TYPES,
+} from "../demo/data";
+import type { Position } from "../demo/data";
+import type { Quip, QuipKind } from "../lib/quips";
+import type { Team } from "../lib/snake";
 import { api, getBootstrap } from "./api";
 import type { Tournament, TournamentType, TrainingSeries } from "../demo/model";
 import { db } from "../demo/store.svelte";
@@ -10,10 +24,8 @@ import { db } from "../demo/store.svelte";
 /** The last save's outcome, shown briefly by the shell. */
 export const saving = $state({ busy: 0, message: "", failed: false });
 
-/** Reload the club's data into the app, keeping what still lives only in the browser (plans). */
+/** Reload the club's data into the app. */
 export async function refresh() {
-  // Lookups built and read here, never kept: plain Maps are right.
-  /* eslint-disable svelte/prefer-svelte-reactivity */
   hydrate(await getBootstrap());
   db.series = structuredClone(SERIES);
   db.sessions = structuredClone(SESSIONS);
@@ -21,9 +33,9 @@ export async function refresh() {
   db.tournaments = structuredClone(TOURNAMENTS);
   db.oneOffs = structuredClone(ONE_OFFS);
   db.roles = structuredClone(ROLES);
-  const plans = new Map(db.members.map((m) => [m.player.id, m.plan]));
-  db.members = structuredClone(MEMBERS).map((m) => ({ ...m, plan: plans.get(m.player.id) ?? m.plan }));
-  /* eslint-enable svelte/prefer-svelte-reactivity */
+  db.members = structuredClone(MEMBERS);
+  db.quips = structuredClone(QUIPS);
+  db.teams = structuredClone(TEAMS);
 }
 
 let clearing: ReturnType<typeof setTimeout> | undefined;
@@ -67,6 +79,33 @@ export const answerFor = (key: string, answer: "in" | "out") =>
 /** An admin puts someone in a session, or takes them off. */
 export const setPlayer = (sessionId: number, memberId: number, inIt: boolean) =>
   save(() => api("POST", `/api/sessions/${sessionId}/players`, { memberId, in: inIt }), inIt ? "Added" : "Taken off");
+/** Publish a session's teams: everyone sees them. */
+export const publishTeams = (sessionId: number, teams: Team[]) =>
+  save(() => api("POST", `/api/sessions/${sessionId}/teams`, { teams }), "Teams published");
+/** Your own phone, position and bio. */
+export const saveProfile = (p: { position: Position; phone: string; bio: string }) =>
+  save(() => api("PUT", "/api/me", p));
+/** Make someone a Quarterly Member from today, or end it (ADR 0034). */
+export const setQuarterly = (memberId: number, quarterly: boolean) =>
+  save(() => api("POST", `/api/members/${memberId}/quarterly`, { quarterly }));
+/** A member's attendance for a year, for an admin: every session held so far, answered or not. */
+export interface AttendanceRow {
+  sessionId: number;
+  heldOn: string;
+  series: string;
+  signup: "in" | "waitlist" | "out" | null;
+  attended: boolean | null;
+  walkIn: boolean;
+  cancelled: boolean;
+}
+export const attendanceOf = (memberId: number, year?: string) =>
+  api<AttendanceRow[]>("GET", `/api/members/${memberId}/attendance${year ? `?year=${year}` : ""}`);
+/** Home's quips. */
+export const addQuip = (kind: QuipKind, text: string) =>
+  save(() => api<{ id: number }>("POST", "/api/quips", { kind, text }), "Added");
+export const saveQuip = (q: Quip) => save(() => api("PUT", `/api/quips/${q.id}`, { text: q.text }));
+export const deleteQuip = (id: number) => save(() => api("DELETE", `/api/quips/${id}`), "Removed");
+
 /** The register: here or not. */
 export const markHere = (sessionId: number, memberId: number, here: boolean) =>
   save(() => api("POST", `/api/sessions/${sessionId}/register`, { memberId, here }), "");

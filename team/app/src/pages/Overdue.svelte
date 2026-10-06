@@ -50,7 +50,7 @@
 
   <div class="list">
     {#each rows as r (r.memberId)}
-      <a class="row" href="/settings/members/{r.memberId}">
+      <a class="row" href="/more/teammates/{r.memberId}">
         <span class="grow"><span class="title">{r.player.name}</span><span class="sub num">{r.reference}</span></span>
         <span class="badge {tone[r.oldest]}">{BUCKETS[r.oldest]}</span>
         <span class="num amt">{pounds(r.total)}</span>

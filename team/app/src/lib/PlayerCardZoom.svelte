@@ -1,9 +1,10 @@
 <script lang="ts">
   // A player's card, picked up: it lifts from where it lies, turns over sideways and comes up to the middle of the
-  // screen, showing its back: who they are, their number tonight, and a line or two about them. Closing puts it
-  // back the same way. Someone who runs events can take the player off the session from here (two taps, so a
-  // stray one can't). Without motion it just appears.
-  import { onMount } from "svelte";
+  // screen, showing its dark back: who they are, their number tonight, and a line or two about them. (An admin on
+  // Teammates gets MemberSheet instead.) Closing puts it back the same way. Someone who runs events can take the player off the session from here (two
+  // taps, so a stray one can't). Without motion it just appears. Once it lands it drops its 3D turn, so fields and
+  // menus on the back behave like any others.
+  import { onMount, tick } from "svelte";
   import { POSITIONS, type Player } from "../demo/data";
   import mark from "../assets/cougars-mark.webp";
   import { prefersReducedMotion } from "../app/motion";
@@ -19,11 +20,12 @@
     bio = "",
     removeLabel,
     onremove,
+    detailsHref,
     onclose,
   }: {
     player: Player;
-    /** The card on the page, where this one starts and ends. */
-    source: HTMLElement;
+    /** The card on the page, where this one starts and ends; none (a link straight to it) and it grows in place. */
+    source?: HTMLElement;
     n?: number;
     you?: boolean;
     showRating?: boolean;
@@ -31,12 +33,15 @@
     /** "Remove from Friday", when the viewer may. */
     removeLabel?: string;
     onremove?: () => void;
+    /** A link to the full card, for an admin looking at the small one. */
+    detailsHref?: string;
     onclose: () => void;
   } = $props();
 
   let flipper = $state<HTMLElement | undefined>();
   let closeBtn = $state<HTMLButtonElement | undefined>();
   let closing = $state(false);
+  let settled = $state(false);
   let sure = $state(false);
   const first = $derived(player.name.split(" ")[0]);
   const DURATION = 520;
@@ -50,6 +55,7 @@
 
   // Where the page's card is, as a transform from the zoomed card's own place
   function fromSource(el: HTMLElement) {
+    if (!source?.isConnected) return "scale(0.6) rotateY(0deg)";
     const a = source.getBoundingClientRect();
     const b = el.getBoundingClientRect();
     const dx = a.left + a.width / 2 - (b.left + b.width / 2);
@@ -59,16 +65,19 @@
 
   onMount(() => {
     closeBtn?.focus({ preventScroll: true });
-    if (!flipper || prefersReducedMotion) return;
-    flipper.animate([{ transform: fromSource(flipper) }, { transform: "rotateY(180deg)" }], {
+    if (!flipper || prefersReducedMotion) return void (settled = true);
+    const open = flipper.animate([{ transform: fromSource(flipper) }, { transform: "rotateY(180deg)" }], {
       duration: DURATION,
       easing: EASE,
     });
+    open.onfinish = () => (settled = true);
   });
 
-  function close() {
+  async function close() {
     if (closing) return;
     closing = true;
+    settled = false;
+    await tick();
     if (!flipper || prefersReducedMotion) return onclose();
     const back = flipper.animate([{ transform: "rotateY(180deg)" }, { transform: fromSource(flipper) }], {
       duration: DURATION - 80,
@@ -97,7 +106,7 @@
 <div class="zoom" class:closing use:portal>
   <button class="scrim" aria-label="Close" tabindex="-1" onclick={close}></button>
   <div class="stage" role="dialog" aria-modal="true" aria-label={player.name}>
-    <div class="flipper" bind:this={flipper}>
+    <div class="flipper" class:settled bind:this={flipper}>
       <div class="face front" aria-hidden="true"><PlayerCard {player} {n} {you} {showRating} /></div>
       <div class="face back">
         <article class="cb">
@@ -124,8 +133,8 @@
                 <dd class="num">{player.rating}</dd>
               </div>{/if}
             <div>
-              <dt>Position</dt>
-              <dd>{player.position}</dd>
+              <dt>Played</dt>
+              <dd class="num">{player.played ?? 0}</dd>
             </div>
           </dl>
           <p class="bio" class:empty={!bio.trim()}>
@@ -143,6 +152,7 @@
           <span class:hide={!sure}>Sure? Take {first} off</span>
         </button>
       {/if}
+      {#if detailsHref}<a class="btn outline" href={detailsHref}>Full details</a>{/if}
       <button class="btn outline" bind:this={closeBtn} onclick={close}>Close</button>
     </div>
   </div>
@@ -198,6 +208,16 @@
     transform-style: preserve-3d;
     transform: rotateY(180deg);
   }
+  /* Landed: no 3D turn at all, so the back is a plain box (fixed menus, focus, crisp text) */
+  .flipper.settled {
+    transform: none;
+  }
+  .settled .face.front {
+    visibility: hidden;
+  }
+  .settled .face.back {
+    transform: none;
+  }
   .face {
     backface-visibility: hidden;
     -webkit-backface-visibility: hidden;
@@ -214,27 +234,29 @@
     transform: rotateY(180deg);
   }
 
-  /* The back: the same card stock, printed in the club's colours */
+  /* The back: dark card stock (fronts are cream; backs match the app), cream ink, the club's red. The band is
+     painted as the card's own top layer, not a box inside it, so no lighter rim shows round the corners. */
   .cb {
+    --band-h: 19cqw;
     display: flex;
     flex-direction: column;
     height: 100%;
     overflow: hidden;
     border-radius: 3cqw;
-    color: #1b1917;
+    color: #e7e1d5;
     background:
-      radial-gradient(130% 80% at 85% 0%, rgb(255 255 255 / 0.5), transparent 60%),
-      repeating-linear-gradient(90deg, rgb(0 0 0 / 0.012) 0 1px, transparent 1px 3px), #e7e1d5;
+      linear-gradient(#26262c, #26262c) top / 100% var(--band-h) no-repeat,
+      #161619;
     box-shadow:
-      inset 0 0 0 1px rgb(0 0 0 / 0.12),
-      0 30px 60px -20px rgb(0 0 0 / 0.8);
+      inset 0 0 0 1px rgb(255 255 255 / 0.08),
+      0 30px 60px -20px rgb(0 0 0 / 0.85);
   }
   .band {
     display: flex;
     align-items: center;
     gap: 3cqw;
-    padding: 4cqw 5cqw;
-    background: linear-gradient(180deg, #24242a, #121215);
+    height: var(--band-h);
+    padding: 0 5cqw;
     color: #e7e1d5;
     font-family: var(--font-display);
     font-size: 6.5cqw;
@@ -265,6 +287,7 @@
     font-style: italic;
   }
   h2 {
+    color: inherit;
     font-family: var(--font-display);
     font-size: 8.5cqw;
     font-style: italic;
@@ -274,27 +297,27 @@
   }
   .pos {
     margin-top: 1.5cqw;
-    color: #5e5850;
+    color: #a39e96;
     font-size: 4.4cqw;
     font-weight: 700;
     letter-spacing: 0.08em;
     text-transform: uppercase;
   }
   .cougar {
-    color: #b3101a;
+    color: var(--red-hot);
   }
   .stats {
     display: flex;
     gap: 2cqw;
     margin: 0 5cqw;
     padding: 3cqw 0;
-    border-block: 0.5cqw solid #1b1917;
+    border-block: 0.5cqw solid rgb(231 225 213 / 0.25);
   }
   .stats div {
     flex: 1;
   }
   dt {
-    color: #5e5850;
+    color: #a39e96;
     font-size: 3.6cqw;
     font-weight: 700;
     letter-spacing: 0.1em;
@@ -314,7 +337,7 @@
     line-height: 1.4;
   }
   .bio.empty {
-    color: #7a746b;
+    color: #8a857d;
     font-style: italic;
   }
 

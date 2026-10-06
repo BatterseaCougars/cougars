@@ -4,7 +4,20 @@ import { londonToday } from "../src/lib/dates";
 import type { Action } from "../src/access/actions";
 import { answer, listEntries, mark, setPlayer, type EntryKind } from "./entries";
 import { HttpError, body, json } from "./http";
-import { actionsOf, createRole, firstAdmin, listMembers, listRoles, updateMember, updateRole } from "./people";
+import {
+  actionsOf,
+  attendanceOf,
+  createRole,
+  firstAdmin,
+  listMembers,
+  listRoles,
+  setQuarterly,
+  updateMember,
+  updateProfile,
+  updateRole,
+} from "./people";
+import { createQuip, deleteQuip, listQuips, updateQuip } from "./quips";
+import { listTeams, publishTeams } from "./teams";
 import {
   createClubEvent,
   createSeries,
@@ -39,7 +52,7 @@ export interface Ctx {
 }
 
 interface Route {
-  method: "GET" | "POST" | "PUT";
+  method: "GET" | "POST" | "PUT" | "DELETE";
   path: RegExp;
   /** The action this route needs; "authenticated" for any signed-in member. */
   action: Action | "authenticated";
@@ -101,19 +114,56 @@ export const ROUTES: Route[] = [
       return json({
         me: c.memberId,
         actions: [...c.actions],
-        members: await listMembers(db, { ratings: can("read:Rating") }),
+        members: await listMembers(db, {
+          ratings: can("read:Rating"),
+          phonesFor: can("manage:Member") ? "all" : c.memberId,
+          today: c.today,
+        }),
         roles: await listRoles(db),
         series: await listSeries(db),
         // A few weeks back, for what's just been held
-        sessions: await withEntries(
+        sessions: await withTeams(
           db,
-          "session",
-          await listSessions(db, new Date(Date.parse(c.today) - 28 * 86_400_000).toISOString().slice(0, 10)),
+          await withEntries(
+            db,
+            "session",
+            await listSessions(db, new Date(Date.parse(c.today) - 28 * 86_400_000).toISOString().slice(0, 10)),
+          ),
         ),
         tournamentTypes: await listTournamentTypes(db),
         tournaments: await withEntries(db, "tournament", await listTournaments(db)),
         clubEvents: await withEntries(db, "event", await listClubEvents(db, c.now)),
+        quips: await listQuips(db),
       });
+    },
+  },
+  {
+    method: "PUT",
+    path: /^\/api\/me$/,
+    action: "authenticated",
+    // Your own phone, position and bio
+    handle: async (c) => (await updateProfile(c.env.DB, c.memberId, await body(c.request)), ok()),
+  },
+  {
+    method: "GET",
+    path: /^\/api\/members\/(\d+)\/attendance$/,
+    action: "manage:Member",
+    // ?year=2026; this year by default
+    handle: async (c) => {
+      const year = new URL(c.request.url).searchParams.get("year") ?? c.today.slice(0, 4);
+      if (!/^\d{4}$/.test(year)) throw new HttpError(400, "year should be like 2026.");
+      return json(await attendanceOf(c.env.DB, id(c), year, c.today));
+    },
+  },
+  {
+    method: "POST",
+    path: /^\/api\/members\/(\d+)\/quarterly$/,
+    action: "manage:Member",
+    handle: async (c) => {
+      const b = await body(c.request);
+      if (typeof b.quarterly !== "boolean") throw new HttpError(400, "quarterly should be true or false.");
+      await setQuarterly(c.env.DB, id(c), b.quarterly, c.today, c.now);
+      return ok();
     },
   },
   {
@@ -184,6 +234,30 @@ export const ROUTES: Route[] = [
   ...ENTRY_ROUTES,
   {
     method: "POST",
+    path: /^\/api\/sessions\/(\d+)\/teams$/,
+    action: "publish:Teams",
+    handle: async (c) => (await publishTeams(c.env.DB, id(c), await body(c.request), c.memberId, c.now), ok()),
+  },
+  {
+    method: "POST",
+    path: /^\/api\/quips$/,
+    action: "manage:Quip",
+    handle: async (c) => json(await createQuip(c.env.DB, await body(c.request)), 201),
+  },
+  {
+    method: "PUT",
+    path: /^\/api\/quips\/(\d+)$/,
+    action: "manage:Quip",
+    handle: async (c) => (await updateQuip(c.env.DB, id(c), await body(c.request)), ok()),
+  },
+  {
+    method: "DELETE",
+    path: /^\/api\/quips\/(\d+)$/,
+    action: "manage:Quip",
+    handle: async (c) => (await deleteQuip(c.env.DB, id(c)), ok()),
+  },
+  {
+    method: "POST",
     path: /^\/api\/sessions\/(\d+)\/register$/,
     action: "record:Attendance",
     // The register on the night: here or not
@@ -210,6 +284,15 @@ async function withEntries<T extends { id: number }>(db: D1Database, kind: Entry
     rows.map((r) => r.id),
   );
   return rows.map((r) => ({ ...r, ...entries.get(r.id)! }));
+}
+
+/** Each session with its published teams. */
+async function withTeams<T extends { id: number }>(db: D1Database, rows: T[]) {
+  const teams = await listTeams(
+    db,
+    rows.map((r) => r.id),
+  );
+  return rows.map((r) => ({ ...r, teams: teams.get(r.id) ?? [] }));
 }
 
 /** Who's asking. Until sign-in (T1), only a local dev server has an answer: the first admin. */

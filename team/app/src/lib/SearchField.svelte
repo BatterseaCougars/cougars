@@ -25,12 +25,16 @@
     width: min(100%, 20rem);
     height: 2.5rem;
     padding: 0 var(--s-2) 0 var(--s-3);
+    border: 1px solid var(--border);
     border-radius: var(--r-md);
-    background: color-mix(in srgb, var(--fg) 6%, transparent);
+    background: var(--field-bg);
+    box-shadow: var(--field-edge);
     color: var(--fg-muted);
+    transition: background-color var(--t-fast) var(--ease-in-out);
   }
   .search:focus-within {
-    background: color-mix(in srgb, var(--fg) 10%, transparent);
+    border-color: var(--red-border);
+    background: var(--field-bg-focus);
   }
   input {
     flex: 1;

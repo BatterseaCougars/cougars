@@ -312,7 +312,7 @@
     min-width: 3rem;
     height: 2.25rem;
     border: 1px solid var(--border-strong);
-    border-radius: var(--r-pill);
+    border-radius: var(--r-sm);
     background: none;
     color: var(--fg-muted);
     font-size: var(--text-sm);

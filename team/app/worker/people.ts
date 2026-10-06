@@ -16,6 +16,13 @@ export interface MemberJson {
   paymentReference: string | null;
   /** Highest first: Admin, then newer roles, Member last. */
   roles: string[];
+  bio: string;
+  /** Only for the member themselves and those who manage members; null otherwise. */
+  phone: string | null;
+  /** Training sessions they came to: in, not a no-show, held before today and not cancelled. */
+  played: number;
+  /** A Quarterly Member today: a subscription covers it (ADR 0034). */
+  quarterly: boolean;
 }
 
 export interface RoleJson {
@@ -43,7 +50,10 @@ export async function listRoles(db: D1Database): Promise<RoleJson[]> {
   }));
 }
 
-export async function listMembers(db: D1Database, { ratings }: { ratings: boolean }): Promise<MemberJson[]> {
+export async function listMembers(
+  db: D1Database,
+  { ratings, phonesFor, today }: { ratings: boolean; phonesFor: "all" | number; today: string },
+): Promise<MemberJson[]> {
   const rows = await all<{
     id: number;
     name: string;
@@ -54,12 +64,22 @@ export async function listMembers(db: D1Database, { ratings }: { ratings: boolea
     status: MemberJson["status"];
     payment_reference: string | null;
     roles: string | null;
+    bio: string;
+    phone: string | null;
+    played: number;
+    quarterly: number;
   }>(
     db,
-    `SELECT m.id, m.name, m.email, m.position, m.rating, m.cougar, m.status, m.payment_reference,
+    `SELECT m.id, m.name, m.email, m.position, m.rating, m.cougar, m.status, m.payment_reference, m.bio, m.phone,
             (SELECT group_concat(name) FROM (SELECT r.name FROM member_roles mr JOIN roles r ON r.id = mr.role_id
-              WHERE mr.member_id = m.id ORDER BY r.is_system DESC, r.id DESC)) roles
+              WHERE mr.member_id = m.id ORDER BY r.is_system DESC, r.id DESC)) roles,
+            (SELECT COUNT(*) FROM attendance a JOIN training_sessions s ON s.id = a.session_id
+              WHERE a.member_id = m.id AND a.signup = 'in' AND COALESCE(a.attended, 1) = 1
+                AND s.held_on < ? AND s.cancelled_at IS NULL) played,
+            EXISTS (SELECT 1 FROM subscriptions sub WHERE sub.member_id = m.id AND sub.starts_on <= ?
+              AND (sub.ends_on IS NULL OR sub.ends_on >= ?)) quarterly
      FROM members m ORDER BY m.name COLLATE NOCASE`,
+    [today, today, today],
   );
   return rows.map((m) => ({
     id: m.id,
@@ -71,6 +91,10 @@ export async function listMembers(db: D1Database, { ratings }: { ratings: boolea
     status: m.status,
     paymentReference: m.payment_reference,
     roles: m.roles ? m.roles.split(",") : [],
+    bio: m.bio,
+    phone: phonesFor === "all" || phonesFor === m.id ? m.phone : null,
+    played: m.played,
+    quarterly: Boolean(m.quarterly),
   }));
 }
 
@@ -172,4 +196,64 @@ export async function updateRole(db: D1Database, id: number, o: Record<string, u
   await run(db, "UPDATE roles SET name = ?, description = ? WHERE id = ?", [f.name, f.description, id]);
   await run(db, "DELETE FROM role_actions WHERE role_id = ?", [id]);
   for (const a of f.actions) await run(db, "INSERT INTO role_actions (role_id, action) VALUES (?, ?)", [id, a]);
+}
+
+/** Your own profile: phone, position and bio. Name and email stay with admins (the roster seed matches by name). */
+export async function updateProfile(db: D1Database, id: number, o: Record<string, unknown>) {
+  const position = oneOf(o, "position", ["F", "D", "G"] as const);
+  const phone = text(o, "phone", { optional: true, max: 30 });
+  const bio = text(o, "bio", { optional: true, max: 160 });
+  await run(db, "UPDATE members SET position = ?, phone = ?, bio = ? WHERE id = ?", [position, phone || null, bio, id]);
+}
+
+/** Make someone a Quarterly Member from today, or end it today (ADR 0034). */
+export async function setQuarterly(db: D1Database, id: number, quarterly: boolean, today: string, now: string) {
+  if (!(await first(db, "SELECT 1 FROM members WHERE id = ?", [id]))) throw new HttpError(404, "No such member.");
+  const covering = "member_id = ? AND starts_on <= ? AND (ends_on IS NULL OR ends_on >= ?)";
+  if (quarterly) {
+    await run(
+      db,
+      `INSERT INTO subscriptions (member_id, starts_on, created_at)
+       SELECT ?, ?, ? WHERE NOT EXISTS (SELECT 1 FROM subscriptions WHERE ${covering})`,
+      [id, today, now, id, today, today],
+    );
+    return;
+  }
+  // Started today: as if it never was. Otherwise it ends today.
+  await run(db, "DELETE FROM subscriptions WHERE member_id = ? AND starts_on = ?", [id, today]);
+  await run(db, `UPDATE subscriptions SET ends_on = ? WHERE ${covering}`, [today, id, today, today]);
+}
+
+/**
+ * A member's attendance for a year, newest first: every training session held so far that year, with what they said
+ * and whether they came. Sessions they never answered are there too (signup null), so an admin can mark them.
+ */
+export async function attendanceOf(db: D1Database, id: number, year: string, today: string) {
+  if (!(await first(db, "SELECT 1 FROM members WHERE id = ?", [id]))) throw new HttpError(404, "No such member.");
+  const rows = await all<{
+    sessionId: number;
+    heldOn: string;
+    series: string;
+    signup: string | null;
+    attended: number | null;
+    walkIn: number | null;
+    cancelled: string | null;
+  }>(
+    db,
+    `SELECT s.id sessionId, s.held_on heldOn, ts.name series, a.signup, a.attended, a.walk_in walkIn,
+            s.cancelled_at cancelled
+     FROM training_sessions s JOIN training_series ts ON ts.id = s.series_id
+       LEFT JOIN attendance a ON a.session_id = s.id AND a.member_id = ?
+     WHERE s.held_on BETWEEN ? AND ? ORDER BY s.held_on DESC, s.id DESC`,
+    [id, `${year}-01-01`, `${year}-12-31` < today ? `${year}-12-31` : today],
+  );
+  return rows.map((r) => ({
+    sessionId: r.sessionId,
+    heldOn: r.heldOn,
+    series: r.series,
+    signup: r.signup as "in" | "waitlist" | "out" | null,
+    attended: r.attended === null ? null : Boolean(r.attended),
+    walkIn: Boolean(r.walkIn),
+    cancelled: Boolean(r.cancelled),
+  }));
 }

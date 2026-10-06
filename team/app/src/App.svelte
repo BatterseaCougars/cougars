@@ -12,8 +12,6 @@
   import Game from "./pages/Game.svelte";
   import Games from "./pages/Games.svelte";
   import Home from "./pages/Home.svelte";
-  import MemberProfile from "./pages/MemberProfile.svelte";
-  import Members from "./pages/Members.svelte";
   import More from "./pages/More.svelte";
   import MyTab from "./pages/MyTab.svelte";
   import NotAllowed from "./pages/NotAllowed.svelte";
@@ -45,8 +43,6 @@
     more: More,
     profile: Profile,
     tab: MyTab,
-    members: Members,
-    member: MemberProfile,
     roles: Roles,
     "training-settings": TrainingSettings,
     "training-editor": TrainingEditor,
@@ -62,6 +58,12 @@
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const Page: Component<any> = $derived(allowed ? PAGES[route.page] : NotAllowed);
 
+  // The page's params, the same object until one actually changes. Every save rebuilds the routes (members are in
+  // them), and a new object each time would re-run a page's effects on its params: the member page reloaded its
+  // attendance and flickered.
+  const paramsKey = $derived(JSON.stringify(route.params ?? {}));
+  const params = $derived(JSON.parse(paramsKey) as Record<string, unknown>);
+
   $effect(() => {
     if (!route.focus && !route.hidden) remember(route.tab, route.path);
     document.title = route.id === "home" ? "Cougars Fresh Meat" : `${route.name} · Cougars Fresh Meat`;
@@ -71,5 +73,5 @@
 <svelte:document onclick={interceptLinks} />
 
 <Shell {route}>
-  <Page {...route.params ?? {}} />
+  <Page {...params} />
 </Shell>
