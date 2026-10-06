@@ -35,7 +35,10 @@ export interface TrainingSeries {
   startTime: string;
   endTime: string;
   venue: string;
+  /** Places for skaters; null: no limit. */
   capacity: number | null;
+  /** Places for goalies, counted apart from the skaters; null: no limit. */
+  goalieCapacity?: number | null;
   /** Listed on the public website calendar. */
   public: boolean;
   active: boolean;

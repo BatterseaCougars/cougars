@@ -1,0 +1,14 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  // The team app (ADR 0022). Not deployed until sign-in exists (T1): until then the API answers only on a local
+  // dev server, where TEAM_ENV is "local" (vite.config.ts) and you're the first admin.
+  "name": "cougars-team",
+  "main": "./worker/index.ts",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": { "not_found_handling": "single-page-application", "run_worker_first": ["/api/*"] },
+  "observability": { "enabled": true },
+  // The website's database: one club, one D1 (ADR 0022). Same entry as apps/web/wrangler.jsonc, so local dev
+  // shares its state.
+  "d1_databases": [{ "binding": "DB", "database_name": "cougars", "migrations_dir": "../../db/migrations" }],
+}

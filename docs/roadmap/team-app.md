@@ -86,18 +86,20 @@ Copied in shape from Gwenda ops (`gwenda-hackney/ark`, `ops/site/src/app/`), whi
 
 [ADR 0023](../adr/0023-device-bound-sign-in.md), [ADR 0024](../adr/0024-action-based-authorization.md).
 
-- [ ] Migrations:
-  - `members` (name, email, phone, position F/D, rating, cougar, photo, status pending/active/inactive, joined_on,
-    payment reference)
-  - `login_challenges` (hashed code and link token, nonce hash, attempts, expires_at, used_at)
-  - `auth_sessions`
-  - `roles`, `role_actions`, `member_roles`, `audit_log`
+- [x] Migrations: `members` (name, email, phone, position F/D/G, rating, cougar, photo, status
+      pending/active/inactive, joined_on, payment reference), `roles`, `role_actions`, `member_roles`
+      (`0003_team_people.sql`).
+- [ ] Migrations: `login_challenges` (hashed code and link token, nonce hash, attempts, expires_at, used_at),
+      `auth_sessions`, `audit_log`.
+- [x] The team app's Worker (`team/app/worker/`): `/api/*` in code, the built app for the rest, D1 bound as `DB`.
+      It runs inside Vite on :4510, sharing the website's local D1. Not deployed until sign-in exists: until then
+      only a local dev server answers, signed in as the first admin.
 - [ ] `shared/email.ts` on the Gmail API (also used by the website's enquiry email, M5).
 - [ ] Sign-in: email → 6-digit code (or the link, on the same device) → session. "Sign in with Google" as a
       shortcut for a member whose Google email matches.
-- [ ] The action catalog (`actions.ts`), the API wrapper that denies by default, `/api/me` returning the member's
-      actions, and a test that every route declares an action that exists.
-- [ ] Seeded roles: Member, Contributor, Admin. The first admin's email is a setting.
+- [x] The action catalog (`actions.ts`), the API wrapper that denies by default, `/api/bootstrap` returning the
+      member's actions with the club's data, and a test that every route declares an action that exists.
+- [x] Seeded roles: Member, Contributor, Door, Admin. The first admin is whoever the roster makes Admin.
 - [ ] Screens:
   - sign-in, and **request access** (name, email, phone, position)
   - **Members** (admin): approve requests, assign roles, set position, rating and the cougar flag
@@ -105,7 +107,9 @@ Copied in shape from Gwenda ops (`gwenda-hackney/ark`, `ops/site/src/app/`), whi
   - **Profile**: own details and photo
 - [ ] **View as a member** (`impersonate:Member`, [ADR 0029](../adr/0029-view-as-a-member.md)): an admin sees the
       app exactly as a member does, read-only, from the account badge.
-- [ ] One-off import of players from the archived Airtable base. Website enquiries can be turned into members.
+- [x] Import of players from the Airtable base: the roster seed from Secrets Manager
+      ([ADR 0033](../adr/0033-personal-data-out-of-the-repo.md), [db/seed/README.md](../../db/seed/README.md)).
+- [ ] Website enquiries can be turned into members.
 - [ ] Secrets, each documented in [README.md#secrets](../../README.md#secrets): `TEAM_SESSION_SECRET`, the Gmail
       OAuth client and refresh token for batterseahockey@gmail.com, and the Google sign-in OAuth client.
 
@@ -113,11 +117,14 @@ Copied in shape from Gwenda ops (`gwenda-hackney/ark`, `ops/site/src/app/`), whi
 
 [ADR 0030](../adr/0030-training-series-and-tournaments.md); tables in [the data model](../team-app-data-model.md).
 
-- [ ] Migrations: `training_series`, `training_sessions`, `tournament_types`, `tournaments`, `club_events`,
-      `attendance`, `club_event_entries`.
+- [x] Migrations: `training_series`, `training_sessions`, `tournament_types`, `tournaments`, `club_events`
+      (`0004_team_schedule.sql`), seeded with Friday Training (every Friday, 19:30–21:30, Battersea Sports Centre,
+      21 skaters and 3 goalies) and the Kumite (no dates yet).
+- [ ] Migrations: `attendance`, `club_event_entries`.
 - [ ] **Settings → Training** (`manage:Training`): add a series (name, icon and colour, every N weeks on which days,
-      first and optional last session, times, venue, places). A daily Cron Trigger makes sessions 12 weeks ahead; a
-      session can be cancelled, moved or changed on its own. Each series gets its own page and menu link.
+      first and optional last session, times, venue, skater and goalie places). Sessions are made 12 weeks ahead
+      (on each load for now; a daily Cron Trigger once deployed); a session can be cancelled, moved or changed on
+      its own. Each series gets its own page and menu link.
 - [ ] **Settings → Tournaments** (`manage:Tournament`): add a tournament type (name, icon and colour, points, game
       length, captains' draft) and schedule its editions (name, date, location, status). Each type gets a folding
       menu section.

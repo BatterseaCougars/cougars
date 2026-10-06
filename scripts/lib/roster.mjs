@@ -1,0 +1,63 @@
+// The team roster seed (db/seed/README.md): a JSON list of players turned into SQL that only ever adds what's
+// missing. A player already in `members` (matched by name, ignoring case) is left alone, so edits made in the app
+// win; an email is filled in only where there's none yet; roles are added, never taken away. Safe to run on
+// every deploy.
+
+const POSITIONS = new Set(["F", "D", "G"]);
+
+/** Check a roster and say what's wrong with it, by row. */
+export function parseRoster(text) {
+  let rows;
+  try {
+    rows = JSON.parse(text);
+  } catch {
+    throw new Error("The roster isn't valid JSON.");
+  }
+  if (!Array.isArray(rows)) throw new Error("The roster should be a JSON array of players.");
+  const seen = new Set();
+  return rows.map((r, i) => {
+    const at = `Row ${i + 1}`;
+    const name = typeof r?.name === "string" ? r.name.trim() : "";
+    if (!name) throw new Error(`${at}: a name is needed.`);
+    if (seen.has(name.toLowerCase())) throw new Error(`${at}: ${name} is listed twice.`);
+    seen.add(name.toLowerCase());
+    if (!POSITIONS.has(r.position)) throw new Error(`${at} (${name}): position should be F, D or G.`);
+    if (!Number.isInteger(r.rating) || r.rating < 0 || r.rating > 100)
+      throw new Error(`${at} (${name}): rating should be a whole number from 0 to 100.`);
+    if (r.email != null && (typeof r.email !== "string" || !r.email.includes("@")))
+      throw new Error(`${at} (${name}): that email doesn't look right.`);
+    const roles = r.roles ?? [];
+    if (!Array.isArray(roles) || roles.some((x) => typeof x !== "string"))
+      throw new Error(`${at} (${name}): roles should be a list of role names.`);
+    return { name, position: r.position, rating: r.rating, email: r.email?.trim().toLowerCase() || null, roles };
+  });
+}
+
+const q = (s) => (s == null ? "NULL" : `'${String(s).replaceAll("'", "''")}'`);
+
+/** The SQL that brings `members` and `member_roles` up to the roster. Everyone gets Member, plus their roles. */
+export function rosterSql(players, now = new Date()) {
+  const at = now.toISOString();
+  const on = at.slice(0, 10);
+  const same = (name) => `lower(name) = lower(${q(name)})`;
+  const out = [];
+  for (const p of players) {
+    out.push(
+      `INSERT INTO members (name, position, rating, status, joined_on, created_at) ` +
+        `SELECT ${q(p.name)}, ${q(p.position)}, ${p.rating}, 'active', ${q(on)}, ${q(at)} ` +
+        `WHERE NOT EXISTS (SELECT 1 FROM members WHERE ${same(p.name)});`,
+    );
+    if (p.email)
+      out.push(
+        `UPDATE members SET email = ${q(p.email)} WHERE ${same(p.name)} AND email IS NULL ` +
+          `AND NOT EXISTS (SELECT 1 FROM members WHERE email = ${q(p.email)});`,
+      );
+    for (const role of ["Member", ...p.roles.filter((r) => r !== "Member")])
+      out.push(
+        `INSERT OR IGNORE INTO member_roles (member_id, role_id) ` +
+          `SELECT m.id, r.id FROM members m, roles r WHERE lower(m.name) = lower(${q(p.name)}) AND r.name = ${q(role)};`,
+      );
+  }
+  out.push(`UPDATE members SET payment_reference = printf('COU-%04d', id) WHERE payment_reference IS NULL;`);
+  return out.join("\n");
+}

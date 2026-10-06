@@ -1,9 +1,10 @@
 <script lang="ts">
+  import { saveMember } from "../app/backend.svelte";
   // A member, for an admin (Settings → Members → a name): their role and plan, and every session and tournament
   // they were charged for. Tick what they've paid for, by transfer or cash (ADR 0032); Overdue Rentals and their
   // own Dues page follow straight away.
   import BackBar from "../app/shell/BackBar.svelte";
-  import { emailFor, referenceFor } from "../demo/data";
+  import { POSITIONS, emailFor, referenceFor, type Position } from "../demo/data";
   import { chargesFor, owedBy } from "../demo/dues.svelte";
   import { db, markPaid } from "../demo/store.svelte";
   import ChargeRow from "../lib/ChargeRow.svelte";
@@ -14,6 +15,26 @@
   let { memberId }: { memberId: number } = $props();
 
   const member = $derived(db.members.find((m) => m.player.id === memberId)!);
+
+  // Each change is saved as it's made (app/backend.svelte.ts). A member has one role of their own, plus Member.
+  function setRole(role: string) {
+    member.roles = role === "Member" ? ["Member"] : [role, "Member"];
+    saveMember(member);
+  }
+  function setPosition(position: Position) {
+    if (member.player.position === position) return;
+    member.player.position = position;
+    saveMember(member);
+  }
+  function setRating(rating: number) {
+    if (!Number.isInteger(rating) || rating < 0 || rating > 100) return;
+    member.player.rating = rating;
+    saveMember(member);
+  }
+  function setCougar(cougar: boolean) {
+    member.player.cougar = cougar;
+    saveMember(member);
+  }
   const charges = $derived(chargesFor(memberId));
   const unpaid = $derived(charges.filter((c) => !c.paidOn));
   const paid = $derived(charges.filter((c) => c.paidOn));
@@ -41,7 +62,8 @@
       Role
       <Select
         id="member-role"
-        bind:value={member.roles[0]}
+        value={member.roles[0] ?? "Member"}
+        onchange={setRole}
         options={db.roles.map((r) => ({ value: r.name, label: r.name }))}
       />
     </label>
@@ -57,6 +79,34 @@
       />
     </label>
   </div>
+
+  <div class="two">
+    <div class="field">
+      <span id="member-position">Position</span>
+      <div class="seg" role="group" aria-labelledby="member-position">
+        {#each Object.entries(POSITIONS) as [v, label] (v)}
+          <button type="button" aria-pressed={member.player.position === v} onclick={() => setPosition(v as Position)}>
+            {label}
+          </button>
+        {/each}
+      </div>
+    </div>
+    <label class="field">
+      Rating (0–100)
+      <input
+        class="input num"
+        type="number"
+        min="0"
+        max="100"
+        value={member.player.rating}
+        onchange={(e) => setRating(Number(e.currentTarget.value))}
+      />
+    </label>
+  </div>
+  <label class="check">
+    <input type="checkbox" checked={member.player.cougar} onchange={(e) => setCougar(e.currentTarget.checked)} />
+    A Cougar (plays for the club's own team)
+  </label>
 
   <div class="stats num">
     <div class="stat">
@@ -87,6 +137,15 @@
 </div>
 
 <style>
+  .seg {
+    display: flex;
+  }
+  .check {
+    display: flex;
+    align-items: center;
+    gap: var(--s-3);
+    color: var(--fg-body);
+  }
   .who {
     display: flex;
     align-items: center;

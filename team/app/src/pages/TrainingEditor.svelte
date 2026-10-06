@@ -4,7 +4,8 @@
   // sessions; each one can then be cancelled on its own. It zooms in over the list, as editors do in Gwenda ops.
   import type { TrainingSeries } from "../demo/model";
   import { resolve } from "../demo/schedule.svelte";
-  import { db, syncSessions } from "../demo/store.svelte";
+  import { db } from "../demo/store.svelte";
+  import { createSeries, setCancelled, updateSeries } from "../app/backend.svelte";
   import BackBar from "../app/shell/BackBar.svelte";
   import { navigate } from "../app/router.svelte";
   import StylePicker from "../lib/StylePicker.svelte";
@@ -12,7 +13,6 @@
   import { feeOn } from "../lib/dues";
   import { collectedFor } from "../demo/dues.svelte";
   import { WEEKDAYS, describeRule, weekdayOf } from "../lib/recurrence";
-  import { slugify } from "../lib/slug";
 
   const DAY_NAMES = { mon: "Mon", tue: "Tue", wed: "Wed", thu: "Thu", fri: "Fri", sat: "Sat", sun: "Sun" };
 
@@ -39,6 +39,7 @@
       endTime: "21:00",
       venue: "",
       capacity: 20,
+      goalieCapacity: 2,
       public: true,
       active: true,
       fees: [{ pence: 1000, from: today }],
@@ -87,9 +88,7 @@
   );
 
   const upcoming = $derived(
-    typeof selected === "number"
-      ? db.sessions.filter((s) => s.seriesId === selected && s.heldOn >= londonToday()).slice(0, 10)
-      : [],
+    typeof selected === "number" ? db.sessions.filter((s) => s.seriesId === selected && s.heldOn >= londonToday()) : [],
   );
 
   function toggleDay(d: (typeof WEEKDAYS)[number]) {
@@ -97,33 +96,24 @@
     form.weekdays = form.weekdays.includes(d) ? form.weekdays.filter((x) => x !== d) : [...form.weekdays, d];
   }
 
-  function save(e: SubmitEvent) {
+  async function save(e: SubmitEvent) {
     e.preventDefault();
     if (!form || !form.name || !form.weekdays.length) return;
     if (!form.shortName) form.shortName = form.name.split(" ")[0];
     applyFee();
     if (selected === "new") {
-      const id = Math.max(0, ...db.series.map((s) => s.id)) + 1;
-      const created = {
-        ...form,
-        id,
-        slug: slugify(form.name, ["new", ...db.series.map((s) => s.slug)]),
-      };
-      db.series.push(created);
-      syncSessions(db.series.at(-1)!);
+      const created = await createSeries(form);
       // The blank form gives way to the new training's editor: Back goes to the list, not to an empty form.
-      navigate(`/settings/training/${created.slug}`, { replace: true });
+      if (created) navigate(`/settings/training/${created.slug}`, { replace: true });
     } else {
-      const target = db.series.find((s) => s.id === selected)!;
-      Object.assign(target, form);
-      syncSessions(target);
-      saved = true;
+      saved = Boolean(await updateSeries(form));
     }
   }
 
+  // Cancelling keeps the session (a row in D1), so whoever signed up can be told.
   function toggleCancel(id: number) {
     const s = db.sessions.find((x) => x.id === id)!;
-    s.cancelledAt = s.cancelledAt ? null : new Date().toISOString();
+    setCancelled(id, !s.cancelledAt);
   }
 </script>
 
@@ -179,10 +169,10 @@
         <label class="field">Starts <input class="input" type="time" bind:value={form.startTime} /></label>
         <label class="field">Ends <input class="input" type="time" bind:value={form.endTime} /></label>
       </div>
+      <label class="field">Venue <input class="input" bind:value={form.venue} placeholder="e.g. The rink" /></label>
       <div class="two">
-        <label class="field">Venue <input class="input" bind:value={form.venue} placeholder="e.g. The rink" /></label>
         <label class="field">
-          Places
+          Skater places
           <input
             class="input"
             type="number"
@@ -191,7 +181,19 @@
             onchange={(e) => form && (form.capacity = Number(e.currentTarget.value) || null)}
           />
         </label>
+        <label class="field">
+          Goalie places
+          <input
+            class="input"
+            type="number"
+            min="0"
+            value={form.goalieCapacity ?? ""}
+            onchange={(e) =>
+              form && (form.goalieCapacity = e.currentTarget.value === "" ? null : Number(e.currentTarget.value))}
+          />
+        </label>
       </div>
+      <p class="hint small">Leave either empty for no limit.</p>
       <fieldset class="field">
         <legend>Fee per session</legend>
         <div class="two">

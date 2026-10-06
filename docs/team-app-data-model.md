@@ -24,13 +24,13 @@ shapes in memory.
 
 [ADR 0030](adr/0030-training-series-and-tournaments.md).
 
-| Table               | Columns                                                                                                                                                                                                |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `training_series`   | slug (unique), name, short_name, icon, tone, repeat_every (weeks), weekdays (`mon,fri`), starts_on, ends_on (null: ongoing), start_time, end_time, venue, capacity, signup_closes_mins, public, active |
-| `training_sessions` | series_id, held_on, moved_from, start_time, end_time, venue, capacity (each null: follows the series), note, cancelled_at, register_closed_at; unique (series_id, held_on)                             |
-| `tournament_types`  | slug (unique), name, short_name, icon, tone, format (`round_robin`), points_win, points_draw, points_loss, game_minutes, draft, active                                                                 |
-| `tournaments`       | type_id, name, location, held_on, start_time, end_time, capacity, status (planned/open/live/finished), public                                                                                          |
-| `club_events`       | title, starts_at, ends_at, venue, public, signup_enabled, capacity                                                                                                                                     |
+| Table               | Columns                                                                                                                                                                                                                           |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `training_series`   | slug (unique), name, short_name, icon, tone, repeat_every (weeks), weekdays (`mon,fri`), starts_on, ends_on (null: ongoing), start_time, end_time, venue, capacity (skaters), goalie_capacity, signup_closes_mins, public, active |
+| `training_sessions` | series_id, held_on, moved_from, start_time, end_time, venue, capacity, goalie_capacity (each null: follows the series), note, cancelled_at, register_closed_at; unique (series_id, held_on)                                       |
+| `tournament_types`  | slug (unique), name, short_name, icon, tone, format (`round_robin`), points_win, points_draw, points_loss, game_minutes, draft, active                                                                                            |
+| `tournaments`       | type_id, name, location, held_on, start_time, end_time, capacity, status (planned/open/live/finished), public                                                                                                                     |
+| `club_events`       | title, starts_at, ends_at, venue, public, signup_enabled, capacity                                                                                                                                                                |
 
 The calendar is a union of the three: sessions (with series defaults filled in), tournaments and club events.
 

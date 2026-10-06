@@ -23,6 +23,7 @@
   import Sheet from "../../lib/Sheet.svelte";
   import { phone } from "../../lib/viewport.svelte";
   import { pageBar } from "./page-bar.svelte";
+  import { saving } from "../backend.svelte";
 
   let { route, children }: { route: Route; children: Snippet } = $props();
 
@@ -333,6 +334,11 @@
       {/each}
     </nav>
   </main>
+
+  <!-- What the last save did: "Saved", or what went wrong. Floats over the page, so nothing moves. -->
+  {#if saving.message}
+    <p class="save-note" class:failed={saving.failed} role={saving.failed ? "alert" : "status"}>{saving.message}</p>
+  {/if}
 </div>
 
 <style>
@@ -514,6 +520,37 @@
   .dock-item:focus-visible .dock-label {
     opacity: 1;
     translate: 0 -50%;
+  }
+
+  /* ─── The save note: bottom centre, above the tabs on a phone ─── */
+  .save-note {
+    position: fixed;
+    left: 50%;
+    bottom: calc(var(--s-6) + env(safe-area-inset-bottom, 0px));
+    z-index: 70;
+    margin: 0;
+    padding: var(--s-2) var(--s-4);
+    border-radius: var(--r-md);
+    background: var(--surface-3);
+    color: var(--fg);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    box-shadow: var(--shadow-pop);
+    translate: -50% 0;
+    animation: note-in 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .save-note.failed {
+    background: color-mix(in srgb, var(--red) 30%, var(--surface-2));
+  }
+  @keyframes note-in {
+    from {
+      translate: -50% 8px;
+    }
+  }
+  @media (max-width: 900px) {
+    .save-note {
+      bottom: calc(var(--tab-h) + var(--s-3));
+    }
   }
 
   /* ─── Chrome: the pinned band (notch, View-as banner), then the phone bar or the desktop corners ─── */

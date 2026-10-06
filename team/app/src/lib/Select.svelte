@@ -15,6 +15,7 @@
     id = "sel",
     class: className = "",
     "aria-label": ariaLabel,
+    onchange,
   }: {
     value: T;
     options: SelectOption<T>[];
@@ -22,6 +23,8 @@
     id?: string;
     class?: string;
     "aria-label"?: string;
+    /** After the value changes by a pick (not when the parent sets it). */
+    onchange?: (value: T) => void;
   } = $props();
 
   let open = $state(false);
@@ -61,7 +64,9 @@
 
   function choose(o: SelectOption<T>) {
     if (o.disabled) return;
+    const changed = value !== o.value;
     value = o.value;
+    if (changed) onchange?.(o.value);
     void setOpen(false);
     trigger?.focus();
   }

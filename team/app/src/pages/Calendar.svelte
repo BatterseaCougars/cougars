@@ -4,6 +4,7 @@
   // up under Settings; one-off events are added here.
   import PageHeader from "../lib/PageHeader.svelte";
   import Sheet from "../lib/Sheet.svelte";
+  import { createClubEvent } from "../app/backend.svelte";
   import { can } from "../access/actions";
   import type { IconName } from "../app/shell/icons";
   import Icon from "../app/shell/Icon.svelte";
@@ -63,20 +64,19 @@
   // ─── Add a one-off ───
   let adding = $state(false);
   let draft = $state({ title: "", date: "", time: "19:30", venue: "", signup: true });
-  function add(e: SubmitEvent) {
+  async function add(e: SubmitEvent) {
     e.preventDefault();
     if (!draft.title || !draft.date) return;
     const startsAt = londonISO(draft.date, draft.time);
-    db.oneOffs.push({
-      id: Date.now(),
+    const created = await createClubEvent({
       title: draft.title,
       startsAt,
       endsAt: new Date(Date.parse(startsAt) + 3 * 3600_000).toISOString(),
-      venue: draft.venue || "TBC",
+      venue: draft.venue,
       signup: draft.signup,
-      going: [],
-      waitlist: [],
+      capacity: null,
     });
+    if (!created) return;
     adding = false;
     draft = { title: "", date: "", time: "19:30", venue: "", signup: true };
   }

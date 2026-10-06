@@ -76,6 +76,8 @@ Rules ([ADR 0002](docs/adr/0002-secrets-in-bitwarden.md), [ADR 0010](docs/adr/00
 | [`GMAIL_REFRESH_TOKEN`](#gmail)                                           | `cougars-dev` | Google, dev Gmail           | Website (dev)                |
 | [`TURNSTILE_SECRET_KEY__PRODUCTION`](#turnstile)                          | `cougars`     | Cloudflare, Cougars         | Website (production)         |
 | [`TURNSTILE_SECRET_KEY`](#turnstile)                                      | `cougars-dev` | Cloudflare, Cougars Dev     | Website (dev)                |
+| [`TEAM_ROSTER__PRODUCTION`](#team-roster)                                 | `cougars`     | (the club's roster)         | Deploys (D1 seed)            |
+| [`TEAM_ROSTER`](#team-roster)                                             | `cougars-dev` | (the club's roster)         | Deploys (D1 seed)            |
 
 ### Bitwarden tokens
 
@@ -238,6 +240,20 @@ enquiries are still saved and emailed to the club, but nobody gets an auto-reply
   deploy. A laptop uses Cloudflare's test site key (always passes) and no secret, so no auto-replies locally.
 - **Expires:** no.
 - **Rotate:** the widget → **Rotate secret key**, update Secrets Manager, deploy.
+
+### Team roster
+
+- **What:** the club's players as one line of JSON: name, position (F/D/G), rating, and optionally an email and
+  roles. Not a credential, but personal data (names and skill ratings), so it never goes in this public repo
+  ([ADR 0033](docs/adr/0033-personal-data-out-of-the-repo.md)). Format and local use: [db/seed/README.md](db/seed/README.md).
+- **Set:** from the local copy, `db/seed/roster.local.json` (gitignored):
+  `node -e "console.log(JSON.stringify(require('./db/seed/roster.local.json')))" | node scripts/secret-set.mjs TEAM_ROSTER`,
+  and again with `TEAM_ROSTER__PRODUCTION`.
+- **Used by:** `scripts/seed-roster.mjs`, which adds players who aren't in D1 yet and changes no one.
+- **Gets there by:** CI pull from Secrets Manager, then the "Seed the team roster" step in `deploy.yml`, after the
+  migrations, on every deploy. A laptop seeds from the local copy (`npm run db:seed:local`).
+- **Expires:** no. Once the app is live, members join and are edited in the app; the roster only covers the
+  starting players.
 
 ### Settings that aren't secret
 

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { saveMember } from "../app/backend.svelte";
   import PageHeader from "../lib/PageHeader.svelte";
   import Person from "../lib/Person.svelte";
   import SearchField from "../lib/SearchField.svelte";
@@ -29,7 +30,8 @@
       {#each pending as m (m.player.id)}
         <div class="row">
           <Person player={m.player} />
-          <button class="btn primary sm" onclick={() => ((m.status = "active"), (m.roles = ["Member"]))}>Approve</button
+          <button class="btn primary sm" onclick={() => ((m.status = "active"), (m.roles = ["Member"]), saveMember(m))}
+            >Approve</button
           >
         </div>
       {/each}

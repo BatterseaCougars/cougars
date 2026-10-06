@@ -41,3 +41,4 @@ rule, a trade-off. Copy [template.md](template.md), take the next number, keep i
 | [0030](0030-training-series-and-tournaments.md) | Training repeats as a series; tournaments are typed and scheduled one by one   | Accepted              |
 | [0031](0031-use-case-tests.md)                  | Tests describe what people do, against a fake world                            | Accepted              |
 | [0032](0032-fees-per-session-and-tournament.md) | Fees belong to each session and tournament; payments are marked against them   | Accepted              |
+| [0033](0033-personal-data-out-of-the-repo.md)   | Personal data stays out of the repo; the roster is seeded from Secrets Manager | Accepted              |

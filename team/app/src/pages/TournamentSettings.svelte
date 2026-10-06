@@ -1,4 +1,10 @@
 <script lang="ts">
+  import {
+    createTournament,
+    createTournamentType,
+    updateTournament,
+    updateTournamentType,
+  } from "../app/backend.svelte";
   // Settings → Tournaments (ADR 0030). A tournament type is a kind the club hosts (The Cougars Kumite): its format
   // and rules. Each tournament is one edition, scheduled on its own with a name, location and date. A new type gets
   // its own section in the menu; a new edition shows on the calendar and the type's pages.
@@ -10,7 +16,6 @@
   import { formatDayDate, londonISO, londonToday, pounds } from "../lib/dates";
   import { collectedFor } from "../demo/dues.svelte";
   import Select from "../lib/Select.svelte";
-  import { slugify } from "../lib/slug";
 
   const STATUSES: { id: TournamentStatus; label: string }[] = [
     { id: "planned", label: "Coming up" },
@@ -47,27 +52,15 @@
     adding = false;
   });
 
-  function save(e: SubmitEvent) {
+  async function save(e: SubmitEvent) {
     e.preventDefault();
     if (!form || !form.name) return;
     if (!form.shortName) form.shortName = form.name.replace(/^The\s+/i, "").split(" ")[0];
     if (selected === "new") {
-      const id = Math.max(0, ...db.tournamentTypes.map((t) => t.id)) + 1;
-      db.tournamentTypes.push({
-        ...form,
-        id,
-        slug: slugify(
-          form.name,
-          db.tournamentTypes.map((t) => t.slug),
-        ),
-      });
-      selected = id;
+      const created = await createTournamentType(form);
+      if (created) selected = created.id;
     } else {
-      Object.assign(
-        db.tournamentTypes.find((t) => t.id === selected)!,
-        form,
-      );
-      saved = true;
+      saved = Boolean(await updateTournamentType(form));
     }
   }
 
@@ -93,14 +86,14 @@
     if (adding && form) edition.fee = String(form.defaultFeePence / 100);
   }
 
-  function addEdition(e: SubmitEvent) {
+  async function addEdition(e: SubmitEvent) {
     e.preventDefault();
     if (typeof selected !== "number" || !edition.name || !edition.heldOn) return;
     const t: Tournament = {
-      id: Math.max(0, ...db.tournaments.map((x) => x.id)) + 1,
+      id: 0,
       typeId: selected,
       name: edition.name,
-      location: edition.location || "TBC",
+      location: edition.location,
       heldOn: edition.heldOn,
       startTime: edition.startTime,
       endTime: edition.endTime,
@@ -110,7 +103,7 @@
       going: [],
       waitlist: [],
     };
-    db.tournaments.push(t);
+    if (!(await createTournament(t))) return;
     adding = false;
     edition = { name: "", heldOn: "", startTime: "11:00", endTime: "16:00", location: "", capacity: 24, fee: "" };
   }
@@ -255,7 +248,10 @@
                 value={t.feePence / 100}
                 disabled={c.people > 0}
                 title={c.people ? "Already charged: the fee is fixed" : "Fee (£)"}
-                onchange={(e) => (t.feePence = Math.round(Number(e.currentTarget.value || 0) * 100))}
+                onchange={(e) => {
+                  t.feePence = Math.round(Number(e.currentTarget.value || 0) * 100);
+                  updateTournament(t);
+                }}
               />
             </label>
             <Select
@@ -263,6 +259,7 @@
               size="sm"
               class="status"
               bind:value={t.status}
+              onchange={() => updateTournament(t)}
               options={STATUSES.map((s) => ({ value: s.id, label: s.label }))}
               aria-label="Status of {t.name}"
             />

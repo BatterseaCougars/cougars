@@ -818,3 +818,18 @@ input[type="checkbox"] {
     transform: none;
   }
 }
+
+/* Shown instead of the app when /api/bootstrap fails (main.ts) */
+.boot-error {
+  display: grid;
+  place-content: center;
+  gap: var(--s-3);
+  min-height: 100dvh;
+  padding: var(--gutter);
+  text-align: center;
+}
+.boot-error .display {
+  font-size: 2rem;
+  font-style: italic;
+  text-transform: uppercase;
+}

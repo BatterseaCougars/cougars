@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { addRole as addRoleOnServer, saveRole } from "../app/backend.svelte";
   import PageHeader from "../lib/PageHeader.svelte";
   import { ACTIONS, actionsBySubject, type Action } from "../access/actions";
   import { db } from "../demo/store.svelte";
@@ -7,13 +8,23 @@
   const role = $derived(db.roles.find((r) => r.id === selected)!);
   const groups = actionsBySubject().filter(([subject]) => subject !== "all");
 
+  // Each change is saved as it's made; the name a moment after you stop typing.
   function toggle(action: Action) {
     role.actions = role.actions.includes(action) ? role.actions.filter((a) => a !== action) : [...role.actions, action];
+    saveRole(role);
   }
-  function addRole() {
-    const id = Math.max(...db.roles.map((r) => r.id)) + 1;
-    db.roles.push({ id, name: `New role ${id}`, description: "", system: false, actions: ["read:Event"] });
-    selected = id;
+  let typing: ReturnType<typeof setTimeout> | undefined;
+  function rename() {
+    clearTimeout(typing);
+    const r = role;
+    typing = setTimeout(() => r.name.trim() && saveRole(r), 600);
+  }
+  async function addRole() {
+    const taken = new Set(db.roles.map((r) => r.name));
+    let n = 1;
+    while (taken.has(`New role ${n}`)) n++;
+    const created = await addRoleOnServer(`New role ${n}`);
+    if (created) selected = created.id;
   }
 </script>
 
@@ -39,7 +50,7 @@
           </p>
         </div>
       {:else}
-        <label class="field">Name <input class="input" bind:value={role.name} /></label>
+        <label class="field">Name <input class="input" bind:value={role.name} oninput={rename} /></label>
         {#each groups as [subject, actions] (subject)}
           <h2 class="section-title">{subject}</h2>
           <div class="list">

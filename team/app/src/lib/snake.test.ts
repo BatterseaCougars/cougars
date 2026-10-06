@@ -1,6 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { PLAYERS, TEAM_NAMES } from "../demo/data";
+import { TEAM_NAMES, type Player } from "../demo/data";
 import { snakeTeams, teamCount } from "./snake";
+
+// Twenty made-up players: every third a defender, ratings spread out
+const PLAYERS: Player[] = Array.from({ length: 20 }, (_, i) => ({
+  id: i + 1,
+  name: `Player ${i + 1}`,
+  position: i % 3 === 0 ? "D" : "F",
+  rating: 50 + ((i * 37) % 45),
+  cougar: i % 4 === 0,
+}));
 
 describe("teamCount", () => {
   it("matches the archived solver's team sizes (3 to 7 a side)", () => {
