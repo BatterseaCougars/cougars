@@ -179,8 +179,8 @@
       top: var(--s-4);
       z-index: 4;
     }
-    /* The veil, once the page has scrolled: the page's background, solid to a little below the row so the cards
-       stop short of it, then a short fade. A light blur only; no edge. */
+    /* Once the page has scrolled, a band of the page's own background behind the row, ending a little below it so
+       the cards stop short of the chips, with a soft shadow for its edge. No blur, no line. */
     .toolbar::before {
       content: "";
       position: fixed;
@@ -188,10 +188,9 @@
       top: 0;
       left: 0;
       right: 0;
-      height: calc(var(--s-4) + 2.25rem + var(--s-6));
-      background: linear-gradient(to bottom, var(--bg) 70%, transparent);
-      backdrop-filter: blur(6px);
-      -webkit-backdrop-filter: blur(6px);
+      height: calc(var(--s-4) + 2.25rem + var(--s-4));
+      background: var(--bg);
+      box-shadow: 0 10px 24px -12px rgb(0 0 0 / 0.75);
       opacity: 0;
       pointer-events: none;
       transition: opacity var(--t-slow) var(--ease);

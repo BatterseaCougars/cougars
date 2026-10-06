@@ -12,7 +12,7 @@
   import { type Route, type TabId } from "../nav-routes";
   import { folds, routes, tabs } from "../routes.svelte";
   import { navigate, router } from "../router.svelte";
-  import { easeOut, flyMs, prefersReducedMotion, zoom } from "../motion";
+  import { prefersReducedMotion, zoom } from "../motion";
   import { glide, pillShape, rowShape, stripShape } from "./mark";
   import type { IconName } from "./icons";
   import AccountMenu from "./AccountMenu.svelte";
@@ -133,15 +133,26 @@
     else content?.querySelector(".view")?.scrollTo({ top: 0, behavior: prefersReducedMotion ? "auto" : "smooth" });
   }
 
-  // Pages slide up as they arrive; full-screen pages zoom in from a blur. No opacity on ordinary pages: a parent
-  // below full opacity stops the browser blurring behind the glass cards inside it, so they'd show clear until
-  // the fade ended. The page leaving goes at once, so the two never show through each other.
+  // Full-screen pages zoom in from a blur. The page leaving goes at once, so the two never show through each other.
+  // Pages slide in from the way you went: down the dock (or along the phone's tabs, or across a section's strip)
+  // they come from below (or the right); back up, from above (or the left). Transform only: a parent below full
+  // opacity stops the browser blurring behind the glass cards inside it.
+  let prevIndex = -1;
+  let prevTab: string | undefined;
   function enter(node: Element, { focus }: { focus?: boolean }) {
+    const index = all.findIndex((r) => r.id === route.id);
+    const sideways = phone.current || (prevTab === route.tab && strip.length > 1);
+    const dir = prevIndex < 0 ? 1 : Math.sign(index - prevIndex) || 1;
+    prevIndex = index;
+    prevTab = route.tab;
     if (focus) return zoom(node);
+    if (prefersReducedMotion) return { duration: 0 };
+    const axis = sideways ? "X" : "Y";
+    const distance = sideways ? 56 : 44;
     return {
-      duration: flyMs,
-      easing: easeOut,
-      css: (_t: number, u: number) => `transform: translateY(${14 * u}px)`,
+      duration: 480,
+      easing: (t: number) => 1 - Math.pow(1 - t, 4),
+      css: (_t: number, u: number) => `transform: translate${axis}(${(dir * distance * u).toFixed(2)}px)`,
     };
   }
   function leave(node: Element, { focus }: { focus?: boolean }) {
@@ -370,6 +381,33 @@
   .view > :global(.page) {
     position: relative;
     z-index: 1;
+  }
+  /* The page's blocks settle in one after another as it arrives: transform only, and "backwards" so nothing is
+     left transformed afterwards (a transform would trap the toolbar's fixed veil). */
+  .shell:not(.focus) .view > :global(.page) > :global(*) {
+    animation: settle 560ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  }
+  .shell:not(.focus) .view > :global(.page) > :global(:nth-child(2)) {
+    animation-delay: 40ms;
+  }
+  .shell:not(.focus) .view > :global(.page) > :global(:nth-child(3)) {
+    animation-delay: 80ms;
+  }
+  .shell:not(.focus) .view > :global(.page) > :global(:nth-child(4)) {
+    animation-delay: 120ms;
+  }
+  .shell:not(.focus) .view > :global(.page) > :global(:nth-child(n + 5)) {
+    animation-delay: 160ms;
+  }
+  @keyframes settle {
+    from {
+      translate: 0 18px;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .shell:not(.focus) .view > :global(.page) > :global(*) {
+      animation: none;
+    }
   }
 
   /* ─── The dock (desktop): glass tiles, the current one raised; a label slides out on hover ─── */
