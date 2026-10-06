@@ -120,7 +120,9 @@ Copied in shape from Gwenda ops (`gwenda-hackney/ark`, `ops/site/src/app/`), whi
 - [x] Migrations: `training_series`, `training_sessions`, `tournament_types`, `tournaments`, `club_events`
       (`0004_team_schedule.sql`), seeded with Friday Training (every Friday, 19:30–21:30, Battersea Sports Centre,
       21 skaters and 3 goalies) and the Kumite (no dates yet).
-- [ ] Migrations: `attendance`, `club_event_entries`.
+- [x] Migrations: `attendance`, `club_event_entries` (and `tournament_entries`, ahead of T5)
+      (`0005_team_entries.sql`). In/out/waitlist, admin add and remove, and the register's walk-ins and no-shows are
+      stored; the waitlist moves up on the server.
 - [ ] **Settings → Training** (`manage:Training`): add a series (name, icon and colour, every N weeks on which days,
       first and optional last session, times, venue, skater and goalie places). Sessions are made 12 weeks ahead
       (on each load for now; a daily Cron Trigger once deployed); a session can be cancelled, moved or changed on

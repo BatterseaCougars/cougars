@@ -131,7 +131,7 @@
     {#if strip.length}<Pills items={strip} current={pageBar.current} />{/if}
     {#if toolbar}{@render toolbar()}{/if}
     {#if filters && !phone.current}{@render filters()}{/if}
-    {#if actions && !phone.current}<div class="actions">{@render actions()}</div>{/if}
+    {#if actions && !phone.current}<div class="bar-actions">{@render actions()}</div>{/if}
   </div>
 {/if}
 
@@ -183,10 +183,8 @@
   .toolbar > :global(*) {
     min-width: 0;
   }
-  .actions {
-    display: flex;
-    align-items: center;
-    gap: var(--s-2);
+  /* Styled with the phone bar's actions (app.css), so both bars look the same */
+  .bar-actions {
     margin-left: auto;
   }
 
@@ -197,8 +195,8 @@
       top: var(--s-4);
       z-index: 4;
     }
-    /* Behind the docked row, a band of the page's own background, ending a little below it so the cards stop
-       short of the chips, with a soft shadow for its edge. No blur, no line. */
+    /* Behind the docked row, the phone bar's frosted band, ending a little below it so the cards stop short of
+       the chips. No line, no shadow. */
     .toolbar::before {
       content: "";
       position: fixed;
@@ -207,8 +205,9 @@
       left: 0;
       right: 0;
       height: calc(var(--s-4) + 2.25rem + var(--s-4));
-      background: var(--bg);
-      box-shadow: 0 10px 24px -12px rgb(0 0 0 / 0.75);
+      background: var(--chrome-bg-solid);
+      backdrop-filter: var(--blur);
+      -webkit-backdrop-filter: var(--blur);
       opacity: 0;
       translate: 0 -100%;
       pointer-events: none;

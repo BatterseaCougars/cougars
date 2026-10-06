@@ -17,6 +17,8 @@ export type ScheduleIcon = (typeof SCHEDULE_ICONS)[number] & IconName;
 export interface Entries {
   going: number[];
   waitlist: number[];
+  /** Who said they're out. Not answering isn't out: someone in none of the lists hasn't said yet. */
+  out?: number[];
 }
 
 /** A repeating training, e.g. Friday Training. Sessions inherit everything they don't override. */
@@ -62,6 +64,10 @@ export interface TrainingSession extends Entries {
   feePence?: number | null;
   /** Who came, once the register is closed. */
   attended?: number[];
+  /** From the register on the night: who came without signing up (they're added to `going`), and who signed up
+   * but didn't come (they stay in `going`). Browser-only until attendance is stored (T2). */
+  walkIns?: number[];
+  noShows?: number[];
   registerClosedAt?: string | null;
 }
 

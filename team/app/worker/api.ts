@@ -2,6 +2,7 @@
 // signed-in member's roles grant it (manage:all grants everything). Anything not listed here is a 404.
 import { londonToday } from "../src/lib/dates";
 import type { Action } from "../src/access/actions";
+import { answer, listEntries, mark, setPlayer, type EntryKind } from "./entries";
 import { HttpError, body, json } from "./http";
 import { actionsOf, createRole, firstAdmin, listMembers, listRoles, updateMember, updateRole } from "./people";
 import {
@@ -48,6 +49,45 @@ interface Route {
 const id = (c: Ctx) => Number(c.params[0]);
 const ok = () => json({ ok: true });
 
+// Sign-ups: the same three routes for each kind of event
+const KINDS: [string, EntryKind][] = [
+  ["sessions", "session"],
+  ["tournaments", "tournament"],
+  ["club-events", "event"],
+];
+async function memberIdIn(c: Ctx) {
+  const b = await body(c.request);
+  const memberId = Number(b.memberId);
+  if (!Number.isInteger(memberId) || memberId <= 0) throw new HttpError(400, "Which member?");
+  return { b, memberId };
+}
+const ENTRY_ROUTES: Route[] = KINDS.flatMap(([path, kind]): Route[] => [
+  {
+    method: "POST",
+    path: new RegExp(`^/api/${path}/(\\d+)/answer$`),
+    action: "signup:Event",
+    // You, in or out
+    handle: async (c) => {
+      const b = await body(c.request);
+      if (b.answer !== "in" && b.answer !== "out") throw new HttpError(400, "In or out?");
+      await answer(c.env.DB, kind, id(c), c.memberId, b.answer, c.now);
+      return ok();
+    },
+  },
+  {
+    method: "POST",
+    path: new RegExp(`^/api/${path}/(\\d+)/players$`),
+    action: "update:Event",
+    // An admin puts someone in, or takes them off
+    handle: async (c) => {
+      const { b, memberId } = await memberIdIn(c);
+      if (typeof b.in !== "boolean") throw new HttpError(400, "in should be true or false.");
+      await setPlayer(c.env.DB, kind, id(c), memberId, b.in, c.now);
+      return ok();
+    },
+  },
+]);
+
 export const ROUTES: Route[] = [
   {
     method: "GET",
@@ -65,10 +105,14 @@ export const ROUTES: Route[] = [
         roles: await listRoles(db),
         series: await listSeries(db),
         // A few weeks back, for what's just been held
-        sessions: await listSessions(db, new Date(Date.parse(c.today) - 28 * 86_400_000).toISOString().slice(0, 10)),
+        sessions: await withEntries(
+          db,
+          "session",
+          await listSessions(db, new Date(Date.parse(c.today) - 28 * 86_400_000).toISOString().slice(0, 10)),
+        ),
         tournamentTypes: await listTournamentTypes(db),
-        tournaments: await listTournaments(db),
-        clubEvents: await listClubEvents(db, c.now),
+        tournaments: await withEntries(db, "tournament", await listTournaments(db)),
+        clubEvents: await withEntries(db, "event", await listClubEvents(db, c.now)),
       });
     },
   },
@@ -137,6 +181,19 @@ export const ROUTES: Route[] = [
     action: "manage:Tournament",
     handle: async (c) => (await updateTournament(c.env.DB, id(c), await body(c.request)), ok()),
   },
+  ...ENTRY_ROUTES,
+  {
+    method: "POST",
+    path: /^\/api\/sessions\/(\d+)\/register$/,
+    action: "record:Attendance",
+    // The register on the night: here or not
+    handle: async (c) => {
+      const { b, memberId } = await memberIdIn(c);
+      if (typeof b.here !== "boolean") throw new HttpError(400, "here should be true or false.");
+      await mark(c.env.DB, id(c), memberId, b.here, c.memberId, c.now);
+      return ok();
+    },
+  },
   {
     method: "POST",
     path: /^\/api\/club-events$/,
@@ -144,6 +201,16 @@ export const ROUTES: Route[] = [
     handle: async (c) => json(await createClubEvent(c.env.DB, await body(c.request)), 201),
   },
 ];
+
+/** Each event with everyone's answers on it. */
+async function withEntries<T extends { id: number }>(db: D1Database, kind: EntryKind, rows: T[]) {
+  const entries = await listEntries(
+    db,
+    kind,
+    rows.map((r) => r.id),
+  );
+  return rows.map((r) => ({ ...r, ...entries.get(r.id)! }));
+}
 
 /** Who's asking. Until sign-in (T1), only a local dev server has an answer: the first admin. */
 async function whoIs(env: Env): Promise<number | null> {

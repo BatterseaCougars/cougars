@@ -2,10 +2,18 @@
   import { POSITIONS, emailFor, type Position } from "../demo/data";
   import { impersonating, me, rolesOf } from "../demo/session.svelte";
   import { initials } from "../lib/initials";
+  import { db } from "../demo/store.svelte";
 
   const who = me();
   let form = $state({ name: who.name, email: emailFor(who), phone: "07700 900000", position: who.position });
   const locked = impersonating();
+  // The bio goes on the back of your player card. It lives in this browser until profiles are saved (T1).
+  let bio = $state(db.bios[who.id] ?? "");
+  const BIO_MAX = 160;
+  function save(e: SubmitEvent) {
+    e.preventDefault();
+    db.bios[who.id] = bio.trim();
+  }
 </script>
 
 <div class="page">
@@ -18,7 +26,7 @@
       </p>
     </div>
   </header>
-  <form class="form" onsubmit={(e) => e.preventDefault()}>
+  <form class="form" onsubmit={save}>
     <fieldset disabled={locked}>
       <label class="field">Name <input class="input" bind:value={form.name} /></label>
       <label class="field">Email <input class="input" type="email" bind:value={form.email} /></label>
@@ -33,6 +41,11 @@
           {/each}
         </div>
       </div>
+      <label class="field">
+        Bio <span class="hint">on the back of your player card</span>
+        <textarea class="input" rows="3" maxlength={BIO_MAX} placeholder="Shoots left. Blames the ice." bind:value={bio}
+        ></textarea>
+      </label>
       <button class="btn primary">Save</button>
     </fieldset>
     {#if locked}<p class="hint">Read-only while you're viewing as {who.name.split(" ")[0]}.</p>{/if}

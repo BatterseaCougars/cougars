@@ -3,8 +3,8 @@
   // mark top-left, your badge top-right, the wordmark and the London clock in the bottom corners. A section's
   // pages (Games, Standings, Draft) sit in the page header's toolbar row, which pins as the page scrolls
   // (PageHeader). Phones: five tabs at the bottom, and a slim bar along the top with the page's name (or its
-  // section's strip of pages), its actions, and a Filters button that opens its filters in a sheet. Home has
-  // neither: it starts with the greeting.
+  // section's strip of pages), its actions, and its filters: inline when they fit, otherwise a Filters button that
+  // opens them in a sheet. Home has neither: it starts with the greeting.
   import { type Snippet } from "svelte";
   import { can } from "../../access/actions";
   import { granted, impersonating, me, realMember, rolesOf, viewAs } from "../../demo/session.svelte";
@@ -114,6 +114,44 @@
   });
   const showBar = $derived(!route.focus && route.id !== "home");
 
+  // Phone bar: the filters sit in the bar when they fit beside the name and the actions. A hidden copy gives
+  // their natural width, so the answer doesn't flip-flop as the Filters button comes and goes.
+  let bar = $state<HTMLElement | undefined>();
+  let lead = $state<HTMLElement | undefined>();
+  let acts = $state<HTMLElement | undefined>();
+  let measure = $state<HTMLElement | undefined>();
+  let filtersFit = $state(false);
+  $effect(() => {
+    const [b, m] = [bar, measure];
+    void route.id; // a new page brings a new name, which no resize would report
+    if (!b || !m) {
+      filtersFit = false;
+      return;
+    }
+    // The name and the strip stretch to fill the bar, so add up what's in them instead of taking their width
+    const natural = (el: HTMLElement | undefined) => {
+      if (!el) return 0;
+      if (!el.matches(".strip")) {
+        const r = document.createRange();
+        r.selectNodeContents(el);
+        return r.getBoundingClientRect().width;
+      }
+      return [...el.querySelectorAll<HTMLElement>(".strip-link")].reduce((w, a) => w + a.offsetWidth, 0);
+    };
+    const check = () => {
+      const cs = getComputedStyle(b);
+      const room = b.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+      const gap = parseFloat(cs.columnGap) || 0;
+      const back = b.querySelector<HTMLElement>(".bar-back")?.offsetWidth ?? 0;
+      const need = back + natural(lead) + m.offsetWidth + (acts?.offsetWidth ?? 0) + gap * 3;
+      filtersFit = need <= room;
+    };
+    const ro = new ResizeObserver(check);
+    for (const el of [b, m, acts]) if (el) ro.observe(el);
+    check();
+    return () => ro.disconnect();
+  });
+
   // Tapping the tab you're on goes to its first page; on the first page, it scrolls to the top.
   function onTab(tab: TabId, event: MouseEvent) {
     if (tab !== route.tab) return;
@@ -216,7 +254,7 @@
       {#if phone.current}
         {#if showBar}
           <!-- Phones: the page's name or its section's pages, then its actions and filters -->
-          <div class="phone-bar">
+          <div class="phone-bar" bind:this={bar}>
             {#if strip.length}
               {@render stripNav()}
             {:else}
@@ -224,12 +262,18 @@
               {#if route.tab === "more" && route.id !== "more"}
                 <a class="bar-back" href="/more" aria-label="Back to More"><Icon name="chevronLeft" size={22} /></a>
               {/if}
-              <p class="bar-title">{route.name}</p>
+              <p class="bar-title" bind:this={lead}>{route.name}</p>
             {/if}
-            {#if pageBar.actions || pageBar.filters}
+            {#if pageBar.filters}
+              <div class="measure" aria-hidden="true" inert>
+                <div class="bar-filters" bind:this={measure}>{@render pageBar.filters()}</div>
+              </div>
+              {#if filtersFit}<div class="bar-filters">{@render pageBar.filters()}</div>{/if}
+            {/if}
+            {#if pageBar.actions || (pageBar.filters && !filtersFit)}
               <div class="bar-actions">
-                {#if pageBar.actions}{@render pageBar.actions()}{/if}
-                {#if pageBar.filters}
+                {#if pageBar.actions}<span class="bar-actions" bind:this={acts}>{@render pageBar.actions()}</span>{/if}
+                {#if pageBar.filters && !filtersFit}
                   <button
                     class="btn sm filters-btn"
                     class:on={pageBar.active > 0}
@@ -256,6 +300,7 @@
 
     {#snippet stripNav()}
       <nav
+        bind:this={lead}
         class="strip"
         aria-label="{tabList.find((t) => t.id === route.tab)?.label} pages"
         use:glide={{ shape: stripShape, key: glideKey }}
@@ -277,7 +322,7 @@
       </nav>
     {/snippet}
 
-    {#if pageBar.filters && phone.current}
+    {#if pageBar.filters && phone.current && !filtersFit}
       <Sheet bind:open={filtersOpen} title="Filters">
         {@render pageBar.filters()}
         {#snippet footer()}
@@ -785,27 +830,31 @@
       white-space: nowrap;
       text-overflow: ellipsis;
     }
+    .bar-filters {
+      flex-shrink: 0;
+    }
+    .bar-filters :global(.filters) {
+      flex-wrap: nowrap;
+    }
+    .bar-filters :global(.filter) {
+      height: 2rem;
+    }
+    /* Laid out but unseen, in a box of no size so it can't widen the page: it only tells the bar how wide the
+       filters are */
+    .measure {
+      position: absolute;
+      width: 0;
+      height: 0;
+      overflow: hidden;
+      visibility: hidden;
+    }
+    .measure .bar-filters {
+      width: max-content;
+    }
     .phone-bar .strip {
       flex: 1;
       min-width: 0;
       height: 100%;
-    }
-    .bar-actions {
-      display: flex;
-      align-items: center;
-      gap: var(--s-1);
-      flex-shrink: 0;
-    }
-    /* Actions in the bar are quiet text buttons: the bar is chrome, not the page */
-    .bar-actions :global(.btn) {
-      gap: var(--s-1);
-      border: 0;
-      background: none;
-      box-shadow: none;
-      color: var(--fg-body);
-    }
-    .bar-actions :global(.btn.primary) {
-      color: var(--red-hot);
     }
     .filters-btn .count {
       min-width: 1ch;

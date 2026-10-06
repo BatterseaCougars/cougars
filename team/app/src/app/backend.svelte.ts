@@ -1,6 +1,6 @@
 // Talking to the team app's Worker (team/app/worker/api.ts). Every change goes to D1 first; then the app's working
-// copy (demo/store.svelte.ts) is refreshed from /api/bootstrap, so what you see is what's stored. Sign-ups still
-// live only in the browser (T2), so a refresh keeps them.
+// copy (demo/store.svelte.ts) is refreshed from /api/bootstrap, so what you see is what's stored. Screens change
+// the copy at once for a quick answer, then the refresh brings back what the server decided (the waitlist, say).
 import type { MemberRow, Role } from "../demo/data";
 import { hydrate, MEMBERS, ONE_OFFS, ROLES, SERIES, SESSIONS, TOURNAMENTS, TOURNAMENT_TYPES } from "../demo/data";
 import { api, getBootstrap } from "./api";
@@ -10,17 +10,15 @@ import { db } from "../demo/store.svelte";
 /** The last save's outcome, shown briefly by the shell. */
 export const saving = $state({ busy: 0, message: "", failed: false });
 
-/** Reload the club's data into the app, keeping the in-browser sign-ups. */
+/** Reload the club's data into the app, keeping what still lives only in the browser (plans). */
 export async function refresh() {
   // Lookups built and read here, never kept: plain Maps are right.
   /* eslint-disable svelte/prefer-svelte-reactivity */
   hydrate(await getBootstrap());
-  const entries = new Map(db.sessions.map((s) => [s.id, { going: s.going, waitlist: s.waitlist }]));
   db.series = structuredClone(SERIES);
-  db.sessions = structuredClone(SESSIONS).map((s) => ({ ...s, ...entries.get(s.id) }));
+  db.sessions = structuredClone(SESSIONS);
   db.tournamentTypes = structuredClone(TOURNAMENT_TYPES);
-  const going = new Map(db.tournaments.map((t) => [t.id, { going: t.going, waitlist: t.waitlist }]));
-  db.tournaments = structuredClone(TOURNAMENTS).map((t) => ({ ...t, ...going.get(t.id) }));
+  db.tournaments = structuredClone(TOURNAMENTS);
   db.oneOffs = structuredClone(ONE_OFFS);
   db.roles = structuredClone(ROLES);
   const plans = new Map(db.members.map((m) => [m.player.id, m.plan]));
@@ -35,13 +33,16 @@ function say(message: string, failed: boolean) {
   clearing = setTimeout(() => (saving.message = ""), failed ? 6000 : 2200);
 }
 
-/** Send a change, then refresh. Says "Saved" or what went wrong; returns the server's reply, or null if it failed. */
+/**
+ * Send a change, then refresh. Says `done` ("Saved") or what went wrong; an empty `done` stays quiet on success,
+ * for taps that show their own result. Returns the server's reply, or null if it failed.
+ */
 export async function save<T>(change: () => Promise<T>, done = "Saved"): Promise<T | null> {
   saving.busy++;
   try {
     const result = await change();
     await refresh();
-    say(done, false);
+    if (done) say(done, false);
     return result;
   } catch (e) {
     say(e instanceof Error ? e.message : "Couldn't save.", true);
@@ -53,6 +54,22 @@ export async function save<T>(change: () => Promise<T>, done = "Saved"): Promise
 }
 
 // ─── The changes the screens make ───
+
+// Sign-ups. A Bookable's key says which kind of event it is (demo/schedule.svelte.ts).
+const ENTRY_PATHS: Record<string, string> = { session: "sessions", tournament: "tournaments", oneoff: "club-events" };
+function entryPath(key: string) {
+  const [kind, id] = key.split(":");
+  return `/api/${ENTRY_PATHS[kind]}/${id}`;
+}
+/** You say in or out. */
+export const answerFor = (key: string, answer: "in" | "out") =>
+  save(() => api("POST", `${entryPath(key)}/answer`, { answer }), "");
+/** An admin puts someone in a session, or takes them off. */
+export const setPlayer = (sessionId: number, memberId: number, inIt: boolean) =>
+  save(() => api("POST", `/api/sessions/${sessionId}/players`, { memberId, in: inIt }), inIt ? "Added" : "Taken off");
+/** The register: here or not. */
+export const markHere = (sessionId: number, memberId: number, here: boolean) =>
+  save(() => api("POST", `/api/sessions/${sessionId}/register`, { memberId, here }), "");
 
 export const saveMember = (m: MemberRow) =>
   save(() =>

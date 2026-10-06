@@ -80,6 +80,10 @@
   --amber-wash: color-mix(in srgb, var(--amber) 14%, transparent);
   --amber-border: color-mix(in srgb, var(--amber) 35%, transparent);
   --ring: var(--red-hot);
+  /* Main buttons: the logo's white half. Red is the brand (logo, headings, glow), so a red button got lost in it. */
+  --primary: var(--fg);
+  --primary-fg: var(--bg);
+  --primary-hover: #fff;
 
   /* Schedule tones: each training and tournament has one (demo/model.ts TONES) */
   --tone-red: #ff3b45;
@@ -100,7 +104,6 @@
   /* ─── Shadows: overlays only ─── */
   --shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 28px rgb(0 0 0 / 0.45);
   --shadow-pop: 0 2px 4px rgb(0 0 0 / 0.35), 0 18px 48px rgb(0 0 0 / 0.55);
-  --shadow-red: 0 0 0 1px var(--red-border), 0 6px 24px color-mix(in srgb, var(--red) 28%, transparent);
 
   /* ─── Layout ─── */
   --gutter: 1rem;
@@ -582,12 +585,12 @@ button.row:hover:not(:disabled) {
   cursor: not-allowed;
 }
 .btn.primary {
-  background: var(--red);
-  color: #fff;
-  box-shadow: var(--shadow-red);
+  background: var(--primary);
+  color: var(--primary-fg);
+  font-weight: 600;
 }
 .btn.primary:hover:not(:disabled) {
-  background: var(--red-hover);
+  background: var(--primary-hover);
 }
 .btn.outline {
   border-color: var(--border-strong);
@@ -615,6 +618,32 @@ button.row:hover:not(:disabled) {
 }
 .btn.block {
   width: 100%;
+}
+/* A page's actions in a bar (the phone bar, the desktop toolbar row): quiet text buttons, the main one filled.
+   The bar is chrome, not the page. After the .btn rules so these win at equal weight. */
+.bar-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--s-1);
+  flex-shrink: 0;
+}
+.bar-actions .btn {
+  gap: var(--s-1);
+  border: 0;
+  background: none;
+  box-shadow: none;
+  color: var(--fg-body);
+}
+.bar-actions .btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--fg) 7%, transparent);
+}
+/* The main one keeps its fill, so the bar has one clear button */
+.bar-actions .btn.primary {
+  background: var(--primary);
+  color: var(--primary-fg);
+}
+.bar-actions .btn.primary:hover:not(:disabled) {
+  background: var(--primary-hover);
 }
 
 /* Segmented control: a sunken track; the selected segment is a lit tile */

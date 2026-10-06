@@ -2,7 +2,8 @@
   // A player as a physical trading card: printed card stock with a white border round the photo, a red name plate
   // and the position printed under it, a gloss that catches the light, and a shadow as if it's lying on the table.
   // The photo slot shows the club mark until members add photos. The corner number is the sign-up order. Ratings
-  // only show for admins (read:Rating).
+  // only show for admins (read:Rating). With `onopen` it's a button: the page flips it over (PlayerCardZoom), and
+  // hides this one meanwhile, as if it's been picked up.
   import { POSITIONS, type Player } from "../demo/data";
   import mark from "../assets/cougars-mark.webp";
 
@@ -11,12 +12,23 @@
     n,
     you = false,
     showRating = false,
-  }: { player: Player; n?: number; you?: boolean; showRating?: boolean } = $props();
+    onopen,
+    lifted = false,
+  }: {
+    player: Player;
+    n?: number;
+    you?: boolean;
+    showRating?: boolean;
+    /** Tapped: given the card, so the zoom can start where it lies. */
+    onopen?: (card: HTMLElement) => void;
+    /** Picked up (open in the zoom): its place stays, the card doesn't show. */
+    lifted?: boolean;
+  } = $props();
 
   const first = $derived(player.name.split(" ")[0]);
 </script>
 
-<div class="slot">
+{#snippet card()}
   <article class="pc" class:you aria-label={player.name}>
     <span class="photo">
       <img class="ghost" src={mark} alt="" loading="lazy" />
@@ -30,11 +42,39 @@
     </span>
     <span class="gloss" aria-hidden="true"></span>
   </article>
-</div>
+{/snippet}
+
+{#if onopen}
+  <button
+    class="slot tap"
+    style:visibility={lifted ? "hidden" : undefined}
+    aria-haspopup="dialog"
+    aria-label="{player.name}: turn the card over"
+    onclick={(e) => onopen(e.currentTarget)}>{@render card()}</button
+  >
+{:else}
+  <div class="slot">{@render card()}</div>
+{/if}
 
 <style>
   .slot {
     container-type: inline-size;
+  }
+  .tap {
+    display: block;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    text-align: inherit;
+  }
+  .tap:focus-visible {
+    outline: none;
+  }
+  .tap:focus-visible .pc {
+    outline: 2px solid var(--ring);
+    outline-offset: 3px;
   }
   /* Card stock: warm off-white, faint grain, small rounded corners, a hairline edge and a table shadow */
   .pc {

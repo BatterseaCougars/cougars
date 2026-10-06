@@ -13,6 +13,8 @@
   import { granted } from "../demo/session.svelte";
   import { db } from "../demo/store.svelte";
   import EventCard from "../lib/EventCard.svelte";
+  import Fab from "../lib/Fab.svelte";
+  import { phone } from "../lib/viewport.svelte";
   import { londonISO } from "../lib/dates";
 
   const perms = $derived(granted());
@@ -90,7 +92,8 @@
     onclear={() => setFilter("all")}
   >
     {#snippet actions()}
-      {#if can(perms, "create:Event")}
+      <!-- + Event: in the toolbar row on desktop, a floating button on a phone -->
+      {#if can(perms, "create:Event") && !phone.current}
         <button class="btn sm primary" aria-haspopup="dialog" onclick={() => (adding = true)}>+ Event</button>
       {/if}
     {/snippet}
@@ -119,6 +122,9 @@
   {:else}
     <p class="hint">Nothing coming up{filter === "all" ? "" : " for this one"}.</p>
   {/each}
+  {#if can(perms, "create:Event") && phone.current}
+    <Fab label="Event" aria-haspopup="dialog" onclick={() => (adding = true)} />
+  {/if}
   <!-- A one-off event, in a sheet (a modal on desktop): the list stays where it is -->
   <Sheet bind:open={adding} title="Add an event">
     <form class="form" onsubmit={add}>

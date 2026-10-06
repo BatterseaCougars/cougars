@@ -4,6 +4,10 @@
   import type { Snippet } from "svelte";
   import type { Bookable } from "../demo/model";
   import { impersonating, me } from "../demo/session.svelte";
+  import { answerFor } from "../app/backend.svelte";
+  import { prefersReducedMotion } from "../app/motion";
+  import { db } from "../demo/store.svelte";
+  import { pick } from "./quips";
   import Icon from "../app/shell/Icon.svelte";
   import { dateBadge, formatTime } from "./dates";
 
@@ -14,6 +18,7 @@
     compact = false,
     onanswer,
     footer,
+    beckon = false,
   }: {
     event: Bookable;
     canSignUp?: boolean;
@@ -24,6 +29,9 @@
     onanswer?: (status: "in" | "waitlist" | "out") => void;
     /** A link row along the bottom of the card (Home: where you stand, and the way to the teams). */
     footer?: Snippet;
+    /** The session you're being asked about (Home's next one, a training's page): until you're in, In pulses once
+     * and then its label types out a nudge ("Do it…"). Saying out starts both again. */
+    beckon?: boolean;
   } = $props();
 
   const KIND = { training: "Training", tournament: "Tournament", social: "Social" } as const;
@@ -33,19 +41,55 @@
   const id = $derived(me().id);
   // Viewing as someone is read-only (ADR 0029): you see their answer, you can't change it.
   const locked = $derived(impersonating());
+  // Three answers and none: in (or waitlisted), out, or not said yet, when neither button is pressed.
   const inIt = $derived(entries.going.includes(id));
   const waiting = $derived(entries.waitlist.includes(id));
-  const out = $derived(!inIt && !waiting);
+  const out = $derived(entries.out?.includes(id) ?? false);
   const full = $derived(event.capacity != null && entries.going.length >= event.capacity);
   const fill = $derived(event.capacity ? Math.min(1, entries.going.length / event.capacity) : 0);
 
+  // Not in yet, whether unanswered or out: Out doesn't get you off the hook. A full session's In says "Join
+  // waitlist", which matters more than a nudge.
+  const nudging = $derived(beckon && canSignUp && event.signup && !inIt && !waiting && !full && !locked);
+  // One line per visit: once In has pulsed, its label clears and types this out instead
+  const nudge = pick(db.quips.filter((q) => q.kind === "nudge" && q.text.trim()))?.text ?? "";
+  let typed = $state("");
+  let typing = $state(false);
+  $effect(() => {
+    void out; // saying out starts it again
+    typing = false;
+    typed = "";
+    if (!nudging || !nudge) return;
+    if (prefersReducedMotion) {
+      typing = true;
+      typed = nudge;
+      return;
+    }
+    let i = 0;
+    let timer: ReturnType<typeof setInterval> | undefined;
+    const start = setTimeout(() => {
+      typing = true;
+      timer = setInterval(() => {
+        i += 1;
+        typed = nudge.slice(0, i);
+        if (i >= nudge.length) clearInterval(timer);
+      }, 70);
+    }, 1500);
+    return () => (clearTimeout(start), clearInterval(timer));
+  });
+
+  // The card answers at once; the server's word (in, or the waitlist) arrives with the refresh.
   function setIn(going: boolean) {
     if (locked) return;
+    void answerFor(event.key, going ? "in" : "out");
+    const wasIn = inIt;
     entries.going = entries.going.filter((x) => x !== id);
     entries.waitlist = entries.waitlist.filter((x) => x !== id);
+    entries.out = (entries.out ?? []).filter((x) => x !== id);
     if (!going) {
+      entries.out = [...entries.out, id];
       // Someone drops out: the first on the waitlist moves up.
-      if (entries.waitlist.length && event.capacity && entries.going.length < event.capacity) {
+      if (wasIn && entries.waitlist.length && event.capacity && entries.going.length < event.capacity) {
         entries.going = [...entries.going, entries.waitlist[0]];
         entries.waitlist = entries.waitlist.slice(1);
       }
@@ -94,17 +138,31 @@
         <span><strong>{entries.going.length}</strong>{event.capacity ? ` / ${event.capacity}` : ""} in</span>
         {#if entries.waitlist.length}<span>· {entries.waitlist.length} waiting</span>{/if}
         {#if inIt}<span class="badge green">You're in</span>{:else if waiting}<span class="badge amber">Waitlist</span
-          >{/if}
+          >{:else if out}<span class="badge">You're out</span>{/if}
       </p>
     {/if}
   </div>
   {#if event.signup && canSignUp}
     <div class="seg answer" role="group" aria-label="Are you in?">
-      <button class="yes" aria-pressed={inIt || waiting} disabled={locked} onclick={() => setIn(true)}>
-        {#if inIt}<Icon name="check" size={16} />{/if}
-        {waiting ? "Waitlist" : full && out ? "Join waitlist" : "In"}
+      <button
+        class="yes"
+        class:beckon={nudging && !out}
+        class:beckon-again={nudging && out}
+        aria-pressed={inIt || waiting}
+        disabled={locked}
+        aria-label={typing ? "In" : undefined}
+        onclick={() => setIn(true)}
+      >
+        {#if typing}
+          <span class="nudge" aria-hidden="true">{typed}<span class="caret" class:done={typed === nudge}></span></span>
+        {:else}
+          {#if inIt}<Icon name="check" size={16} />{/if}
+          {waiting ? "Waitlist" : full && !inIt ? "Join waitlist" : "In"}
+        {/if}
       </button>
-      <button class="no" aria-pressed={out} disabled={locked} onclick={() => setIn(false)}>Out</button>
+      <button class="no" aria-pressed={out} disabled={locked} onclick={() => setIn(false)}>
+        {#if out}<Icon name="x" size={16} />{/if}Out
+      </button>
     </div>
   {/if}
   {#if footer}<div class="foot">{@render footer()}</div>{/if}
@@ -227,6 +285,37 @@
   .count .badge {
     margin-left: auto;
   }
+  /* The nudge on In: typed in the page-title face, leaning in, then its caret blinks out */
+  .nudge {
+    color: var(--green);
+    font-family: var(--font-display);
+    font-size: var(--text-md);
+    font-style: italic;
+    letter-spacing: 0.01em;
+    line-height: 1;
+  }
+  .caret {
+    display: inline-block;
+    width: 2px;
+    height: 0.95em;
+    margin-left: 2px;
+    vertical-align: -0.1em;
+    background: currentColor;
+  }
+  .caret.done {
+    animation: caret-out 2.4s steps(1) forwards;
+  }
+  @keyframes caret-out {
+    0%,
+    40% {
+      opacity: 1;
+    }
+    20%,
+    60%,
+    100% {
+      opacity: 0;
+    }
+  }
   .seg {
     grid-column: 1 / -1;
     display: flex;
@@ -239,7 +328,46 @@
     min-height: 2.5rem;
     border: 1px solid transparent;
   }
-  /* In and Out read differently: In lights up green, Out is a quiet neutral tile */
+  /* Two tiles, the same before and after you answer: a clear light fill until pressed, then In lights up green
+     with a tick and Out turns brighter with a cross. No track around them. */
+  .answer {
+    gap: var(--s-2);
+    border-color: transparent;
+    background: none;
+  }
+  .answer > button {
+    border-radius: var(--r-md);
+    background: color-mix(in srgb, var(--fg) 10%, transparent);
+    color: var(--fg);
+    font-weight: 600;
+  }
+  .answer > button:hover:not(:disabled):not([aria-pressed="true"]) {
+    background: color-mix(in srgb, var(--fg) 16%, transparent);
+  }
+  /* The session you're asked about, while you're not in: In pulses once, a soft ring. A shadow, so nothing moves. */
+  .answer > .yes.beckon {
+    animation: beckon 1.2s 300ms var(--ease-in-out) 1 both;
+  }
+  /* Said out: another class, so the pulse plays again for them */
+  .answer > .yes.beckon-again {
+    animation: beckon 1.2s 300ms var(--ease-in-out) 1 both;
+  }
+  @keyframes beckon {
+    0%,
+    100% {
+      box-shadow: 0 0 0 0 color-mix(in srgb, var(--green) 0%, transparent);
+    }
+    50% {
+      box-shadow: 0 0 0 5px color-mix(in srgb, var(--green) 28%, transparent);
+      background: color-mix(in srgb, var(--green) 14%, color-mix(in srgb, var(--fg) 10%, transparent));
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .answer > .yes.beckon,
+    .answer > .yes.beckon-again {
+      animation: none;
+    }
+  }
   .answer > .yes[aria-pressed="true"] {
     background: var(--green-wash);
     border-color: var(--green-border);
@@ -247,7 +375,7 @@
     box-shadow: none;
   }
   .answer > .no[aria-pressed="true"] {
-    background: color-mix(in srgb, var(--fg) 12%, transparent);
+    background: color-mix(in srgb, var(--fg) 24%, transparent);
     border-color: var(--border-strong);
     color: var(--fg);
     box-shadow: none;

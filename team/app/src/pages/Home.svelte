@@ -7,7 +7,8 @@
   import AccountMenu from "../app/shell/AccountMenu.svelte";
   import Icon from "../app/shell/Icon.svelte";
   import EventCard from "../lib/EventCard.svelte";
-  import { pounds } from "../lib/dates";
+  import { londonToday, pounds } from "../lib/dates";
+  import { fill, slot } from "../lib/greetings";
   import { currentTournament, nextSession, sessionBookable, tournamentBookable } from "../demo/schedule.svelte";
   import { pick, type Quip, type QuipKind } from "../lib/quips";
   import { prefersReducedMotion } from "../app/motion";
@@ -29,7 +30,9 @@
   const session = $derived(nexts[0]?.session);
   const others = $derived(nexts.slice(1));
   const booking = $derived(session && sessionBookable(session));
-  const next = $derived(session ?? { id: 0, going: [] as number[], waitlist: [] as number[] });
+  const next = $derived(
+    session ?? { id: 0, going: [] as number[], waitlist: [] as number[], out: undefined as number[] | undefined },
+  );
   const day = $derived(series?.shortName ?? "week");
   const tournaments = $derived(
     db.tournamentTypes
@@ -44,20 +47,47 @@
   );
   const isIn = $derived(next.going.includes(who.id));
   const waiting = $derived(next.waitlist.includes(who.id));
-  const answered = $derived(isIn || waiting);
+  const declined = $derived(next.out?.includes(who.id) ?? false);
+  const answered = $derived(isIn || waiting || declined);
   const position = $derived(next.going.indexOf(who.id) + 1);
   const myTeam = $derived(db.teams[next.id]?.find((t) => t.players.includes(who.id)));
   const owed = $derived(owedBy(who.id));
-  const hour = new Date().getHours();
-  const greeting = hour < 12 ? "Morning" : hour < 18 ? "Afternoon" : "Evening";
+  // Picked once per visit, from the time of day, a training night, or how often you've looked today. The count
+  // is this device's only: a bit of fun, not a record.
+  const VISITS_KEY = "team.home.visits";
+  const visits = countVisit();
+  function countVisit(): number {
+    const today = londonToday();
+    try {
+      const saved = JSON.parse(localStorage.getItem(VISITS_KEY) ?? "null") as { day: string; n: number } | null;
+      const n = saved?.day === today ? saved.n + 1 : 1;
+      localStorage.setItem(VISITS_KEY, JSON.stringify({ day: today, n }));
+      return n;
+    } catch {
+      return 1; // Private mode: no count, no nagging
+    }
+  }
+  const roll = Math.random();
+  const hello = $derived.by(() => {
+    const set = lines(slot(new Date(), nexts[0]?.session.heldOn === londonToday(), visits));
+    const line = set[Math.floor(roll * set.length)]?.text ?? "{name}";
+    return fill(line, { name: who.name.split(" ")[0], visits, day: series?.shortName ?? "training night" });
+  });
 
   // The locker room has a word for you until you answer, and another once you have.
   // Admins write the lines (Settings → Quips). One of each is picked per visit, so coming back after answering
   // still has a word for you, and it doesn't change under you.
   const lines = (kind: QuipKind) => db.quips.filter((q) => q.kind === kind && q.text.trim());
-  const standing = { ask: pick(lines("ask")), in: pick(lines("in")), waitlist: pick(lines("waitlist")) };
+  const standing = {
+    ask: pick(lines("ask")),
+    in: pick(lines("in")),
+    waitlist: pick(lines("waitlist")),
+    out: pick(lines("out")),
+  };
   let said: Quip | undefined = $state();
-  const quip = $derived(said ?? (isIn ? standing.in : waiting ? standing.waitlist : standing.ask));
+  const quip = $derived(
+    said ?? (isIn ? standing.in : waiting ? standing.waitlist : declined ? standing.out : standing.ask),
+  );
   function onanswer(status: "in" | "waitlist" | "out") {
     said = pick(lines(status));
   }
@@ -93,7 +123,7 @@
       <p class="kicker">Battersea Cougars</p>
       <span class="badge-slot"><AccountMenu /></span>
     </div>
-    <h1 class="display poster">{greeting}, {who.name.split(" ")[0]}</h1>
+    <h1 class="display poster">{hello}</h1>
     {#if owed > 0}
       <!-- You owe: said up front, every visit, until it's paid -->
       <a class="owing" href="/me/tab">
@@ -116,7 +146,7 @@
           >{typed}{#if quip}<span class="caret" class:done={typed === quip.text}></span>{/if}</span
         >
       </p>
-      <EventCard event={booking} canSignUp={can(perms, "signup:Event")} feature {onanswer}>
+      <EventCard event={booking} canSignUp={can(perms, "signup:Event")} feature beckon {onanswer}>
         {#snippet footer()}
           <!-- Where you stand, in one line that never changes height, and the way to the teams -->
           <a class="status" href="/training/{series.slug}">
@@ -128,6 +158,8 @@
                 You're <strong>number {position}</strong> · teams out after sign-up closes
               {:else if waiting}
                 <strong>Waitlist</strong> · you'll move up if someone drops out
+              {:else if declined}
+                <strong>Out</strong> this {day} · see who's in
               {:else}
                 See who's in · say in or out before {day}
               {/if}

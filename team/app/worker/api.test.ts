@@ -197,6 +197,87 @@ describe("members and roles", () => {
   });
 });
 
+describe("who's in", () => {
+  const people = async () => {
+    const b = await boot();
+    const byName = Object.fromEntries(b.members.map((m: { name: string; id: number }) => [m.name, m.id]));
+    return { b, dana: byName["Dana Admin"], alt: byName["Alt Uploader"], reg: byName["Reg Player"] };
+  };
+  const friday = async () => (await boot()).sessions[0];
+
+  it("you say you're in for Friday, and it's still there when the app opens again", async () => {
+    const { dana } = await people();
+    const s = await friday();
+    expect((await call("POST", `/api/sessions/${s.id}/answer`, { answer: "in" })).status).toBe(200);
+    expect(await friday()).toMatchObject({ going: [dana], waitlist: [], out: [] });
+  });
+
+  it("saying out is an answer of its own, not the same as not answering", async () => {
+    const { dana } = await people();
+    const s = await friday();
+    expect(s).toMatchObject({ going: [], out: [] });
+    await call("POST", `/api/sessions/${s.id}/answer`, { answer: "out" });
+    expect(await friday()).toMatchObject({ going: [], out: [dana] });
+  });
+
+  it("a full social puts the next one on the waitlist, who moves up when someone drops out", async () => {
+    const { dana, alt } = await people();
+    await call("POST", "/api/club-events", {
+      title: "Curry night",
+      startsAt: "2026-10-24T19:00:00.000Z",
+      endsAt: "2026-10-24T22:00:00.000Z",
+      venue: "",
+      signup: true,
+      capacity: 1,
+    });
+    const event = (await boot()).clubEvents[0];
+    await call("POST", `/api/club-events/${event.id}/players`, { memberId: alt, in: true });
+    await call("POST", `/api/club-events/${event.id}/answer`, { answer: "in" });
+    expect((await boot()).clubEvents[0]).toMatchObject({ going: [alt], waitlist: [dana] });
+    await call("POST", `/api/club-events/${event.id}/players`, { memberId: alt, in: false });
+    expect((await boot()).clubEvents[0]).toMatchObject({ going: [dana], waitlist: [] });
+  });
+
+  it("an admin adds a player who texted instead, and takes one off", async () => {
+    const { alt, reg } = await people();
+    const s = await friday();
+    await call("POST", `/api/sessions/${s.id}/players`, { memberId: alt, in: true });
+    await call("POST", `/api/sessions/${s.id}/players`, { memberId: reg, in: true });
+    await call("POST", `/api/sessions/${s.id}/players`, { memberId: alt, in: false });
+    expect(await friday()).toMatchObject({ going: [reg] });
+  });
+
+  it("the register on the night: a no-show stays signed up, a walk-in joins, and a mistaken tick comes off", async () => {
+    const { alt, reg } = await people();
+    const s = await friday();
+    await call("POST", `/api/sessions/${s.id}/players`, { memberId: reg, in: true });
+    await call("POST", `/api/sessions/${s.id}/register`, { memberId: reg, here: false });
+    await call("POST", `/api/sessions/${s.id}/register`, { memberId: alt, here: true });
+    expect(await friday()).toMatchObject({ going: [reg, alt], walkIns: [alt], noShows: [reg] });
+    await call("POST", `/api/sessions/${s.id}/register`, { memberId: alt, here: false });
+    await call("POST", `/api/sessions/${s.id}/register`, { memberId: reg, here: true });
+    expect(await friday()).toMatchObject({ going: [reg], walkIns: [], noShows: [] });
+  });
+
+  it("won't take sign-ups for a cancelled Friday", async () => {
+    const s = await friday();
+    await call("POST", `/api/sessions/${s.id}/cancelled`, { cancelled: true });
+    expect(await call("POST", `/api/sessions/${s.id}/answer`, { answer: "in" })).toEqual({
+      status: 409,
+      body: { error: "That session's cancelled." },
+    });
+  });
+
+  it("moving training to Thursdays keeps a Friday someone already said they're in for", async () => {
+    const b = await boot();
+    const first = b.sessions[0];
+    await call("POST", `/api/sessions/${first.id}/answer`, { answer: "in" });
+    await call("PUT", `/api/series/${b.series[0].id}`, { ...b.series[0], weekdays: ["thu"] });
+    const days = (await boot()).sessions.map((s: { heldOn: string }) => s.heldOn);
+    expect(days).toContain(first.heldOn);
+  });
+});
+
 describe("access", () => {
   it("answers nobody until sign-in exists, except on a local dev server", async () => {
     expect((await call("GET", "/api/bootstrap", undefined, { DB: env.DB })).status).toBe(401);

@@ -196,13 +196,22 @@ export async function updateSeries(db: D1Database, id: number, o: Record<string,
         )
       : [],
   );
-  const future = await all<{ id: number; held_on: string; moved_from: string | null; cancelled_at: string | null }>(
+  // A session someone has answered (or that was moved or cancelled) isn't untouched: it stays for them
+  const future = await all<{
+    id: number;
+    held_on: string;
+    moved_from: string | null;
+    cancelled_at: string | null;
+    answered: number;
+  }>(
     db,
-    "SELECT id, held_on, moved_from, cancelled_at FROM training_sessions WHERE series_id = ? AND held_on >= ?",
+    `SELECT s.id, s.held_on, s.moved_from, s.cancelled_at,
+            EXISTS (SELECT 1 FROM attendance a WHERE a.session_id = s.id) answered
+     FROM training_sessions s WHERE s.series_id = ? AND s.held_on >= ?`,
     [id, today],
   );
   for (const s of future)
-    if (!keep.has(s.held_on) && !s.moved_from && !s.cancelled_at)
+    if (!keep.has(s.held_on) && !s.moved_from && !s.cancelled_at && !s.answered)
       await run(db, "DELETE FROM training_sessions WHERE id = ?", [s.id]);
   await ensureSessions(db, today);
 }
@@ -290,25 +299,23 @@ export async function updateTournamentType(db: D1Database, id: number, o: Record
 }
 
 export async function listTournaments(db: D1Database) {
-  return (
-    await all<{
-      id: number;
-      typeId: number;
-      name: string;
-      location: string;
-      heldOn: string;
-      startTime: string;
-      endTime: string;
-      capacity: number | null;
-      status: string;
-      champions: string | null;
-      feePence: number;
-    }>(
-      db,
-      `SELECT id, type_id typeId, name, location, held_on heldOn, start_time startTime, end_time endTime, capacity,
+  return await all<{
+    id: number;
+    typeId: number;
+    name: string;
+    location: string;
+    heldOn: string;
+    startTime: string;
+    endTime: string;
+    capacity: number | null;
+    status: string;
+    champions: string | null;
+    feePence: number;
+  }>(
+    db,
+    `SELECT id, type_id typeId, name, location, held_on heldOn, start_time startTime, end_time endTime, capacity,
               status, champions, fee_pence feePence FROM tournaments ORDER BY held_on`,
-    )
-  ).map((t) => ({ ...t, going: [] as number[], waitlist: [] as number[] }));
+  );
 }
 
 function tournamentFields(o: Record<string, unknown>) {
@@ -365,7 +372,7 @@ export async function listClubEvents(db: D1Database, from: string) {
        FROM club_events WHERE ends_at >= ? ORDER BY starts_at`,
       [from],
     )
-  ).map((e) => ({ ...e, signup: Boolean(e.signup), going: [] as number[], waitlist: [] as number[] }));
+  ).map((e) => ({ ...e, signup: Boolean(e.signup) }));
 }
 
 export async function createClubEvent(db: D1Database, o: Record<string, unknown>) {

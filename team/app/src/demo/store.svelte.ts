@@ -1,5 +1,5 @@
 // The app's working copy of the club's data, filled from D1 (demo/data.ts hydrate) and replaced by
-// app/backend.svelte.ts after each change. Sign-ups, teams, quips and dues still live here only: their tables come
+// app/backend.svelte.ts after each change. Sign-ups, teams, quips, bios and dues still live here only: their tables come
 // in later milestones (docs/roadmap/team-app.md).
 import { londonToday } from "../lib/dates";
 import type { Charge } from "../lib/dues";
@@ -17,6 +17,8 @@ export const db = $state({
   members: structuredClone(MEMBERS),
   fees: structuredClone(FEES),
   quips: structuredClone(QUIPS),
+  /** A line or two about each player, by member id, written on their profile. Shown on the back of their card. */
+  bios: {} as Record<number, string>,
   /** Published teams, by session id. */
   teams: {} as Record<number, Team[]>,
   /** One person for one session or tournament, paid or not (ADR 0032). */

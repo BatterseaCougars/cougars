@@ -11,7 +11,11 @@
   import EventCard from "../lib/EventCard.svelte";
   import Person from "../lib/Person.svelte";
   import PlayerCard from "../lib/PlayerCard.svelte";
+  import PlayerCardZoom from "../lib/PlayerCardZoom.svelte";
   import RegisterDrawer from "../lib/RegisterDrawer.svelte";
+  import { setPlayer } from "../app/backend.svelte";
+  import Sheet from "../lib/Sheet.svelte";
+  import { MEMBERS } from "../demo/data";
   import { formatDayDate } from "../lib/dates";
   import { describeRule } from "../lib/recurrence";
   import { snakeTeams, type Team } from "../lib/snake";
@@ -30,6 +34,45 @@
 
   let proposal: Team[] | null = $state(null);
   let registering = $state(false);
+  // Admins add players themselves (someone who texted instead of tapping In): a search over everyone not in
+  let adding = $state(false);
+  let find = $state("");
+  const addable = $derived(
+    MEMBERS.filter((m) => m.status === "active" && !next.going.includes(m.player.id))
+      .map((m) => m.player)
+      .filter((p) => find.length < 2 || p.name.toLowerCase().includes(find.toLowerCase()))
+      .sort((a, b) => a.name.localeCompare(b.name)),
+  );
+  function addToSession(id: number) {
+    const s = session;
+    if (!s) return;
+    void setPlayer(s.id, id, true);
+    s.waitlist = s.waitlist.filter((x) => x !== id);
+    s.out = s.out?.filter((x) => x !== id);
+    s.going = [...s.going, id];
+  }
+
+  // The card that's been picked up, and where it lies on the page
+  let lifted = $state<{ id: number; el: HTMLElement; n?: number } | null>(null);
+
+  // Take someone off the session (from their card): off the list and any team, and the waitlist moves up
+  function removeFromSession(id: number) {
+    const s = session;
+    if (!s) return;
+    void setPlayer(s.id, id, false);
+    const wasIn = s.going.includes(id);
+    s.going = s.going.filter((x) => x !== id);
+    s.waitlist = s.waitlist.filter((x) => x !== id);
+    s.walkIns = s.walkIns?.filter((x) => x !== id);
+    s.noShows = s.noShows?.filter((x) => x !== id);
+    if (wasIn && s.waitlist.length && (!info?.capacity || s.going.length < info.capacity)) {
+      s.going = [...s.going, s.waitlist[0]];
+      s.waitlist = s.waitlist.slice(1);
+    }
+    const published = db.teams[s.id];
+    if (published) for (const t of published) t.players = t.players.filter((x) => x !== id);
+    if (proposal) for (const t of proposal) t.players = t.players.filter((x) => x !== id);
+  }
 
   // Trial: players as trading cards, or the plain list. Remembered per device.
   const VIEW_KEY = "team.training.view";
@@ -94,7 +137,14 @@
   {#if view === "cards"}
     <div class="cards">
       {#each ids as id, i (id)}
-        <PlayerCard player={byId(id)} n={numbered ? i + 1 : undefined} you={id === who.id} showRating={ratings} />
+        <PlayerCard
+          player={byId(id)}
+          n={numbered ? i + 1 : undefined}
+          you={id === who.id}
+          showRating={ratings}
+          lifted={lifted?.id === id}
+          onopen={(el) => (lifted = { id, el, n: numbered ? i + 1 : undefined })}
+        />
       {/each}
     </div>
   {:else}
@@ -132,7 +182,7 @@
       </p>
     {/if}
 
-    <EventCard event={sessionBookable(session)} canSignUp={can(perms, "signup:Event")} />
+    <EventCard event={sessionBookable(session)} canSignUp={can(perms, "signup:Event")} beckon />
 
     <div class="stats num">
       <div class="stat"><span class="eyebrow">In</span><span class="value">{next.going.length}</span></div>
@@ -143,6 +193,16 @@
     </div>
 
     <div class="view-row">
+      {#if can(perms, "update:Event")}
+        <button
+          class="btn icon add-players"
+          aria-label="Add players"
+          title="Add players"
+          onclick={() => (adding = true)}
+        >
+          <Icon name="userPlus" size={18} />
+        </button>
+      {/if}
       <div class="seg" role="group" aria-label="Show players as">
         <button aria-pressed={view === "cards"} onclick={() => setView("cards")}>Cards</button>
         <button aria-pressed={view === "list"} onclick={() => setView("list")}>List</button>
@@ -220,6 +280,40 @@
   <RegisterDrawer {seriesId} bind:open={registering} />
 {/if}
 
+{#if session && can(perms, "update:Event")}
+  <Sheet bind:open={adding} title="Add players">
+    <input class="input" placeholder="Find a player" bind:value={find} aria-label="Find a player" />
+    <div class="list add-list">
+      {#each addable as p (p.id)}
+        <button class="row" onclick={() => addToSession(p.id)}>
+          <Person player={p} meta={next.waitlist.includes(p.id) ? "On the waitlist" : undefined} />
+          <span class="badge"><Icon name="plus" size={14} /> In</span>
+        </button>
+      {:else}
+        <p class="hint pad">Everyone's in already.</p>
+      {/each}
+    </div>
+    {#snippet footer()}
+      <button class="btn primary" onclick={() => ((adding = false), (find = ""))}>Done</button>
+    {/snippet}
+  </Sheet>
+{/if}
+
+{#if lifted}
+  {@const id = lifted.id}
+  <PlayerCardZoom
+    player={byId(id)}
+    source={lifted.el}
+    n={lifted.n}
+    you={id === who.id}
+    showRating={ratings}
+    bio={db.bios[id]}
+    removeLabel={can(perms, "update:Event") ? `Remove from ${series.shortName}` : undefined}
+    onremove={() => removeFromSession(id)}
+    onclose={() => (lifted = null)}
+  />
+{/if}
+
 <style>
   .team {
     display: grid;
@@ -263,6 +357,22 @@
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
     pointer-events: none;
+  }
+  .add-players {
+    pointer-events: auto;
+    margin-right: auto;
+    background: var(--chrome-bg-solid);
+    color: var(--fg-body);
+  }
+  .add-players:hover {
+    background: var(--surface-3);
+  }
+  .add-list {
+    max-height: 50svh;
+    overflow-y: auto;
+  }
+  .pad {
+    padding: var(--s-4);
   }
   .view-row .seg {
     pointer-events: auto;

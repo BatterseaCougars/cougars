@@ -1,12 +1,24 @@
 <script lang="ts">
-  // Settings → Quips: the lines Home says before you answer and when you do. Edits save as you type; a kind
-  // keeps at least one line so Home always has something to say.
+  // Settings → Quips: Home's lines. Replies: what it says before you answer and when you do. Greetings: its title,
+  // by the time of day, on a training night, or after too many looks. Edits save as you type; a kind keeps at least
+  // one line so Home always has something to say.
   import PageHeader from "../lib/PageHeader.svelte";
   import Icon from "../app/shell/Icon.svelte";
   import { db } from "../demo/store.svelte";
-  import { QUIP_KINDS, QUIP_MAX, type QuipKind } from "../lib/quips";
+  import { NAG_FROM } from "../lib/greetings";
+  import { QUIP_KINDS, type QuipGroup, type QuipKind } from "../lib/quips";
 
+  const GROUPS: { group: QuipGroup; label: string }[] = [
+    { group: "reply", label: "Replies" },
+    { group: "greeting", label: "Greetings" },
+  ];
+  let group = $state<QuipGroup>("reply");
   let kind = $state<QuipKind>("ask");
+  const kinds = $derived(QUIP_KINDS.filter((k) => k.group === group));
+  function setGroup(g: QuipGroup) {
+    group = g;
+    kind = QUIP_KINDS.find((k) => k.group === g)!.kind;
+  }
   let draft = $state("");
   const about = $derived(QUIP_KINDS.find((k) => k.kind === kind)!);
   const lines = $derived(db.quips.filter((q) => q.kind === kind));
@@ -26,8 +38,13 @@
 <div class="page">
   <PageHeader title="Quips" subtitle="Home picks one at random. Short and cheeky, never needy, never a club fact.">
     {#snippet toolbar()}
+      <div class="seg" role="group" aria-label="Which lines">
+        {#each GROUPS as g (g.group)}
+          <button aria-pressed={g.group === group} onclick={() => setGroup(g.group)}>{g.label}</button>
+        {/each}
+      </div>
       <div class="seg kinds" role="tablist" aria-label="When it's said">
-        {#each QUIP_KINDS as k (k.kind)}
+        {#each kinds as k (k.kind)}
           <button role="tab" aria-selected={k.kind === kind} onclick={() => (kind = k.kind)}>
             {k.label} <span class="count num">{db.quips.filter((q) => q.kind === k.kind).length}</span>
           </button>
@@ -39,10 +56,16 @@
   {#key kind}
     <div class="lines rise">
       <p class="hint">{about.hint}.</p>
+      {#if group === "greeting"}
+        <p class="hint">
+          <code>{"{name}"}</code> is their first name{#if kind === "nag"}, <code>{"{nth}"}</code> how many looks today
+            (“{NAG_FROM}th”){/if}, <code>{"{day}"}</code> the next training's day.
+        </p>
+      {/if}
       <div class="list">
         {#each lines as q (q.id)}
           <div class="row">
-            <input class="input line" maxlength={QUIP_MAX} bind:value={q.text} aria-label="Quip" />
+            <input class="input line" maxlength={about.max} bind:value={q.text} aria-label="Quip" />
             <button
               class="btn ghost icon"
               onclick={() => remove(q.id)}
@@ -59,14 +82,18 @@
       <form class="add" onsubmit={add}>
         <input
           class="input"
-          maxlength={QUIP_MAX}
+          maxlength={about.max}
           placeholder="New {about.label.toLowerCase()} line"
           aria-label="New quip"
           bind:value={draft}
         />
         <button class="btn primary" disabled={!draft.trim()}>Add</button>
       </form>
-      <p class="hint num">Up to {QUIP_MAX} characters, so it fits two lines on a phone.</p>
+      <p class="hint num">
+        Up to {about.max} characters, so it fits two lines on a phone{group === "greeting"
+          ? " in the title's big type"
+          : ""}.
+      </p>
     </div>
   {/key}
 </div>
@@ -74,6 +101,12 @@
 <style>
   .kinds {
     display: flex;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  code {
+    color: var(--fg);
+    font-size: 0.95em;
   }
   .count {
     margin-left: 0.2em;

@@ -11,6 +11,7 @@
     title,
     sub,
     head,
+    top,
     children,
     footer,
   }: {
@@ -19,6 +20,8 @@
     sub?: string;
     /** Beside the title (a status badge). */
     head?: Snippet;
+    /** Under the header, outside the scroll (stats and a search that stay put). */
+    top?: Snippet;
     children: Snippet;
     footer?: Snippet;
   } = $props();
@@ -49,6 +52,7 @@
         <Icon name="x" size={20} />
       </button>
     </header>
+    {#if top}<div class="top">{@render top()}</div>{/if}
     <div class="body">{@render children()}</div>
     {#if footer}<footer>{@render footer()}</footer>{/if}
   </div>
@@ -69,8 +73,8 @@
     right: 0;
     bottom: 0;
     z-index: 71;
-    display: grid;
-    grid-template-rows: auto 1fr auto;
+    display: flex;
+    flex-direction: column;
     width: min(26rem, 100vw);
     border-left: 1px solid var(--border-strong);
     background:
@@ -96,9 +100,19 @@
     font-weight: 600;
     color: var(--fg);
   }
+  .top {
+    display: grid;
+    gap: var(--s-4);
+    padding: var(--s-4) var(--s-5) 0;
+  }
   .body {
+    /* min-height: 0 lets the body shrink below its content, so it scrolls instead of pushing the footer off */
+    flex: 1;
+    min-height: 0;
     display: grid;
     align-content: start;
+    /* Rows keep their full height (a .list clips, so it would otherwise shrink to fit); the body scrolls instead */
+    grid-auto-rows: max-content;
     gap: var(--s-4);
     padding: var(--s-4) var(--s-5) var(--s-5);
     overflow-y: auto;

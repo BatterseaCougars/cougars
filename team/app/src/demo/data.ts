@@ -70,7 +70,7 @@ export interface Bootstrap {
   }[];
   roles: Role[];
   series: TrainingSeries[];
-  sessions: Omit<TrainingSession, "going" | "waitlist">[];
+  sessions: TrainingSession[];
   tournamentTypes: TournamentType[];
   tournaments: Tournament[];
   clubEvents: OneOff[];
@@ -95,10 +95,7 @@ export function hydrate(b: Bootstrap) {
   );
   fill(ROLES, b.roles);
   fill(SERIES, b.series);
-  fill(
-    SESSIONS,
-    b.sessions.map((s) => ({ ...s, going: [], waitlist: [] })),
-  );
+  fill(SESSIONS, b.sessions);
   fill(TOURNAMENT_TYPES, b.tournamentTypes);
   fill(TOURNAMENTS, b.tournaments);
   fill(ONE_OFFS, b.clubEvents);
