@@ -179,8 +179,8 @@
       top: var(--s-4);
       z-index: 4;
     }
-    /* The veil, once the page has scrolled: its background in from the top of the window with a blur that fades
-       out, under the row and over the cards, so the title dissolves and the cards do too. No edge. */
+    /* The veil, once the page has scrolled: the page's background, solid to a little below the row so the cards
+       stop short of it, then a short fade. A light blur only; no edge. */
     .toolbar::before {
       content: "";
       position: fixed;
@@ -188,17 +188,10 @@
       top: 0;
       left: 0;
       right: 0;
-      height: 5.5rem;
-      background: linear-gradient(
-        to bottom,
-        var(--bg),
-        color-mix(in srgb, var(--bg) 85%, transparent) 55%,
-        transparent
-      );
-      backdrop-filter: blur(18px) saturate(1.2);
-      -webkit-backdrop-filter: blur(18px) saturate(1.2);
-      mask-image: linear-gradient(to bottom, #000 55%, transparent);
-      -webkit-mask-image: linear-gradient(to bottom, #000 55%, transparent);
+      height: calc(var(--s-4) + 2.25rem + var(--s-6));
+      background: linear-gradient(to bottom, var(--bg) 70%, transparent);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
       opacity: 0;
       pointer-events: none;
       transition: opacity var(--t-slow) var(--ease);
