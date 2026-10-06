@@ -1,6 +1,9 @@
 # Battersea Cougars
 
-Website (and, later, club operations) for the Battersea Cougars inline hockey club.
+Website and team app for the Battersea Cougars inline hockey club: two projects in one repo
+([ADR 0021](docs/adr/0021-website-and-team-app-projects.md)). The website is live; the team app is next
+([roadmap](docs/roadmap/team-app.md)). In team-app T0, `apps/web` and `apps/studio` move to `website/`, and the team
+app lands in `team/app`.
 
 | Part                   | What                                                                      | Where                 |
 | ---------------------- | ------------------------------------------------------------------------- | --------------------- |
@@ -9,6 +12,7 @@ Website (and, later, club operations) for the Battersea Cougars inline hockey cl
 | `db/`                  | D1 (SQLite) migrations                                                    |                       |
 | `shared/`              | Code used by more than one app (D1 helpers, test fixtures)                |                       |
 | `scripts/`             | Secrets loading (Bitwarden) and CI helpers                                |                       |
+| `team/app` (planned)   | Team app: mobile-first Svelte PWA for members, on its own Worker          | http://localhost:4510 |
 | `archive/team-manager` | The old Next.js + Airtable team picker, kept as **reference only**        |                       |
 
 Running cost is £0: every service is on a free tier (see [docs/roadmap.md](docs/roadmap.md)).
@@ -66,6 +70,10 @@ Rules ([ADR 0002](docs/adr/0002-secrets-in-bitwarden.md), [ADR 0010](docs/adr/00
 | [`SANITY_DEPLOY_TOKEN__PRODUCTION`](#sanity_deploy_token__production)     | `cougars`     | Sanity                      | Studio deploys               |
 | [`YOUTUBE_API_KEY__PRODUCTION`](#youtube-api-keys)                        | `cougars`     | Google Cloud                | Website (production)         |
 | [`YOUTUBE_API_KEY__DEV`](#youtube-api-keys)                               | `cougars-dev` | Google Cloud                | Website (dev)                |
+| [`GMAIL_CLIENT_ID`](#gmail)                                               | `cougars-dev` | Google Cloud                | Website (both)               |
+| [`GMAIL_CLIENT_SECRET`](#gmail)                                           | `cougars-dev` | Google Cloud                | Website (both)               |
+| [`GMAIL_REFRESH_TOKEN__PRODUCTION`](#gmail)                               | `cougars`     | Google, club Gmail          | Website (production)         |
+| [`GMAIL_REFRESH_TOKEN`](#gmail)                                           | `cougars-dev` | Google, dev Gmail           | Website (dev)                |
 
 ### Bitwarden tokens
 
@@ -157,6 +165,40 @@ touching production. Without a key the site still works and shows only the video
 - **Expires:** no.
 - **Rotate:** Credentials → the key → **Regenerate key**, update Secrets Manager, run a deploy.
 
+### Gmail
+
+Lets the website email the club inbox about each enquiry, and auto-reply to the enquirer, through the Gmail API
+(HTTPS, not SMTP; no password is stored anywhere). Outside production every email is redirected to one safe
+inbox, and dev can only ever send from its own test account, never the club's.
+
+- **Issued by:**
+  - `GMAIL_CLIENT_ID` / `GMAIL_CLIENT_SECRET`: Google Cloud console, the club's project (the YouTube keys' one),
+    signed in as batterseahockey@gmail.com.
+    1. **APIs & Services → Library → Gmail API → Enable**.
+    2. **Google Auth Platform → Get started**: app name _Battersea Cougars website_, support email the club's,
+       audience **External**, contact email the club's.
+    3. **Data access → Add or remove scopes**: `.../auth/gmail.send` only (_Send email on your behalf_). Save.
+    4. **Audience → Publish app**, to **In production**. In _Testing_, Google cancels the tokens after 7 days.
+       It stays unverified (Google warns on the consent screen, which is fine: only the club's two accounts ever
+       sign in).
+    5. **Clients → Create client → Desktop app**, named `cougars-website`. Save both values:
+       `node scripts/secret-set.mjs GMAIL_CLIENT_ID`, then `GMAIL_CLIENT_SECRET` (shared by both environments).
+  - `GMAIL_REFRESH_TOKEN`: `node scripts/gmail-auth.mjs dev`, signed in as the dev Gmail account. It refuses the
+    club's account.
+  - `GMAIL_REFRESH_TOKEN__PRODUCTION`: `node scripts/gmail-auth.mjs production`, signed in as
+    batterseahockey@gmail.com. It refuses any other account.
+
+  The script opens Google's consent page, catches the answer on `http://localhost:4590` and saves the token straight
+  to Secrets Manager; nothing is printed.
+
+- **Used by:** the website's enquiry form (Worker), to send mail. The refresh token can send mail as its account
+  and nothing else: it can't read the mailbox.
+- **Gets there by:** to be added with the email feature: `deploy.yml` pushes them to the Worker as secrets.
+- **Expires:** no, but Google cancels a refresh token when the account's password changes, access is removed in
+  [the account's third-party access](https://myaccount.google.com/connections), or it's unused for 6 months.
+- **Rotate:** re-run `gmail-auth.mjs` for that environment, then deploy. Client secret: **Clients → the client →
+  Add secret**, update Secrets Manager, delete the old one.
+
 ### Settings that aren't secret
 
 | Name                                   | Where                       | What                                                             |
@@ -172,7 +214,8 @@ touching production. Without a key the site still works and shows only the video
 
 - [docs/setup.md](docs/setup.md): one-time account setup (Cloudflare, Sanity, Bitwarden, GitHub)
 - [docs/editing.md](docs/editing.md): guide for club editors (no coding)
-- [docs/roadmap.md](docs/roadmap.md): what's next (attendance, payments, Kumite)
+- [docs/roadmap.md](docs/roadmap.md): what's next, per project ([website](docs/roadmap/website.md),
+  [team app](docs/roadmap/team-app.md)), and the free-tier budget
 - [docs/adr/](docs/adr/README.md): architecture decisions, and why
 - [db/README.md](db/README.md): database conventions
 - [CLAUDE.md](CLAUDE.md): conventions for contributors and AI agents
@@ -180,11 +223,11 @@ touching production. Without a key the site still works and shows only the video
 ## Ports (devcontainer)
 
 Cougars owns ports **4500-4529** so it doesn't clash with other projects on the host:
-4500 web, 4510 ops app, 4520 Sanity Studio. Worktrees use 4501-4509 (web) and 4521-4529 (Studio).
+4500 web, 4510 team app, 4520 Sanity Studio. Worktrees use 4501-4509 (web) and 4521-4529 (Studio).
 
 ## Worktrees (parallel streams)
 
-Parallel work streams ([roadmap](docs/roadmap.md)) each get a git worktree under `.worktrees/`, with their own
+Parallel work streams ([website roadmap](docs/roadmap/website.md)) each get a git worktree under `.worktrees/`, with their own
 dependencies, local D1 database and ports, so each can be previewed while `main` runs on 4500:
 
 ```sh
@@ -204,6 +247,6 @@ bash scripts/worktree.sh remove cms    # when the stream has landed on main
 A Studio on a new port needs that origin added once under the Sanity project's API → CORS origins
 (e.g. `http://localhost:4521`, with credentials).
 
-Opening the devcontainer installs dependencies, migrates the local D1 database and starts **web** and **ops**
+Opening the devcontainer installs dependencies, migrates the local D1 database and starts **web** and the **team app**
 automatically (VS Code tasks in `.vscode/tasks.json`, each in its own terminal). Start the Studio with
 _Terminal → Run Task… → dev: studio_.

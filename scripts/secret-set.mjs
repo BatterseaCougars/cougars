@@ -5,7 +5,7 @@
 //   pbpaste | node scripts/secret-set.mjs SANITY_API_TOKEN         (reads stdin)
 // NAME__PRODUCTION goes to `cougars`, anything else to `cougars-dev`. The value is never printed.
 // Document the secret in README.md#secrets in the same change.
-import { bws, ensureToken, projectFor, promptHidden } from "./lib/bitwarden.mjs";
+import { ensureToken, projectFor, promptHidden, setSecret } from "./lib/bitwarden.mjs";
 
 const key = process.argv[2];
 if (!key || process.argv.length > 3) {
@@ -15,19 +15,12 @@ if (!key || process.argv.length > 3) {
 const projectName = projectFor(key);
 ensureToken();
 
-const project = bws(["project", "list"]).find((p) => p.name.trim().toLowerCase() === projectName);
-if (!project) {
-  throw new Error(`This token can't see the project "${projectName}". Check the machine account's project access.`);
-}
-
 const value = await readValue(`${key} (${projectName}): `);
 if (!value) throw new Error("Empty value, nothing saved.");
 
-const existing = bws(["secret", "list", project.id]).find((s) => s.key === key);
-if (existing) bws(["secret", "edit", existing.id, "--value", value]);
-else bws(["secret", "create", key, value, project.id]);
-console.log(`${existing ? "Updated" : "Created"} ${key} in ${projectName}.`);
-if (!existing) console.log("Now document it in README.md#secrets.");
+const result = setSecret(key, value);
+console.log(`${result} ${key} in ${projectName}.`);
+if (result === "Created") console.log("Now document it in README.md#secrets.");
 
 async function readValue(prompt) {
   if (process.stdin.isTTY) return promptHidden(prompt);

@@ -101,6 +101,19 @@ export function bws(args) {
   return JSON.parse(res.stdout);
 }
 
+/** Create or update a secret in the project its name says. Returns "Created" or "Updated". Never prints the value. */
+export function setSecret(key, value) {
+  const projectName = projectFor(key);
+  const project = bws(["project", "list"]).find((p) => p.name.trim().toLowerCase() === projectName);
+  if (!project) {
+    throw new Error(`This token can't see the project "${projectName}". Check the machine account's project access.`);
+  }
+  const existing = bws(["secret", "list", project.id]).find((s) => s.key === key);
+  if (existing) bws(["secret", "edit", existing.id, "--value", value]);
+  else bws(["secret", "create", key, value, project.id]);
+  return existing ? "Updated" : "Created";
+}
+
 export function loadSecrets(environment) {
   if (!ENVIRONMENTS.includes(environment)) {
     throw new Error(`Unknown environment "${environment}": use ${ENVIRONMENTS.join(" or ")}.`);
