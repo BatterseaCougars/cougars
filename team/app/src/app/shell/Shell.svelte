@@ -21,7 +21,7 @@
   import { owedBy } from "../../demo/dues.svelte";
   import { pounds } from "../../lib/dates";
   import Sheet from "../../lib/Sheet.svelte";
-  import { phone } from "../../lib/viewport.svelte";
+  import { phone, wide } from "../../lib/viewport.svelte";
   import { pageBar } from "./page-bar.svelte";
 
   let { route, children }: { route: Route; children: Snippet } = $props();
@@ -180,6 +180,14 @@
       </a>
     {/each}
   </nav>
+
+  <!-- Wide desktop: the page's actions and filters float down the right edge, the dock's mirror -->
+  {#if (pageBar.filters || pageBar.actions) && !phone.current && wide.current}
+    <aside class="filter-dock" aria-label="Page actions and filters" inert={route.focus || undefined}>
+      {#if pageBar.actions}<div class="dock-actions">{@render pageBar.actions()}</div>{/if}
+      {#if pageBar.filters}{@render pageBar.filters()}{/if}
+    </aside>
+  {/if}
 
   <main class="main">
     <header class="chrome" bind:clientHeight={chromeH}>
@@ -473,6 +481,50 @@
   .dock-item:focus-visible .dock-label {
     opacity: 1;
     translate: 0 -50%;
+  }
+
+  /* ─── The filter dock (wide desktop): floating buttons down the right edge, centred like the dock ─── */
+  .filter-dock {
+    position: fixed;
+    top: 50%;
+    right: var(--s-5);
+    z-index: 7;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: var(--s-1);
+    translate: 0 -50%;
+  }
+  .filter-dock .dock-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: var(--s-1);
+    margin-bottom: var(--s-3);
+  }
+  .filter-dock :global(.filters) {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: var(--s-1);
+  }
+  /* Small floating buttons, each as wide as its label, glass like the dock */
+  .filter-dock :global(.filter),
+  .filter-dock .dock-actions :global(.btn) {
+    height: 2.1rem;
+    padding: 0 var(--s-3);
+    border-radius: var(--r-sm);
+    font-size: var(--text-sm);
+  }
+  .filter-dock :global(.filter) {
+    background: color-mix(in srgb, var(--surface-1) 45%, transparent);
+    backdrop-filter: blur(14px) saturate(1.4);
+    -webkit-backdrop-filter: blur(14px) saturate(1.4);
+  }
+  .filter-dock :global(.filter:hover) {
+    background: color-mix(in srgb, var(--surface-2) 70%, transparent);
+  }
+  .filter-dock :global(.filter[aria-pressed="true"]) {
+    background: color-mix(in srgb, var(--tone) 22%, transparent);
   }
 
   /* ─── Chrome: the pinned band (notch, View-as banner), then the phone bar or the desktop corners ─── */
