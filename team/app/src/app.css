@@ -330,7 +330,7 @@ h3 {
   margin: 0 auto;
   padding: var(--s-5) var(--gutter) var(--s-10);
 }
-/* Filter chips: a tinted fill, no outline. In a row under a title, wrapping in the phone's Filters sheet, and
+/* Filter chips: a solid fill, no outline. In a row under a title, wrapping in the phone's Filters sheet, and
    stacked in the desktop aside (PageHeader restyles them there). Each sets --tone for its icon and its "on" fill. */
 .filters {
   display: flex;
@@ -346,7 +346,7 @@ h3 {
   padding: 0 var(--s-3);
   border: 0;
   border-radius: var(--r-sm);
-  background: color-mix(in srgb, var(--fg) 6%, transparent);
+  background: var(--surface-2);
   color: var(--fg-muted);
   font-size: var(--text-sm);
   font-weight: 500;
@@ -361,8 +361,11 @@ h3 {
 .filter:hover {
   color: var(--fg);
 }
+.filter:hover {
+  background: var(--surface-3);
+}
 .filter[aria-pressed="true"] {
-  background: color-mix(in srgb, var(--tone) 22%, transparent);
+  background: color-mix(in srgb, var(--tone) 24%, var(--surface-2));
   color: var(--fg);
 }
 .page-head {

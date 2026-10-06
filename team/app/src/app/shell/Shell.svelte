@@ -20,6 +20,7 @@
   import logo from "../../assets/cougars-mark.webp";
   import { owedBy } from "../../demo/dues.svelte";
   import { pounds } from "../../lib/dates";
+  import Pills from "../../lib/Pills.svelte";
   import Sheet from "../../lib/Sheet.svelte";
   import { phone } from "../../lib/viewport.svelte";
   import { pageBar } from "./page-bar.svelte";
@@ -106,6 +107,10 @@
   let content: HTMLElement | undefined = $state();
 
   let filtersOpen = $state(false);
+  // The desktop bar stays while you're typing in its search: a shorter list could otherwise scroll the page back
+  // and take the field away mid-word.
+  let toolsFocus = $state(false);
+  const barOn = $derived(pageBar.pinned || toolsFocus);
   // The desktop header shows the section's pages in its toolbar row
   $effect(() => {
     pageBar.strip = strip.map((r) => ({ id: r.id, path: r.path, label: r.short ?? r.name }));
@@ -232,11 +237,25 @@
           </div>
         {/if}
       {:else if !route.focus}
-        <!-- Desktop: the mark and your badge in the top corners -->
-        <div class="topbar">
+        <!-- Desktop: the mark and your badge in the top corners, and the page's toolbar row between them once it has
+             scrolled away -->
+        <div class="topbar" class:pinned={barOn}>
           <a class="brand" href="/" aria-label="Home">
             <img src={logo} alt="" width="36" height="36" />
           </a>
+          <!-- The page's toolbar row, once its own has scrolled away: the same pills, search, chips and buttons -->
+          <div
+            class="tools"
+            aria-hidden={!barOn}
+            inert={!barOn || undefined}
+            onfocusin={() => (toolsFocus = true)}
+            onfocusout={(e) => (toolsFocus = e.currentTarget.contains(e.relatedTarget as Node))}
+          >
+            {#if pageBar.strip.length > 1}<Pills items={pageBar.strip} current={pageBar.current} />{/if}
+            {#if pageBar.toolbar}{@render pageBar.toolbar()}{/if}
+            {#if pageBar.filters}{@render pageBar.filters()}{/if}
+            {#if pageBar.actions}<div class="tools-actions">{@render pageBar.actions()}</div>{/if}
+          </div>
           <AccountMenu />
         </div>
       {/if}
@@ -644,6 +663,64 @@
     }
     .topbar > :global(*) {
       pointer-events: auto;
+    }
+    /* Behind the bar, a veil: the page's background in from the top with a blur that fades out, so cards dissolve
+       under the controls. No edge. */
+    .topbar::before {
+      content: "";
+      position: absolute;
+      z-index: -1;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 7.5rem;
+      background: linear-gradient(
+        to bottom,
+        var(--bg),
+        color-mix(in srgb, var(--bg) 85%, transparent) 55%,
+        transparent
+      );
+      backdrop-filter: blur(18px) saturate(1.2);
+      -webkit-backdrop-filter: blur(18px) saturate(1.2);
+      mask-image: linear-gradient(to bottom, #000 55%, transparent);
+      -webkit-mask-image: linear-gradient(to bottom, #000 55%, transparent);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity var(--t-slow) var(--ease);
+    }
+    .topbar.pinned::before {
+      opacity: 1;
+    }
+    /* The row sits over the page column, where the page's own row was */
+    .tools {
+      display: flex;
+      align-items: center;
+      gap: var(--s-3);
+      width: 100%;
+      max-width: var(--page-max);
+      margin: 0 auto;
+      padding: 0 var(--gutter);
+      opacity: 0;
+      translate: 0 -0.4rem;
+      transition:
+        opacity var(--t-slow) var(--ease),
+        translate var(--t-slow) var(--ease);
+    }
+    .topbar.pinned .tools {
+      opacity: 1;
+      translate: 0 0;
+    }
+    .tools > :global(*) {
+      min-width: 0;
+    }
+    .tools :global(.search) {
+      width: 14rem;
+    }
+    .tools-actions {
+      display: flex;
+      align-items: center;
+      gap: var(--s-2);
+      margin-left: auto;
     }
     .brand {
       display: inline-flex;
