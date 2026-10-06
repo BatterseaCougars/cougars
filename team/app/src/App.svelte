@@ -58,7 +58,7 @@
 
   $effect(() => {
     if (!route.focus && !route.hidden) remember(route.tab, route.path);
-    document.title = route.id === "home" ? "Cougars" : `${route.name} · Cougars`;
+    document.title = route.id === "home" ? "Cougars Den" : `${route.name} · Cougars Den`;
   });
 </script>
 

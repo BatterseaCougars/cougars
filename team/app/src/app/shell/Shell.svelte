@@ -12,6 +12,9 @@
   import AccountMenu from "./AccountMenu.svelte";
   import Icon from "./Icon.svelte";
   import logo from "../../assets/cougars-mark.webp";
+  import { db } from "../../demo/store.svelte";
+  import { nextSession, sessionBookable } from "../../demo/schedule.svelte";
+  import { formatTime } from "../../lib/dates";
 
   let { route, children }: { route: Route; children: Snippet } = $props();
 
@@ -112,6 +115,35 @@
     return { update: run };
   }
 
+  // The scoreboard skin's top line: the next session, counting down, and whether you're in.
+  let now = $state(Date.now());
+  $effect(() => {
+    const t = setInterval(() => (now = Date.now()), 30_000);
+    return () => clearInterval(t);
+  });
+  const board = $derived.by(() => {
+    const series = db.series.find((x) => x.active);
+    const session = series && nextSession(series);
+    if (!series || !session) return null;
+    const b = sessionBookable(session);
+    const mins = Math.max(0, Math.floor((new Date(b.startsAt).getTime() - now) / 60_000));
+    const d = Math.floor(mins / 1440);
+    const h = Math.floor((mins % 1440) / 60);
+    const m = mins % 60;
+    const id = me().id;
+    const status = session.going.includes(id)
+      ? `IN #${session.going.indexOf(id) + 1}`
+      : session.waitlist.includes(id)
+        ? "WAITLIST"
+        : "NOT IN";
+    return {
+      what: `${series.shortName} ${formatTime(b.startsAt)}`.toUpperCase(),
+      clock: d ? `${d}D ${String(h).padStart(2, "0")}H` : `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`,
+      status,
+      lit: status !== "NOT IN",
+    };
+  });
+
   const glideKey = $derived(`${route.id}|${JSON.stringify(opened)}|${[...perms].join()}|${all.length}`);
 </script>
 
@@ -136,7 +168,7 @@
       <img src={logo} alt="" width="34" height="34" />
       <span class="brand-text">
         <span class="display brand-title">Cougars</span>
-        <span class="brand-sub">Team app</span>
+        <span class="brand-sub">Den</span>
       </span>
     </a>
     <nav class="nav" use:glide={{ shape: rowShape, key: glideKey }}>
@@ -188,8 +220,15 @@
         <div class="topbar">
           <a class="topbar-brand" href="/" aria-label="Home">
             <img src={logo} alt="" width="28" height="28" />
-            <span class="display">Cougars</span>
+            <span class="display">Cougars <span class="den">Den</span></span>
           </a>
+          {#if board}
+            <a class="board" href="/" aria-label="Next session">
+              <span>{board.what}</span>
+              <span class="board-clock">{board.clock}</span>
+              <span class:lit={board.lit}>{board.status}</span>
+            </a>
+          {/if}
           <nav class="crumbs" aria-label="You are here">
             {#each crumbs as c, i (c)}
               {#if i > 0}<span class="sep" aria-hidden="true">/</span>{/if}
@@ -496,6 +535,10 @@
     gap: var(--s-2);
     font-size: 1.15rem;
     color: var(--fg);
+  }
+  /* Only the scoreboard skin shows the board (skins.css) */
+  .board {
+    display: none;
   }
   .crumbs {
     display: flex;

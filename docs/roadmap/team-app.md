@@ -1,6 +1,6 @@
 # Team-app roadmap
 
-A mobile-first app for club members, served from its own Worker (`team/app`, port 4510) on the same D1 database as
+**Cougars Den** (the team app in these docs and in code): a mobile-first app for club members, served from its own Worker (`team/app`, port 4510) on the same D1 database as
 the website. It replaces the old `apps/ops` plan (website roadmap M6–M8). Overview and free-tier budget:
 [../roadmap.md](../roadmap.md).
 
