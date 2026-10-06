@@ -6,6 +6,7 @@
   import Icon from "../app/shell/Icon.svelte";
   import EventCard from "../lib/EventCard.svelte";
   import { formatDayDate, pounds } from "../lib/dates";
+  import { ASK, IN, OUT, WAITLIST, pick, type Quip } from "../lib/quips";
 
   const perms = $derived(granted());
   const next = $derived(db.events.find((e) => e.kind === "friday")!);
@@ -15,6 +16,13 @@
   const first = ME.name.split(" ")[0];
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Morning" : hour < 18 ? "Afternoon" : "Evening";
+
+  // The locker room has a word for you until you answer, and another once you have.
+  let said: Quip | null = $state(null);
+  const quip = $derived(said ?? (answered ? null : ASK));
+  function onanswer(status: "in" | "waitlist" | "out") {
+    said = pick(status === "in" ? IN : status === "waitlist" ? WAITLIST : OUT);
+  }
 </script>
 
 <div class="page">
@@ -25,7 +33,15 @@
 
   <section>
     <p class="eyebrow lead">{answered ? "This Friday" : "Are you in this Friday?"}</p>
-    <EventCard event={next} canSignUp={can(perms, "signup:Event")} feature={!answered} />
+    {#if quip}
+      {#key quip.text}
+        <blockquote class="quote rise">
+          <p class="display">“{quip.text}”</p>
+          {#if quip.by}<footer class="hint">{quip.by}</footer>{/if}
+        </blockquote>
+      {/key}
+    {/if}
+    <EventCard event={next} canSignUp={can(perms, "signup:Event")} feature={!answered} {onanswer} />
     {#if !answered}<p class="hint nag">Teams are made from sign-ups, so say in or out before Friday.</p>{/if}
   </section>
 
@@ -86,6 +102,18 @@
   }
   .nag {
     margin-left: var(--s-1);
+  }
+  .quote {
+    display: grid;
+    gap: var(--s-1);
+    margin: 0 0 var(--s-1);
+    padding: 0 var(--s-1) 0 var(--s-4);
+    border-left: 3px solid var(--red);
+  }
+  .quote p {
+    font-size: clamp(1.5rem, 6.5vw, 2rem);
+    color: var(--fg);
+    text-wrap: balance;
   }
   .team {
     font-size: 1.25rem;

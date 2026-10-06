@@ -7,7 +7,14 @@
     event,
     canSignUp = true,
     feature = false,
-  }: { event: ClubEvent; canSignUp?: boolean; feature?: boolean } = $props();
+    onanswer,
+  }: {
+    event: ClubEvent;
+    canSignUp?: boolean;
+    feature?: boolean;
+    /** Called after a tap on In or Out with where the member ended up. */
+    onanswer?: (status: "in" | "waitlist" | "out") => void;
+  } = $props();
 
   const badge = $derived(dateBadge(event.startsAt));
   const inIt = $derived(event.going.includes(ME.id));
@@ -25,10 +32,16 @@
         event.going = [...event.going, event.waitlist[0]];
         event.waitlist = event.waitlist.slice(1);
       }
+      onanswer?.("out");
       return;
     }
-    if (full) event.waitlist = [...event.waitlist, ME.id];
-    else event.going = [...event.going, ME.id];
+    if (full) {
+      event.waitlist = [...event.waitlist, ME.id];
+      onanswer?.("waitlist");
+    } else {
+      event.going = [...event.going, ME.id];
+      onanswer?.("in");
+    }
   }
 </script>
 
