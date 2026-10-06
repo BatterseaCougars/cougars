@@ -731,14 +731,20 @@
       margin-left: calc(-1 * var(--s-2));
       color: var(--red-hot);
     }
+    /* The page title's face, smaller: heavy italic capitals, so the bar reads as the page's title */
     .bar-title {
       flex: 1;
       min-width: 0;
       margin: 0;
       overflow: hidden;
       color: var(--fg);
-      font-size: var(--text-md);
-      font-weight: 600;
+      font-family: var(--font-display);
+      font-size: 1.45rem;
+      font-style: italic;
+      font-weight: 400;
+      letter-spacing: 0.005em;
+      line-height: 1;
+      text-transform: uppercase;
       white-space: nowrap;
       text-overflow: ellipsis;
     }

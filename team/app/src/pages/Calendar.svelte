@@ -3,6 +3,7 @@
   // has its own icon and colour, and the chips at the top filter to one kind. Trainings and tournaments are set
   // up under Settings; one-off events are added here.
   import PageHeader from "../lib/PageHeader.svelte";
+  import Sheet from "../lib/Sheet.svelte";
   import { can } from "../access/actions";
   import type { IconName } from "../app/shell/icons";
   import Icon from "../app/shell/Icon.svelte";
@@ -90,9 +91,7 @@
   >
     {#snippet actions()}
       {#if can(perms, "create:Event")}
-        <button class="btn sm" class:primary={!adding} class:ghost={adding} onclick={() => (adding = !adding)}>
-          {adding ? "Cancel" : "+ Event"}
-        </button>
+        <button class="btn sm primary" aria-haspopup="dialog" onclick={() => (adding = true)}>+ Event</button>
       {/if}
     {/snippet}
     {#snippet filters()}
@@ -112,8 +111,17 @@
     {/snippet}
   </PageHeader>
 
-  {#if adding}
-    <form class="panel pad form rise" onsubmit={add}>
+  {#each months as month (month.label)}
+    <h2 class="section-title">{month.label}</h2>
+    {#each month.events as event (event.key)}
+      <EventCard {event} compact canSignUp={can(perms, "signup:Event")} />
+    {/each}
+  {:else}
+    <p class="hint">Nothing coming up{filter === "all" ? "" : " for this one"}.</p>
+  {/each}
+  <!-- A one-off event, in a sheet (a modal on desktop): the list stays where it is -->
+  <Sheet bind:open={adding} title="Add an event">
+    <form class="form" onsubmit={add}>
       <p class="hint">
         A one-off: a social, a kit day. Trainings and tournaments are set up under Settings, so they repeat and keep
         their own pages.
@@ -129,16 +137,7 @@
       <label class="check"><input type="checkbox" bind:checked={draft.signup} /> Members say in or out</label>
       <button class="btn primary">Add to calendar</button>
     </form>
-  {/if}
-
-  {#each months as month (month.label)}
-    <h2 class="section-title">{month.label}</h2>
-    {#each month.events as event (event.key)}
-      <EventCard {event} compact canSignUp={can(perms, "signup:Event")} />
-    {/each}
-  {:else}
-    <p class="hint">Nothing coming up{filter === "all" ? "" : " for this one"}.</p>
-  {/each}
+  </Sheet>
 </div>
 
 <style>

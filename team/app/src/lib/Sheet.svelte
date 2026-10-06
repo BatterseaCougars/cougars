@@ -1,7 +1,8 @@
 <script lang="ts">
   /**
-   * A sheet up from the bottom of a phone (the Filters sheet). A native modal dialog, so it sits above everything,
-   * traps focus and closes on Escape; a tap on the dimmed page closes it too.
+   * A sheet up from the bottom of a phone, a centred modal on desktop (the Filters sheet, + Event). A native modal
+   * dialog, so it sits above everything, traps focus and closes on Escape; a tap on the dimmed page closes it too.
+   * Nothing on the page moves when it opens.
    */
   import type { Snippet } from "svelte";
   import Icon from "../app/shell/Icon.svelte";
@@ -62,6 +63,26 @@
   @keyframes up {
     from {
       translate: 0 100%;
+    }
+  }
+  @media (min-width: 901px) {
+    .bottom-sheet {
+      width: min(30rem, calc(100vw - 4rem));
+      max-height: 85dvh;
+      margin: auto;
+      border-radius: var(--r-xl);
+    }
+    .bottom-sheet[open] {
+      animation: pop var(--t-slow) cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .body {
+      padding: var(--s-4) var(--s-5) var(--s-5);
+    }
+  }
+  @keyframes pop {
+    from {
+      translate: 0 12px;
+      scale: 0.97;
     }
   }
   .body {
