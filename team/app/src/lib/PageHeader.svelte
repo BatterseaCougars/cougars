@@ -2,9 +2,8 @@
   /**
    * The top of a page: an eyebrow, the title (with a badge beside it), one line under it, then the toolbar row:
    * the section's pages (Games, Standings, Draft), the page's search or tabs, its filters, and its actions on the
-   * right. On desktop the title scrolls away like content and the row docks just under the top of the window; as
-   * it rises, the shell's veil is already fading in behind it (Shell.svelte), so the title dissolves and the row
-   * takes its place in one motion. A page with a row is kept a little taller than the window, so a filter that
+   * right. On desktop the title scrolls away like content and the row docks just under the top of the window; the
+   * moment it docks, a band of the page's background drops down from above and catches it. A page with a row is kept a little taller than the window, so a filter that
    * shortens the list can't snap the scroll back and move the row under your pointer. Phones show the title in
    * the shell's slim bar (so here it's for screen readers only), and the shell takes the actions and filters too;
    * the line and the search or tabs stay here. Home has no header.
@@ -71,6 +70,25 @@
   // Desktop: when the page gets shorter under the docked row (a filter left a few results), and what's left fits
   // on one screen, start it right under the row. The row stays where it is; the results come to it, rather than
   // sitting hidden above it under the veil.
+  // Docked: the sticky row has reached its place at the top. That's when its band comes in, not before.
+  let docked = $state(false);
+  $effect(() => {
+    const el = row;
+    if (!el || phone.current) {
+      docked = false;
+      return;
+    }
+    const view = el.closest<HTMLElement>(".view");
+    if (!view) return;
+    const dockAt = parseFloat(getComputedStyle(el).top) || 0;
+    const check = () => {
+      docked = view.scrollTop > 0 && el.getBoundingClientRect().top - view.getBoundingClientRect().top <= dockAt + 0.5;
+    };
+    check();
+    view.addEventListener("scroll", check, { passive: true });
+    return () => view.removeEventListener("scroll", check);
+  });
+
   let header = $state<HTMLElement | undefined>();
   let row = $state<HTMLElement | undefined>();
   $effect(() => {
@@ -109,7 +127,7 @@
 </header>
 <!-- A sibling of the header, not a child: a sticky element can only pin within its parent, and the header scrolls away -->
 {#if hasToolbar}
-  <div class="toolbar page-toolbar" bind:this={row}>
+  <div class="toolbar page-toolbar" class:docked bind:this={row}>
     {#if strip.length}<Pills items={strip} current={pageBar.current} />{/if}
     {#if toolbar}{@render toolbar()}{/if}
     {#if filters && !phone.current}{@render filters()}{/if}
@@ -172,15 +190,15 @@
     margin-left: auto;
   }
 
-  /* Desktop: the row docks just under the top as the page scrolls; the shell's veil is behind it by then */
+  /* Desktop: the row docks just under the top as the page scrolls */
   @media (min-width: 901px) {
     .toolbar {
       position: sticky;
       top: var(--s-4);
       z-index: 4;
     }
-    /* Once the page has scrolled, a band of the page's own background behind the row, ending a little below it so
-       the cards stop short of the chips, with a soft shadow for its edge. No blur, no line. */
+    /* Behind the docked row, a band of the page's own background, ending a little below it so the cards stop
+       short of the chips, with a soft shadow for its edge. No blur, no line. */
     .toolbar::before {
       content: "";
       position: fixed;
@@ -192,11 +210,16 @@
       background: var(--bg);
       box-shadow: 0 10px 24px -12px rgb(0 0 0 / 0.75);
       opacity: 0;
+      translate: 0 -100%;
       pointer-events: none;
-      transition: opacity var(--t-slow) var(--ease);
+      transition:
+        translate 320ms cubic-bezier(0.22, 1, 0.36, 1),
+        opacity 200ms var(--ease);
     }
-    :global(.view.scrolled) .toolbar::before {
+    /* The moment the row docks, the band drops down from above and catches it */
+    .toolbar.docked::before {
       opacity: 1;
+      translate: 0 0;
     }
     .toolbar :global(.search) {
       width: 14rem;

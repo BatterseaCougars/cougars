@@ -111,17 +111,6 @@
     pageBar.strip = strip.map((r) => ({ id: r.id, path: r.path, label: r.short ?? r.name }));
     pageBar.current = route.id;
   });
-  // Once the page has scrolled, its toolbar row's veil fades in across the top of the window (desktop, PageHeader).
-  // Only the frost changes: nothing moves.
-  let scrolled = $state(false);
-  $effect(() => {
-    void route.id;
-    scrolled = false;
-  });
-  function onScroll(e: Event) {
-    const view = e.target;
-    if (view instanceof HTMLElement && view.classList.contains("view")) scrolled = view.scrollTop > 8;
-  }
   const showBar = $derived(!route.focus && route.id !== "home");
 
   // Tapping the tab you're on goes to its first page; on the first page, it scrolls to the top.
@@ -299,12 +288,11 @@
       </Sheet>
     {/if}
 
-    <div class="content" bind:this={content} style:--chrome-h="{chromeH}px" onscrollcapture={onScroll}>
+    <div class="content" bind:this={content} style:--chrome-h="{chromeH}px">
       {#key route.id}
         <div
           class="view"
           class:under-tabs={!route.focus}
-          class:scrolled
           in:enter={{ focus: route.focus }}
           out:leave={{ focus: route.focus }}
         >
