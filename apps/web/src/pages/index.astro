@@ -16,6 +16,7 @@ import {
   upcoming,
 } from "../lib/sanity/content";
 import { imageUrl, objectPosition } from "../lib/sanity/images";
+import { clubData } from "../lib/structured-data";
 import EventList from "../components/EventList.astro";
 import Empty from "../components/Empty.astro";
 import KumitePoster from "../components/KumitePoster.astro";
@@ -61,7 +62,14 @@ const strip: [string, string][] = [
 ];
 ---
 
-<Base>
+<Base
+  structuredData={clubData(
+    s,
+    Astro.site!,
+    logo.src,
+    `Roller hockey club in Battersea, South West London, since ${s.founded}.`,
+  )}
+>
   <!-- Poster hero: the logo, and the one line that matters -->
   <section
     class="hero"

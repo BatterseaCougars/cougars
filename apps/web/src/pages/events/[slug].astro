@@ -1,7 +1,8 @@
 ---
 import type { GetStaticPaths } from "astro";
 import Base from "../../layouts/Base.astro";
-import { getEventPages } from "../../lib/sanity/content";
+import { getEventPages, getSettings } from "../../lib/sanity/content";
+import { eventData } from "../../lib/structured-data";
 import { imageSrcSet, imageUrl, objectPosition } from "../../lib/sanity/images";
 import { renderPortableText } from "../../lib/portable-text";
 import { formatRange } from "../../lib/dates";
@@ -17,6 +18,9 @@ const { event } = Astro.props as { event: ClubEvent };
 const cover = imageUrl(event.cover, 1600, 900);
 const TYPE = { training: "Training", social: "Social", tournament: "Tournament", kumite: "Special event · Kumite" };
 const body = renderPortableText(event.body);
+const s = await getSettings();
+const url = new URL(Astro.url.pathname, Astro.site).href;
+const shareImage = imageUrl(event.cover, 1200, 630) ?? new URL(`/og/events/${event.slug}.png`, Astro.site).href;
 ---
 
 <Base
@@ -24,6 +28,7 @@ const body = renderPortableText(event.body);
   card={`events/${event.slug}`}
   description={event.summary ?? undefined}
   image={imageUrl(event.cover, 1200, 630)}
+  structuredData={eventData(event, s, url, shareImage)}
 >
   <article class="wrap page-body">
     <header class="head">
