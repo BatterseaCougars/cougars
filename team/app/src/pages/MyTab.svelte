@@ -1,9 +1,12 @@
 <script lang="ts">
   import BackLink from "../lib/BackLink.svelte";
-  import { MY_LEDGER } from "../demo/data";
+  import { ledgerFor, referenceFor } from "../demo/data";
+  import { me } from "../demo/session.svelte";
   import { pounds } from "../lib/dates";
 
-  const owed = MY_LEDGER.reduce((sum, l) => sum + l.pence, 0);
+  const who = me();
+  const ledger = ledgerFor(who.id);
+  const owed = ledger.reduce((sum, l) => sum + l.pence, 0);
 </script>
 
 <div class="page">
@@ -24,14 +27,14 @@
       <dt>Account</dt>
       <dd>00000000</dd>
       <dt>Reference</dt>
-      <dd class="ref">COU-0001</dd>
+      <dd class="ref">{referenceFor(who.id)}</dd>
     </dl>
     <p class="hint">Always use your reference, so your payment is matched to you. Sample bank details.</p>
   </div>
 
   <h2 class="section-title">History</h2>
   <div class="list">
-    {#each [...MY_LEDGER].reverse() as l (l.date + l.what)}
+    {#each [...ledger].reverse() as l (l.date + l.what)}
       <div class="row">
         <span class="grow"><span class="title">{l.what}</span><span class="sub">{l.date}</span></span>
         <span class="num amt" class:paid={l.pence < 0}>{l.pence < 0 ? "−" : ""}{pounds(Math.abs(l.pence))}</span>

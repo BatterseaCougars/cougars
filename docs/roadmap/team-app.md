@@ -42,12 +42,15 @@ Copied in shape from Gwenda ops (`gwenda-hackney/ark`, `ops/site/src/app/`), whi
   - **More** is a full page, and its pages show a `‹ More` back link
   - editors hide the tabs and show their own back bar, with an unsaved-changes guard
 - **Desktop:** a collapsible side rail.
-- **Tabs:**
+- **Tabs**, most-used first:
   - **Home**: am I in this Friday, my team, my tab, notices
-  - **Calendar**: events, sign-up, teams, the register
-  - **Kumite**: games, draft, standings
-  - **Upload** for contributors, **Club** (roster, photos, videos) for everyone else
-  - **More**: profile, admin (members, roles, fees, Overdue Rentals, website content), sign out
+  - **Friday**: who's in (in sign-up order) and the teams, your team first; the register for the door
+  - **Calendar**: every club event
+  - **Kumite**: games, standings, draft
+  - **More**: the club (roster, upload), you (profile, tab) and **Settings** for admins, grouped People and Money
+- **Account badge**, top right: your name, profile, tab, sign out, and **View as a member** for admins
+  ([ADR 0027](../adr/0027-view-as-a-member.md)). On desktop the rail lists the same pages, with Settings folding
+  open.
 - **Look:** the club's red, white and carbon, and the logo, in a plain readable app font. The video-shop styling
   stays on the website and in names (Overdue Rentals); working screens stay plain.
 - **PWA:** a manifest, icons and a service worker that caches the app shell, so it installs to the home screen and
@@ -93,6 +96,8 @@ Copied in shape from Gwenda ops (`gwenda-hackney/ark`, `ops/site/src/app/`), whi
   - **Members** (admin): approve requests, assign roles, set position, rating and the cougar flag
   - **Roles** (admin): create a role, tick its actions; the last admin can't be removed
   - **Profile**: own details and photo
+- [ ] **View as a member** (`impersonate:Member`, [ADR 0027](../adr/0027-view-as-a-member.md)): an admin sees the
+      app exactly as a member does, read-only, from the account badge.
 - [ ] One-off import of players from the archived Airtable base. Website enquiries can be turned into members.
 - [ ] Secrets, each documented in [README.md#secrets](../../README.md#secrets): `TEAM_SESSION_SECRET`, the Gmail
       OAuth client and refresh token for batterseahockey@gmail.com, and the Google sign-in OAuth client.

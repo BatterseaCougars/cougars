@@ -1,4 +1,5 @@
 <script lang="ts">
+  import BackLink from "../lib/BackLink.svelte";
   import { can } from "../access/actions";
   import { granted } from "../demo/session.svelte";
   import Icon from "../app/shell/Icon.svelte";
@@ -17,6 +18,7 @@
 </script>
 
 <div class="page">
+  <BackLink />
   <div class="page-head">
     <div>
       <h1>Upload</h1>

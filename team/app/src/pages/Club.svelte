@@ -1,4 +1,5 @@
 <script lang="ts">
+  import BackLink from "../lib/BackLink.svelte";
   import { can } from "../access/actions";
   import { PLAYERS } from "../demo/data";
   import { granted } from "../demo/session.svelte";
@@ -10,6 +11,7 @@
 </script>
 
 <div class="page">
+  <BackLink />
   <div class="page-head">
     <div>
       <h1>Roster</h1>

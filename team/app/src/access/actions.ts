@@ -20,6 +20,7 @@ export const ACTIONS = {
   "publish:Media": "Publish photos and videos",
   "read:Rating": "See player ratings",
   "manage:Member": "Approve and edit members",
+  "impersonate:Member": "View the app as a member (read-only)",
   "manage:Role": "Edit roles",
   "edit:Content": "Edit website content",
   "manage:all": "Everything",

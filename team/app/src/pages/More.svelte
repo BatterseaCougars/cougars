@@ -1,56 +1,63 @@
 <script lang="ts">
+  // Phones: everything that isn't a tab. You, the club, then Settings for admins, grouped People / Money.
   import { can } from "../access/actions";
   import Icon from "../app/shell/Icon.svelte";
-  import { ROUTES } from "../app/nav-routes";
-  import { ME } from "../demo/data";
-  import { granted, session, viewAs } from "../demo/session.svelte";
-  import { db } from "../demo/store.svelte";
+  import { ROUTES, type Group, type Route } from "../app/nav-routes";
+  import { emailFor } from "../demo/data";
+  import { granted, impersonating, me, rolesOf } from "../demo/session.svelte";
+  import { initials } from "../lib/initials";
 
   const perms = $derived(granted());
-  const groups = $derived(
-    (["Me", "Admin"] as const)
-      .map((g) => ({ g, routes: ROUTES.filter((r) => r.group === g && can(perms, r.action)) }))
-      .filter((x) => x.routes.length),
+  const who = $derived(me());
+  const visible = (g: Group) => ROUTES.filter((r) => r.group === g && can(perms, r.action));
+  const club = $derived(visible("Club"));
+  const you = $derived(visible("You"));
+  const settings = $derived(
+    (["People", "Money"] as const)
+      .map((section) => ({ section, routes: visible("Settings").filter((r) => r.section === section) }))
+      .filter((s) => s.routes.length),
   );
-  const initials = ME.name
-    .split(" ")
-    .map((w) => w[0])
-    .join("");
 </script>
 
-<div class="page">
-  <header class="me">
-    <span class="avatar big">{initials}</span>
-    <div>
-      <h1>{ME.name}</h1>
-      <p class="hint">alex@example.com · {session.role}</p>
-    </div>
-  </header>
-
-  {#each groups as { g, routes } (g)}
-    <h2 class="section-title">{g}</h2>
-    <div class="list">
-      {#each routes as r (r.id)}
-        <a class="row" href={r.path}>
-          <span class="glyph"><Icon name={r.icon} /></span>
-          <span class="grow"><span class="title">{r.name}</span><span class="sub">{r.hint}</span></span>
-          <Icon name="chevronRight" size={18} />
-        </a>
-      {/each}
-    </div>
-  {/each}
-
-  <h2 class="section-title">Demo · view the app as</h2>
-  <div class="seg roles" role="group" aria-label="View as role">
-    {#each db.roles as role (role.id)}
-      <button aria-pressed={session.role === role.name} onclick={() => viewAs(role.name)}>{role.name}</button>
+{#snippet rows(routes: Route[])}
+  <div class="list">
+    {#each routes as r (r.id)}
+      <a class="row" href={r.path}>
+        <span class="glyph"><Icon name={r.icon} /></span>
+        <span class="grow"><span class="title">{r.name}</span><span class="sub">{r.hint}</span></span>
+        <Icon name="chevronRight" size={18} />
+      </a>
     {/each}
   </div>
-  <p class="hint">Real sign-in comes in T1. Pages and buttons follow the role's actions, as they will for real.</p>
+{/snippet}
 
-  <div class="list">
-    <button class="row signout"><Icon name="signOut" /> <span class="grow title">Sign out</span></button>
-  </div>
+<div class="page">
+  <a class="me" href="/me">
+    <span class="avatar big" class:as={impersonating()}>{initials(who.name)}</span>
+    <span class="grow">
+      <span class="name">{who.name}</span>
+      <span class="hint">{emailFor(who)} · {rolesOf(who.id).join(", ")}</span>
+    </span>
+    <Icon name="chevronRight" size={18} />
+  </a>
+
+  <h2 class="section-title">You</h2>
+  {@render rows(you)}
+
+  <h2 class="section-title">Club</h2>
+  {@render rows(club)}
+
+  {#if settings.length}
+    <div class="settings">
+      <h2 class="settings-title"><Icon name="settings" size={16} /> Settings</h2>
+      {#each settings as s (s.section)}
+        <h3 class="section-title">{s.section}</h3>
+        {@render rows(s.routes)}
+      {/each}
+    </div>
+  {/if}
+
+  <p class="hint">Use the badge at the top to switch who you're viewing as, or to sign out.</p>
 </div>
 
 <style>
@@ -58,9 +65,16 @@
     display: flex;
     align-items: center;
     gap: var(--s-4);
-    padding-bottom: var(--s-2);
+    padding: var(--s-2) var(--s-1);
+    color: var(--fg-muted);
   }
-  .me h1 {
+  .me .grow {
+    display: grid;
+    flex: 1;
+    min-width: 0;
+  }
+  .name {
+    color: var(--fg);
     font-size: var(--text-lg);
     font-weight: 600;
   }
@@ -68,13 +82,28 @@
     width: 3.5rem;
     height: 3.5rem;
     font-size: var(--text-md);
+    border-color: var(--red-border);
+    background: var(--red-wash-strong);
+    color: var(--fg);
   }
-  .roles {
+  .avatar.as {
+    border-color: var(--amber-border);
+    background: var(--amber-wash);
+    color: var(--amber);
+  }
+  .settings {
+    display: grid;
+    gap: var(--s-5);
+    margin-top: var(--s-3);
+    padding-top: var(--s-5);
+    border-top: 1px solid var(--border);
+  }
+  .settings-title {
     display: flex;
-    flex-wrap: wrap;
-  }
-  .signout :global(svg),
-  .signout .title {
-    color: var(--red-hot);
+    align-items: center;
+    gap: var(--s-2);
+    color: var(--fg);
+    font-size: var(--text-md);
+    font-weight: 600;
   }
 </style>

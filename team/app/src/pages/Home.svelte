@@ -1,7 +1,7 @@
 <script lang="ts">
   import { can } from "../access/actions";
-  import { ME, MY_LEDGER, PLAYERS } from "../demo/data";
-  import { granted } from "../demo/session.svelte";
+  import { PLAYERS, ledgerFor, referenceFor } from "../demo/data";
+  import { granted, me } from "../demo/session.svelte";
   import { db } from "../demo/store.svelte";
   import Icon from "../app/shell/Icon.svelte";
   import EventCard from "../lib/EventCard.svelte";
@@ -9,11 +9,14 @@
   import { ASK, IN, OUT, WAITLIST, pick, type Quip } from "../lib/quips";
 
   const perms = $derived(granted());
+  const who = $derived(me());
   const next = $derived(db.events.find((e) => e.kind === "friday")!);
-  const answered = $derived(next.going.includes(ME.id) || next.waitlist.includes(ME.id));
-  const myTeam = $derived(db.teams?.find((t) => t.players.includes(ME.id)));
-  const owed = MY_LEDGER.reduce((sum, l) => sum + l.pence, 0);
-  const first = ME.name.split(" ")[0];
+  const isIn = $derived(next.going.includes(who.id));
+  const waiting = $derived(next.waitlist.includes(who.id));
+  const answered = $derived(isIn || waiting);
+  const position = $derived(next.going.indexOf(who.id) + 1);
+  const myTeam = $derived(db.teams?.find((t) => t.players.includes(who.id)));
+  const owed = $derived(ledgerFor(who.id).reduce((sum, l) => sum + l.pence, 0));
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Morning" : hour < 18 ? "Afternoon" : "Evening";
 
@@ -23,12 +26,18 @@
   function onanswer(status: "in" | "waitlist" | "out") {
     said = pick(status === "in" ? IN : status === "waitlist" ? WAITLIST : OUT);
   }
+  const teammates = (ids: number[]) =>
+    ids
+      .filter((id) => id !== who.id)
+      .slice(0, 3)
+      .map((id) => PLAYERS.find((p) => p.id === id)?.name.split(" ")[0])
+      .join(", ");
 </script>
 
 <div class="page">
   <header class="hello">
     <p class="kicker">Battersea Cougars</p>
-    <h1 class="display">{greeting}, {first}</h1>
+    <h1 class="display">{greeting}, {who.name.split(" ")[0]}</h1>
   </header>
 
   <section>
@@ -46,30 +55,31 @@
   </section>
 
   <div class="list">
-    <a class="row" href="/calendar/teams">
-      <Icon name="teams" />
+    <a class="row" href="/friday">
+      <span class="glyph"><Icon name="teams" /></span>
       <span class="grow">
-        <span class="title">{myTeam ? `You're on ${myTeam.name}` : "Your team"}</span>
-        <span class="sub">
-          {#if myTeam}
-            With {myTeam.players
-              .filter((id) => id !== ME.id)
-              .slice(0, 3)
-              .map((id) => PLAYERS.find((p) => p.id === id)?.name.split(" ")[0])
-              .join(", ")} and {myTeam.players.length - 4} more
-          {:else}
-            Out after sign-up closes on {formatDayDate(next.startsAt)}
-          {/if}
-        </span>
+        {#if myTeam}
+          <span class="title">You're on {myTeam.name}</span>
+          <span class="sub">With {teammates(myTeam.players)} and {myTeam.players.length - 4} more</span>
+        {:else if isIn}
+          <span class="title">You're in, number {position} of {next.going.length}</span>
+          <span class="sub">Teams are out after sign-up closes on {formatDayDate(next.startsAt)}</span>
+        {:else if waiting}
+          <span class="title">You're on the waitlist</span>
+          <span class="sub">You'll move up if someone drops out</span>
+        {:else}
+          <span class="title">Who's in this Friday</span>
+          <span class="sub">{next.going.length} signed up so far</span>
+        {/if}
       </span>
       {#if myTeam}<span class="display team">{myTeam.name}</span>{/if}
       <Icon name="chevronRight" size={18} />
     </a>
-    <a class="row" href="/more/tab">
-      <Icon name="pound" />
+    <a class="row" href="/me/tab">
+      <span class="glyph"><Icon name="pound" /></span>
       <span class="grow">
         <span class="title">Your tab</span>
-        <span class="sub">{owed > 0 ? "Pay by bank transfer, reference COU-0001" : "All square"}</span>
+        <span class="sub">{owed > 0 ? `Pay by bank transfer, reference ${referenceFor(who.id)}` : "All square"}</span>
       </span>
       <span class="display owe num" class:zero={owed <= 0}>{pounds(owed)}</span>
       <Icon name="chevronRight" size={18} />
@@ -97,9 +107,7 @@
     display: grid;
     gap: var(--s-3);
   }
-  .lead {
-    margin-left: var(--s-1);
-  }
+  .lead,
   .nag {
     margin-left: var(--s-1);
   }

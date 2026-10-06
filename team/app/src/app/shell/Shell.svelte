@@ -1,29 +1,72 @@
 <script lang="ts">
-  import { onMount, tick, type Snippet } from "svelte";
+  import { type Snippet } from "svelte";
   import { fade } from "svelte/transition";
   import { can } from "../../access/actions";
-  import { granted } from "../../demo/session.svelte";
+  import { granted, impersonating, me, realMember, rolesOf, viewAs } from "../../demo/session.svelte";
   import { stripRoutes, tabHref, tabRoutes } from "../mobile-nav";
   import { ROUTES, TABS, type Route, type TabId } from "../nav-routes";
   import { navigate, router } from "../router.svelte";
   import { easeOut, fadeMs, flyMs, prefersReducedMotion, zoom } from "../motion";
-  import { createMark, pillShape, rowShape, underlineShape } from "./mark";
+  import { glide, pillShape, rowShape, underlineShape } from "./mark";
+  import AccountMenu from "./AccountMenu.svelte";
   import Icon from "./Icon.svelte";
-  import mark from "../../assets/cougars-mark.webp";
+  import logo from "../../assets/cougars-mark.webp";
 
   let { route, children }: { route: Route; children: Snippet } = $props();
 
   const perms = $derived(granted());
   const strip = $derived(route.focus ? [] : stripRoutes(route.tab, perms));
-  const tabLabel = $derived(TABS.find((t) => t.id === route.tab)?.label ?? "");
+  const allowed = (r: Route) => !r.focus && can(perms, r.action);
 
+  // Rail: the member's pages first, flat; Club; then Settings, which folds open.
+  const railSections = $derived(
+    [
+      { label: "", routes: ROUTES.filter((r) => r.tab === "home") },
+      { label: "Friday", routes: ROUTES.filter((r) => r.tab === "friday") },
+      { label: "", routes: ROUTES.filter((r) => r.tab === "calendar") },
+      { label: "Kumite", routes: ROUTES.filter((r) => r.tab === "kumite") },
+      { label: "Club", routes: ROUTES.filter((r) => r.group === "Club") },
+    ]
+      .map((s) => ({ ...s, routes: s.routes.filter(allowed) }))
+      .filter((s) => s.routes.length),
+  );
+  const settings = $derived(
+    (["People", "Money"] as const)
+      .map((section) => ({ section, routes: ROUTES.filter((r) => r.section === section && allowed(r)) }))
+      .filter((s) => s.routes.length),
+  );
+  const inSettings = $derived(route.group === "Settings");
+
+  const OPEN_KEY = "team.rail.settings";
+  let settingsOpen = $state(readOpen());
+  function readOpen() {
+    try {
+      return localStorage.getItem(OPEN_KEY) === "1";
+    } catch {
+      return false;
+    }
+  }
+  // A settings page is open: its group is too.
+  const showSettings = $derived(settingsOpen || inSettings);
+  function toggleSettings() {
+    settingsOpen = !showSettings;
+    try {
+      localStorage.setItem(OPEN_KEY, settingsOpen ? "1" : "0");
+    } catch {
+      // Private mode: the rail forgets.
+    }
+  }
+
+  // Desktop top bar: where you are. The tab, then the page when it isn't the tab's own name.
+  const crumbs = $derived.by(() => {
+    if (route.group === "Settings") return ["Settings", route.name];
+    if (route.group) return [route.group, route.name];
+    const tab = TABS.find((t) => t.id === route.tab)!.label;
+    return tab === route.name ? [tab] : [tab, route.name];
+  });
+
+  let chromeH = $state(0);
   let content: HTMLElement | undefined = $state();
-  let railNav: HTMLElement | undefined = $state();
-  let railMark: HTMLElement | undefined = $state();
-  let tabsNav: HTMLElement | undefined = $state();
-  let tabsMark: HTMLElement | undefined = $state();
-  let stripNav: HTMLElement | undefined = $state();
-  let stripMark: HTMLElement | undefined = $state();
 
   // Tapping the tab you're on goes to its first page; on the first page, it scrolls to the top.
   function onTab(tab: TabId, event: MouseEvent) {
@@ -33,13 +76,6 @@
     if (router.path !== first) navigate(first);
     else content?.querySelector(".view")?.scrollTo({ top: 0, behavior: prefersReducedMotion ? "auto" : "smooth" });
   }
-
-  const railGroups = $derived(
-    TABS.map((t) => ({
-      ...t,
-      routes: ROUTES.filter((r) => r.tab === t.id && !r.focus && r.id !== "more" && can(perms, r.action)),
-    })).filter((g) => g.routes.length),
-  );
 
   // Pages fly up as they arrive and fade as they leave; full-screen pages zoom in from a blur.
   function enter(node: Element, { focus }: { focus?: boolean }) {
@@ -54,89 +90,136 @@
     return focus ? zoom(node, { out: true }) : fade(node, { duration: fadeMs });
   }
 
-  onMount(() => {
-    const marks = [
-      railNav && railMark && createMark(railNav, railMark, rowShape),
-      tabsNav && tabsMark && createMark(tabsNav, tabsMark, pillShape),
-      stripNav && stripMark && createMark(stripNav, stripMark, underlineShape),
-    ];
-    for (const m of marks) m?.move(false);
-
-    // Keep the current page's strip link in view, centred where there's room.
-    const centre = () => {
-      const el = stripNav?.querySelector<HTMLElement>("[data-mark]");
-      if (!el || !stripNav) return;
-      const left = el.offsetLeft - (stripNav.clientWidth - el.offsetWidth) / 2;
-      stripNav.scrollTo({ left: Math.max(0, left), behavior: prefersReducedMotion ? "auto" : "smooth" });
+  // Keep the current page's strip link in view, centred where there's room.
+  function centre(nav: HTMLElement, _key: unknown) {
+    const run = () => {
+      const el = nav.querySelector<HTMLElement>("[data-mark]");
+      if (!el) return;
+      const left = el.offsetLeft - (nav.clientWidth - el.offsetWidth) / 2;
+      nav.scrollTo({ left: Math.max(0, left), behavior: prefersReducedMotion ? "auto" : "smooth" });
     };
+    run();
+    return { update: run };
+  }
 
-    $effect(() => {
-      void route.id;
-      void perms;
-      tick().then(() => {
-        for (const m of marks) m?.move(true);
-        centre();
-      });
-    });
-
-    return () => marks.forEach((m) => m?.destroy());
-  });
+  const glideKey = $derived(`${route.id}|${showSettings}|${[...perms].join()}`);
 </script>
+
+{#snippet railLink(r: Route, nested = false)}
+  {@const on = r.id === route.id}
+  <a
+    class="nav-item"
+    class:nested
+    class:on
+    href={r.path}
+    data-mark={on ? "" : undefined}
+    aria-current={on ? "page" : undefined}
+  >
+    <Icon name={r.icon} size={18} />
+    <span>{r.name}</span>
+  </a>
+{/snippet}
 
 <div class="shell" class:focus={route.focus}>
   <aside class="rail" aria-label="Main" inert={route.focus || undefined}>
     <a class="brand" href="/">
-      <img src={mark} alt="" width="34" height="34" />
+      <img src={logo} alt="" width="34" height="34" />
       <span class="brand-text">
         <span class="display brand-title">Cougars</span>
         <span class="brand-sub">Team app</span>
       </span>
     </a>
-    <nav class="nav" bind:this={railNav}>
-      <span class="nav-mark" bind:this={railMark} aria-hidden="true"></span>
-      {#each railGroups as group (group.id)}
-        <p class="nav-group eyebrow">{group.label}</p>
-        {#each group.routes as r (r.id)}
-          {@const on = r.id === route.id}
-          <a
-            class="nav-item"
-            class:on
-            href={r.path}
-            data-mark={on ? "" : undefined}
-            aria-current={on ? "page" : undefined}
-          >
-            <Icon name={r.icon} size={18} />
-            <span>{r.name}</span>
-          </a>
-        {/each}
+    <nav class="nav" use:glide={{ shape: rowShape, key: glideKey }}>
+      <span class="nav-mark" data-glide aria-hidden="true"></span>
+      {#each railSections as s, i (s.label + i)}
+        {#if s.label}<p class="nav-label eyebrow">{s.label}</p>{:else if i > 0}<span class="gap"></span>{/if}
+        {#each s.routes as r (r.id)}{@render railLink(r)}{/each}
       {/each}
+
+      {#if settings.length}
+        <div class="group" class:open={showSettings}>
+          <button
+            class="nav-item group-head"
+            class:in={inSettings}
+            aria-expanded={showSettings}
+            onclick={toggleSettings}
+          >
+            <Icon name="settings" size={18} />
+            <span>Settings</span>
+            <span class="chev"><Icon name="chevronRight" size={16} /></span>
+          </button>
+          <div class="fold">
+            <div class="fold-inner">
+              {#each settings as g (g.section)}
+                <p class="sub-label">{g.section}</p>
+                {#each g.routes as r (r.id)}{@render railLink(r, true)}{/each}
+              {/each}
+            </div>
+          </div>
+        </div>
+      {/if}
     </nav>
   </aside>
 
   <main class="main">
-    {#if strip.length}
-      <nav class="strip" aria-label="{tabLabel} pages" bind:this={stripNav}>
-        <span class="strip-mark" bind:this={stripMark} aria-hidden="true"></span>
-        {#each strip as r (r.id)}
-          {@const on = r.id === route.id}
-          <a
-            class="strip-link"
-            class:on
-            href={r.path}
-            data-mark={on ? "" : undefined}
-            aria-current={on ? "page" : undefined}
-          >
-            {r.short ?? r.name}
-          </a>
-        {/each}
-      </nav>
-    {/if}
+    <header class="chrome" class:bare={route.focus && !impersonating()} bind:clientHeight={chromeH}>
+      {#if impersonating()}
+        <div class="viewing" role="status">
+          <Icon name="eye" size={16} />
+          <span class="viewing-text">
+            Viewing as <strong>{me().name}</strong>
+            <span class="viewing-role">· {rolesOf(me().id).join(", ")} · read-only</span>
+          </span>
+          <button class="btn sm viewing-back" onclick={() => (viewAs(null), navigate("/"))}>
+            Back to {realMember().name.split(" ")[0]}
+          </button>
+        </div>
+      {/if}
 
-    <div class="content" bind:this={content}>
+      {#if !route.focus}
+        <div class="topbar">
+          <a class="topbar-brand" href="/" aria-label="Home">
+            <img src={logo} alt="" width="28" height="28" />
+            <span class="display">Cougars</span>
+          </a>
+          <nav class="crumbs" aria-label="You are here">
+            {#each crumbs as c, i (c)}
+              {#if i > 0}<span class="sep" aria-hidden="true">/</span>{/if}
+              <span class:here={i === crumbs.length - 1}>{c}</span>
+            {/each}
+          </nav>
+          <AccountMenu />
+        </div>
+      {/if}
+
+      {#if strip.length}
+        <nav
+          class="strip"
+          aria-label="{TABS.find((t) => t.id === route.tab)?.label} pages"
+          use:glide={{ shape: underlineShape, key: glideKey }}
+          use:centre={route.id}
+        >
+          <span class="strip-mark" data-glide aria-hidden="true"></span>
+          {#each strip as r (r.id)}
+            {@const on = r.id === route.id}
+            <a
+              class="strip-link"
+              class:on
+              href={r.path}
+              data-mark={on ? "" : undefined}
+              aria-current={on ? "page" : undefined}
+            >
+              {r.short ?? r.name}
+            </a>
+          {/each}
+        </nav>
+      {/if}
+    </header>
+
+    <div class="content" bind:this={content} style:--chrome-h="{chromeH}px">
       {#key route.id}
         <div
           class="view"
-          class:under-strip={strip.length > 0}
           class:under-tabs={!route.focus}
           in:enter={{ focus: route.focus }}
           out:leave={{ focus: route.focus }}
@@ -146,8 +229,13 @@
       {/key}
     </div>
 
-    <nav class="tabs" aria-label="Primary" bind:this={tabsNav} inert={route.focus || undefined}>
-      <span class="tab-mark" bind:this={tabsMark} aria-hidden="true"></span>
+    <nav
+      class="tabs"
+      aria-label="Primary"
+      inert={route.focus || undefined}
+      use:glide={{ shape: pillShape, key: glideKey }}
+    >
+      <span class="tab-mark" data-glide aria-hidden="true"></span>
       {#each TABS as tab (tab.id)}
         {@const on = route.tab === tab.id}
         <a
@@ -194,13 +282,14 @@
     display: flex;
     align-items: center;
     gap: var(--s-3);
-    height: 4rem;
+    height: var(--topbar-h);
     margin: 0 calc(-1 * var(--s-3)) var(--s-3);
     padding: 0 var(--s-4);
     border-bottom: 1px solid var(--border);
     white-space: nowrap;
   }
-  .brand img {
+  .brand img,
+  .topbar-brand img {
     filter: drop-shadow(0 2px 8px rgb(229 19 31 / 0.35));
   }
   .brand-text {
@@ -224,12 +313,12 @@
     min-height: 0;
     overflow-y: auto;
   }
-  .nav-group {
+  .nav-label {
     margin: var(--s-4) var(--s-3) var(--s-1);
     color: var(--fg-subtle);
   }
-  .nav-group:first-child {
-    margin-top: var(--s-1);
+  .gap {
+    height: var(--s-2);
   }
   .nav-item {
     position: relative;
@@ -237,12 +326,17 @@
     display: flex;
     align-items: center;
     gap: var(--s-3);
+    width: 100%;
     height: 2.625rem;
+    flex-shrink: 0;
     padding: 0 var(--s-3);
+    border: 0;
     border-radius: var(--r-md);
+    background: none;
     color: var(--fg-muted);
     font-size: var(--text-sm);
     font-weight: 500;
+    text-align: left;
     white-space: nowrap;
     transition:
       color var(--t-fast) var(--ease-in-out),
@@ -261,7 +355,14 @@
   .nav-item:focus-visible {
     outline-offset: -2px;
   }
-  /* The current page's mark: one shape for the whole rail, moved by mark.ts */
+  .nav-item.nested {
+    height: 2.375rem;
+    padding-left: 2.6rem;
+    font-weight: 400;
+  }
+  .nav-item.nested :global(svg) {
+    display: none;
+  }
   .nav-mark {
     position: absolute;
     top: 0;
@@ -272,6 +373,56 @@
     background: var(--red-wash);
     box-shadow: inset 0 0 0 1px var(--red-border);
     pointer-events: none;
+  }
+
+  /* Settings folds open and shut (grid-template-rows 0fr ↔ 1fr), so the rows below glide rather than jump */
+  .group {
+    margin-top: var(--s-4);
+    padding-top: var(--s-3);
+    border-top: 1px solid var(--border);
+  }
+  .group-head.in {
+    color: var(--fg);
+  }
+  .chev {
+    display: grid;
+    margin-left: auto;
+    color: var(--fg-subtle);
+    transition: transform var(--t-slow) var(--ease);
+  }
+  .open .chev {
+    transform: rotate(90deg);
+  }
+  .fold {
+    display: grid;
+    grid-template-rows: 0fr;
+    opacity: 0;
+    transition:
+      grid-template-rows var(--t-slow) var(--ease),
+      opacity var(--t-slow) var(--ease);
+  }
+  .open .fold {
+    grid-template-rows: 1fr;
+    opacity: 1;
+  }
+  .fold-inner {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .group:not(.open) .fold-inner {
+    visibility: hidden;
+    transition: visibility 0s var(--t-slow);
+  }
+  .sub-label {
+    margin: var(--s-2) 0 0 2.6rem;
+    font-size: var(--text-2xs);
+    font-weight: 600;
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--fg-subtle);
   }
 
   /* ─── Main ─── */
@@ -287,25 +438,105 @@
     flex: 1;
     min-height: 0;
   }
-  /* Views stack, so one can fade out while the next flies in. Each scrolls on its own. */
+  /* Views stack, so one can fade out while the next flies in. Each scrolls on its own, under the chrome. */
   .view {
     position: absolute;
     inset: 0;
+    padding-top: var(--chrome-h, 0px);
     overflow-y: auto;
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
   }
-  .view.under-strip {
-    padding-top: var(--strip-h);
-  }
 
-  /* ─── Strip of sub-pages: frosted, content scrolls under it ─── */
-  .strip {
+  /* ─── Chrome: banner, top bar and strip, frosted; content scrolls under it.
+     The frost is on a pseudo-element: backdrop-filter on the bar itself would trap the account sheet. ─── */
+  .chrome {
     position: absolute;
     top: 0;
     left: 0;
     right: 0;
-    z-index: 5;
+    z-index: 6;
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+  .chrome::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: var(--chrome-bg);
+    backdrop-filter: var(--blur);
+    -webkit-backdrop-filter: var(--blur);
+    border-bottom: 1px solid var(--border);
+  }
+  .chrome.bare::before {
+    display: none;
+  }
+  .topbar {
+    display: flex;
+    align-items: center;
+    gap: var(--s-4);
+    height: var(--topbar-h);
+    padding: 0 var(--gutter);
+  }
+  .topbar-brand {
+    display: none;
+    align-items: center;
+    gap: var(--s-2);
+    font-size: 1.15rem;
+    color: var(--fg);
+  }
+  .crumbs {
+    display: flex;
+    align-items: center;
+    gap: var(--s-2);
+    flex: 1;
+    min-width: 0;
+    color: var(--fg-muted);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .crumbs .sep {
+    color: var(--fg-subtle);
+  }
+  .crumbs .here {
+    color: var(--fg);
+  }
+
+  .viewing {
+    display: flex;
+    align-items: center;
+    gap: var(--s-2);
+    min-height: 2.75rem;
+    padding: var(--s-1) var(--gutter);
+    background: color-mix(in srgb, var(--amber) 16%, var(--bg));
+    border-bottom: 1px solid var(--amber-border);
+    color: var(--amber);
+    font-size: var(--text-sm);
+  }
+  .viewing-text {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .viewing strong {
+    color: var(--fg);
+    font-weight: 600;
+  }
+  .viewing-back {
+    border-color: var(--amber-border);
+    background: var(--amber-wash);
+    color: var(--amber);
+  }
+  .viewing-back:hover {
+    background: color-mix(in srgb, var(--amber) 24%, transparent);
+  }
+
+  /* ─── Strip of sub-pages (phones; desktop has the rail) ─── */
+  .strip {
+    position: relative;
     display: flex;
     align-items: stretch;
     gap: var(--s-1);
@@ -314,10 +545,7 @@
     overflow-x: auto;
     scroll-snap-type: x proximity;
     scrollbar-width: none;
-    border-bottom: 1px solid var(--border);
-    background: var(--chrome-bg);
-    backdrop-filter: var(--blur);
-    -webkit-backdrop-filter: var(--blur);
+    border-top: 1px solid var(--border);
   }
   .strip::-webkit-scrollbar {
     display: none;
@@ -354,14 +582,9 @@
     background: var(--red-hot);
     pointer-events: none;
   }
-
-  /* Desktop: the rail already lists each tab's pages, so the strip only shows on phones */
   @media (min-width: 901px) {
     .strip {
       display: none;
-    }
-    .view.under-strip {
-      padding-top: 0;
     }
   }
 
@@ -375,11 +598,18 @@
     .shell.focus {
       grid-template-columns: minmax(0, 1fr);
     }
-    .rail {
+    .rail,
+    .crumbs {
       display: none;
     }
-    .main {
-      padding-top: env(safe-area-inset-top, 0px);
+    .topbar {
+      justify-content: space-between;
+    }
+    .topbar-brand {
+      display: inline-flex;
+    }
+    .viewing-role {
+      display: none;
     }
     .view.under-tabs {
       padding-bottom: var(--tab-h);

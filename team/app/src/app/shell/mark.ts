@@ -103,3 +103,20 @@ export function createMark(nav: HTMLElement, mark: HTMLElement, shape: Shape) {
     },
   };
 }
+
+/**
+ * Svelte action for a nav: `use:glide={{ shape, key }}`. The nav's first `[data-glide]` child is the mark; it
+ * glides whenever `key` changes (the current page, a group opening). Works for navs that mount later, too.
+ */
+export function glide(nav: HTMLElement, params: { shape: Shape; key: unknown }) {
+  const el = nav.querySelector<HTMLElement>("[data-glide]");
+  if (!el) return {};
+  const mark = createMark(nav, el, params.shape);
+  mark.move(false);
+  return {
+    update() {
+      requestAnimationFrame(() => mark.move(true));
+    },
+    destroy: () => mark.destroy(),
+  };
+}

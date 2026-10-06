@@ -97,6 +97,7 @@
   --page-max: 42rem;
   --tab-h: calc(3.75rem + env(safe-area-inset-bottom, 0px));
   --strip-h: 2.875rem;
+  --topbar-h: 3.5rem;
   --rail-w: 15.5rem;
   --control-h: 2.75rem;
   --control-h-sm: 2.25rem;

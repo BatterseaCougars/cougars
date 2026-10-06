@@ -44,7 +44,11 @@ export const PLAYERS: Player[] = NAMES.map((name, i) => ({
   cougar: i % 4 === 0,
 }));
 
-export const ME = PLAYERS[0];
+/** Who you really are in the demo: the first admin. */
+export const REAL_ID = PLAYERS[0].id;
+
+export const emailFor = (p: Player) => `${p.name.toLowerCase().replace(" ", ".")}@example.com`;
+export const referenceFor = (id: number) => `COU-${String(id).padStart(4, "0")}`;
 
 export interface ClubEvent {
   id: number;
@@ -191,11 +195,19 @@ export const OVERDUE = PLAYERS.slice(1, 10)
   })
   .sort((a, b) => b.amounts.findLastIndex((x) => x > 0) - a.amounts.findLastIndex((x) => x > 0) || b.total - a.total);
 
-export const MY_LEDGER = [
-  { date: "2026-09-18", what: "Friday hockey", pence: 1000 },
-  { date: "2026-09-25", what: "Friday hockey", pence: 1000 },
-  { date: "2026-09-28", what: "Bank transfer, COU-0001", pence: -1000 },
-  { date: "2026-10-02", what: "Friday hockey", pence: 1000 },
-];
+/** A member's ledger: three Fridays and a payment, topped up to what Overdue Rentals says they owe. */
+export function ledgerFor(id: number) {
+  const owed = OVERDUE.find((r) => r.player.id === id)?.total ?? (id === REAL_ID ? 2000 : 0);
+  const lines = [
+    { date: "2026-09-18", what: "Friday hockey", pence: 1000 },
+    { date: "2026-09-25", what: "Friday hockey", pence: 1000 },
+    { date: "2026-09-28", what: `Bank transfer, ${referenceFor(id)}`, pence: -2000 },
+  ];
+  if (owed > 0) lines.push({ date: "2026-10-02", what: "Friday hockey", pence: owed });
+  return lines;
+}
 
-export const TEAM_NAMES = ["White", "Black", "Cougars", "Red"];
+/** The old app's names: the Cougar players' team is "Cougars", the rest are colours (archive/team-manager). */
+export const TEAM_NAMES = ["Cougars", "White", "Black", "Red", "Gold"];
+/** Display order, also from the old app: Cougars, then Black, then White. */
+export const TEAM_ORDER: Record<string, number> = { Cougars: 0, Black: 1, White: 2, Red: 3, Gold: 4 };

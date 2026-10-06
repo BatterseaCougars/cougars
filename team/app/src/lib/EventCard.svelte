@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { ClubEvent } from "../demo/data";
-  import { ME } from "../demo/data";
+  import { impersonating, me } from "../demo/session.svelte";
   import { dateBadge, formatTime } from "./dates";
 
   let {
@@ -17,15 +17,19 @@
   } = $props();
 
   const badge = $derived(dateBadge(event.startsAt));
-  const inIt = $derived(event.going.includes(ME.id));
-  const waiting = $derived(event.waitlist.includes(ME.id));
+  const id = $derived(me().id);
+  // Viewing as someone is read-only (ADR 0027): you see their answer, you can't change it.
+  const locked = $derived(impersonating());
+  const inIt = $derived(event.going.includes(id));
+  const waiting = $derived(event.waitlist.includes(id));
   const out = $derived(!inIt && !waiting);
   const full = $derived(event.capacity !== undefined && event.going.length >= event.capacity);
   const fill = $derived(event.capacity ? Math.min(1, event.going.length / event.capacity) : 0);
 
   function setIn(going: boolean) {
-    event.going = event.going.filter((id) => id !== ME.id);
-    event.waitlist = event.waitlist.filter((id) => id !== ME.id);
+    if (locked) return;
+    event.going = event.going.filter((x) => x !== id);
+    event.waitlist = event.waitlist.filter((x) => x !== id);
     if (!going) {
       // Someone drops out: the first on the waitlist moves up.
       if (event.waitlist.length && event.capacity && event.going.length < event.capacity) {
@@ -36,10 +40,10 @@
       return;
     }
     if (full) {
-      event.waitlist = [...event.waitlist, ME.id];
+      event.waitlist = [...event.waitlist, id];
       onanswer?.("waitlist");
     } else {
-      event.going = [...event.going, ME.id];
+      event.going = [...event.going, id];
       onanswer?.("in");
     }
   }
@@ -66,8 +70,10 @@
   </div>
   {#if event.signup && canSignUp}
     <div class="seg red" role="group" aria-label="Are you in?">
-      <button aria-pressed={inIt || waiting} onclick={() => setIn(true)}>{full && out ? "Waitlist" : "In"}</button>
-      <button aria-pressed={out} onclick={() => setIn(false)}>Out</button>
+      <button aria-pressed={inIt || waiting} disabled={locked} onclick={() => setIn(true)}>
+        {full && out ? "Waitlist" : "In"}
+      </button>
+      <button aria-pressed={out} disabled={locked} onclick={() => setIn(false)}>Out</button>
     </div>
   {/if}
 </article>
@@ -128,6 +134,10 @@
   }
   .count strong {
     color: var(--fg);
+  }
+  .seg button:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
   }
   .seg {
     grid-column: 1 / -1;

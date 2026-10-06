@@ -7,8 +7,8 @@ const admin = new Set<Action>(["manage:all"]);
 
 describe("tabRoutes", () => {
   it("hides pages the member can't use", () => {
-    expect(tabRoutes("calendar", member).map((r) => r.id)).toEqual(["calendar", "teams"]);
-    expect(tabRoutes("calendar", admin).map((r) => r.id)).toEqual(["calendar", "teams", "register"]);
+    expect(tabRoutes("friday", member).map((r) => r.id)).toEqual(["friday"]);
+    expect(tabRoutes("friday", admin).map((r) => r.id)).toEqual(["friday", "register"]);
   });
 
   it("leaves full-screen pages out of the strip", () => {
@@ -18,17 +18,17 @@ describe("tabRoutes", () => {
 
 describe("stripRoutes", () => {
   it("shows a strip only when a tab has more than one page", () => {
-    expect(stripRoutes("club", member)).toEqual([]);
-    expect(stripRoutes("club", admin).map((r) => r.id)).toEqual(["club", "upload"]);
+    expect(stripRoutes("friday", member)).toEqual([]);
+    expect(stripRoutes("friday", admin).map((r) => r.id)).toEqual(["friday", "register"]);
   });
 });
 
 describe("tabHref", () => {
   it("returns to the last page used in the tab", () => {
-    expect(tabHref("calendar", admin, { calendar: "/calendar/register" })).toBe("/calendar/register");
+    expect(tabHref("friday", admin, { friday: "/friday/register" })).toBe("/friday/register");
   });
 
   it("falls back to the first page when the remembered one is no longer allowed", () => {
-    expect(tabHref("calendar", member, { calendar: "/calendar/register" })).toBe("/calendar");
+    expect(tabHref("friday", member, { friday: "/friday/register" })).toBe("/friday");
   });
 });

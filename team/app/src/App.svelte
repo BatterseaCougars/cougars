@@ -8,6 +8,7 @@
   import Calendar from "./pages/Calendar.svelte";
   import Club from "./pages/Club.svelte";
   import Draft from "./pages/Draft.svelte";
+  import Friday from "./pages/Friday.svelte";
   import Fees from "./pages/Fees.svelte";
   import Game from "./pages/Game.svelte";
   import Home from "./pages/Home.svelte";
@@ -21,19 +22,18 @@
   import Register from "./pages/Register.svelte";
   import Roles from "./pages/Roles.svelte";
   import Standings from "./pages/Standings.svelte";
-  import Teams from "./pages/Teams.svelte";
   import Upload from "./pages/Upload.svelte";
 
   const PAGES: Record<string, Component> = {
     home: Home,
     calendar: Calendar,
-    teams: Teams,
+    friday: Friday,
     register: Register,
     kumite: Kumite,
     standings: Standings,
     draft: Draft,
     game: Game,
-    club: Club,
+    roster: Club,
     upload: Upload,
     more: More,
     profile: Profile,
