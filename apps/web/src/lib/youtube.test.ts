@@ -8,6 +8,7 @@ import {
   parseChannel,
   parsePlaylist,
   sourceKey,
+  tidyTitle,
   toVideo,
   videoSource,
   youtubeId,
@@ -68,6 +69,44 @@ describe("toVideo", () => {
   it("keeps unlisted videos from a club playlist, but never private or deleted ones", () => {
     expect(toVideo(unlisted, { unlisted: true })?._id).toMatch(/^youtube-/);
     expect([priv, deleted].map((i) => toVideo(i, { unlisted: true }))).toEqual([null, null]);
+  });
+});
+
+describe("tidyTitle", () => {
+  const uploaded = "2026-10-05";
+
+  it("drops the club's name and the date, which becomes the recorded date", () => {
+    expect(tidyTitle("Battersea Cougars - 2nd October 2026", uploaded)).toEqual({
+      title: "Friday session",
+      recordedOn: "2026-10-02",
+    });
+    expect(tidyTitle("Battersea Cougars - Kumite final - 26 Sept 2026", uploaded)).toEqual({
+      title: "Kumite final",
+      recordedOn: "2026-09-26",
+    });
+    expect(tidyTitle("Cougars: October 2nd, 2026 (full game)", uploaded).recordedOn).toBe("2026-10-02");
+  });
+
+  it("reads the date in any common form, UK order", () => {
+    for (const raw of ["Game 2026-10-02", "Game 02/10/2026", "Game 2.10.26", "Game 2 Oct 2026"]) {
+      expect(tidyTitle(raw, uploaded)).toEqual({ title: "Game", recordedOn: "2026-10-02" });
+    }
+  });
+
+  it("keeps the upload date when the title has none, or an impossible or future one", () => {
+    expect(tidyTitle("Full game", uploaded)).toEqual({ title: "Full game", recordedOn: uploaded });
+    expect(tidyTitle("Game 31/02/2026", uploaded).recordedOn).toBe(uploaded);
+    expect(tidyTitle("Game 9 October 2026", uploaded).recordedOn).toBe(uploaded);
+  });
+
+  it("names a video with nothing left after its day", () => {
+    expect(tidyTitle("Battersea Cougars - 4 Oct 2026", uploaded).title).toBe("Cougars video"); // a Sunday
+    expect(tidyTitle("  ", uploaded).title).toBe("Cougars video");
+  });
+
+  it("keeps the club's name when it's part of the title", () => {
+    expect(tidyTitle("Cougars v Lions", uploaded).title).toBe("Cougars v Lions");
+    expect(tidyTitle("Battersea Cougars 25th anniversary", uploaded).title).toBe("Battersea Cougars 25th anniversary");
   });
 });
 

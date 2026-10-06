@@ -102,11 +102,54 @@ export function toVideo(item: PlaylistItem, { unlisted = false } = {}): Video | 
   if (!id || !published || !(privacy === "public" || (unlisted && privacy === "unlisted"))) return null;
   return {
     _id: `youtube-${id}`,
-    title: item.snippet?.title?.trim() || "Untitled video",
-    recordedOn: londonDay(published),
+    ...tidyTitle(item.snippet?.title ?? "", londonDay(published)),
     youtubeUrl: `https://www.youtube.com/watch?v=${id}`,
     description: firstParagraph(item.snippet?.description),
   };
+}
+
+const MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+const MONTH = String.raw`(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?`;
+const SEP = String.raw`[\s\-–—:|·,]*`;
+const DATES: [RegExp, (m: RegExpMatchArray) => [string, string, string]][] = [
+  // 2nd October 2026, 2 Oct 2026
+  [new RegExp(String.raw`(\d{1,2})(?:st|nd|rd|th)?\s+${MONTH},?\s+(\d{4})`, "i"), (m) => [m[3], m[2], m[1]]],
+  // October 2nd, 2026
+  [new RegExp(String.raw`${MONTH}\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(\d{4})`, "i"), (m) => [m[3], m[1], m[2]]],
+  // 2026-10-02
+  [/(\d{4})-(\d{2})-(\d{2})/, (m) => [m[1], m[2], m[3]]],
+  // 02/10/2026 or 2.10.26 (UK order)
+  [/(\d{1,2})[/.](\d{1,2})[/.](\d{4}|\d{2})\b/, (m) => [m[3].length === 2 ? `20${m[3]}` : m[3], m[2], m[1]]],
+];
+
+/**
+ * A YouTube title as the card shows it: without the club's name (the whole site is the club) and without the date
+ * (the card shows that separately). A date in the title is when it was filmed, so it's the recorded date; otherwise
+ * the upload date. If nothing's left, the video is named after its day.
+ */
+export function tidyTitle(raw: string, published: string): { title: string; recordedOn: string } {
+  // "Battersea Cougars - …", not "Cougars v Lions": the name goes only when a separator follows it.
+  let title = raw.trim().replace(new RegExp(String.raw`^(battersea\s+)?cougars\s*([-–—:|·,]${SEP}|$)`, "i"), "");
+  let recordedOn = published;
+  for (const [pattern, parts] of DATES) {
+    const m = title.match(pattern);
+    if (!m) continue;
+    const [y, mo, d] = parts(m);
+    const month = /^\d+$/.test(mo) ? Number(mo) : MONTHS.indexOf(mo.slice(0, 3).toLowerCase()) + 1;
+    const day = `${y}-${String(month).padStart(2, "0")}-${d.padStart(2, "0")}`;
+    // A real date, and not after the upload: otherwise it's a typo, so keep the upload date.
+    const date = new Date(`${day}T12:00:00Z`);
+    if (!isNaN(+date) && date.toISOString().startsWith(day) && day <= published) recordedOn = day;
+    title = title.replace(m[0], " ");
+    break;
+  }
+  title = title
+    .replace(new RegExp(String.raw`^${SEP}|${SEP}$`, "g"), "")
+    .replace(/\s{2,}/g, " ")
+    .replace(/\(\s*\)/g, "")
+    .trim();
+  const friday = new Date(`${recordedOn}T12:00:00Z`).getUTCDay() === 5;
+  return { title: title || (friday ? "Friday session" : "Cougars video"), recordedOn };
 }
 
 // YouTube descriptions often end in links and hashtags; the card only has room for the opening lines.
