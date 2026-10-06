@@ -112,7 +112,7 @@ rebuild (04:30 UK winter, 05:30 summer) or the next release. Photos are read liv
 something sooner, start a production rebuild by hand: **Actions → Deploy → Run workflow → `release`**, or
 `gh workflow run deploy.yml --ref release`.
 
-The team app (roadmap M6) will start rebuilds when content changes, the way Gwenda's ops does.
+The team app ([roadmap T8](roadmap/team-app.md#t8-website-content-from-the-app)) will start rebuilds when content changes, the way Gwenda's ops does.
 
 ## 6. Later: domain
 

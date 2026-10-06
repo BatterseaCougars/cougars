@@ -1,6 +1,6 @@
 # 0008. Admin login by email magic link
 
-- **Status:** Accepted
+- **Status:** Superseded by [0023](0023-device-bound-sign-in.md)
 - **Date:** 2026-10-05 (decided at project start)
 
 ## Context

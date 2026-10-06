@@ -12,7 +12,7 @@ app lands in `team/app`.
 | `db/`                  | D1 (SQLite) migrations                                                    |                       |
 | `shared/`              | Code used by more than one app (D1 helpers, test fixtures)                |                       |
 | `scripts/`             | Secrets loading (Bitwarden) and CI helpers                                |                       |
-| `team/app` (planned)   | Team app: mobile-first Svelte PWA for members, on its own Worker          | http://localhost:4510 |
+| `team/app`             | Team app: mobile-first Svelte PWA (clickable demo shell for now)          | http://localhost:4510 |
 | `archive/team-manager` | The old Next.js + Airtable team picker, kept as **reference only**        |                       |
 
 Running cost is £0: every service is on a free tier (see [docs/roadmap.md](docs/roadmap.md)).
@@ -172,10 +172,13 @@ Lets the website email the club inbox about each enquiry, and auto-reply to the 
 inbox, and dev can only ever send from its own test account, never the club's.
 
 - **Issued by:**
-  - `GMAIL_CLIENT_ID` / `GMAIL_CLIENT_SECRET`: Google Cloud console, the club's project (the YouTube keys' one),
-    signed in as batterseahockey@gmail.com.
+  - `GMAIL_CLIENT_ID` / `GMAIL_CLIENT_SECRET`: Google Cloud console, signed in as batterseahockey@gmail.com (never
+    the dev account, which needs no Cloud access). One project for the whole club, website and team app:
+    _Battersea Cougars_, ID `battersea-cougars` (permanent, so no "website" or "dev" in it). The club account owns
+    it; add a maintainer's own Google account as a second Owner (**IAM → Grant access**). Each app gets its own
+    client in it, so either can be cut off alone; the YouTube keys go here too.
     1. **APIs & Services → Library → Gmail API → Enable**.
-    2. **Google Auth Platform → Get started**: app name _Battersea Cougars website_, support email the club's,
+    2. **Google Auth Platform → Get started**: app name _Battersea Cougars_ (both apps share it), support email the club's,
        audience **External**, contact email the club's.
     3. **Data access → Add or remove scopes**: `.../auth/gmail.send` only (_Send email on your behalf_). Save.
     4. **Audience → Publish app**, to **In production**. In _Testing_, Google cancels the tokens after 7 days.

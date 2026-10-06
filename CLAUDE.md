@@ -24,6 +24,10 @@ a new ADR that supersedes it, never a quiet edit.
 
 ## Web app (apps/web)
 
+These rules are for the website only. The team app (`team/app`, from team-app T0) is a Svelte 5 SPA on its own
+Worker ([ADR 0022](docs/adr/0022-team-app-svelte-pwa.md)); its permissions follow
+[ADR 0024](docs/adr/0024-action-based-authorization.md). Roadmaps: [docs/roadmap.md](docs/roadmap.md).
+
 - Astro 7 + `@astrojs/cloudflare` 14 (Workers with static assets, not Pages).
 - Pages are prerendered (`output: "static"`). Server routes opt out with `export const prerender = false`.
 - Bindings: `import { env } from "cloudflare:workers"` (e.g. `env.DB`). Execution context: `Astro.locals.cfContext`.
@@ -43,4 +47,4 @@ a new ADR that supersedes it, never a quiet edit.
 
 ## Ports
 
-4500 web, 4510 ops (reserved), 4520 studio. Don't use framework default ports.
+4500 web, 4510 team app, 4520 studio. Don't use framework default ports.
