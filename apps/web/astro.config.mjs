@@ -21,10 +21,8 @@ export default defineConfig({
   // Old Wix addresses. /gallery/<album> is a server route (pages/gallery/[slug].ts): a config redirect to a
   // server-rendered page would point at a prerendered file that doesn't exist.
   redirects: { "/gallery": "/photos" },
-  // Not in the sitemap: the thanks page, the reel fragment the home page fetches, and the design prototypes (noindex).
-  integrations: [
-    sitemap({ filter: (page) => !/\/(join\/thanks|videos\/reel|concepts)(\/|$)/.test(new URL(page).pathname) }),
-  ],
+  // Not in the sitemap: the thanks page (noindex) and the reel fragment the home page fetches.
+  integrations: [sitemap({ filter: (page) => !/\/(join\/thanks|videos\/reel)(\/|$)/.test(new URL(page).pathname) })],
   adapter: cloudflare({
     // Resize local assets at build time with sharp; Sanity's CDN resizes CMS
     // images. Avoids the paid Cloudflare Images binding.
@@ -93,28 +91,6 @@ export default defineConfig({
       options: {
         variants: [{ src: ["./src/assets/fonts/VT323.woff2"], weight: "400", style: "normal", display: "swap" }],
       },
-    },
-    // Design concept prototypes (src/pages/concepts). Fetched from Fontsource at build.
-    {
-      provider: fontProviders.fontsource(),
-      name: "Bricolage Grotesque",
-      cssVariable: "--font-bricolage",
-      weights: ["200 800"],
-      fallbacks: ["sans-serif"],
-    },
-    {
-      provider: fontProviders.fontsource(),
-      name: "Unbounded",
-      cssVariable: "--font-unbounded",
-      weights: ["200 900"],
-      fallbacks: ["sans-serif"],
-    },
-    {
-      provider: fontProviders.fontsource(),
-      name: "JetBrains Mono",
-      cssVariable: "--font-mono",
-      weights: ["400 700"],
-      fallbacks: ["monospace"],
     },
   ],
   image: {

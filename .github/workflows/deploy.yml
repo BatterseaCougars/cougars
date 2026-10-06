@@ -104,6 +104,12 @@ jobs:
         # D1 commands don't follow the build's config redirect, so name the generated config
         run: npx wrangler d1 migrations apply DB --remote -c dist/server/wrangler.json
 
+      # The privacy page promises enquiries are deleted after 12 months (unless the person joined). Production
+      # deploys daily, so this runs daily there.
+      - name: Delete expired enquiries
+        working-directory: apps/web
+        run: npx wrangler d1 execute DB --remote --file ../../db/retention/expire-enquiries.sql -c dist/server/wrangler.json
+
       - name: Deploy
         id: deploy
         if: github.event_name != 'pull_request'

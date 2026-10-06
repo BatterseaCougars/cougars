@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { createTestD1 } from "../../../../../shared/testing/d1-sqlite";
+import { readFileSync } from "node:fs";
 import { AUTO_REPLY_CAPS, autoReplyAllowed, isSpam, markAutoReplied, parseEnquiry, saveEnquiry } from "./enquiries";
 
 const form = (fields: Record<string, string>) => {
@@ -88,5 +89,26 @@ describe("auto-reply caps", () => {
     for (let i = 0; i < AUTO_REPLY_CAPS.perDay; i++) await replied(`p${i}@example.com`, hoursAgo(1));
     expect(await autoReplyAllowed(db, "new@example.com", now)).toBe(false);
     expect(await autoReplyAllowed(db, "new@example.com", new Date(now.getTime() + 86_400_000))).toBe(true);
+  });
+});
+
+describe("12-month retention (db/retention/expire-enquiries.sql, run by deploy.yml)", () => {
+  const expire = readFileSync(new URL("../../../../../db/retention/expire-enquiries.sql", import.meta.url), "utf8");
+
+  it("deletes enquiries older than 12 months, except from people who joined", () => {
+    const db = createTestD1();
+    const add = (email: string, monthsAgo: number, status = "new") =>
+      db.raw
+        .prepare(
+          "INSERT INTO enquiries (name, email, status, created_at) VALUES ('Sam', ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ', 'now', ?))",
+        )
+        .run(email, status, `-${monthsAgo} months`);
+    add("recent@example.com", 11);
+    add("old@example.com", 13);
+    add("old-contacted@example.com", 13, "contacted");
+    add("old-joined@example.com", 13, "joined");
+    db.raw.exec(expire);
+    const left = db.raw.prepare("SELECT email FROM enquiries ORDER BY email").all();
+    expect(left).toEqual([{ email: "old-joined@example.com" }, { email: "recent@example.com" }]);
   });
 });

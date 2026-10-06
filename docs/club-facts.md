@@ -104,6 +104,5 @@ live somewhere:
 | 59  | `heroSubheading` | "Inline hockey in Battersea since 1996. Fast, physical, non-contact, and open to anyone who wants to learn. First session? We lend you the kit." | Superseded | Covered by the answers above (kit wording changed) |
 | 60  | `aboutHeading`   | "Since 1996"                                                                                                                                     | Superseded | Since 1996 confirmed                               |
 
-The design concept prototypes under `pages/concepts/` (not linked from the site) repeat some of these claims
-("Kit provided", "Non-contact", "Multinational", "London SW11", "Still turning up"); they follow whatever we decide
-here and aren't listed separately.
+The design concept prototypes that repeated some of these claims were deleted on 2026-10-06 (they're in git history,
+`git log -- apps/web/src/pages/concepts`).

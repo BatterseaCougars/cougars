@@ -129,3 +129,7 @@ person's details. Press **Reply** to answer them: the reply goes straight to the
 Most people also get an automatic reply straight away, with the session times, venue and kit notes from the
 Studio. The club's email says whether they did. If it says no automatic reply was sent (the form couldn't confirm
 it was a person, or the daily limit was reached), they haven't heard from the club yet: reply to them yourself.
+
+**Once a month, delete old enquiry emails.** The privacy page promises enquiries are deleted after 12 months (the
+website deletes its own copy). In Gmail, search `subject:"New enquiry" older_than:1y`, select all, delete. Then do
+the same for `in:sent subject:"Thanks for getting in touch" older_than:1y`. Keep the ones from people who joined.
