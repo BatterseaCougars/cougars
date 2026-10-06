@@ -41,7 +41,9 @@ Copied in shape from Gwenda ops (`gwenda-hackney/ark`, `ops/site/src/app/`), whi
   - a strip of sub-pages along the top when a tab has more than one page
   - **More** is a full page, and its pages show a `‹ More` back link
   - editors hide the tabs and show their own back bar, with an unsaved-changes guard
-- **Desktop:** a collapsible side rail.
+- **Desktop:** the page has the whole screen. A dock of the main sections (Home, each training, Calendar, each
+  tournament type, the club pages, Settings) floats mid-left as glass tiles with a label on hover; the brand mark
+  sits top-left, your badge top-right. A section's pages (Games, Standings, Draft) are pills along the top.
 - **Tabs**, most-used first:
   - **Home**: am I in this Friday, my team, my tab, notices
   - **Friday**: who's in (in sign-up order) and the teams, your team first; the register for the door

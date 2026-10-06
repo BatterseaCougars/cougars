@@ -108,7 +108,6 @@
   --topbar-h: 3.5rem;
   --scrollbar-size: 8px;
   --scrollbar: color-mix(in srgb, var(--fg-muted) 45%, transparent);
-  --rail-w: 15.5rem;
   --control-h: 2.75rem;
   --control-h-sm: 2.25rem;
 

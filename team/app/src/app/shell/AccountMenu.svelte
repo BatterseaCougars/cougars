@@ -11,7 +11,6 @@
   import { impersonating, me, realGranted, realMember, rolesOf, viewAs } from "../../demo/session.svelte";
   import { initials } from "../../lib/initials";
   import { navigate } from "../router.svelte";
-  import { CHROMES, look, setChrome } from "./chrome.svelte";
   import Icon from "./Icon.svelte";
 
   let open = $state(false);
@@ -130,15 +129,6 @@
             <Icon name="eye" size={16} /> View as a member…
           </button>
         {/if}
-        <div class="sep" role="separator"></div>
-        <div class="look">
-          <span class="hint small">Look (trial)</span>
-          <div class="seg" role="group" aria-label="Look">
-            {#each CHROMES as c (c.id)}
-              <button aria-pressed={look.chrome === c.id} onclick={() => setChrome(c.id)}>{c.label}</button>
-            {/each}
-          </div>
-        </div>
         <div class="sep" role="separator"></div>
         <button class="item" role="menuitem" disabled={impersonating()}
           ><Icon name="signOut" size={16} /> Sign out</button
@@ -298,16 +288,6 @@
     font-size: var(--text-xs);
   }
 
-  .look {
-    display: grid;
-    gap: var(--s-2);
-    padding: var(--s-2) var(--s-2) var(--s-1);
-  }
-  .look .seg button {
-    min-height: 1.9rem;
-    padding: 0 var(--s-2);
-    font-size: var(--text-xs);
-  }
   .scrim {
     display: none;
   }

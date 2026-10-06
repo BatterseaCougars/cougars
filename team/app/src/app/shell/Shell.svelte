@@ -1,4 +1,8 @@
 <script lang="ts">
+  // The shell. Desktop: the page has the whole screen; a dock of the main sections floats mid-left, the brand
+  // mark top-left, your badge top-right, the wordmark and the London clock in the bottom corners. A section's
+  // pages (Games, Standings, Draft) sit as pills along the top. Phones: the Gwenda ops pattern, five tabs at the
+  // bottom and a strip of sub-pages under the top bar.
   import { type Snippet } from "svelte";
   import { can } from "../../access/actions";
   import { granted, impersonating, me, realMember, rolesOf, viewAs } from "../../demo/session.svelte";
@@ -7,13 +11,11 @@
   import { folds, routes, tabs } from "../routes.svelte";
   import { navigate, router } from "../router.svelte";
   import { easeOut, flyMs, prefersReducedMotion, zoom } from "../motion";
-  import { glide, pillShape, rowShape, underlineShape } from "./mark";
+  import { glide, pillShape, rowShape, stripShape } from "./mark";
+  import type { IconName } from "./icons";
   import AccountMenu from "./AccountMenu.svelte";
   import Icon from "./Icon.svelte";
   import logo from "../../assets/cougars-mark.webp";
-  import { db } from "../../demo/store.svelte";
-  import { nextSession, sessionBookable } from "../../demo/schedule.svelte";
-  import { formatDayDate, formatTime } from "../../lib/dates";
 
   let { route, children }: { route: Route; children: Snippet } = $props();
 
@@ -23,59 +25,60 @@
   const strip = $derived(route.focus ? [] : stripRoutes(all, route, perms));
   const allowed = (r: Route) => !r.focus && !r.hidden && can(perms, r.action);
 
-  // Rail, flat: Home, a link per training, Calendar, the club pages. Then a folding section per tournament type,
-  // then Settings. Both come from what admins set up, so a new training or tournament appears here.
-  const flat = $derived(
-    all.filter(
-      (r) => allowed(r) && (r.tab === "home" || r.tab === "training" || r.tab === "calendar" || r.group === "Club"),
-    ),
-  );
-  const railFolds = $derived(
-    [
-      ...folds()
-        .map((f) => ({ ...f, groups: [{ label: "", routes: all.filter((r) => r.fold === f.id && allowed(r)) }] }))
-        .filter((f) => f.groups[0].routes.length),
-      {
-        id: "settings",
-        name: "Settings",
-        icon: "settings" as const,
-        groups: (["People", "Schedule", "Money"] as const)
-          .map((label) => ({ label, routes: all.filter((r) => r.section === label && allowed(r)) }))
-          .filter((g) => g.routes.length),
-      },
-    ].filter((f) => f.groups.length),
-  );
-  const foldOf = (r: Route) => (r.group === "Settings" ? "settings" : r.fold);
-
-  // Which folds are open, remembered. The current page's fold is always open.
-  const OPEN_KEY = "team.rail.open";
-  let opened = $state<Record<string, boolean>>(readOpen());
-  function readOpen(): Record<string, boolean> {
-    try {
-      return JSON.parse(localStorage.getItem(OPEN_KEY) ?? "{}");
-    } catch {
-      return {};
-    }
+  // The dock: only the main sections. Home, a tile per training, Calendar, a tile per tournament type, the club
+  // pages, then Settings (or More, for members with nothing to set up). Everything else is reached from a page.
+  interface DockItem {
+    id: string;
+    name: string;
+    icon: IconName;
+    href: string;
+    on: boolean;
   }
-  const isOpen = (id: string) => Boolean(opened[id]) || foldOf(route) === id;
-  function toggle(id: string) {
-    opened = { ...opened, [id]: !isOpen(id) };
-    try {
-      localStorage.setItem(OPEN_KEY, JSON.stringify(opened));
-    } catch {
-      // Private mode: the rail forgets.
+  const dock = $derived.by((): DockItem[] => {
+    const items: DockItem[] = [];
+    const home = all.find((r) => r.id === "home");
+    if (home) items.push({ id: home.id, name: home.name, icon: home.icon, href: home.path, on: route.id === home.id });
+    for (const r of all.filter((r) => r.tab === "training" && allowed(r))) {
+      items.push({
+        id: r.id,
+        name: r.name,
+        icon: r.icon,
+        href: r.path,
+        on: route.params?.seriesId === r.params?.seriesId && route.tab === "training",
+      });
     }
-  }
-
-  // Desktop top bar: where you are.
-  const crumbs = $derived.by(() => {
-    if (route.group === "Settings") return ["Settings", route.name];
-    if (route.group === "You") return ["You", route.name];
-    if (route.group) return [route.name];
-    const fold = folds().find((f) => f.id === route.fold);
-    if (fold) return [fold.name, route.name];
-    return [route.name];
+    const cal = all.find((r) => r.tab === "calendar" && allowed(r));
+    if (cal) items.push({ id: cal.id, name: cal.name, icon: cal.icon, href: cal.path, on: route.tab === "calendar" });
+    for (const f of folds()) {
+      const first = all.find((r) => r.fold === f.id && allowed(r));
+      if (first) items.push({ id: f.id, name: f.name, icon: f.icon, href: first.path, on: route.fold === f.id });
+    }
+    for (const r of all.filter((r) => r.group === "Club" && allowed(r))) {
+      items.push({ id: r.id, name: r.name, icon: r.icon, href: r.path, on: route.id === r.id });
+    }
+    const more = all.find((r) => r.id === "more");
+    if (more) {
+      const settings = all.some((r) => r.group === "Settings" && allowed(r));
+      items.push({
+        id: more.id,
+        name: settings ? "Settings" : "More",
+        icon: settings ? "settings" : "more",
+        href: more.path,
+        on: route.tab === "more",
+      });
+    }
+    return items;
   });
+
+  // London time in the corner, to the minute.
+  let now = $state(Date.now());
+  $effect(() => {
+    const t = setInterval(() => (now = Date.now()), 15_000);
+    return () => clearInterval(t);
+  });
+  const clock = $derived(
+    new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/London" }).format(now),
+  );
 
   let chromeH = $state(0);
   let content: HTMLElement | undefined = $state();
@@ -116,126 +119,38 @@
     return { update: run };
   }
 
-  // The scoreboard skin's top line: the next session, counting down, and whether you're in.
-  let now = $state(Date.now());
-  $effect(() => {
-    const t = setInterval(() => (now = Date.now()), 30_000);
-    return () => clearInterval(t);
-  });
-  const board = $derived.by(() => {
-    const series = db.series.find((x) => x.active);
-    const session = series && nextSession(series);
-    if (!series || !session) return null;
-    const b = sessionBookable(session);
-    const mins = Math.max(0, Math.floor((new Date(b.startsAt).getTime() - now) / 60_000));
-    const d = Math.floor(mins / 1440);
-    const h = Math.floor((mins % 1440) / 60);
-    const m = mins % 60;
-    const id = me().id;
-    const status = session.going.includes(id)
-      ? `IN #${session.going.indexOf(id) + 1}`
-      : session.waitlist.includes(id)
-        ? "WAITLIST"
-        : "NOT IN";
-    return {
-      what: `${series.shortName} ${formatTime(b.startsAt)}`.toUpperCase(),
-      clock: d ? `${d}D ${String(h).padStart(2, "0")}H` : `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`,
-      status,
-      lit: status !== "NOT IN",
-    };
-  });
-
   // The poster word behind each page's title: the section it's in (Friday, Kumite), else the page itself.
   const ghost = $derived(
     route.id === "home"
       ? ""
-      : route.fold
-        ? (tabList.find((t) => t.id === route.tab)?.label ?? route.name)
-        : (route.short ?? route.name),
+      : route.id === "more"
+        ? (dock.find((d) => d.id === "more")?.name ?? route.name)
+        : route.fold
+          ? (tabList.find((t) => t.id === route.tab)?.label ?? route.name)
+          : (route.short ?? route.name),
   );
-  // The ticket stub at the foot of the rail: the next session and whether you're in.
-  const ticket = $derived.by(() => {
-    const series = db.series.find((x) => x.active);
-    const session = series && nextSession(series);
-    if (!series || !session) return null;
-    const b = sessionBookable(session);
-    const id = me().id;
-    const at = session.going.indexOf(id);
-    return {
-      href: `/training/${series.slug}`,
-      name: series.shortName,
-      when: `${formatDayDate(b.startsAt)} · ${formatTime(b.startsAt)}`,
-      status: at >= 0 ? `In · #${at + 1}` : session.waitlist.includes(id) ? "Waitlist" : "Not in yet",
-      in: at >= 0,
-    };
-  });
 
-  const glideKey = $derived(`${route.id}|${JSON.stringify(opened)}|${[...perms].join()}|${all.length}`);
+  const glideKey = $derived(`${route.id}|${[...perms].join()}|${all.length}`);
 </script>
 
-{#snippet railLink(r: Route, nested = false, short = false)}
-  {@const on = r.id === route.id}
-  <a
-    class="nav-item"
-    class:nested
-    class:on
-    href={r.path}
-    data-mark={on ? "" : undefined}
-    aria-current={on ? "page" : undefined}
-  >
-    <Icon name={r.icon} size={18} />
-    <span>{short ? (r.short ?? r.name) : r.name}</span>
-  </a>
-{/snippet}
-
 <div class="shell" class:focus={route.focus}>
-  <aside class="rail" aria-label="Main" inert={route.focus || undefined}>
-    <a class="brand" href="/">
-      <img src={logo} alt="" width="34" height="34" />
-      <span class="brand-text">
-        <span class="display brand-title">Cougars</span>
-        <span class="brand-sub">Fresh Meat</span>
-      </span>
-    </a>
-    <nav class="nav" use:glide={{ shape: rowShape, key: glideKey }}>
-      <span class="nav-mark" data-glide aria-hidden="true"></span>
-      {#each flat as r (r.id)}{@render railLink(r)}{/each}
-
-      {#each railFolds as f (f.id)}
-        {@const open = isOpen(f.id)}
-        <div class="group" class:open class:settings={f.id === "settings"}>
-          <button
-            class="nav-item group-head"
-            class:in={foldOf(route) === f.id}
-            aria-expanded={open}
-            onclick={() => toggle(f.id)}
-          >
-            <Icon name={f.icon} size={18} />
-            <span class="group-name">{f.name}</span>
-            <span class="chev"><Icon name="chevronRight" size={16} /></span>
-          </button>
-          <div class="fold">
-            <div class="fold-inner">
-              {#each f.groups as g (g.label)}
-                {#if g.label}<p class="sub-label">{g.label}</p>{/if}
-                {#each g.routes as r (r.id)}{@render railLink(r, true)}{/each}
-              {/each}
-            </div>
-          </div>
-        </div>
-      {/each}
-    </nav>
-    {#if ticket}
-      <a class="ticket" class:in={ticket.in} href={ticket.href}>
-        <span class="ticket-top">
-          <span class="ticket-kicker">Admit one</span>
-          <span class="display ticket-name">{ticket.name}</span>
-          <span class="ticket-when">{ticket.when}</span>
-        </span>
-        <span class="ticket-stub display">{ticket.status}</span>
+  <!-- Desktop: the dock, floating mid-left -->
+  <nav class="dock" aria-label="Main" inert={route.focus || undefined} use:glide={{ shape: rowShape, key: glideKey }}>
+    <span class="dock-mark" data-glide aria-hidden="true"></span>
+    {#each dock as item (item.id)}
+      <a
+        class="dock-item"
+        class:on={item.on}
+        href={item.href}
+        data-mark={item.on ? "" : undefined}
+        aria-current={item.on ? "page" : undefined}
+        aria-label={item.name}
+      >
+        <Icon name={item.icon} size={22} />
+        <span class="dock-label" aria-hidden="true">{item.name}</span>
       </a>
-    {/if}
-  </aside>
+    {/each}
+  </nav>
 
   <main class="main">
     <header class="chrome" class:bare={route.focus && !impersonating()} bind:clientHeight={chromeH}>
@@ -254,23 +169,10 @@
 
       {#if !route.focus}
         <div class="topbar">
-          <a class="topbar-brand" href="/" aria-label="Home">
+          <a class="brand" href="/" aria-label="Home">
             <img src={logo} alt="" width="28" height="28" />
-            <span class="display">Cougars <span class="meat">Fresh Meat</span></span>
+            <span class="display wordmark">Cougars <span class="meat">Fresh Meat</span></span>
           </a>
-          {#if board}
-            <a class="board" href="/" aria-label="Next session">
-              <span>{board.what}</span>
-              <span class="board-clock">{board.clock}</span>
-              <span class:lit={board.lit}>{board.status}</span>
-            </a>
-          {/if}
-          <nav class="crumbs" aria-label="You are here">
-            {#each crumbs as c, i (c)}
-              {#if i > 0}<span class="sep" aria-hidden="true">/</span>{/if}
-              <span class:here={i === crumbs.length - 1}>{c}</span>
-            {/each}
-          </nav>
           <AccountMenu />
         </div>
       {/if}
@@ -279,7 +181,7 @@
         <nav
           class="strip"
           aria-label="{tabList.find((t) => t.id === route.tab)?.label} pages"
-          use:glide={{ shape: underlineShape, key: glideKey }}
+          use:glide={{ shape: stripShape, key: glideKey }}
           use:centre={route.id}
         >
           <span class="strip-mark" data-glide aria-hidden="true"></span>
@@ -313,6 +215,14 @@
       {/key}
     </div>
 
+    <!-- Desktop corners -->
+    {#if !route.focus}
+      <a class="corner wordmark-corner display" href="/" aria-hidden="true" tabindex="-1">
+        <span>Cougars</span><span class="meat">Fresh Meat</span>
+      </a>
+      <p class="corner clock-corner num" aria-hidden="true">Battersea <strong>{clock}</strong></p>
+    {/if}
+
     <nav
       class="tabs"
       aria-label="Primary"
@@ -340,303 +250,14 @@
 
 <style>
   .shell {
-    display: grid;
-    grid-template-columns: var(--rail-w) minmax(0, 1fr);
     height: 100dvh;
     overflow: hidden;
-    transition: grid-template-columns var(--t-slow) var(--ease);
   }
-  .shell.focus {
-    grid-template-columns: 0 minmax(0, 1fr);
-  }
-
-  /* ─── Rail (desktop) ─── */
-  /* The rail: a dark strip with the club's red bleeding down its edge from the top */
-  .rail {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-    padding: 0 var(--s-3) var(--s-4);
-    border-right: 1px solid var(--border);
-    background:
-      radial-gradient(120% 40% at 0% 0%, color-mix(in srgb, var(--red) 16%, transparent), transparent 70%),
-      linear-gradient(180deg, #121215, #0b0b0d);
-    overflow: hidden;
-  }
-  .rail::after {
-    content: "";
-    position: absolute;
-    top: 0;
-    right: -1px;
-    width: 2px;
-    height: 45%;
-    background: linear-gradient(180deg, var(--red), transparent);
-    pointer-events: none;
-  }
-  .brand {
-    display: flex;
-    align-items: center;
-    gap: var(--s-3);
-    height: var(--topbar-h);
-    margin: 0 calc(-1 * var(--s-3)) var(--s-3);
-    padding: 0 var(--s-4);
-    white-space: nowrap;
-  }
-  .brand img,
-  .topbar-brand img {
-    filter: drop-shadow(0 2px 8px rgb(229 19 31 / 0.35));
-  }
-  .brand-text {
-    display: grid;
-    line-height: 1.1;
-  }
-  /* The wordmark, as on the logo: heavy italic capitals, the second line in red */
-  .brand-title {
-    font-size: 1.55rem;
-    font-style: italic;
-    color: var(--fg);
-  }
-  .brand-sub {
-    font-family: var(--font-display);
-    font-size: 0.82rem;
-    font-style: italic;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--red-hot);
-  }
-  .nav {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    flex: 1;
-    min-height: 0;
-    overflow-x: hidden;
-    overflow-y: auto;
-    /* The bar lives in the rail's right padding: reserve it, then give the width back */
-    scrollbar-gutter: stable;
-    margin-right: calc(-1 * var(--scrollbar-size));
-  }
-  .nav-item {
-    position: relative;
-    z-index: 1;
-    display: flex;
-    align-items: center;
-    gap: var(--s-3);
-    width: 100%;
-    height: 2.625rem;
-    flex-shrink: 0;
-    padding: 0 var(--s-3);
-    border: 0;
-    border-radius: var(--r-md);
-    background: none;
-    color: var(--fg-muted);
-    font-size: var(--text-sm);
-    font-weight: 500;
-    text-align: left;
-    white-space: nowrap;
-    transition: color var(--t-fast) var(--ease-in-out);
-  }
-  .nav-item > span {
-    transition: translate var(--t) var(--ease);
-  }
-  .nav-item:hover:not(.on) {
-    color: var(--fg);
-  }
-  .nav-item:hover:not(.on) > span {
-    translate: 3px 0;
-  }
-  .nav-item.on {
-    color: var(--fg);
-  }
-  .nav-item.on :global(svg) {
-    color: var(--red-hot);
-  }
-  .nav-item:focus-visible {
-    outline-offset: -2px;
-  }
-  .nav-item.nested {
-    height: 2.375rem;
-    padding-left: 2.6rem;
-    font-weight: 400;
-  }
-  .nav-item.nested :global(svg) {
-    display: none;
-  }
-  /* The selected item sits on the angled red plate from the player cards; it glides between items */
-  .nav-mark {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 0;
-    height: 0;
-    opacity: 0;
-    pointer-events: none;
-  }
-  .nav-mark::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: var(--r-md);
-    background: color-mix(in srgb, var(--fg) 8%, transparent);
-    box-shadow: inset 2px 0 0 var(--red);
-  }
-
-  /* Settings folds open and shut (grid-template-rows 0fr ↔ 1fr), so the rows below glide rather than jump */
-  .group {
-    margin-top: var(--s-1);
-  }
-  .group.settings {
-    margin-top: var(--s-4);
-    padding-top: var(--s-3);
-    border-top: 1px solid var(--border);
-  }
-  .group-name {
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .group-head.in {
-    color: var(--fg);
-  }
-  .chev {
-    display: grid;
-    margin-left: auto;
-    color: var(--fg-subtle);
-    transition: transform var(--t-slow) var(--ease);
-  }
-  .open .chev {
-    transform: rotate(90deg);
-  }
-  .fold {
-    display: grid;
-    grid-template-rows: 0fr;
-    opacity: 0;
-    transition:
-      grid-template-rows var(--t-slow) var(--ease),
-      opacity var(--t-slow) var(--ease);
-  }
-  .open .fold {
-    grid-template-rows: 1fr;
-    opacity: 1;
-  }
-  .fold-inner {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    min-height: 0;
-    overflow: hidden;
-  }
-  .group:not(.open) .fold-inner {
-    visibility: hidden;
-    transition: visibility 0s var(--t-slow);
-  }
-  .sub-label {
-    margin: var(--s-2) 0 0 2.6rem;
-    font-size: var(--text-2xs);
-    font-weight: 700;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-    color: var(--red-hot);
-  }
-
-  /* ─── Ticket stub: this Friday, at the foot of the rail ─── */
-  .ticket {
-    position: relative;
-    display: grid;
-    grid-template-columns: 1fr auto;
-    margin-top: var(--s-3);
-    border-radius: var(--r-md);
-    background: linear-gradient(135deg, #1d1d21, #141417);
-    box-shadow:
-      inset 0 0 0 1px var(--border-strong),
-      0 10px 24px -14px rgb(0 0 0 / 0.9);
-    color: var(--fg-muted);
-    /* the punched notches either side of the tear line */
-    mask:
-      radial-gradient(circle at calc(100% - 4.75rem) 0, transparent 6px, #000 6.5px) top / 100% 51% no-repeat,
-      radial-gradient(circle at calc(100% - 4.75rem) 100%, transparent 6px, #000 6.5px) bottom / 100% 51% no-repeat;
-    transition: translate var(--t) var(--ease);
-  }
-  .ticket:hover {
-    translate: 0 -2px;
-  }
-  .ticket-top {
-    display: grid;
-    gap: 0.15rem;
-    padding: var(--s-3) var(--s-3) var(--s-3) var(--s-4);
-    min-width: 0;
-  }
-  .ticket-kicker {
-    font-size: var(--text-2xs);
-    font-weight: 700;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: var(--red-hot);
-  }
-  .ticket-name {
-    font-size: 1.35rem;
-    font-style: italic;
-    color: var(--fg);
-  }
-  .ticket-when {
-    font-size: var(--text-xs);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .ticket-stub {
-    display: grid;
-    place-items: center;
-    width: 4.75rem;
-    padding: 0 var(--s-2);
-    border-left: 1px dashed var(--border-strong);
-    font-size: 0.95rem;
-    font-style: italic;
-    line-height: 1.05;
-    text-align: center;
-    color: var(--fg-subtle);
-  }
-  .ticket.in .ticket-stub {
-    color: var(--green);
-  }
-
-  /* ─── The poster word: the page's section in huge outlined capitals behind its title ─── */
-  .ghost {
-    position: absolute;
-    top: calc(var(--chrome-h, 0px) - 0.9rem);
-    left: 50%;
-    width: min(100%, calc(var(--page-max) + 8rem));
-    translate: -50% 0;
-    padding-left: 1.5rem;
-    overflow: hidden;
-    font-size: clamp(5.5rem, 17vw, 10rem);
-    font-style: italic;
-    line-height: 1;
-    white-space: nowrap;
-    color: transparent;
-    -webkit-text-stroke: 1px color-mix(in srgb, var(--fg) 9%, transparent);
-    pointer-events: none;
-    user-select: none;
-    z-index: 0;
-    animation: ghost-in 700ms var(--ease) both;
-  }
-  @keyframes ghost-in {
-    from {
-      opacity: 0;
-      translate: calc(-50% + 1.5rem) 0;
-    }
-  }
-  .view > :global(.page) {
-    position: relative;
-    z-index: 1;
-  }
-
-  /* ─── Main ─── */
   .main {
     position: relative;
     display: flex;
     flex-direction: column;
+    height: 100%;
     min-width: 0;
     min-height: 0;
   }
@@ -645,7 +266,7 @@
     flex: 1;
     min-height: 0;
   }
-  /* Views stack, so one can fade out while the next flies in. Each scrolls on its own, under the chrome. */
+  /* Views stack, so one can leave while the next slides in. Each scrolls on its own, under the chrome. */
   .view {
     position: absolute;
     inset: 0;
@@ -655,9 +276,117 @@
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
   }
+  .view > :global(.page) {
+    position: relative;
+    z-index: 1;
+  }
 
-  /* ─── Chrome: banner, top bar and strip, frosted; content scrolls under it.
-     The frost is on a pseudo-element: backdrop-filter on the bar itself would trap the account sheet. ─── */
+  /* ─── The dock (desktop): glass tiles, the current one raised; a label slides out on hover ─── */
+  .dock {
+    position: fixed;
+    top: 50%;
+    left: var(--s-5);
+    z-index: 7;
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-2);
+    translate: 0 -50%;
+    transition:
+      translate var(--t-slow) var(--ease),
+      opacity var(--t-slow) var(--ease);
+  }
+  .focus .dock {
+    translate: -140% -50%;
+    opacity: 0;
+  }
+  .dock-item {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    place-items: center;
+    width: 3.5rem;
+    height: 3.5rem;
+    border-radius: var(--r-md);
+    border: 1px solid rgb(236 232 225 / 0.07);
+    background: color-mix(in srgb, var(--surface-1) 45%, transparent);
+    backdrop-filter: blur(14px) saturate(1.4);
+    -webkit-backdrop-filter: blur(14px) saturate(1.4);
+    color: var(--fg-muted);
+    transition:
+      color var(--t) var(--ease-in-out),
+      scale var(--t) var(--ease),
+      border-color var(--t) var(--ease-in-out);
+  }
+  .dock-item:hover {
+    color: var(--fg);
+    border-color: rgb(236 232 225 / 0.14);
+  }
+  .dock-item:active {
+    scale: 0.95;
+  }
+  .dock-item.on {
+    color: var(--fg);
+    border-color: transparent;
+  }
+  .dock-item.on :global(svg) {
+    color: var(--red-hot);
+    filter: drop-shadow(0 0 10px color-mix(in srgb, var(--red) 55%, transparent));
+  }
+  .dock-item:focus-visible {
+    outline-offset: 3px;
+  }
+  /* The raised tile glides between items */
+  .dock-mark {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 0;
+    height: 0;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .dock-mark::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: var(--r-md);
+    border: 1px solid rgb(236 232 225 / 0.18);
+    background:
+      linear-gradient(160deg, rgb(255 255 255 / 0.1), rgb(255 255 255 / 0.02) 60%),
+      color-mix(in srgb, var(--surface-2) 85%, transparent);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.12),
+      0 14px 30px -14px rgb(0 0 0 / 0.9);
+  }
+  .dock-label {
+    position: absolute;
+    left: calc(100% + var(--s-3));
+    top: 50%;
+    translate: -6px -50%;
+    padding: 0.4rem 0.7rem;
+    border-radius: var(--r-sm);
+    border: 1px solid rgb(236 232 225 / 0.12);
+    background: color-mix(in srgb, var(--surface-2) 92%, transparent);
+    color: var(--fg);
+    font-size: var(--text-2xs);
+    font-weight: 700;
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    white-space: nowrap;
+    box-shadow: var(--shadow);
+    opacity: 0;
+    pointer-events: none;
+    transition:
+      opacity var(--t) var(--ease),
+      translate var(--t) var(--ease);
+  }
+  .dock-item:hover .dock-label,
+  .dock-item:focus-visible .dock-label {
+    opacity: 1;
+    translate: 0 -50%;
+  }
+
+  /* ─── Chrome: the banner, the top bar and the strip; content scrolls under them ─── */
   .chrome {
     position: absolute;
     top: 0;
@@ -666,6 +395,8 @@
     z-index: 6;
     padding-top: env(safe-area-inset-top, 0px);
   }
+  /* Phones frost the bar (content scrolls under it); desktop leaves it clear, the mark and badge just float. The
+     frost is on a pseudo-element: backdrop-filter on the bar itself would trap the account sheet. */
   .chrome::before {
     content: "";
     position: absolute;
@@ -682,41 +413,24 @@
   .topbar {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: var(--s-4);
     height: var(--topbar-h);
     padding: 0 var(--gutter);
   }
-  .topbar-brand {
-    display: none;
+  .brand {
+    display: inline-flex;
     align-items: center;
     gap: var(--s-2);
     font-size: 1.2rem;
     font-style: italic;
     color: var(--fg);
   }
-  .topbar-brand .meat {
+  .brand img {
+    filter: drop-shadow(0 2px 8px rgb(229 19 31 / 0.35));
+  }
+  .meat {
     color: var(--red-hot);
-  }
-  /* Only the scoreboard skin shows the board (skins.css) */
-  .board {
-    display: none;
-  }
-  .crumbs {
-    display: flex;
-    align-items: center;
-    gap: var(--s-2);
-    flex: 1;
-    min-width: 0;
-    color: var(--fg-muted);
-    font-size: var(--text-sm);
-    font-weight: 500;
-    white-space: nowrap;
-  }
-  .crumbs .sep {
-    color: var(--fg-subtle);
-  }
-  .crumbs .here {
-    color: var(--fg);
   }
 
   .viewing {
@@ -750,7 +464,7 @@
     background: color-mix(in srgb, var(--amber) 24%, transparent);
   }
 
-  /* ─── Strip of sub-pages (phones; desktop has the rail) ─── */
+  /* ─── Strip of a section's pages: a row under the bar on phones, floating pills along the top on desktop ─── */
   .strip {
     position: relative;
     display: flex;
@@ -793,13 +507,60 @@
     left: 0;
     opacity: 0;
     background: var(--red-hot);
-    transform-origin: left;
     pointer-events: none;
   }
-  @media (min-width: 901px) {
-    .strip {
-      display: none;
+
+  /* ─── The poster word: the page's section in huge outlined capitals behind its title ─── */
+  .ghost {
+    position: absolute;
+    top: calc(var(--chrome-h, 0px) - 0.9rem);
+    left: 50%;
+    width: min(100%, calc(var(--page-max) + 8rem));
+    translate: -50% 0;
+    padding-left: 1.5rem;
+    overflow: hidden;
+    font-size: clamp(5.5rem, 17vw, 10rem);
+    font-style: italic;
+    line-height: 1;
+    white-space: nowrap;
+    color: transparent;
+    -webkit-text-stroke: 1px color-mix(in srgb, var(--fg) 9%, transparent);
+    pointer-events: none;
+    user-select: none;
+    z-index: 0;
+    animation: ghost-in 700ms var(--ease) both;
+  }
+  @keyframes ghost-in {
+    from {
+      opacity: 0;
+      translate: calc(-50% + 1.5rem) 0;
     }
+  }
+
+  /* ─── Desktop corners: the wordmark and the London clock ─── */
+  .corner {
+    position: absolute;
+    bottom: var(--s-5);
+    z-index: 6;
+    margin: 0;
+    color: var(--fg-subtle);
+    pointer-events: none;
+  }
+  .wordmark-corner {
+    left: var(--s-5);
+    display: grid;
+    font-size: 1.05rem;
+    font-style: italic;
+    line-height: 0.95;
+    color: var(--fg-muted);
+  }
+  .clock-corner {
+    right: var(--s-5);
+    font-size: var(--text-xs);
+  }
+  .clock-corner strong {
+    color: var(--fg-muted);
+    font-weight: 600;
   }
 
   /* ─── Bottom tabs (phones): frosted, content scrolls under them ─── */
@@ -807,20 +568,55 @@
     display: none;
   }
 
-  @media (max-width: 900px) {
-    .shell,
-    .shell.focus {
-      grid-template-columns: minmax(0, 1fr);
-    }
-    .rail,
-    .crumbs {
+  @media (min-width: 901px) {
+    .chrome::before {
       display: none;
     }
-    .topbar {
-      justify-content: space-between;
+    .wordmark {
+      display: none;
     }
-    .topbar-brand {
-      display: inline-flex;
+    .brand img {
+      width: 36px;
+      height: 36px;
+    }
+    .topbar {
+      height: 4.5rem;
+      padding: 0 var(--s-5);
+    }
+    .strip {
+      position: absolute;
+      top: calc(env(safe-area-inset-top, 0px) + 1.1rem);
+      left: 50%;
+      translate: -50% 0;
+      height: auto;
+      padding: 3px;
+      gap: 2px;
+      border: 1px solid rgb(236 232 225 / 0.1);
+      border-radius: var(--r-pill);
+      background: color-mix(in srgb, var(--surface-1) 55%, transparent);
+      backdrop-filter: blur(14px) saturate(1.4);
+      -webkit-backdrop-filter: blur(14px) saturate(1.4);
+      overflow: visible;
+    }
+    .strip-link {
+      height: 2.1rem;
+      padding: 0 var(--s-4);
+      border-radius: var(--r-pill);
+    }
+    .strip-mark {
+      background: color-mix(in srgb, var(--fg) 12%, transparent);
+    }
+    /* Room for the dock on narrower desktops, mirrored so the page stays centred */
+    .view {
+      padding-left: 6rem;
+      padding-right: 6rem;
+    }
+  }
+
+  @media (max-width: 900px) {
+    .dock,
+    .corner {
+      display: none;
     }
     .viewing-role {
       display: none;
@@ -887,7 +683,6 @@
     .tab-label {
       line-height: 1;
     }
-    /* The same angled red plate as the rail, behind the tab's icon */
     .tab-mark {
       position: absolute;
       top: 0;
@@ -904,9 +699,6 @@
     }
     .ghost {
       font-size: clamp(4.5rem, 22vw, 6rem);
-    }
-    .ticket {
-      display: none;
     }
   }
 </style>

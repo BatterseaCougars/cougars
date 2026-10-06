@@ -44,6 +44,10 @@ export const underlineShape: Shape = (el, nav) => {
   return { x: r.left - n.left + nav.scrollLeft + inset, y: r.bottom - n.top - 2, w: r.width - inset * 2, h: 2, r: 1 };
 };
 
+/** The strip: an underline on phones, the whole link as a pill on desktop (where the strip itself is a pill). */
+export const stripShape: Shape = (el, nav) =>
+  window.matchMedia("(min-width: 901px)").matches ? { ...rowShape(el, nav), r: 999 } : underlineShape(el, nav);
+
 const lerp = (a: Box, b: Box, t: number): Box => ({
   x: a.x + (b.x - a.x) * t,
   y: a.y + (b.y - a.y) * t,

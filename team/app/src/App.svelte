@@ -25,7 +25,6 @@
   import Training from "./pages/Training.svelte";
   import TrainingSettings from "./pages/TrainingSettings.svelte";
   import Upload from "./pages/Upload.svelte";
-  import NavMockups from "./pages/NavMockups.svelte";
 
   // Page components by route.page; a route's params (seriesId, typeId) are passed as props. Pages take different
   // props, so the map is loosely typed; nav-routes.ts is what pairs each page with its params.
@@ -65,11 +64,6 @@
 
 <svelte:document onclick={interceptLinks} />
 
-<!-- Design mockups, dev only: outside the shell, since they mock the shell itself -->
-{#if import.meta.env.DEV && router.path === "/mockups/nav"}
-  <NavMockups />
-{:else}
-  <Shell {route}>
-    <Page {...route.params ?? {}} />
-  </Shell>
-{/if}
+<Shell {route}>
+  <Page {...route.params ?? {}} />
+</Shell>

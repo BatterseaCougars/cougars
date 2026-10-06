@@ -1,10 +1,6 @@
 import { mount } from "svelte";
 import App from "./App.svelte";
 import "./app.css";
-import "./app/shell/skins.css";
-import { applyChrome } from "./app/shell/chrome.svelte";
-
-applyChrome();
 
 mount(App, { target: document.getElementById("app")! });
 
