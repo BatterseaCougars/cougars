@@ -98,6 +98,8 @@
   --tab-h: calc(3.75rem + env(safe-area-inset-bottom, 0px));
   --strip-h: 2.875rem;
   --topbar-h: 3.5rem;
+  --scrollbar-size: 8px;
+  --scrollbar: color-mix(in srgb, var(--fg-muted) 45%, transparent);
   --rail-w: 15.5rem;
   --control-h: 2.75rem;
   --control-h-sm: 2.25rem;
@@ -209,12 +211,46 @@ h3 {
   outline-offset: 2px;
   border-radius: var(--r-sm);
 }
-* {
-  scrollbar-width: thin;
-  scrollbar-color: transparent transparent;
+/* ─── Scrollbars (from Gwenda ops) ───
+   Thin, 8px, no track and no arrows; the thumb shows only while the pointer is over the scroller. A scroller
+   that sits against padding (the rail) reserves the 8px with scrollbar-gutter and gives it back with a negative
+   margin, so the bar lives in the padding and the content never shifts. Phones use the system's overlay bars. */
+@supports selector(::-webkit-scrollbar) {
+  ::-webkit-scrollbar {
+    width: var(--scrollbar-size);
+    height: var(--scrollbar-size);
+    background: transparent;
+  }
+  ::-webkit-scrollbar-button {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+  ::-webkit-scrollbar-track,
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    border: 2px solid transparent;
+    border-radius: var(--r-pill);
+    background: transparent padding-box;
+  }
+  :hover::-webkit-scrollbar-thumb {
+    background-color: var(--scrollbar);
+  }
+  ::-webkit-scrollbar-thumb:hover,
+  ::-webkit-scrollbar-thumb:active {
+    background-color: var(--fg-muted);
+  }
 }
-*:hover {
-  scrollbar-color: color-mix(in srgb, var(--fg-muted) 50%, transparent) transparent;
+@supports not selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+  }
+  *:hover {
+    scrollbar-color: var(--scrollbar) transparent;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -311,7 +311,11 @@
     gap: 2px;
     flex: 1;
     min-height: 0;
+    overflow-x: hidden;
     overflow-y: auto;
+    /* The bar lives in the rail's right padding: reserve it, then give the width back */
+    scrollbar-gutter: stable;
+    margin-right: calc(-1 * var(--scrollbar-size));
   }
   .nav-label {
     margin: var(--s-4) var(--s-3) var(--s-1);
