@@ -20,7 +20,6 @@
   import logo from "../../assets/cougars-mark.webp";
   import { owedBy } from "../../demo/dues.svelte";
   import { pounds } from "../../lib/dates";
-  import Pills from "../../lib/Pills.svelte";
   import Sheet from "../../lib/Sheet.svelte";
   import { phone } from "../../lib/viewport.svelte";
   import { pageBar } from "./page-bar.svelte";
@@ -107,11 +106,13 @@
   let content: HTMLElement | undefined = $state();
 
   let filtersOpen = $state(false);
-  // Desktop: what the top bar shows for this page, and the veil behind it once the page has scrolled
-  const stripItems = $derived(strip.map((r) => ({ id: r.id, path: r.path, label: r.short ?? r.name })));
-  const hasTools = $derived(
-    !phone.current && Boolean(stripItems.length > 1 || pageBar.toolbar || pageBar.filters || pageBar.actions),
-  );
+  // The desktop header shows the section's pages as pills in its toolbar row
+  $effect(() => {
+    pageBar.strip = strip.map((r) => ({ id: r.id, path: r.path, label: r.short ?? r.name }));
+    pageBar.current = route.id;
+  });
+  // Once the page has scrolled, its toolbar row's veil fades in across the top of the window (desktop, PageHeader).
+  // Only the frost changes: nothing moves.
   let scrolled = $state(false);
   $effect(() => {
     void route.id;
@@ -242,20 +243,11 @@
           </div>
         {/if}
       {:else if !route.focus}
-        <!-- Desktop: the mark and your badge in the top corners, the page's controls between them -->
-        <div class="topbar" class:scrolled>
+        <!-- Desktop: the mark and your badge in the top corners -->
+        <div class="topbar">
           <a class="brand" href="/" aria-label="Home">
             <img src={logo} alt="" width="36" height="36" />
           </a>
-          <!-- The page's controls: a section's pages as pills, search or tabs, filter chips, its buttons -->
-          {#if hasTools}
-            <div class="tools">
-              {#if stripItems.length > 1}<Pills items={stripItems} current={route.id} />{/if}
-              {#if pageBar.toolbar}{@render pageBar.toolbar()}{/if}
-              {#if pageBar.filters}{@render pageBar.filters()}{/if}
-              {#if pageBar.actions}<div class="tools-actions">{@render pageBar.actions()}</div>{/if}
-            </div>
-          {/if}
           <AccountMenu />
         </div>
       {/if}
@@ -301,7 +293,7 @@
         <div
           class="view"
           class:under-tabs={!route.focus}
-          class:has-tools={hasTools}
+          class:scrolled
           in:enter={{ focus: route.focus }}
           out:leave={{ focus: route.focus }}
         >
@@ -369,6 +361,9 @@
     padding-top: var(--chrome-h, 0px);
     overflow-x: clip;
     overflow-y: auto;
+    /* No scroll anchoring: when a filter shortens the page, the scroll clamps rather than jumping to the top, so
+       the toolbar row stays docked */
+    overflow-anchor: none;
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
   }
@@ -664,59 +659,6 @@
     }
     .topbar > :global(*) {
       pointer-events: auto;
-    }
-    /* Behind the bar once the page has scrolled, a veil: the page's background in from the top with a blur that
-       fades out, so cards dissolve under the controls. No edge. */
-    .topbar::before {
-      content: "";
-      position: absolute;
-      z-index: -1;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 7.5rem;
-      background: linear-gradient(
-        to bottom,
-        var(--bg),
-        color-mix(in srgb, var(--bg) 85%, transparent) 55%,
-        transparent
-      );
-      backdrop-filter: blur(18px) saturate(1.2);
-      -webkit-backdrop-filter: blur(18px) saturate(1.2);
-      mask-image: linear-gradient(to bottom, #000 55%, transparent);
-      -webkit-mask-image: linear-gradient(to bottom, #000 55%, transparent);
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity var(--t-slow) var(--ease);
-    }
-    .topbar.scrolled::before {
-      opacity: 1;
-    }
-    /* The controls sit over the page column, left-aligned with its title */
-    .tools {
-      display: flex;
-      align-items: center;
-      gap: var(--s-3);
-      width: 100%;
-      max-width: var(--page-max);
-      margin: 0 auto;
-      padding: 0 var(--gutter);
-    }
-    /* The page starts under the bar when there is one */
-    .view.has-tools > :global(.page) {
-      padding-top: 4.5rem;
-    }
-    .tools > :global(*) {
-      min-width: 0;
-    }
-    .tools :global(.search) {
-      width: 14rem;
-    }
-    .tools-actions {
-      display: flex;
-      align-items: center;
-      gap: var(--s-2);
-      margin-left: auto;
     }
     .brand {
       display: inline-flex;
