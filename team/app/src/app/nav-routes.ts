@@ -33,7 +33,15 @@ export interface Route {
 export const ROUTES: Route[] = [
   { id: "home", path: "/", name: "Home", tab: "home", action: "authenticated", icon: "home" },
 
-  { id: "friday", path: "/friday", name: "Friday", short: "Teams", tab: "friday", action: "read:Event", icon: "teams" },
+  {
+    id: "friday",
+    path: "/friday",
+    name: "Friday hockey",
+    short: "Teams",
+    tab: "friday",
+    action: "read:Event",
+    icon: "teams",
+  },
   {
     id: "register",
     path: "/friday/register",

@@ -18,17 +18,24 @@
   const strip = $derived(route.focus ? [] : stripRoutes(route.tab, perms));
   const allowed = (r: Route) => !r.focus && can(perms, r.action);
 
-  // Rail: the member's pages first, flat; Club; then Settings, which folds open.
+  // Rail: as flat as it can be. A section gets a heading only when it has more than one link, so a member sees
+  // Home, Friday hockey, Calendar, the Kumite section, Roster; Settings folds open below for admins.
   const railSections = $derived(
     [
       { label: "", routes: ROUTES.filter((r) => r.tab === "home") },
-      { label: "Friday", routes: ROUTES.filter((r) => r.tab === "friday") },
+      { label: "Friday hockey", routes: ROUTES.filter((r) => r.tab === "friday") },
       { label: "", routes: ROUTES.filter((r) => r.tab === "calendar") },
       { label: "Kumite", routes: ROUTES.filter((r) => r.tab === "kumite") },
-      { label: "Club", routes: ROUTES.filter((r) => r.group === "Club") },
+      { label: "", routes: ROUTES.filter((r) => r.group === "Club") },
     ]
       .map((s) => ({ ...s, routes: s.routes.filter(allowed) }))
-      .filter((s) => s.routes.length),
+      .filter((s) => s.routes.length)
+      .map((s, i, all) => {
+        const heading = s.routes.length > 1 ? s.label : "";
+        const prevHeading = i > 0 && all[i - 1].routes.length > 1 && all[i - 1].label;
+        // Space after a headed section, so the next flat links don't read as part of it
+        return { ...s, heading, gapBefore: !heading && Boolean(prevHeading) };
+      }),
   );
   const settings = $derived(
     (["People", "Money"] as const)
@@ -60,8 +67,10 @@
   // Desktop top bar: where you are. The tab, then the page when it isn't the tab's own name.
   const crumbs = $derived.by(() => {
     if (route.group === "Settings") return ["Settings", route.name];
-    if (route.group) return [route.group, route.name];
-    const tab = TABS.find((t) => t.id === route.tab)!.label;
+    if (route.group === "You") return ["You", route.name];
+    if (route.group) return [route.name];
+    // The phone tab is "Friday"; on desktop the section is "Friday hockey", like the rail.
+    const tab = route.tab === "friday" ? "Friday hockey" : TABS.find((t) => t.id === route.tab)!.label;
     return tab === route.name ? [tab] : [tab, route.name];
   });
 
@@ -105,7 +114,7 @@
   const glideKey = $derived(`${route.id}|${showSettings}|${[...perms].join()}`);
 </script>
 
-{#snippet railLink(r: Route, nested = false)}
+{#snippet railLink(r: Route, nested = false, short = false)}
   {@const on = r.id === route.id}
   <a
     class="nav-item"
@@ -116,7 +125,7 @@
     aria-current={on ? "page" : undefined}
   >
     <Icon name={r.icon} size={18} />
-    <span>{r.name}</span>
+    <span>{short ? (r.short ?? r.name) : r.name}</span>
   </a>
 {/snippet}
 
@@ -132,8 +141,8 @@
     <nav class="nav" use:glide={{ shape: rowShape, key: glideKey }}>
       <span class="nav-mark" data-glide aria-hidden="true"></span>
       {#each railSections as s, i (s.label + i)}
-        {#if s.label}<p class="nav-label eyebrow">{s.label}</p>{:else if i > 0}<span class="gap"></span>{/if}
-        {#each s.routes as r (r.id)}{@render railLink(r)}{/each}
+        {#if s.heading}<p class="nav-label eyebrow">{s.heading}</p>{:else if s.gapBefore}<span class="gap"></span>{/if}
+        {#each s.routes as r (r.id)}{@render railLink(r, false, Boolean(s.heading))}{/each}
       {/each}
 
       {#if settings.length}
@@ -322,7 +331,8 @@
     color: var(--fg-subtle);
   }
   .gap {
-    height: var(--s-2);
+    flex-shrink: 0;
+    height: var(--s-4);
   }
   .nav-item {
     position: relative;
