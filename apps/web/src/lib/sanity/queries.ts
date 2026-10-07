@@ -7,7 +7,7 @@ export const FRIDAYS = /* groq */ `*[_id == "fridays"][0]{
 }`;
 export const PUB = /* groq */ `*[_id == "pub"][0]{name, about, mapUrl}`;
 export const TEAM = /* groq */ `*[_id == "team"][0]{intro, league, photo}`;
-export const KUMITE = /* groq */ `*[_id == "kumite"][0]{intro, tagline, typedLines, format, awards}`;
+export const KUMITE = /* groq */ `*[_id == "kumite"][0]{intro, tagline, posterStatement, posterReveal, format, awards}`;
 
 export const KUMITE_RESULTS = /* groq */ `*[_type == "kumiteResult" && defined(season)] | order(date desc){
   season, date, champions, topScorer, bestGoalie, "event": event->{title, "slug": slug.current}

@@ -60,7 +60,8 @@ export const FALLBACK_KUMITE: Kumite = {
     "Friday hockey. Everyone who signs up is drafted into balanced teams, every team plays every other " +
     "team, and one team walks away as champions. Anyone can play.",
   tagline: "Four times a year. Drafted teams, everyone plays everyone.",
-  typedLines: ["One team walks away.", "Champions."],
+  posterStatement: "One team walks away.",
+  posterReveal: "Champions.",
   format: [
     "Players are drafted into balanced teams on the day",
     "Full round robin: every team plays every team",

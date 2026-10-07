@@ -310,14 +310,20 @@ export const kumite = defineType({
       validation: (r) => r.required().max(140),
     }),
     defineField({
-      name: "typedLines",
-      title: "Typed lines",
-      type: "array",
-      of: [defineArrayMember({ type: "string", validation: (r) => r.max(40) })],
+      name: "posterStatement",
+      title: "Poster statement",
+      type: "string",
+      description: "Stays on the poster under the title, e.g. “One team walks away.”",
+      validation: (r) => r.required().max(40),
+    }),
+    defineField({
+      name: "posterReveal",
+      title: "Poster reveal",
+      type: "string",
       description:
-        "Typed out on the poster, one after another: each is written, held, then erased before the next. The " +
-        "last one stays. Keep them short, e.g. “One team walks away.” then “Champions.”",
-      validation: (r) => r.min(1).max(4),
+        "Appears after the statement, letter by letter out of a blur, holds, dissolves away, and comes back. One " +
+        "or two words, e.g. “Champions.”",
+      validation: (r) => r.required().max(20),
     }),
     defineField({
       name: "format",

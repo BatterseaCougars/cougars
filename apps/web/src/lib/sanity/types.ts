@@ -53,8 +53,10 @@ export interface Kumite {
   intro: string;
   /** Under the poster's title. */
   tagline: string;
-  /** Typed out on the poster one after another, each erased before the next; the last one stays. */
-  typedLines: string[];
+  /** Stays on the poster under the title. */
+  posterStatement: string;
+  /** Appears after the statement out of a blur, holds, dissolves away, and comes back. */
+  posterReveal: string;
   format: string[];
   awards: string[];
 }

@@ -3,8 +3,9 @@
 // mystique, and the joke that it is open to anyone: struck-out "invitation only", a redacted
 // location that reveals itself on hover, a billing block. Used as the home-page feature (a link)
 // and as the header of /kumite/ (an <h1>). Kumite is 組手 in Japanese: the kanji run down the side in brush, the club
-// is spelt in katakana, and a red seal (優勝, "champions") is stamped when the typed lines finish. The tagline and the
-// typed lines are Studio settings (Kumite).
+// is spelt in katakana. Under the title a statement stays ("One team walks away.") and a reveal ("Champions.") comes
+// out of a blur letter by letter, a red seal (優勝) is stamped beside it, and it dissolves away again, on a loop. The
+// tagline, statement and reveal are Studio settings (Kumite).
 import { getImage } from "astro:assets";
 import background from "../assets/cougars_background.png";
 // Only the nine characters the poster uses (Yuji Boku, SIL OFL), so it's a 5 KB file
@@ -22,7 +23,8 @@ const { next, href, heading: Heading = "h2" } = Astro.props;
 const Tag = href ? "a" : "div";
 const bg = (await getImage({ src: background, width: 1600, format: "webp", quality: 70 })).src;
 const { kumite } = await getSettings();
-const lines = kumite.typedLines.filter((l) => l.trim());
+// The reveal, one span per letter so each can dissolve on its own; a little drift each way, the same every build
+const letters = [...kumite.posterReveal].map((ch, i) => ({ ch, dx: `${(((i * 37) % 11) - 5) * 0.05}em` }));
 const brushFace = `@font-face{font-family:"Kumite Brush";src:url(${brush}) format("woff2");font-display:block}`;
 const credits = [
   ["A", "Battersea Cougars", "production"],
@@ -58,23 +60,21 @@ const credits = [
     <span class="the">The Cougars</span>
     <span class="word">Kumite</span>
   </Heading>
-  {lines.length > 0 && (
-    <p class="typed" aria-label={lines.join(" ")} data-typed={JSON.stringify(lines)}>
-      <!-- Every line, invisible, in the same cell: the box is as big as the biggest, so typing never moves anything -->
-      {lines.map((l) => (
-        <span class="ghost" aria-hidden="true">
-          {l}
+  <p class="drama" aria-label={`${kumite.posterStatement} ${kumite.posterReveal}`} data-dissolve>
+    <span class="statement" aria-hidden="true">
+      {kumite.posterStatement}
+    </span>
+    <span class="reveal" aria-hidden="true">
+      {letters.map(({ ch, dx }, i) => (
+        <span class="ch" style={`--i:${i};--dx:${dx}`}>
+          {ch === " " ? "\u00a0" : ch}
         </span>
       ))}
-      <span class="out" aria-hidden="true">
-        <span class="text">{lines.at(-1)}</span>
-        <span class="caret" />
-        <span class="hanko" lang="ja">
-          優勝
-        </span>
+      <span class="hanko" lang="ja" style={`--n:${letters.length}`}>
+        優勝
       </span>
-    </p>
-  )}
+    </span>
+  </p>
   <p class="tagline">{kumite.tagline}</p>
 
   <div class="date">
@@ -229,61 +229,47 @@ const credits = [
     line-height: 1;
     color: var(--red-hot);
   }
-  /* The typed lines: Anton, slanted like the title, in a box sized for the longest */
-  .typed {
-    position: relative;
+  /* The statement and the reveal: Anton, slanted like the title. The reveal always keeps its space, so nothing moves
+     when it comes and goes. */
+  .drama {
     display: grid;
     justify-items: center;
+    gap: 0.1em;
     margin: 0.4rem 0 0;
     font-family: var(--display);
     font-size: clamp(1.6rem, 4.2vw, 3rem);
     line-height: 1.1;
     text-transform: uppercase;
     letter-spacing: 0.02em;
-    color: var(--text);
   }
-  .typed > .ghost,
-  .typed > .out {
-    grid-area: 1 / 1;
+  .statement,
+  .reveal {
     transform: skewX(-10deg);
     white-space: nowrap;
   }
-  .typed > .ghost {
-    visibility: hidden;
+  .statement {
+    color: var(--text-2);
   }
-  .typed > .out {
+  .reveal {
     position: relative;
+    color: var(--text);
+    font-size: 1.25em;
   }
-  .caret {
+  /* Each letter comes out of a blur and goes back into one, a beat after the one before */
+  .ch {
     display: inline-block;
-    width: 0.09em;
-    height: 0.82em;
-    margin-left: 0.08em;
-    vertical-align: -0.04em;
-    background: var(--red-hot);
-    animation: kumite-blink 1s steps(1) infinite;
+    transition:
+      opacity 0.8s ease,
+      filter 0.8s ease,
+      transform 1.1s cubic-bezier(0.22, 1, 0.36, 1);
+    transition-delay: calc(var(--i) * 55ms);
   }
-  .typed.done .caret {
-    animation: kumite-caret-out 2.4s steps(1) forwards;
+  .drama.gone .ch {
+    opacity: 0;
+    filter: blur(0.25em);
+    transform: translate(var(--dx), -0.3em) scale(1.12);
   }
-  @keyframes kumite-blink {
-    50% {
-      opacity: 0;
-    }
-  }
-  @keyframes kumite-caret-out {
-    20%,
-    40%,
-    61%,
-    100% {
-      opacity: 0;
-    }
-    21%,
-    41% {
-      opacity: 1;
-    }
-  }
-  /* A red seal (優勝, read top to bottom), stamped beside the last line as it lands */
+  /* A red seal (優勝, read top to bottom), stamped beside the reveal once its letters have landed */
   .hanko {
     position: absolute;
     top: 50%;
@@ -305,16 +291,17 @@ const credits = [
     background: rgb(229 19 31 / 0.08);
     mix-blend-mode: screen;
   }
-  .typed.pending .hanko {
+  .hanko {
+    transition:
+      opacity 0.12s ease-out calc(var(--n) * 55ms + 0.5s),
+      scale 0.22s cubic-bezier(0.2, 1.6, 0.4, 1) calc(var(--n) * 55ms + 0.5s);
+  }
+  .drama.gone .hanko {
     opacity: 0;
     scale: 1.6;
-  }
-  .typed.done .hanko {
-    opacity: 1;
-    scale: 1;
     transition:
-      opacity 0.12s ease-out,
-      scale 0.22s cubic-bezier(0.2, 1.6, 0.4, 1);
+      opacity 0.5s ease,
+      scale 0.5s ease;
   }
   .tagline {
     max-width: 34rem;
@@ -428,47 +415,32 @@ const credits = [
   };
   document.addEventListener("astro:page-load", update);
 
-  // The typed lines (Studio → Kumite): each is typed, held, erased, and the last one stays; then the seal is stamped.
-  // Starts when the poster comes into view. Without motion, the last line and the seal just show.
-  const TYPE_MS = 60;
-  const ERASE_MS = 30;
-  const HOLD_MS = 1300;
-  const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
-  async function play(box: HTMLElement) {
-    const lines: string[] = JSON.parse(box.dataset.typed ?? "[]");
-    const text = box.querySelector<HTMLElement>(".text");
-    if (!text || !lines.length) return;
-    for (const [n, line] of lines.entries()) {
-      for (let i = 1; i <= line.length; i++) {
-        text.textContent = line.slice(0, i);
-        await wait(TYPE_MS);
-      }
-      if (n === lines.length - 1) break;
-      await wait(HOLD_MS);
-      for (let i = line.length - 1; i >= 0; i--) {
-        text.textContent = line.slice(0, i);
-        await wait(ERASE_MS);
-      }
-      await wait(350);
-    }
-    box.classList.add("done");
-  }
+  // The reveal (Studio → Kumite): out of a blur, the seal stamped, a hold, then it dissolves away and comes back, for
+  // as long as the poster is on screen. Without motion everything just shows (the CSS starts there).
+  const SHOWN_MS = 4200;
+  const GONE_MS = 1800;
 
   document.addEventListener("astro:page-load", () => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    for (const box of document.querySelectorAll<HTMLElement>("[data-typed]")) {
-      box.classList.add("pending");
-      box.querySelector<HTMLElement>(".text")!.textContent = "";
-      const seen = new IntersectionObserver(
-        (entries) => {
-          if (!entries.some((e) => e.isIntersecting)) return;
-          seen.disconnect();
-          void play(box);
+    for (const box of document.querySelectorAll<HTMLElement>("[data-dissolve]")) {
+      box.classList.add("gone");
+      let timer = 0;
+      const show = () => {
+        box.classList.remove("gone");
+        timer = window.setTimeout(hide, SHOWN_MS);
+      };
+      const hide = () => {
+        box.classList.add("gone");
+        timer = window.setTimeout(show, GONE_MS);
+      };
+      new IntersectionObserver(
+        ([e]) => {
+          clearTimeout(timer);
+          if (e.isIntersecting) timer = window.setTimeout(show, 400);
+          else box.classList.add("gone");
         },
-        { threshold: 0.6 },
-      );
-      seen.observe(box);
+        { threshold: 0.4 },
+      ).observe(box);
     }
   });
 </script>
