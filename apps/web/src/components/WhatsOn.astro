@@ -3,7 +3,7 @@
 // keeps (ADR 0042). The home page is prerendered, so it holds a placeholder that its script fills from /whats-on/,
 // which renders this same component live. No data-reveal in here: swapped-in elements would never be revealed.
 import Empty from "./Empty.astro";
-import { formatDayDate, formatRange } from "../lib/dates";
+import { formatDayDate, formatShortDay, formatTime } from "../lib/dates";
 import type { WhatsOnItem } from "../lib/server/whats-on";
 
 interface Props {
@@ -13,9 +13,16 @@ interface Props {
   day: string;
 }
 const { items, day } = Astro.props;
-// "Ask about this" goes to the contact form, which starts the message with what it's about
-const askHref = (i: WhatsOnItem) =>
-  `/join/?about=${encodeURIComponent(i.dateTbc ? i.title : `${i.title}, ${formatDayDate(i.startsAt)}`)}`;
+// Each row (unless cancelled) asks about itself: the contact form starts the message with what it's about
+// The day big, the times small beneath it; an event running past midnight says when it ends
+const times = (i: WhatsOnItem) => {
+  if (!i.endsAt) return formatTime(i.startsAt);
+  const sameDay = formatDayDate(i.startsAt) === formatDayDate(i.endsAt);
+  return `${formatTime(i.startsAt)}–${sameDay ? "" : `${formatShortDay(i.endsAt)} `}${formatTime(i.endsAt)}`;
+};
+const about = (i: WhatsOnItem) => (i.dateTbc ? i.title : `${i.title}, ${formatDayDate(i.startsAt)}`);
+// The venue opens in a map (Google Maps' search link: any phone, no key). It sits above the row's own link.
+const mapHref = (venue: string) => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(venue)}`;
 ---
 
 <div data-whats-on>
@@ -27,19 +34,33 @@ const askHref = (i: WhatsOnItem) =>
     <ul class="whats-on">
       {items.map((i) => (
         <li class:list={[i.kind, { cancelled: i.cancelled }]}>
-          <span class="when label">{i.dateTbc ? "Date TBC" : formatRange(i.startsAt, i.endsAt)}</span>
-          <span class="what">
-            <span class="title">{i.title}</span>
-            {i.description && <span class="about">{i.description}</span>}
-          </span>
-          <span class="where">
-            <span class="label">{i.cancelled ? "Cancelled" : i.venue}</span>
-            {!i.cancelled && (
-              <a class="ask label" href={askHref(i)}>
-                Ask about this <span aria-hidden="true">→</span>
+          <div class="row">
+            <span class="when">
+              <span class="day">{i.dateTbc ? "Date TBC" : formatShortDay(i.startsAt)}</span>
+              {!i.dateTbc && <span class="label">{times(i)}</span>}
+            </span>
+            <span class="what">
+              <span class="title">{i.title}</span>
+              {i.description && <span class="about">{i.description}</span>}
+            </span>
+            {i.cancelled ? (
+              <span class="where label">Cancelled</span>
+            ) : i.venue ? (
+              <a class="where venue label" href={mapHref(i.venue)} target="_blank" rel="noopener">
+                {i.venue}
+                <span class="visually-hidden">: map, opens in a new tab</span>
+              </a>
+            ) : (
+              <span />
+            )}
+            {i.cancelled ? (
+              <span />
+            ) : (
+              <a class="go" href={`/join/?about=${encodeURIComponent(about(i))}`} aria-label={`Ask about ${about(i)}`}>
+                →
               </a>
             )}
-          </span>
+          </div>
         </li>
       ))}
     </ul>
@@ -56,12 +77,27 @@ const askHref = (i: WhatsOnItem) =>
     border-top: 1px solid var(--rule);
   }
   li {
+    border-bottom: 1px solid var(--rule);
+  }
+  .row {
     display: grid;
-    grid-template-columns: 15rem 1fr auto;
+    grid-template-columns: 15rem 1fr auto 1.5rem;
     align-items: baseline;
     gap: 0.5rem 2rem;
     padding: 1.6rem 0;
-    border-bottom: 1px solid var(--rule);
+    position: relative;
+  }
+  .when {
+    display: grid;
+    gap: 0.35rem;
+  }
+  .day {
+    font-family: var(--display);
+    font-size: clamp(1.35rem, 2.2vw, 1.8rem);
+    letter-spacing: 0.02em;
+    line-height: 1.2;
+    text-transform: uppercase;
+    font-variant-numeric: tabular-nums;
   }
   .what {
     display: grid;
@@ -77,17 +113,46 @@ const askHref = (i: WhatsOnItem) =>
     color: var(--text-2);
   }
   .where {
-    display: grid;
-    justify-items: end;
-    gap: 0.5rem;
     text-align: right;
   }
-  .ask {
-    color: var(--text-2);
+  /* Asking about it is the whole row: the arrow's link stretches over it, and the venue's map link sits on top */
+  .go {
+    justify-self: end;
+    color: var(--text-3);
+    text-decoration: none;
     transition: color 0.3s var(--ease-smooth);
   }
-  .ask:hover {
+  .go::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+  }
+  .go:focus-visible {
+    outline: none;
+  }
+  .row:has(.go:focus-visible) {
+    outline: 2px solid var(--red);
+    outline-offset: 4px;
+  }
+  .row:hover:not(:has(.venue:hover)) .go,
+  .go:focus-visible {
     color: var(--red);
+  }
+  .venue {
+    position: relative;
+    z-index: 1;
+    color: inherit;
+    text-decoration: underline;
+    text-decoration-color: var(--text-3);
+    text-underline-offset: 0.3em;
+    transition:
+      color 0.3s var(--ease-smooth),
+      text-decoration-color 0.3s var(--ease-smooth);
+  }
+  .venue:hover,
+  .venue:focus-visible {
+    color: var(--red);
+    text-decoration-color: currentColor;
   }
   .tournament .title {
     color: var(--red);
@@ -96,7 +161,7 @@ const askHref = (i: WhatsOnItem) =>
     text-decoration: line-through;
     color: var(--text-3);
   }
-  .cancelled .where .label {
+  .cancelled .where {
     color: var(--red);
   }
   .loading {
@@ -106,12 +171,19 @@ const askHref = (i: WhatsOnItem) =>
     border-top: 1px solid var(--rule);
   }
   @media (max-width: 44rem) {
-    li {
-      grid-template-columns: 1fr;
+    .row {
+      grid-template-columns: 1fr 1.5rem;
     }
+    .when,
+    .what,
     .where {
-      justify-items: start;
+      grid-column: 1;
       text-align: left;
+    }
+    .go {
+      grid-column: 2;
+      grid-row: 1 / span 3;
+      align-self: center;
     }
   }
 </style>

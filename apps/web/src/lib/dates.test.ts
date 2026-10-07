@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dateBadge, formatRange, formatTime, londonDay } from "./dates";
+import { dateBadge, formatRange, formatShortDay, formatTime, londonDay } from "./dates";
 
 describe("dates (Europe/London)", () => {
   it("formats in London time across BST", () => {
@@ -9,6 +9,10 @@ describe("dates (Europe/London)", () => {
 
   it("collapses same-day ranges", () => {
     expect(formatRange("2026-12-04T19:30:00Z", "2026-12-04T21:30:00Z")).toBe("Fri 4 Dec 2026 · 19:30–21:30");
+  });
+
+  it("gives a short day without the year, in London", () => {
+    expect(formatShortDay("2026-10-09T23:30:00Z")).toBe("Sat 10 Oct"); // BST: already Saturday
   });
 
   it("builds a date badge", () => {
