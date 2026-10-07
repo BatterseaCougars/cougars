@@ -98,12 +98,15 @@ function header(signal: AbortSignal) {
 let traversing = false;
 document.addEventListener("astro:before-preparation", (e) => {
   traversing = e.navigationType === "traverse";
+  // The click shows at once (global.css: the bar along the top, the page dimming) while the next page is fetched
+  root.classList.add("is-navigating");
 });
 // The swap replaces every <html> attribute, so re-apply the class afterwards.
 document.addEventListener("astro:after-swap", () => root.classList.toggle("navigation-restore", traversing));
 addEventListener("pageshow", (e) => e.persisted && root.classList.add("navigation-restore"));
 
 document.addEventListener("astro:page-load", () => {
+  root.classList.remove("is-navigating");
   onPage();
   requestAnimationFrame(() => requestAnimationFrame(() => root.classList.remove("navigation-restore")));
 });

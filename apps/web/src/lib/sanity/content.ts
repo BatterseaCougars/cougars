@@ -56,13 +56,17 @@ export const getTeam = memo(async () => mergeTeam(FALLBACK_TEAM, await fetchOr(q
 export const getKumite = memo(async () => mergeKumite(FALLBACK_KUMITE, await fetchOr(q.KUMITE, null)));
 
 /** Every club fact in one object. */
-export const getSettings = memo(async (): Promise<SiteSettings> => ({
-  ...(await getClub()),
-  ...(await getFridays()),
-  pub: await getPub(),
-  team: await getTeam(),
-  kumite: await getKumite(),
-}));
+export const getSettings = memo(async (): Promise<SiteSettings> => {
+  // All at once: in `astro dev` each is a fresh read, so one after another adds up
+  const [club, fridays, pub, team, kumite] = await Promise.all([
+    getClub(),
+    getFridays(),
+    getPub(),
+    getTeam(),
+    getKumite(),
+  ]);
+  return { ...club, ...fridays, pub, team, kumite };
+});
 
 /** Kumite winners, newest first: the first is the reigning champion. */
 export const getKumiteResults = memo(async () =>

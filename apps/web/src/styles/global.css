@@ -569,6 +569,38 @@ a.card:hover img {
 
 /* ---------- Page transitions: symmetric crossfade (from ark) ---------- */
 
+/* A click shows at once that something's happening (scripts/motion.ts): the router fetches the next page before the
+   crossfade can start, so meanwhile a red bar runs along the top, quick at first and then easing off, and the page
+   starts to dim. The crossfade then carries on from there. */
+html::after {
+  content: "";
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 200;
+  height: 3px;
+  background: var(--red);
+  transform: scaleX(0);
+  transform-origin: left;
+  opacity: 0;
+  pointer-events: none;
+}
+html.is-navigating::after {
+  opacity: 1;
+  animation: nav-progress 6s cubic-bezier(0.08, 0.82, 0.17, 1) forwards;
+}
+html.is-navigating main {
+  opacity: 0.55;
+  transition: opacity 0.25s ease-out;
+}
+@keyframes nav-progress {
+  from {
+    transform: scaleX(0.08);
+  }
+  to {
+    transform: scaleX(0.92);
+  }
+}
+
 @keyframes page-out {
   to {
     opacity: 0;
