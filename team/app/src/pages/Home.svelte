@@ -165,13 +165,12 @@
                   rel="noopener noreferrer"
                 >
                   <Icon name="pin" size={18} />
-                  <span class="grow">Directions</span>
-                  <Icon name="open" size={16} />
+                  <span>Directions</span>
                 </a>
               {/if}
               <button class="status" onclick={() => booking && downloadIcs(booking)}>
                 <Icon name="calendar" size={18} />
-                <span class="grow">Add to calendar</span>
+                <span>Add to calendar</span>
               </button>
             </div>
           {/if}
@@ -331,8 +330,8 @@
     display: flex;
     align-items: center;
     gap: var(--s-3);
-    min-height: 3rem;
-    padding: 0 var(--s-4);
+    min-height: 3.25rem;
+    padding: 0 var(--s-6);
     border: 0;
     background: none;
     color: var(--fg-muted);
@@ -342,17 +341,16 @@
       color var(--t-fast) var(--ease-in-out),
       background-color var(--t-fast) var(--ease-in-out);
   }
-  /* Directions and Add to calendar, side by side, split by a rule */
+  /* Directions and Add to calendar: two quiet links on the left, apart by space alone */
   .status-row {
-    display: grid;
-    grid-auto-columns: minmax(0, 1fr);
-    grid-auto-flow: column;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-6);
+    padding: 0 var(--s-6);
   }
-  .status-row > .status + .status {
-    border-left: 1px solid var(--border);
-  }
-  .status-row > .status:hover {
-    background: color-mix(in srgb, var(--fg) 4%, transparent);
+  .status-row > .status {
+    gap: var(--s-2);
+    padding: 0;
   }
   .status .grow {
     overflow: hidden;
@@ -365,5 +363,12 @@
   }
   .status:hover {
     color: var(--fg);
+  }
+  /* A phone: the card's own padding is smaller, so the footer's is too */
+  @media (max-width: 600px) {
+    .status,
+    .status-row {
+      padding-inline: var(--s-4);
+    }
   }
 </style>

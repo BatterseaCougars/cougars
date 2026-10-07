@@ -156,12 +156,7 @@
       {#if soon}<span class="soon" class:open={event.signup && !full}>{soon}</span>{/if}
       <!-- Places: what members check first -->
       {#if event.signup}<span class="tally num"><strong>{entries.going.length}</strong>{tally}</span>{/if}
-      <span class="status">
-        {#if event.cancelled}<span class="badge">Cancelled</span>
-        {:else if inIt}<span class="badge green num">You're number {entries.going.indexOf(id) + 1}</span>
-        {:else if waiting}<span class="badge amber num">Waitlist · {entries.waitlist.indexOf(id) + 1}</span>
-        {:else if out}<span class="badge red">You're out</span>{/if}
-      </span>
+      {#if event.cancelled}<span class="badge">Cancelled</span>{/if}
     </div>
   </div>
 
@@ -182,24 +177,32 @@
           {/if}
         </span>
       </div>
-      {#if canSignUp}
-        <div class="answer" role="group" aria-label="Are you in?">
-          <button
-            class="yes"
-            class:beckon={beckoning && !out}
-            class:beckon-again={beckoning && out}
-            aria-pressed={inIt || waiting}
-            disabled={locked}
-            onclick={() => setIn(true)}
-          >
-            {#if inIt}<Icon name="check" size={16} />{/if}
-            {waiting ? "Waitlist" : full && !inIt ? "Join waitlist" : "In"}
-          </button>
-          <button class="no" aria-pressed={out} disabled={locked} onclick={() => setIn(false)}>
-            {#if out}<Icon name="x" size={16} />{/if}Out
-          </button>
-        </div>
-      {/if}
+      <!-- Your answer, and where it leaves you, on one row. The status sits to the right, so it never moves the buttons. -->
+      <div class="reply">
+        {#if canSignUp}
+          <div class="answer" role="group" aria-label="Are you in?">
+            <button
+              class="yes"
+              class:beckon={beckoning && !out}
+              class:beckon-again={beckoning && out}
+              aria-pressed={inIt || waiting}
+              disabled={locked}
+              onclick={() => setIn(true)}
+            >
+              {#if inIt}<Icon name="check" size={16} />{/if}
+              {waiting ? "Waitlist" : full && !inIt ? "Join waitlist" : "In"}
+            </button>
+            <button class="no" aria-pressed={out} disabled={locked} onclick={() => setIn(false)}>
+              {#if out}<Icon name="x" size={16} />{/if}Out
+            </button>
+          </div>
+        {/if}
+        <span class="status num" class:in={inIt} class:wait={waiting} class:out>
+          {#if inIt}You're number {entries.going.indexOf(id) + 1}{:else if waiting}Waitlist, number {entries.waitlist.indexOf(
+              id,
+            ) + 1}{:else if out}You're out{/if}
+        </span>
+      </div>
     </div>
   {/if}
   {#if footer}<div class="foot">{@render footer()}</div>{/if}
@@ -210,8 +213,8 @@
   .event {
     container-type: inline-size;
     display: grid;
-    gap: var(--s-4);
-    padding: var(--s-4);
+    gap: var(--s-5);
+    padding: var(--s-5) var(--s-6);
   }
   .event.cancelled {
     opacity: 0.55;
@@ -336,10 +339,26 @@
     border-radius: 50%;
     background: var(--green);
   }
-  /* Always there, empty or not, so a badge arriving never moves anything */
-  .status {
+  /* Where your answer leaves you, beside the buttons: green in, amber waiting, red out */
+  .reply {
     display: flex;
-    min-height: 1.5rem;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--s-2) var(--s-4);
+  }
+  .status {
+    color: var(--fg-muted);
+    font-size: var(--text-sm);
+    font-weight: 600;
+  }
+  .status.in {
+    color: var(--green);
+  }
+  .status.wait {
+    color: var(--amber);
+  }
+  .status.out {
+    color: var(--red-hot);
   }
 
   /* ─── Who's going, and your answer at the end of the row ─── */
@@ -347,7 +366,7 @@
      card is the box. */
   .going {
     display: grid;
-    gap: var(--s-3);
+    gap: var(--s-4);
   }
   .crowd {
     display: flex;
@@ -484,7 +503,7 @@
     }
   }
   .foot {
-    margin: 0 calc(-1 * var(--s-4)) calc(-1 * var(--s-4));
+    margin: 0 calc(-1 * var(--s-6)) calc(-1 * var(--s-5));
     border-top: 1px solid var(--border);
   }
 
@@ -498,6 +517,12 @@
     }
     .answer {
       width: 100%;
+    }
+    .event {
+      padding: var(--s-4) var(--s-4) var(--s-5);
+    }
+    .foot {
+      margin: 0 calc(-1 * var(--s-4)) calc(-1 * var(--s-5));
     }
     .answer > button {
       min-width: 0;
