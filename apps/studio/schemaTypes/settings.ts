@@ -71,18 +71,42 @@ export const club = defineType({
         ),
     }),
     defineField({
-      name: "youtubePlaylistId",
-      title: "YouTube playlist",
-      type: "string",
+      name: "youtubePlaylists",
+      title: "YouTube playlists",
+      type: "array",
       description:
-        "Optional. Show the videos in one playlist on the club channel instead of all its public uploads. Videos " +
-        "in the playlist can be Unlisted. On YouTube, open the playlist → Share → Copy, and paste the link here.",
-      validation: (r) =>
-        r.custom((v?: string) =>
-          !v || /^(PL|OL|UU|FL)[\w-]{10,}$/.test(v.trim()) || /[?&]list=[\w-]{12,}/.test(v)
-            ? true
-            : "Paste the playlist's link from YouTube's Share button",
-        ),
+        "Optional. The website shows every video in these playlists, together, instead of all the channel's public " +
+        "uploads. Videos in them can be Unlisted.",
+      of: [
+        defineArrayMember({
+          type: "object",
+          name: "playlist",
+          title: "Playlist",
+          fields: [
+            defineField({
+              name: "url",
+              title: "Playlist link",
+              type: "string",
+              description: "On YouTube, open the playlist → Share → Copy, and paste the link here.",
+              validation: (r) =>
+                r
+                  .required()
+                  .custom((v?: string) =>
+                    !v || /^(PL|OL|UU|FL)[\w-]{10,}$/.test(v.trim()) || /[?&]list=[\w-]{10,}/.test(v)
+                      ? true
+                      : "Paste the playlist's link from YouTube's Share button",
+                  ),
+            }),
+            defineField({
+              name: "label",
+              title: "Label",
+              type: "string",
+              description: "Optional. Shown on each of its videos, e.g. Friday hockey or Kumite. Empty: no label.",
+            }),
+          ],
+          preview: { select: { title: "label", subtitle: "url" } },
+        }),
+      ],
     }),
     imageField("heroImage", "Homepage background photo", {
       description: "Optional. A wide action shot works best. Leave empty to show the carbon-fibre background.",

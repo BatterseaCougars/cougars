@@ -23,8 +23,8 @@ export interface Club {
   contactEmail: string;
   socials: { instagram?: string | null; facebook?: string | null; youtube?: string | null };
   youtubeChannelId?: string | null;
-  /** A playlist on the club channel; it may hold unlisted videos (ADR 0019). */
-  youtubePlaylistId?: string | null;
+  /** Playlists on the club channel, shown together; they may hold unlisted videos (ADR 0040). */
+  youtubePlaylists?: { url: string; label?: string | null }[] | null;
   heroImage?: SanityImage | null;
 }
 
@@ -78,6 +78,8 @@ export interface Video {
   recordedOn: string;
   youtubeUrl: string;
   description?: string | null;
+  /** The label of the club playlist it came from, e.g. "Friday hockey". */
+  label?: string | null;
 }
 
 /** A Sanity `video` document. It overrides the channel video with the same YouTube id, or adds one. */

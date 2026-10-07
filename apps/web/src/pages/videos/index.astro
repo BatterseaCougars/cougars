@@ -6,16 +6,15 @@ import PageHeader from "../../components/PageHeader.astro";
 import VideoCard from "../../components/VideoCard.astro";
 import Empty from "../../components/Empty.astro";
 import { getSettings } from "../../lib/sanity/content";
-import { CACHE_CONTROL, UNAVAILABLE_CACHE_CONTROL } from "../../lib/server/photos";
 import { liveVideos } from "../../lib/server/videos";
-import { videosConfig } from "../../lib/server/sanity-env";
+import { cacheControl, videosConfig } from "../../lib/server/sanity-env";
 
 export const prerender = false;
 
 const { data: videos, unavailable } = await liveVideos(videosConfig());
 const s = await getSettings();
 
-Astro.response.headers.set("Cache-Control", unavailable ? UNAVAILABLE_CACHE_CONTROL : CACHE_CONTROL);
+Astro.response.headers.set("Cache-Control", cacheControl(unavailable));
 if (unavailable) Astro.response.status = 503;
 ---
 

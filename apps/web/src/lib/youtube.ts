@@ -57,17 +57,24 @@ export function parsePlaylist(input: string): string | null {
 }
 
 /**
- * Where the club's videos come from: its playlist if one is set (it may hold unlisted videos), otherwise the
+ * Where the club's videos come from: its playlists if any are set (they may hold unlisted videos), otherwise the
  * channel's public uploads, from the channel ID or the channel link. Null when there's neither.
  */
-export type VideoSource = { playlist: string } | { channel: Channel };
+export interface Playlist {
+  id: string;
+  label: string | null;
+}
+export type VideoSource = { playlists: Playlist[] } | { channel: Channel };
 export function videoSource(club: {
-  youtubePlaylistId?: string | null;
+  youtubePlaylists?: { url?: string | null; label?: string | null }[] | null;
   youtubeChannelId?: string | null;
   socials?: { youtube?: string | null };
 }): VideoSource | null {
-  const playlist = club.youtubePlaylistId && parsePlaylist(club.youtubePlaylistId);
-  if (playlist) return { playlist };
+  const playlists = (club.youtubePlaylists ?? []).flatMap((p) => {
+    const id = p.url ? parsePlaylist(p.url) : null;
+    return id ? [{ id, label: p.label?.trim() || null }] : [];
+  });
+  if (playlists.length) return { playlists };
   if (club.youtubeChannelId) return { channel: { id: club.youtubeChannelId } };
   const channel = club.socials?.youtube ? parseChannel(club.socials.youtube) : null;
   return channel ? { channel } : null;
@@ -75,8 +82,8 @@ export function videoSource(club: {
 
 /** A stable name for a source, for cache keys and logs. */
 export const sourceKey = (source: VideoSource) =>
-  "playlist" in source
-    ? `playlist:${source.playlist}`
+  "playlists" in source
+    ? `playlists:${source.playlists.map((p) => `${p.id}=${p.label ?? ""}`).join(",")}`
     : "handle" in source.channel
       ? `handle:${source.channel.handle}`
       : `channel:${source.channel.id}`;
@@ -218,11 +225,21 @@ export async function fetchChannelVideos(
   return fetchPlaylistVideos(uploads, key, { max, fetch });
 }
 
-/** The videos from a source: a club playlist (unlisted ones included) or a channel's public uploads. Throws. */
-export const fetchSourceVideos = (source: VideoSource, key: string, options: FetchOptions = {}) =>
-  "playlist" in source
-    ? fetchPlaylistVideos(source.playlist, key, { ...options, unlisted: true })
-    : fetchChannelVideos(source.channel, key, options);
+/**
+ * The videos from a source: the club playlists (unlisted ones included), each video labelled with its playlist, or
+ * a channel's public uploads. A video in two playlists is listed once, under the first. Throws if any call fails.
+ */
+export async function fetchSourceVideos(source: VideoSource, key: string, options: FetchOptions = {}) {
+  if (!("playlists" in source)) return fetchChannelVideos(source.channel, key, options);
+  const lists = await Promise.all(
+    source.playlists.map(async ({ id, label }) =>
+      (await fetchPlaylistVideos(id, key, { ...options, unlisted: true })).map((v) => ({ ...v, label })),
+    ),
+  );
+  const byId = new Map<string, Video>();
+  for (const v of lists.flat()) if (!byId.has(v._id)) byId.set(v._id, v);
+  return [...byId.values()];
+}
 
 /**
  * Channel videos plus Sanity `video` documents, for the website. A document with the same YouTube id overrides the
@@ -242,6 +259,7 @@ export function mergeVideos(channel: Video[], overrides: VideoOverride[]): Video
       recordedOn: o.recordedOn || base?.recordedOn || londonDay(o._createdAt ?? new Date().toISOString()),
       youtubeUrl: base?.youtubeUrl ?? o.youtubeUrl,
       description: o.description || base?.description || null,
+      label: base?.label ?? null,
       hidden: !!o.hidden,
       pinned: !!o.pinned,
     });

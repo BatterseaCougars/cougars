@@ -1,7 +1,7 @@
 import type { APIRoute } from "astro";
 import { imageSrcSet, imageUrl } from "../../../lib/sanity/images";
-import { CACHE_CONTROL, UNAVAILABLE_CACHE_CONTROL, latestPhotos } from "../../../lib/server/photos";
-import { photosConfig } from "../../../lib/server/sanity-env";
+import { latestPhotos } from "../../../lib/server/photos";
+import { cacheControl, photosConfig } from "../../../lib/server/sanity-env";
 
 export const prerender = false;
 
@@ -28,7 +28,7 @@ export const GET: APIRoute = async () => {
     { photos, unavailable },
     {
       status: unavailable ? 503 : 200,
-      headers: { "Cache-Control": unavailable ? UNAVAILABLE_CACHE_CONTROL : CACHE_CONTROL },
+      headers: { "Cache-Control": cacheControl(unavailable) },
     },
   );
 };

@@ -21,7 +21,10 @@ const id = youtubeId(video.youtubeUrl);
       </button>
     </div>
     <div class="meta">
-      <p class="label">{formatDate(video.recordedOn)}</p>
+      <p class="label">
+        {video.label && `${video.label} · `}
+        {formatDate(video.recordedOn)}
+      </p>
       <h3>{video.title}</h3>
       {video.description && <p class="muted">{video.description}</p>}
     </div>

@@ -5,7 +5,7 @@
 //   - YouTube: the club playlist or channel. Fresh for ten minutes, so a page view almost never costs quota;
 //     if YouTube fails, the last good list is shown for up to a day.
 // Never throws. Without an API key, or before the club has a channel, it's the Sanity videos only.
-import { cached, type CacheDeps } from "./cache";
+import { cached, type CacheDeps, type CacheOptions } from "./cache";
 import { sanityQuery, type Live, type PhotosConfig } from "./photos";
 import { fetchSourceVideos, mergeVideos, sourceKey, videoSource, type VideoSource } from "../youtube";
 import { DEMO_VIDEOS } from "../sanity/demo";
@@ -22,7 +22,7 @@ export interface VideosConfig {
 export const SANITY_CACHE = { ttlMs: 60_000, staleMs: 60 * 60_000 };
 export const YOUTUBE_CACHE = { ttlMs: 10 * 60_000, staleMs: 24 * 60 * 60_000 };
 
-type ClubYoutube = Pick<Club, "socials" | "youtubeChannelId" | "youtubePlaylistId">;
+type ClubYoutube = Pick<Club, "socials" | "youtubeChannelId" | "youtubePlaylists">;
 interface SanityVideoData {
   club: ClubYoutube | null;
   videos: VideoOverride[] | null;
@@ -33,7 +33,12 @@ export async function liveVideos(
   config: VideosConfig,
   deps: CacheDeps & { fetch?: typeof globalThis.fetch } = {},
 ): Promise<Live<Video[]>> {
-  const { fetch, ...cacheDeps } = deps;
+  const { fetch, ...rest } = deps;
+  // Outside production (config.sanity.cache false) every call reads the sources: nothing is fresh for later and the
+  // edge cache isn't used. The last good list still covers a failure.
+  const fresh = config.sanity.cache === false;
+  const cacheDeps: CacheDeps = fresh ? { ...rest, edge: null } : rest;
+  const ttl = (o: CacheOptions): CacheOptions => (fresh ? { ...o, ttlMs: 0 } : o);
   let unavailable = false;
   let data: SanityVideoData = { club: null, videos: [] };
   if (config.sanity.projectId) {
@@ -41,7 +46,7 @@ export async function liveVideos(
       const key = `sanity:${config.sanity.projectId}:${config.sanity.dataset}:videos`;
       data = await cached(
         key,
-        SANITY_CACHE,
+        ttl(SANITY_CACHE),
         () => sanityQuery<SanityVideoData>(config.sanity, q.VIDEO_DATA),
         cacheDeps,
       );
@@ -52,7 +57,10 @@ export async function liveVideos(
   }
 
   const source = data.club ? videoSource(data.club) : null;
-  const channel = source && config.youtubeKey ? await youtubeVideos(source, config.youtubeKey, cacheDeps, fetch) : [];
+  const channel =
+    source && config.youtubeKey
+      ? await youtubeVideos(source, config.youtubeKey, ttl(YOUTUBE_CACHE), cacheDeps, fetch)
+      : [];
   const videos = mergeVideos(channel, data.videos ?? []);
   if (config.demo && videos.length === 0) return { data: DEMO_VIDEOS, unavailable: false };
   return { data: videos, unavailable: unavailable && videos.length === 0 };
@@ -61,16 +69,12 @@ export async function liveVideos(
 async function youtubeVideos(
   source: VideoSource,
   key: string,
+  options: CacheOptions,
   deps: CacheDeps,
   fetch?: typeof globalThis.fetch,
 ): Promise<Video[]> {
   try {
-    return await cached(
-      `youtube:${sourceKey(source)}`,
-      YOUTUBE_CACHE,
-      () => fetchSourceVideos(source, key, { fetch }),
-      deps,
-    );
+    return await cached(`youtube:${sourceKey(source)}`, options, () => fetchSourceVideos(source, key, { fetch }), deps);
   } catch (error) {
     // Message never contains the key (lib/youtube.ts). The Sanity videos still show.
     console.warn(JSON.stringify({ event: "videos.youtube_error", source: sourceKey(source), error: String(error) }));

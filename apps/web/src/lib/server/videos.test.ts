@@ -22,7 +22,7 @@ function fakeNetwork({
   const calls = { sanity: 0, youtube: 0 };
   const fetch = vi.fn(async (input: string | URL) => {
     const url = new URL(input);
-    if (url.hostname.endsWith("apicdn.sanity.io")) {
+    if (url.hostname.endsWith(".sanity.io")) {
       calls.sanity++;
       if (!sanityUp) return new Response("down", { status: 500 });
       return Response.json({ result: { club: { socials: {}, ...club }, videos } });
@@ -60,12 +60,16 @@ describe("liveVideos", () => {
   });
 
   it("merges a club playlist (unlisted included) with the Sanity videos", async () => {
-    const { fetch } = fakeNetwork({ club: { youtubePlaylistId: "PLabcdefghijklmnop" } });
+    const { fetch } = fakeNetwork({
+      club: { youtubePlaylists: [{ url: "PLabcdefghijklmnop", label: "Friday hockey" }] },
+    });
     vi.stubGlobal("fetch", fetch);
     const { data } = await liveVideos(config(), { now, edge: null });
     expect(data.map((v) => v.title)).toEqual(
       expect.arrayContaining(["Friday session, full game", "Team only", "Kumite final", "Pasted link"]),
     );
+    expect(data.find((v) => v.title === "Team only")?.label).toBe("Friday hockey");
+    expect(data.find((v) => v.title === "Pasted link")?.label).toBeNull();
   });
 
   it("asks YouTube once per ten minutes, and Sanity once a minute", async () => {
@@ -79,6 +83,18 @@ describe("liveVideos", () => {
     t += 10 * 60_000;
     await liveVideos(config(), { now, edge: null });
     expect(calls.youtube).toBe(4);
+  });
+
+  it("reads Sanity and YouTube on every call outside production", async () => {
+    const { fetch, calls } = fakeNetwork({ club: { socials: { youtube: "https://www.youtube.com/@club" } } });
+    vi.stubGlobal("fetch", fetch);
+    const fresh = config({ sanity: { ...sanity, cache: false } });
+    const edge = { match: vi.fn(), put: vi.fn() };
+    for (let i = 0; i < 3; i++) await liveVideos(fresh, { now, edge });
+    expect(calls).toEqual({ sanity: 3, youtube: 6 }); // channels + playlistItems, each time
+    expect(edge.match).not.toHaveBeenCalled();
+    expect(edge.put).not.toHaveBeenCalled();
+    expect(String(fetch.mock.calls[0][0])).toContain("https://proj.api.sanity.io/");
   });
 
   it("keeps showing the last YouTube list when YouTube fails", async () => {
@@ -99,7 +115,9 @@ describe("liveVideos", () => {
   });
 
   it("never sends YouTube a request without a key", async () => {
-    const { fetch, calls } = fakeNetwork({ club: { youtubePlaylistId: "PLabcdefghijklmnop" } });
+    const { fetch, calls } = fakeNetwork({
+      club: { youtubePlaylists: [{ url: "PLabcdefghijklmnop", label: "Friday hockey" }] },
+    });
     vi.stubGlobal("fetch", fetch);
     await liveVideos(config({ youtubeKey: undefined }), { now, edge: null });
     expect(calls.youtube).toBe(0);

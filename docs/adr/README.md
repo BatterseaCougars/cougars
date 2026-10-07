@@ -38,6 +38,7 @@ rule, a trade-off. Copy [template.md](template.md), take the next number, keep i
 | [0027](0027-email-through-gmail-api.md)           | Email goes through the Gmail API, and only production reaches real people      | Accepted              |
 | [0028](0028-turnstile-and-auto-reply.md)          | Auto-replies only to people Turnstile verified, and capped                     | Accepted              |
 | [0029](0029-view-as-a-member.md)                  | Admins can view the app as a member, read-only                                 | Accepted              |
+| [0029](0029-enquiry-retention.md)                 | Enquiries are deleted after 12 months                                          | Accepted              |
 | [0030](0030-training-series-and-tournaments.md)   | Training repeats as a series; tournaments are typed and scheduled one by one   | Accepted              |
 | [0031](0031-use-case-tests.md)                    | Tests describe what people do, against a fake world                            | Accepted              |
 | [0032](0032-fees-per-session-and-tournament.md)   | Fees belong to each session and tournament; payments are marked against them   | Amended by 0034       |
@@ -47,3 +48,5 @@ rule, a trade-off. Copy [template.md](template.md), take the next number, keep i
 | [0036](0036-api-security.md)                      | Every API response sends only what that caller may see, decided on the server  | Accepted              |
 | [0037](0037-everyday-role.md)                     | People with more than Member can run the app day to day as a lesser role       | Accepted              |
 | [0039](0039-videos-uploaded-on-youtube.md)        | Videos are uploaded on YouTube with people's own access, not through the app   | Accepted              |
+| [0040](0040-labelled-video-playlists.md)          | Videos come from several club playlists, each labelled                         | Accepted              |
+| [0041](0041-caches-in-production-only.md)         | Live reads are cached in production only                                       | Accepted              |

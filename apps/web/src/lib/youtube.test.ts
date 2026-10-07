@@ -193,26 +193,40 @@ describe("parsePlaylist", () => {
     ["https://www.youtube.com/playlist?list=PLabcdefghijklmnop", "PLabcdefghijklmnop"],
     ["https://youtube.com/playlist?list=PLabcdefghijklmnop&si=xyz", "PLabcdefghijklmnop"],
     ["https://www.youtube.com/watch?v=aaaaaaaaaaa&list=PLabcdefghijklmnop", "PLabcdefghijklmnop"],
+    // Newer playlists have shorter IDs
+    ["https://www.youtube.com/playlist?list=PLfSJFMlRG9fY", "PLfSJFMlRG9fY"],
     ["https://www.youtube.com/@club", null],
     ["not a playlist", null],
   ])("%s", (input, expected) => expect(parsePlaylist(input)).toBe(expected));
 });
 
 describe("videoSource", () => {
-  it("prefers the playlist, then the channel ID, then the channel link", () => {
+  it("prefers the playlists, then the channel ID, then the channel link", () => {
     const socials = { youtube: "https://www.youtube.com/@club" };
-    const playlist = "https://www.youtube.com/playlist?list=PLabcdefghijklmnop";
+    const youtubePlaylists = [
+      { url: "https://www.youtube.com/playlist?list=PLabcdefghijklmnop", label: " Friday hockey " },
+      { url: "https://www.youtube.com/playlist?list=PLqrstuvwxyz", label: "" },
+      { url: "not a playlist", label: "Broken" },
+    ];
     const id = "UCabcdefghijklmnopqrstuv";
-    expect(videoSource({ youtubePlaylistId: playlist, youtubeChannelId: id, socials })).toEqual({
-      playlist: "PLabcdefghijklmnop",
+    expect(videoSource({ youtubePlaylists, youtubeChannelId: id, socials })).toEqual({
+      playlists: [
+        { id: "PLabcdefghijklmnop", label: "Friday hockey" },
+        { id: "PLqrstuvwxyz", label: null },
+      ],
     });
+    expect(videoSource({ youtubePlaylists: [], youtubeChannelId: id, socials })).toEqual({ channel: { id } });
     expect(videoSource({ youtubeChannelId: id, socials })).toEqual({ channel: { id } });
     expect(videoSource({ socials })).toEqual({ channel: { handle: "club" } });
     expect(videoSource({ socials: { youtube: null } })).toBeNull();
   });
 
   it("names each source for the cache", () => {
-    expect(sourceKey({ playlist: "PLx" })).toBe("playlist:PLx");
+    const playlists = [
+      { id: "PLx", label: "Kumite" },
+      { id: "PLy", label: null },
+    ];
+    expect(sourceKey({ playlists })).toBe("playlists:PLx=Kumite,PLy=");
     expect(sourceKey({ channel: { handle: "club" } })).toBe("handle:club");
     expect(sourceKey({ channel: { id: "UCx" } })).toBe("channel:UCx");
   });
@@ -230,7 +244,7 @@ describe("fetchSourceVideos", () => {
         return Response.json({ items: fixtures.playlistItems.items });
       }),
     );
-    const videos = await fetchSourceVideos({ playlist: "PLabcdefghijklmnop" }, "k");
+    const videos = await fetchSourceVideos({ playlists: [{ id: "PLabcdefghijklmnop", label: null }] }, "k");
     expect(calls).toHaveLength(1);
     expect(calls[0].pathname).toBe("/youtube/v3/playlistItems");
     expect(calls[0].searchParams.get("playlistId")).toBe("PLabcdefghijklmnop");
@@ -238,6 +252,26 @@ describe("fetchSourceVideos", () => {
     expect(videos.length).toBe(
       fixtures.playlistItems.items.filter((i) => ["public", "unlisted"].includes(i.status?.privacyStatus ?? "")).length,
     );
+  });
+
+  it("labels each video with its playlist, and lists a video in two playlists once", async () => {
+    const items = fixtures.playlistItems.items.filter((i) => i.status?.privacyStatus === "public");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string) =>
+        // The Kumite playlist holds the first public video again, plus nothing else.
+        Response.json({
+          items: new URL(input).searchParams.get("playlistId") === "PLkumite00000" ? items.slice(0, 1) : items,
+        }),
+      ),
+    );
+    const playlists = [
+      { id: "PLfriday00000", label: "Friday hockey" },
+      { id: "PLkumite00000", label: "Kumite" },
+    ];
+    const videos = await fetchSourceVideos({ playlists }, "k");
+    expect(videos).toHaveLength(items.length);
+    expect(new Set(videos.map((v) => v.label))).toEqual(new Set(["Friday hockey"]));
   });
 
   it("reads a channel's uploads, public only", async () => {
