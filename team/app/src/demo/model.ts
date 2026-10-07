@@ -117,8 +117,13 @@ export interface OneOff extends Entries {
   startsAt: string;
   endsAt: string;
   venue: string;
+  /** A line or two, shown on the website and on the card. */
+  description: string;
+  /** Listed on the website's What's on. */
+  public: boolean;
   signup: boolean;
   capacity?: number | null;
+  cancelledAt: string | null;
 }
 
 /** What the calendar and the In/Out card show, whatever the source. `entries` is the source's own list. */
@@ -136,6 +141,7 @@ export interface Bookable {
   signup: boolean;
   capacity?: number | null;
   cancelled?: boolean;
+  description?: string;
   /** The date isn't confirmed: shown as "TBC", sorted by the date it has. */
   dateTbc?: boolean;
   href?: string;

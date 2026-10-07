@@ -4,7 +4,7 @@
   // up under Settings; one-off events are added here.
   import PageHeader from "../lib/PageHeader.svelte";
   import Sheet from "../lib/Sheet.svelte";
-  import { createClubEvent } from "../app/backend.svelte";
+  import { createClubEvent, setClubEventCancelled, updateClubEvent, type ClubEventBody } from "../app/backend.svelte";
   import { can } from "../access/actions";
   import type { IconName } from "../app/shell/icons";
   import Icon from "../app/shell/Icon.svelte";
@@ -15,7 +15,8 @@
   import EventCard from "../lib/EventCard.svelte";
   import Fab from "../lib/Fab.svelte";
   import { phone } from "../lib/viewport.svelte";
-  import { londonISO } from "../lib/dates";
+  import { londonISO, londonTime, londonToday } from "../lib/dates";
+  import type { Bookable, OneOff } from "../demo/model";
 
   const perms = $derived(granted());
 
@@ -63,24 +64,68 @@
     return out;
   });
 
-  // ─── Add a one-off ───
+  // ─── Add or edit a one-off ───
+  const blank = () => ({
+    title: "",
+    date: "",
+    start: "19:30",
+    end: "22:30",
+    venue: "",
+    description: "",
+    public: true,
+    signup: true,
+  });
   let adding = $state(false);
-  let draft = $state({ title: "", date: "", time: "19:30", venue: "", signup: true });
-  async function add(e: SubmitEvent) {
+  /** The one-off being edited; null while adding a new one. */
+  let editing = $state<OneOff | null>(null);
+  let draft = $state(blank());
+
+  function startAdding() {
+    editing = null;
+    draft = blank();
+    adding = true;
+  }
+  function startEditing(o: OneOff) {
+    editing = o;
+    draft = {
+      title: o.title,
+      date: londonToday(new Date(o.startsAt)),
+      start: londonTime(o.startsAt),
+      end: londonTime(o.endsAt),
+      venue: o.venue,
+      description: o.description,
+      public: o.public,
+      signup: o.signup,
+    };
+    adding = true;
+  }
+  const oneOff = (event: Bookable) => (event.kind === "social" ? (event.entries as OneOff) : null);
+
+  async function save(e: SubmitEvent) {
     e.preventDefault();
     if (!draft.title || !draft.date) return;
-    const startsAt = londonISO(draft.date, draft.time);
-    const created = await createClubEvent({
+    const startsAt = londonISO(draft.date, draft.start);
+    let endsAt = londonISO(draft.date, draft.end || draft.start);
+    // Ends after midnight: the next day
+    if (endsAt < startsAt) endsAt = new Date(Date.parse(endsAt) + 24 * 3600_000).toISOString();
+    const body: ClubEventBody = {
       title: draft.title,
       startsAt,
-      endsAt: new Date(Date.parse(startsAt) + 3 * 3600_000).toISOString(),
+      endsAt,
       venue: draft.venue,
+      description: draft.description,
+      public: draft.public,
       signup: draft.signup,
-      capacity: null,
-    });
-    if (!created) return;
+      capacity: editing?.capacity ?? null,
+    };
+    const done = editing ? await updateClubEvent(editing.id, body) : await createClubEvent(body);
+    if (done === null) return;
     adding = false;
-    draft = { title: "", date: "", time: "19:30", venue: "", signup: true };
+  }
+  async function toggleCancelled() {
+    if (!editing) return;
+    if ((await setClubEventCancelled(editing.id, !editing.cancelledAt)) === null) return;
+    adding = false;
   }
 </script>
 
@@ -94,7 +139,7 @@
     {#snippet actions()}
       <!-- + Event: in the toolbar row on desktop, a floating button on a phone -->
       {#if can(perms, "create:Event") && !phone.current}
-        <button class="btn sm primary" aria-haspopup="dialog" onclick={() => (adding = true)}>
+        <button class="btn sm primary" aria-haspopup="dialog" onclick={startAdding}>
           <Icon name="plus" size={16} />Event
         </button>
       {/if}
@@ -119,31 +164,100 @@
   {#each months as month (month.label)}
     <h2 class="section-title">{month.label}</h2>
     {#each month.events as event (event.key)}
-      <EventCard {event} compact canSignUp={can(perms, "signup:Event")} />
+      {@const o = oneOff(event)}
+      {@const editable = !!o && can(perms, "update:Event")}
+      {#snippet details()}
+        {#if o?.description}<p class="about">{o.description}</p>{/if}
+        {#if editable && o}
+          <div class="admin">
+            <span class="hint">{o.public ? "On the website" : "Members only"}</span>
+            <button class="link" aria-haspopup="dialog" onclick={() => startEditing(o)}>Edit</button>
+          </div>
+        {/if}
+      {/snippet}
+      <EventCard
+        {event}
+        compact
+        canSignUp={can(perms, "signup:Event")}
+        footer={o?.description || editable ? details : undefined}
+      />
     {/each}
   {:else}
     <p class="hint">Nothing coming up{filter === "all" ? "" : " for this one"}.</p>
   {/each}
   {#if can(perms, "create:Event") && phone.current}
-    <Fab label="Event" aria-haspopup="dialog" onclick={() => (adding = true)} />
+    <Fab label="Event" aria-haspopup="dialog" onclick={startAdding} />
   {/if}
   <!-- A one-off event, in a sheet (a modal on desktop): the list stays where it is -->
-  <Sheet bind:open={adding} title="Add an event">
-    <form class="form" onsubmit={add}>
-      <p class="hint">
-        A one-off: a social, a kit day. Trainings and tournaments are set up under Settings, so they repeat and keep
-        their own pages.
-      </p>
+  <Sheet bind:open={adding} title={editing ? "Edit event" : "Add an event"}>
+    <form class="form" onsubmit={save}>
+      {#if !editing}
+        <p class="hint">
+          A one-off: a social, a kit day. Trainings and tournaments are set up under Settings, so they repeat and keep
+          their own pages.
+        </p>
+      {/if}
       <label class="field"
         >Title <input class="input" bind:value={draft.title} placeholder="e.g. Summer social" required /></label
       >
+      <label class="field">Date <input class="input" type="date" bind:value={draft.date} required /></label>
       <div class="two">
-        <label class="field">Date <input class="input" type="date" bind:value={draft.date} required /></label>
-        <label class="field">Starts <input class="input" type="time" bind:value={draft.time} /></label>
+        <label class="field">Starts <input class="input" type="time" bind:value={draft.start} required /></label>
+        <label class="field">Ends <input class="input" type="time" bind:value={draft.end} /></label>
       </div>
-      <label class="field">Where <input class="input" bind:value={draft.venue} placeholder="e.g. The pub" /></label>
+      <label class="field"
+        >Location <input class="input" bind:value={draft.venue} placeholder="e.g. The Latchmere, Battersea" /></label
+      >
+      <label class="field"
+        >Description <textarea
+          class="input"
+          rows="2"
+          maxlength="280"
+          bind:value={draft.description}
+          placeholder="A line or two for the website"></textarea></label
+      >
+      <label class="check"><input type="checkbox" bind:checked={draft.public} /> Show on the website</label>
       <label class="check"><input type="checkbox" bind:checked={draft.signup} /> Members say in or out</label>
-      <button class="btn primary">Add to calendar</button>
+      <button class="btn primary">{editing ? "Save" : "Add to calendar"}</button>
+      {#if editing}
+        <button type="button" class="btn" onclick={toggleCancelled}>
+          {editing.cancelledAt ? "It's back on" : "Cancel this event"}
+        </button>
+      {/if}
     </form>
   </Sheet>
 </div>
+
+<style>
+  /* A one-off's footer: its description, then (for whoever can change it) where it shows and Edit */
+  .about,
+  .admin {
+    margin: 0;
+    padding: var(--s-3) var(--s-5);
+  }
+  .about {
+    color: var(--fg-body);
+  }
+  .about + .admin {
+    padding-top: 0;
+  }
+  .admin {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--s-3);
+  }
+  .link {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--fg);
+    font: inherit;
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+    cursor: pointer;
+  }
+  textarea.input {
+    resize: vertical;
+  }
+</style>

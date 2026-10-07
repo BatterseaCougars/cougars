@@ -392,33 +392,61 @@ export async function listClubEvents(db: D1Database, from: string) {
       startsAt: string;
       endsAt: string;
       venue: string;
+      description: string;
+      public: number;
       signup: number;
       capacity: number | null;
+      cancelledAt: string | null;
     }>(
       db,
-      `SELECT id, title, starts_at startsAt, ends_at endsAt, venue, signup_enabled signup, capacity
+      `SELECT id, title, starts_at startsAt, ends_at endsAt, venue, description, public, signup_enabled signup,
+              capacity, cancelled_at cancelledAt
        FROM club_events WHERE ends_at >= ? ORDER BY starts_at`,
       [from],
     )
-  ).map((e) => ({ ...e, signup: Boolean(e.signup) }));
+  ).map((e) => ({ ...e, public: Boolean(e.public), signup: Boolean(e.signup) }));
 }
 
-export async function createClubEvent(db: D1Database, o: Record<string, unknown>) {
+function clubEventFields(o: Record<string, unknown>) {
   const startsAt = text(o, "startsAt", { max: 30 });
   const endsAt = text(o, "endsAt", { max: 30 });
   if (Number.isNaN(Date.parse(startsAt)) || Number.isNaN(Date.parse(endsAt)) || endsAt < startsAt)
     throw new HttpError(400, "The start and end should be times, the end after the start.");
+  return [
+    text(o, "title", { max: 80 }),
+    startsAt,
+    endsAt,
+    text(o, "venue", { optional: true, max: 120 }),
+    text(o, "description", { optional: true, max: 280 }),
+    // Shown on the website unless said otherwise
+    o.public === false ? 0 : 1,
+    bool(o, "signup") ? 1 : 0,
+    int(o, "capacity", { min: 1, max: 500, nullable: true }),
+  ] as Param[];
+}
+
+export async function createClubEvent(db: D1Database, o: Record<string, unknown>) {
   const res = await run(
     db,
-    "INSERT INTO club_events (title, starts_at, ends_at, venue, signup_enabled, capacity) VALUES (?, ?, ?, ?, ?, ?)",
-    [
-      text(o, "title", { max: 80 }),
-      startsAt,
-      endsAt,
-      text(o, "venue", { optional: true }),
-      bool(o, "signup") ? 1 : 0,
-      int(o, "capacity", { min: 1, max: 500, nullable: true }),
-    ],
+    `INSERT INTO club_events (title, starts_at, ends_at, venue, description, public, signup_enabled, capacity)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    clubEventFields(o),
   );
   return { id: Number(res.meta.last_row_id) };
+}
+
+export async function updateClubEvent(db: D1Database, id: number, o: Record<string, unknown>) {
+  const res = await run(
+    db,
+    `UPDATE club_events SET title = ?, starts_at = ?, ends_at = ?, venue = ?, description = ?, public = ?,
+       signup_enabled = ?, capacity = ? WHERE id = ?`,
+    [...clubEventFields(o), id],
+  );
+  if (!res.meta.changes) throw new HttpError(404, "No such event.");
+}
+
+/** Cancelling keeps the event (and who said they're in), marked as off; un-cancelling puts it back. */
+export async function setClubEventCancelled(db: D1Database, id: number, cancelled: boolean, now: string) {
+  const res = await run(db, "UPDATE club_events SET cancelled_at = ? WHERE id = ?", [cancelled ? now : null, id]);
+  if (!res.meta.changes) throw new HttpError(404, "No such event.");
 }

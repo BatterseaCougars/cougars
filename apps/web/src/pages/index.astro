@@ -17,7 +17,7 @@ import {
 } from "../lib/sanity/content";
 import { imageUrl, objectPosition } from "../lib/sanity/images";
 import { clubData } from "../lib/structured-data";
-import EventList from "../components/EventList.astro";
+import WhatsOn from "../components/WhatsOn.astro";
 import Empty from "../components/Empty.astro";
 import KumitePoster from "../components/KumitePoster.astro";
 import PlayerCard from "../components/PlayerCard.astro";
@@ -29,7 +29,6 @@ import PhotoStrip from "../components/PhotoStrip.astro";
 const s = await getSettings();
 const all = upcoming(await getEvents());
 const kumite = all.find((e) => e.type === "kumite");
-const events = all.filter((e) => e !== kumite).slice(0, 4);
 const slot = s.training[0];
 const day = slot?.day ?? "Friday";
 const players = (await getPlayers()).slice(0, 5);
@@ -239,18 +238,16 @@ const strip: [string, string][] = [
     <div class="section-head" data-reveal>
       <div>
         <p class="kicker">Coming up</p>
-        <h2>Also on the bill</h2>
-        <p class="lede">Socials, clinics and tournaments, on top of every {day} on the rink.</p>
+        <h2>On the calendar</h2>
+        <p class="lede">Training, tournaments and socials, straight from the club diary.</p>
       </div>
       <a class="more" href="/events/">
         All events
       </a>
     </div>
-    {events.length ? (
-      <EventList events={events} />
-    ) : (
-      <Empty>Nothing else on the calendar yet. {day}s never stop.</Empty>
-    )}
+    <div data-reveal>
+      <WhatsOn items={null} day={day} />
+    </div>
   </section>
 
   <!-- Videos: mostly Friday night sessions -->

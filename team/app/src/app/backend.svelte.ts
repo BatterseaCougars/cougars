@@ -199,11 +199,19 @@ export const createTournament = (t: Tournament) =>
 export const updateTournament = (t: Tournament) =>
   save(() => api("PUT", `/api/tournaments/${t.id}`, tournamentBody(t)));
 
-export const createClubEvent = (e: {
+/** A one-off event as the app sends it. */
+export interface ClubEventBody {
   title: string;
   startsAt: string;
   endsAt: string;
   venue: string;
+  description: string;
+  public: boolean;
   signup: boolean;
   capacity: number | null;
-}) => save(() => api<{ id: number }>("POST", "/api/club-events", e), "Added to the calendar");
+}
+export const createClubEvent = (e: ClubEventBody) =>
+  save(() => api<{ id: number }>("POST", "/api/club-events", e), "Added to the calendar");
+export const updateClubEvent = (id: number, e: ClubEventBody) => save(() => api("PUT", `/api/club-events/${id}`, e));
+export const setClubEventCancelled = (id: number, cancelled: boolean) =>
+  save(() => api("POST", `/api/club-events/${id}/cancelled`, { cancelled }), cancelled ? "Cancelled" : "Back on");

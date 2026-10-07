@@ -48,5 +48,7 @@ export function londonISO(date: string, time: string): string {
 }
 
 /** Today's date in London, "YYYY-MM-DD". */
+/** "19:30": the London wall-clock time of an instant, for a time input. */
+export const londonTime = (iso: string) => formatTime(iso);
 export const londonToday = (now = new Date()) =>
   new Intl.DateTimeFormat("en-CA", { timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit" }).format(now);

@@ -95,8 +95,10 @@ export function calendar(today = londonToday()): Bookable[] {
         startsAt: o.startsAt,
         endsAt: o.endsAt,
         venue: o.venue,
-        signup: o.signup,
+        description: o.description,
+        signup: o.signup && !o.cancelledAt,
         capacity: o.capacity,
+        cancelled: !!o.cancelledAt,
         entries: o,
       })),
   ].sort((a, b) => a.startsAt.localeCompare(b.startsAt));

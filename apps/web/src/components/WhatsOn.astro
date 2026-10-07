@@ -1,0 +1,114 @@
+---
+// What's on: the next trainings, tournaments (each by its own name) and events, from the club calendar the team app
+// keeps (ADR 0042). The home page is prerendered, so it holds a placeholder that its script fills from /whats-on/,
+// which renders this same component live. No data-reveal in here: swapped-in elements would never be revealed.
+import Empty from "./Empty.astro";
+import { formatRange } from "../lib/dates";
+import type { WhatsOnItem } from "../lib/server/whats-on";
+
+interface Props {
+  /** Null: not loaded yet (the prerendered page). */
+  items: WhatsOnItem[] | null;
+  /** The session day, for the empty state. */
+  day: string;
+}
+const { items, day } = Astro.props;
+---
+
+<div data-whats-on>
+  {items === null ? (
+    <p class="loading label" aria-live="polite">
+      Checking the calendar… <a href="/events/">All events</a>
+    </p>
+  ) : items.length ? (
+    <ul class="whats-on">
+      {items.map((i) => (
+        <li class:list={[i.kind, { cancelled: i.cancelled }]}>
+          <span class="when label">{i.dateTbc ? "Date TBC" : formatRange(i.startsAt, i.endsAt)}</span>
+          <span class="what">
+            <span class="title">{i.title}</span>
+            {i.description && <span class="about">{i.description}</span>}
+          </span>
+          <span class="where label">{i.cancelled ? "Cancelled" : i.venue}</span>
+        </li>
+      ))}
+    </ul>
+  ) : (
+    <Empty>Nothing on the calendar yet. {day}s never stop.</Empty>
+  )}
+</div>
+
+<style>
+  .whats-on {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border-top: 1px solid var(--rule);
+  }
+  li {
+    display: grid;
+    grid-template-columns: 15rem 1fr auto;
+    align-items: baseline;
+    gap: 0.5rem 2rem;
+    padding: 1.6rem 0;
+    border-bottom: 1px solid var(--rule);
+  }
+  .what {
+    display: grid;
+    gap: 0.35rem;
+  }
+  .title {
+    font-weight: 600;
+    font-size: clamp(1.35rem, 2.2vw, 1.8rem);
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+  }
+  .about {
+    color: var(--text-2);
+  }
+  .where {
+    text-align: right;
+  }
+  .tournament .title {
+    color: var(--red);
+  }
+  .cancelled .title {
+    text-decoration: line-through;
+    color: var(--text-3);
+  }
+  .cancelled .where {
+    color: var(--red);
+  }
+  .loading {
+    min-height: 6rem;
+    margin: 0;
+    padding: 1.6rem 0;
+    border-top: 1px solid var(--rule);
+  }
+  @media (max-width: 44rem) {
+    li {
+      grid-template-columns: 1fr;
+    }
+    .where {
+      text-align: left;
+    }
+  }
+</style>
+
+<script>
+  // Fill in the live list. If it fails (offline, blocked), the placeholder's link to all events stays.
+  async function refresh() {
+    const box = document.querySelector<HTMLElement>("[data-whats-on]");
+    if (!box) return;
+    try {
+      const res = await fetch("/whats-on/", { headers: { Accept: "text/html" } });
+      if (!res.ok) return;
+      const fresh = new DOMParser().parseFromString(await res.text(), "text/html").querySelector("[data-whats-on]");
+      if (fresh && box.isConnected) box.replaceChildren(...fresh.childNodes);
+    } catch {
+      // keep the placeholder
+    }
+  }
+
+  document.addEventListener("astro:page-load", refresh);
+</script>

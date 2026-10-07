@@ -1,0 +1,27 @@
+---
+// The home page's What's on, rendered live for its script to swap in (components/WhatsOn.astro, ADR 0042).
+// A partial: just the component's HTML, no page around it. The home page already has its styles.
+import { env } from "cloudflare:workers";
+import WhatsOn from "../components/WhatsOn.astro";
+import { getSettings } from "../lib/sanity/content";
+import { whatsOn, type WhatsOnItem } from "../lib/server/whats-on";
+import { cacheControl } from "../lib/server/sanity-env";
+
+export const prerender = false;
+export const partial = true;
+
+let items: WhatsOnItem[] = [];
+let unavailable = false;
+try {
+  items = await whatsOn(env.DB);
+} catch (error) {
+  console.error(JSON.stringify({ event: "whats_on.d1_error", error: String(error) }));
+  unavailable = true;
+}
+const day = (await getSettings()).training[0]?.day ?? "Friday";
+
+Astro.response.headers.set("Cache-Control", cacheControl(unavailable));
+if (unavailable) Astro.response.status = 503;
+---
+
+<WhatsOn items={items} day={day} />

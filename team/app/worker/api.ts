@@ -24,6 +24,8 @@ import { createQuip, deleteQuip, listQuips, updateQuip } from "./quips";
 import { listTeams, publishTeams } from "./teams";
 import {
   createClubEvent,
+  setClubEventCancelled,
+  updateClubEvent,
   createSeries,
   createTournament,
   createTournamentType,
@@ -298,6 +300,23 @@ export const ROUTES: Route[] = [
     path: /^\/api\/club-events$/,
     action: "create:Event",
     handle: async (c) => json(await createClubEvent(c.env.DB, await body(c.request)), 201),
+  },
+  {
+    method: "PUT",
+    path: /^\/api\/club-events\/(\d+)$/,
+    action: "update:Event",
+    handle: async (c) => (await updateClubEvent(c.env.DB, id(c), await body(c.request)), ok()),
+  },
+  {
+    method: "POST",
+    path: /^\/api\/club-events\/(\d+)\/cancelled$/,
+    action: "update:Event",
+    handle: async (c) => {
+      const b = await body(c.request);
+      if (typeof b.cancelled !== "boolean") throw new HttpError(400, "cancelled should be true or false.");
+      await setClubEventCancelled(c.env.DB, id(c), b.cancelled, c.now);
+      return ok();
+    },
   },
 ];
 

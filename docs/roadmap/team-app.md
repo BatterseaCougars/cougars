@@ -142,6 +142,9 @@ Copied in shape from Gwenda ops (`gwenda-hackney/ark`, `ops/site/src/app/`), whi
   - a walk-in can be dropped straight onto a team
   - **Close the register** at the end of the night: attendance is final and feeds dues (T4). An admin can reopen it
     to correct a mistake; corrections are audited.
+- [x] Website: the home page's What's on reads the next trainings, tournaments and events from D1 live
+      ([ADR 0042](../adr/0042-whats-on-from-the-club-calendar.md)). One-off events have a description, an end time,
+      _Show on the website_, and can be edited and cancelled.
 - [ ] Website: the events and Fridays pages read public dates from D1 live, with a cache (like the videos,
       [ADR 0019](../adr/0019-live-videos.md)). Existing Sanity events are imported once, then the Sanity `event`
       type is retired.

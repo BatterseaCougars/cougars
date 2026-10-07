@@ -50,3 +50,4 @@ rule, a trade-off. Copy [template.md](template.md), take the next number, keep i
 | [0039](0039-videos-uploaded-on-youtube.md)        | Videos are uploaded on YouTube with people's own access, not through the app   | Accepted              |
 | [0040](0040-labelled-video-playlists.md)          | Videos come from several club playlists, each labelled                         | Accepted              |
 | [0041](0041-caches-in-production-only.md)         | Live reads are cached in production only                                       | Accepted              |
+| [0042](0042-whats-on-from-the-club-calendar.md)   | The home page's What's on reads the club calendar live                         | Accepted              |

@@ -36,3 +36,24 @@ export function formatRange(startIso: string, endIso?: string | null) {
 
 /** "2026-10-02": the calendar day in London, like a Sanity `date` field. */
 export const londonDay = (iso: string) => isoDay.format(new Date(iso));
+
+/** The UTC instant of a London wall-clock time on a date: londonISO("2026-10-09", "19:30"). BST-safe. */
+export function londonISO(date: string, time: string): string {
+  const [y, m, d] = date.split("-").map(Number);
+  const [hh, mm] = time.split(":").map(Number);
+  const guess = Date.UTC(y, m - 1, d, hh, mm);
+  // London's offset at that moment, from what the clock there reads
+  const offset = (t: number) => {
+    const p = fmt({
+      hourCycle: "h23",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).formatToParts(new Date(t));
+    const get = (type: string) => Number(p.find((x) => x.type === type)!.value);
+    return Date.UTC(get("year"), get("month") - 1, get("day"), get("hour"), get("minute")) - t;
+  };
+  return new Date(guess - offset(guess)).toISOString();
+}

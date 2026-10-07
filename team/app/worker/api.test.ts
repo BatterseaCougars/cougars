@@ -168,6 +168,49 @@ describe("the schedule", () => {
     expect(b.clubEvents.map((x: { title: string }) => x.title)).toEqual(["Kit day"]);
   });
 
+  it("lets an admin add an event for the website, change it and call it off", async () => {
+    const added = await call("POST", "/api/club-events", {
+      title: "Summer social",
+      startsAt: "2026-10-24T18:00:00.000Z",
+      endsAt: "2026-10-24T22:00:00.000Z",
+      venue: "The Latchmere",
+      description: "Drinks after the last Friday of the month.",
+      signup: false,
+      capacity: null,
+    });
+    expect(added.status).toBe(201);
+    // On the website unless they say otherwise
+    expect((await boot()).clubEvents[0]).toMatchObject({ title: "Summer social", public: true, cancelledAt: null });
+
+    const id = added.body.id;
+    const changed = await call("PUT", `/api/club-events/${id}`, {
+      title: "Summer social",
+      startsAt: "2026-10-24T19:00:00.000Z",
+      endsAt: "2026-10-24T23:00:00.000Z",
+      venue: "The Latchmere",
+      description: "Now from 8.",
+      public: false,
+      signup: true,
+      capacity: 30,
+    });
+    expect(changed.status).toBe(200);
+    expect((await boot()).clubEvents[0]).toMatchObject({
+      startsAt: "2026-10-24T19:00:00.000Z",
+      description: "Now from 8.",
+      public: false,
+      signup: true,
+      capacity: 30,
+    });
+
+    expect((await call("POST", `/api/club-events/${id}/cancelled`, { cancelled: true })).status).toBe(200);
+    expect((await boot()).clubEvents[0].cancelledAt).toBe(NOW.toISOString());
+    await call("POST", `/api/club-events/${id}/cancelled`, { cancelled: false });
+    expect((await boot()).clubEvents[0].cancelledAt).toBeNull();
+
+    const gone = { title: "x", startsAt: NOW.toISOString(), endsAt: NOW.toISOString(), signup: false };
+    expect((await call("PUT", "/api/club-events/999", gone)).status).toBe(404);
+  });
+
   it("looks 12 more weeks ahead each time an admin asks, up to two years", async () => {
     const friday = (await boot()).series[0];
     expect(ahead(await boot())).toHaveLength(12);
