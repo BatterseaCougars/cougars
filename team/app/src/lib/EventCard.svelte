@@ -60,7 +60,20 @@
       .filter(Boolean),
   );
   const rest = $derived(others.length - names.length);
+  // "You, Aman, Chris and 4 more", and "7 / 21 in · 14 spaces · 2 waiting": built here, so a formatter can't eat a space
+  const crowd = $derived(
+    [inIt ? "You" : "", ...names].filter(Boolean).join(", ") + (rest > 0 ? ` and ${rest} more` : ""),
+  );
   const spaces = $derived(event.capacity ? Math.max(0, event.capacity - entries.going.length) : null);
+  const tally = $derived(
+    [
+      `${event.capacity ? ` / ${event.capacity}` : ""} in`,
+      spaces === null ? "" : `${spaces} ${spaces === 1 ? "space" : "spaces"}`,
+      entries.waitlist.length ? `${entries.waitlist.length} waiting` : "",
+    ]
+      .filter(Boolean)
+      .join(" · "),
+  );
 
   // How soon, in days on London's calendar: Today, Tomorrow, In 3 days, In 2 weeks
   const soon = $derived.by(() => {
@@ -163,14 +176,11 @@
         {#if !entries.going.length}
           Nobody yet. First in, first on the list.
         {:else}
-          {#if inIt}<strong>You</strong>{names.length ? ", " : ""}{/if}{names.join(", ")}{#if rest > 0}
-            and {rest} more{/if}
+          {crowd}
         {/if}
       </span>
       <span class="tally num">
-        <strong>{entries.going.length}</strong>{event.capacity ? ` / ${event.capacity}` : ""} in{#if spaces !== null}
-          · {spaces} {spaces === 1 ? "space" : "spaces"}{/if}{#if entries.waitlist.length}
-          · {entries.waitlist.length} waiting{/if}
+        <strong>{entries.going.length}</strong>{tally}
       </span>
       {#if canSignUp}
         <div class="answer" role="group" aria-label="Are you in?">
@@ -333,14 +343,13 @@
   }
 
   /* ─── Who's going, and your answer at the end of the row ─── */
+  /* Two rows, at every width: who's going (faces, names, the count), then your answer. No box of its own: the
+     card is the box. */
   .going {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: var(--s-3) var(--s-4);
-    padding: var(--s-3) var(--s-3) var(--s-3) var(--s-4);
-    border-radius: var(--r-md);
-    background: var(--surface-2);
+    gap: var(--s-3) var(--s-3);
   }
   .faces {
     display: flex;
@@ -349,25 +358,26 @@
   .faces > span {
     display: grid;
     place-items: center;
-    width: 1.75rem;
-    height: 1.75rem;
-    margin-left: -0.45rem;
+    width: 2rem;
+    height: 2rem;
+    margin-left: -0.3rem;
     border-radius: 50%;
     background: var(--surface-3);
-    box-shadow: 0 0 0 2px var(--surface-2);
+    box-shadow: 0 0 0 2px var(--surface-1);
     color: var(--fg-muted);
-    font-size: 0.625rem;
+    font-size: 0.6875rem;
     font-weight: 700;
+    letter-spacing: 0.02em;
   }
   .faces > span:first-child {
     margin-left: 0;
   }
   .faces > .you {
-    background: color-mix(in srgb, var(--green) 30%, var(--surface-2));
+    background: color-mix(in srgb, var(--green) 30%, var(--surface-1));
     color: var(--fg);
   }
   .faces > .more {
-    background: var(--surface-1);
+    background: var(--surface-2);
     color: var(--fg-subtle);
   }
   .faces:empty {
@@ -397,11 +407,13 @@
   }
   /* Two compact tiles, the same before and after you answer: a light fill until pressed, then In lights up green
      with a tick, Out goes red with a cross. Fixed widths, so the label changing never moves them. */
+  /* The second row: its own line, two compact tiles on the left, under the faces */
   .answer {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: var(--s-2);
-    flex-shrink: 0;
+    flex-basis: 100%;
+    max-width: 18rem;
   }
   .answer > button {
     display: inline-flex;
@@ -467,14 +479,14 @@
     .soon {
       display: none;
     }
-    .going {
-      padding: var(--s-3);
-    }
     .who {
-      flex-basis: calc(100% - 9rem);
+      flex-basis: calc(100% - 11rem);
+    }
+    .tally {
+      flex-basis: 100%;
     }
     .answer {
-      width: 100%;
+      max-width: none;
     }
     .answer > button {
       min-width: 0;
