@@ -1,7 +1,7 @@
 // All GROQ lives here. Keep projections explicit so the shape matches types.ts.
 
 // Club facts: one singleton each, found by its fixed _id (apps/studio/structure.ts).
-export const CLUB = /* groq */ `*[_id == "club"][0]{founded, contactEmail, socials, youtubeChannelId, youtubePlaylistId, heroImage}`;
+export const CLUB = /* groq */ `*[_id == "club"][0]{founded, contactEmail, socials, youtubeChannelId, youtubePlaylists, heroImage}`;
 export const FRIDAYS = /* groq */ `*[_id == "fridays"][0]{
   training[]{title, day, start, end, description}, venue{name, address, mapUrl}, kitNotes, firstSessionKit, feesText
 }`;
@@ -19,7 +19,7 @@ export const VIDEOS = /* groq */ `*[_type == "video" && defined(youtubeUrl)]{
 }`;
 /** Everything the live video list needs from Sanity, in one request (lib/server/videos.ts). */
 export const VIDEO_DATA = /* groq */ `{
-  "club": *[_id == "club"][0]{socials, youtubeChannelId, youtubePlaylistId},
+  "club": *[_id == "club"][0]{socials, youtubeChannelId, youtubePlaylists},
   "videos": ${VIDEOS}
 }`;
 

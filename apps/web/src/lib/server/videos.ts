@@ -22,7 +22,7 @@ export interface VideosConfig {
 export const SANITY_CACHE = { ttlMs: 60_000, staleMs: 60 * 60_000 };
 export const YOUTUBE_CACHE = { ttlMs: 10 * 60_000, staleMs: 24 * 60 * 60_000 };
 
-type ClubYoutube = Pick<Club, "socials" | "youtubeChannelId" | "youtubePlaylistId">;
+type ClubYoutube = Pick<Club, "socials" | "youtubeChannelId" | "youtubePlaylists">;
 interface SanityVideoData {
   club: ClubYoutube | null;
   videos: VideoOverride[] | null;

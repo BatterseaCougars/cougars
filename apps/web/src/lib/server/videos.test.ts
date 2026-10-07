@@ -60,12 +60,16 @@ describe("liveVideos", () => {
   });
 
   it("merges a club playlist (unlisted included) with the Sanity videos", async () => {
-    const { fetch } = fakeNetwork({ club: { youtubePlaylistId: "PLabcdefghijklmnop" } });
+    const { fetch } = fakeNetwork({
+      club: { youtubePlaylists: [{ url: "PLabcdefghijklmnop", label: "Friday hockey" }] },
+    });
     vi.stubGlobal("fetch", fetch);
     const { data } = await liveVideos(config(), { now, edge: null });
     expect(data.map((v) => v.title)).toEqual(
       expect.arrayContaining(["Friday session, full game", "Team only", "Kumite final", "Pasted link"]),
     );
+    expect(data.find((v) => v.title === "Team only")?.label).toBe("Friday hockey");
+    expect(data.find((v) => v.title === "Pasted link")?.label).toBeNull();
   });
 
   it("asks YouTube once per ten minutes, and Sanity once a minute", async () => {
@@ -99,7 +103,9 @@ describe("liveVideos", () => {
   });
 
   it("never sends YouTube a request without a key", async () => {
-    const { fetch, calls } = fakeNetwork({ club: { youtubePlaylistId: "PLabcdefghijklmnop" } });
+    const { fetch, calls } = fakeNetwork({
+      club: { youtubePlaylists: [{ url: "PLabcdefghijklmnop", label: "Friday hockey" }] },
+    });
     vi.stubGlobal("fetch", fetch);
     await liveVideos(config({ youtubeKey: undefined }), { now, edge: null });
     expect(calls.youtube).toBe(0);

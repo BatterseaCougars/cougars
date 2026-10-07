@@ -42,7 +42,7 @@ export const OPTIONAL = {
     "socials.facebook",
     "socials.youtube",
     "youtubeChannelId",
-    "youtubePlaylistId",
+    "youtubePlaylists",
     "heroImage",
   ],
   fridays: ["firstSessionKit", "feesText"],

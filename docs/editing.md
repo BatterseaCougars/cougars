@@ -83,15 +83,18 @@ the first five appear on the homepage.
 
 1. Upload the video to the club YouTube channel. It's on the website **within about 10 minutes**:
    - **Public** videos appear by themselves.
-   - **Unlisted** videos appear if they're in the club playlist. Put the playlist's link in **Club → YouTube
-     playlist** once, then add each video to that playlist on YouTube.
+   - **Unlisted** videos appear if they're in one of the club playlists: **Friday Hockey**, **Kumite**, or
+     **Website** for anything else. Add each video to one of them on YouTube. On the website it's labelled with its
+     playlist.
+   - The playlists are set once in **Club → YouTube playlists**: each one's link from YouTube's **Share** button,
+     and the label the website shows (leave it empty for Website).
 2. Use the Studio only to change how a video shows. **Videos → +**, paste the video's link from YouTube's
    **Share** button, then:
    - **Hide from the website** keeps it off the site (it stays on YouTube).
    - **Show first** puts it at the top.
    - **Title**, **Date** or **Description** replace YouTube's. Leave them empty to keep YouTube's.
    - **Publish**. Changes show within a minute or so.
-3. A video that isn't on the club channel or in its playlist only appears if you add its link here.
+3. A video that isn't on the club channel or in its playlists only appears if you add its link here.
 
 You don't upload video files to the website. YouTube hosts them for free.
 
