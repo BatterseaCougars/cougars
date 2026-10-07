@@ -3,7 +3,7 @@
 // keeps (ADR 0042). The home page is prerendered, so it holds a placeholder that its script fills from /whats-on/,
 // which renders this same component live. No data-reveal in here: swapped-in elements would never be revealed.
 import Empty from "./Empty.astro";
-import { formatRange } from "../lib/dates";
+import { formatDayDate, formatRange } from "../lib/dates";
 import type { WhatsOnItem } from "../lib/server/whats-on";
 
 interface Props {
@@ -13,6 +13,9 @@ interface Props {
   day: string;
 }
 const { items, day } = Astro.props;
+// "Ask about this" goes to the contact form, which starts the message with what it's about
+const askHref = (i: WhatsOnItem) =>
+  `/join/?about=${encodeURIComponent(i.dateTbc ? i.title : `${i.title}, ${formatDayDate(i.startsAt)}`)}`;
 ---
 
 <div data-whats-on>
@@ -29,7 +32,14 @@ const { items, day } = Astro.props;
             <span class="title">{i.title}</span>
             {i.description && <span class="about">{i.description}</span>}
           </span>
-          <span class="where label">{i.cancelled ? "Cancelled" : i.venue}</span>
+          <span class="where">
+            <span class="label">{i.cancelled ? "Cancelled" : i.venue}</span>
+            {!i.cancelled && (
+              <a class="ask label" href={askHref(i)}>
+                Ask about this <span aria-hidden="true">→</span>
+              </a>
+            )}
+          </span>
         </li>
       ))}
     </ul>
@@ -67,7 +77,17 @@ const { items, day } = Astro.props;
     color: var(--text-2);
   }
   .where {
+    display: grid;
+    justify-items: end;
+    gap: 0.5rem;
     text-align: right;
+  }
+  .ask {
+    color: var(--text-2);
+    transition: color 0.3s var(--ease-smooth);
+  }
+  .ask:hover {
+    color: var(--red);
   }
   .tournament .title {
     color: var(--red);
@@ -76,7 +96,7 @@ const { items, day } = Astro.props;
     text-decoration: line-through;
     color: var(--text-3);
   }
-  .cancelled .where {
+  .cancelled .where .label {
     color: var(--red);
   }
   .loading {
@@ -90,6 +110,7 @@ const { items, day } = Astro.props;
       grid-template-columns: 1fr;
     }
     .where {
+      justify-items: start;
       text-align: left;
     }
   }

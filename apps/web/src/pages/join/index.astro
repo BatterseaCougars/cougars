@@ -22,6 +22,8 @@ const slot = s.training[0];
   <div class="wrap layout page-body">
     <form method="post" action="/api/join" class="form" novalidate data-reveal>
       <p class="alert" role="alert" tabindex="-1" hidden></p>
+      <!-- Filled from ?about= (the home page's What's on): what they're asking about -->
+      <p class="about label" hidden></p>
       <input type="hidden" name="source" value="/join/" />
       <div class="hp" aria-hidden="true">
         <label>
@@ -208,6 +210,10 @@ const slot = s.training[0];
   .err:empty {
     display: none;
   }
+  .about {
+    margin: 0 0 0.5rem;
+    color: var(--red);
+  }
   .alert {
     margin: 0;
     padding: 0.9rem 1rem;
@@ -277,6 +283,16 @@ const slot = s.training[0];
     alert.hidden = false;
   };
   if (params.get("error")) showAlert(messages[params.get("error")!] ?? messages.invalid);
+
+  // Asking about something on the calendar: say what, and start the message with it
+  const about = params.get("about")?.trim().slice(0, 120);
+  if (about) {
+    const line = form.querySelector<HTMLElement>(".about")!;
+    line.textContent = `About: ${about}`;
+    line.hidden = false;
+    const message = form.querySelector<HTMLTextAreaElement>("textarea[name=message]")!;
+    if (!message.value) message.value = `About ${about}: `;
+  }
 
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
