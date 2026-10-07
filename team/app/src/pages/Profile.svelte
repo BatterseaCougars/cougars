@@ -1,6 +1,6 @@
 <script lang="ts">
-  // Your profile. You change your phone, position and bio (the back of your player card); your name and email
-  // are an admin's to change, since sign-in and the roster go by them.
+  // Your profile. You change your phone, position and bio (the back of your player card), and how your name shows
+  // on the website's roster; your name and email are an admin's to change, since sign-in and the roster go by them.
   import { POSITIONS, emailFor, phoneFor, type Position } from "../demo/data";
   import { fullRole, impersonating, me, realGranted, session, setElevated, shownRoles } from "../demo/session.svelte";
   import { db } from "../demo/store.svelte";
@@ -10,6 +10,30 @@
 
   const who = me();
   let form = $state({ phone: phoneFor(who.id) ?? "", position: who.position, bio: who.bio ?? "" });
+
+  // Your name on the website (ADR 0043): ready-made forms of your name, or a nickname. Saved as the text itself;
+  // the default (first name and initial) is saved as nothing, so it follows a change to your name.
+  const [firstName, ...rest] = who.name.trim().split(/\s+/);
+  const lastName = rest.at(-1);
+  const NAME_FORMS = [
+    { id: "initial", label: lastName ? `${firstName} ${lastName[0].toUpperCase()}.` : firstName },
+    ...(lastName ? [{ id: "full", label: who.name.trim() }] : []),
+    ...(lastName ? [{ id: "first", label: firstName }] : []),
+    { id: "nickname", label: "A nickname" },
+  ];
+  const saved = who.webName?.trim() || "";
+  const savedForm = !saved
+    ? "initial"
+    : (NAME_FORMS.find((f) => f.id !== "nickname" && f.label === saved)?.id ?? "nickname");
+  let nameForm = $state(savedForm);
+  let nickname = $state(savedForm === "nickname" ? saved : "");
+  const webName = $derived(
+    nameForm === "initial"
+      ? ""
+      : nameForm === "nickname"
+        ? nickname.trim()
+        : (NAME_FORMS.find((f) => f.id === nameForm)?.label ?? ""),
+  );
   const locked = impersonating();
   const BIO_MAX = 160;
 
@@ -32,7 +56,7 @@
   }
   function save(e: SubmitEvent) {
     e.preventDefault();
-    saveProfile({ ...form, phone: form.phone.trim(), bio: form.bio.trim() });
+    saveProfile({ ...form, phone: form.phone.trim(), bio: form.bio.trim(), webName });
   }
 </script>
 
@@ -62,6 +86,24 @@
             </button>
           {/each}
         </div>
+      </div>
+      <div class="field">
+        <span id="web-name">Name on the website <span class="hint">· if you're on the Cougars roster</span></span>
+        <div class="seg block wrap" role="group" aria-labelledby="web-name">
+          {#each NAME_FORMS as f (f.id)}
+            <button type="button" aria-pressed={nameForm === f.id} onclick={() => (nameForm = f.id)}>{f.label}</button>
+          {/each}
+        </div>
+        {#if nameForm === "nickname"}
+          <input
+            class="input"
+            maxlength="40"
+            placeholder="e.g. The Wall"
+            aria-label="Nickname"
+            bind:value={nickname}
+            required
+          />
+        {/if}
       </div>
       <label class="field">
         <span>Bio <span class="hint">· on the back of your player card</span></span>
@@ -98,6 +140,13 @@
 </div>
 
 <style>
+  /* Your name on the website: four choices, one of them your full name, so they wrap on a phone */
+  .seg.wrap {
+    flex-wrap: wrap;
+  }
+  .seg.wrap > button {
+    flex: 1 1 auto;
+  }
   .head {
     display: flex;
     align-items: center;

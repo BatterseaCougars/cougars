@@ -1,14 +1,16 @@
 // The club's players on the website, from the team app's members (docs/adr/0043-roster-from-the-club.md). The build
 // takes a snapshot (scripts/roster-snapshot.mjs); a card asks /api/players/<id> for the latest when it's flipped.
-// The website is public, so only what's here leaves the database: a first name and initial, position and bio.
+// Only the Cougars. The website is public, so only what's here leaves the database: the name they chose (first name
+// and initial unless they picked otherwise), position and bio.
 import type { Player } from "./sanity/types";
 
 export interface RosterRow {
   id: number;
   name: string;
+  /** The name they chose for the website (on their profile); null: first name and initial. */
+  web_name: string | null;
   position: string;
   bio: string;
-  cougar: number;
 }
 
 const POSITIONS: Record<string, string> = { F: "Forward", D: "Defence", G: "Goalie" };
@@ -22,7 +24,7 @@ export function publicName(name: string): string {
 
 export const toPlayer = (r: RosterRow): Player => ({
   _id: `member-${r.id}`,
-  name: publicName(r.name),
+  name: r.web_name?.trim() || publicName(r.name),
   position: POSITIONS[r.position] ?? null,
   quote: r.bio.trim() || null,
 });

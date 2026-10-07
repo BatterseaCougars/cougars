@@ -405,6 +405,16 @@ describe("teams, quips, profiles and attendance", () => {
     expect(me).toMatchObject({ position: "G", phone: "07700 900123", bio: "Blames the ice." });
   });
 
+  it("you choose how your name shows on the website, or go back to the default", async () => {
+    const { dana } = await ids();
+    const webName = async () => (await boot()).members.find((m: { id: number }) => m.id === dana).webName;
+    expect(await webName()).toBeNull();
+    await call("PUT", "/api/me", { position: "F", phone: "", bio: "", webName: "  The Wall " });
+    expect(await webName()).toBe("The Wall");
+    await call("PUT", "/api/me", { position: "F", phone: "", bio: "", webName: "" });
+    expect(await webName()).toBeNull();
+  });
+
   it("an admin makes someone a Quarterly Member, and can take it back", async () => {
     const { reg } = await ids();
     const quarterly = async () => (await boot()).members.find((m: { id: number }) => m.id === reg).quarterly;

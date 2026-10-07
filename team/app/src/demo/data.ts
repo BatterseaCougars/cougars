@@ -16,6 +16,8 @@ export interface Player {
   cougar: boolean;
   /** On the back of their card. */
   bio?: string;
+  /** How their name shows on the website roster; null: first name and initial. */
+  webName?: string | null;
   /** Training sessions they came to. */
   played?: number;
 }
@@ -81,6 +83,7 @@ export interface Bootstrap {
     paymentReference: string | null;
     roles: string[];
     bio: string;
+    webName: string | null;
     phone: string | null;
     played: number;
     quarterly: boolean;
@@ -112,8 +115,8 @@ export function hydrate(b: Bootstrap) {
     EMAILS.set(m.id, m.email);
     REFERENCES.set(m.id, m.paymentReference);
     PHONES.set(m.id, m.phone);
-    const { id, name, position, rating, cougar, bio, played } = m;
-    return { id, name, position, rating, cougar, bio, played };
+    const { id, name, position, rating, cougar, bio, webName, played } = m;
+    return { id, name, position, rating, cougar, bio, webName, played };
   });
   fill(PLAYERS, players);
   fill(

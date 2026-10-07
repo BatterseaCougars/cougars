@@ -77,12 +77,15 @@ export const getEventPages = memo(() => fetchList<ClubEvent>(q.EVENT_PAGES, DEMO
 export const getAlbums = memo(async () =>
   (await fetchList<Album>(q.ALBUMS, demoAlbums())).flatMap((a) => toAlbum(a) ?? []),
 );
-// The roster: the club's active members as of this build (lib/roster.ts, scripts/roster-snapshot.mjs). Until the
-// snapshot has anyone (a fresh checkout, a database without the team tables), Sanity's players or the samples.
-const snapshot = import.meta.glob<RosterRow[]>("../../data/roster.local.json", { eager: true, import: "default" });
+// The roster: the active Cougars as of this build (lib/roster.ts, scripts/roster-snapshot.mjs). Without a snapshot
+// (a fresh checkout, a database that couldn't be read), Sanity's players or the samples.
+const snapshot = import.meta.glob<RosterRow[] | null>("../../data/roster.local.json", {
+  eager: true,
+  import: "default",
+});
 export const getPlayers = memo(async () => {
-  const roster = Object.values(snapshot)[0] ?? [];
-  return roster.length ? roster.map(toPlayer) : fetchList<Player>(q.PLAYERS, DEMO_PLAYERS);
+  const roster = Object.values(snapshot)[0];
+  return roster ? roster.map(toPlayer) : fetchList<Player>(q.PLAYERS, DEMO_PLAYERS);
 });
 export const getSponsors = memo(() => fetchList<Sponsor>(q.SPONSORS));
 

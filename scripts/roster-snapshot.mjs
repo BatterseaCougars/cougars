@@ -1,15 +1,17 @@
 #!/usr/bin/env node
-// The website's roster as of this build (docs/adr/0043-roster-from-the-club.md): active members from D1, written to
+// The website's roster as of this build (docs/adr/0043-roster-from-the-club.md): the active Cougars from D1, written to
 // apps/web/src/data/roster.local.json (gitignored: it's personal data, ADR 0033). Run before `astro dev` and
 // `astro build` (apps/web's predev/prebuild). Only what the website shows leaves the database.
 //   node scripts/roster-snapshot.mjs                 local D1 (apps/web/.wrangler)
 //   ROSTER_SNAPSHOT_ENV=dev|production node ...     that environment's D1, over the API (CI: CLOUDFLARE_API_TOKEN
 //                                                   and CLOUDFLARE_ACCOUNT_ID for its account)
-// Never fails a build: if the database can't be read, the roster is empty and the site falls back.
+// Never fails a build: if the database can't be read, it writes null and the site falls back to Sanity or samples.
+// An empty list is a real answer (no Cougars yet), and the site says the roster is coming.
 import { execFileSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 
-const SQL = `SELECT id, name, position, bio, cougar FROM members WHERE status = 'active' ORDER BY cougar DESC, name`;
+const SQL = `SELECT id, name, web_name, position, bio FROM members WHERE status = 'active' AND cougar = 1
+  ORDER BY name COLLATE NOCASE`;
 const DATABASES = { production: "cougars", dev: "cougars-dev" };
 const web = new URL("../apps/web/", import.meta.url);
 const out = new URL("src/data/roster.local.json", web);
@@ -42,7 +44,7 @@ function local() {
   return JSON.parse(json)[0].results;
 }
 
-let rows = [];
+let rows = null;
 try {
   const environment = process.env.ROSTER_SNAPSHOT_ENV;
   rows = environment ? await remote(environment) : local();
@@ -51,4 +53,4 @@ try {
 }
 mkdirSync(new URL("src/data/", web), { recursive: true });
 writeFileSync(out, JSON.stringify(rows, null, 2) + "\n");
-console.log(`Roster snapshot: ${rows.length} players.`);
+if (rows) console.log(`Roster snapshot: ${rows.length} Cougars.`);

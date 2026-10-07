@@ -83,7 +83,7 @@ export const setPlayer = (sessionId: number, memberId: number, inIt: boolean) =>
 export const publishTeams = (sessionId: number, teams: Team[]) =>
   save(() => api("POST", `/api/sessions/${sessionId}/teams`, { teams }), "Teams published");
 /** Your own phone, position and bio. */
-export const saveProfile = (p: { position: Position; phone: string; bio: string }) =>
+export const saveProfile = (p: { position: Position; phone: string; bio: string; webName: string }) =>
   save(() => api("PUT", "/api/me", p));
 /** The role the app opens as (ADR 0037); null for your full role. */
 export const saveEverydayRole = (roleId: number | null) => save(() => api("PUT", "/api/me/everyday-role", { roleId }));

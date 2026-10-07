@@ -17,6 +17,8 @@ export interface MemberJson {
   /** Highest first: Admin, then newer roles, Member last. */
   roles: string[];
   bio: string;
+  /** How their name shows on the website; null: first name and initial. */
+  webName: string | null;
   /** Only for the member themselves and those who manage members; null otherwise. */
   phone: string | null;
   /** Training sessions they came to: in, not a no-show, held before today and not cancelled. */
@@ -74,12 +76,14 @@ export async function listMembers(
     payment_reference: string | null;
     roles: string | null;
     bio: string;
+    web_name: string | null;
     phone: string | null;
     played: number;
     quarterly: number;
   }>(
     db,
-    `SELECT m.id, m.name, m.email, m.position, m.rating, m.cougar, m.status, m.payment_reference, m.bio, m.phone,
+    `SELECT m.id, m.name, m.email, m.position, m.rating, m.cougar, m.status, m.payment_reference, m.bio, m.web_name,
+            m.phone,
             (SELECT group_concat(name) FROM (SELECT r.name FROM member_roles mr JOIN roles r ON r.id = mr.role_id
               WHERE mr.member_id = m.id ORDER BY r.is_system DESC, r.id DESC)) roles,
             (SELECT COUNT(*) FROM attendance a JOIN training_sessions s ON s.id = a.session_id
@@ -104,6 +108,8 @@ export async function listMembers(
     paymentReference: mine(m.id) ? m.payment_reference : null,
     roles: m.roles ? m.roles.split(",") : [],
     bio: m.bio,
+    // Public anyway (the website roster), so everyone may see it
+    webName: m.web_name,
     phone: mine(m.id) ? m.phone : null,
     played: m.played,
     quarterly: Boolean(m.quarterly),
@@ -251,12 +257,22 @@ export async function updateRole(db: D1Database, id: number, o: Record<string, u
   for (const a of f.actions) await run(db, "INSERT INTO role_actions (role_id, action) VALUES (?, ?)", [id, a]);
 }
 
-/** Your own profile: phone, position and bio. Name and email stay with admins (the roster seed matches by name). */
+/**
+ * Your own profile: phone, position, bio and how your name shows on the website (empty: first name and initial).
+ * Your name and email stay with admins (the roster seed matches by name).
+ */
 export async function updateProfile(db: D1Database, id: number, o: Record<string, unknown>) {
   const position = oneOf(o, "position", ["F", "D", "G"] as const);
   const phone = text(o, "phone", { optional: true, max: 30 });
   const bio = text(o, "bio", { optional: true, max: 160 });
-  await run(db, "UPDATE members SET position = ?, phone = ?, bio = ? WHERE id = ?", [position, phone || null, bio, id]);
+  const webName = text(o, "webName", { optional: true, max: 40 }).trim();
+  await run(db, "UPDATE members SET position = ?, phone = ?, bio = ?, web_name = ? WHERE id = ?", [
+    position,
+    phone || null,
+    bio,
+    webName || null,
+    id,
+  ]);
 }
 
 /** The role someone runs the app as day to day (ADR 0037); null means their full role. */

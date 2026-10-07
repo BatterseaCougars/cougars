@@ -609,3 +609,63 @@ a.card:hover img {
     transform: none;
   }
 }
+
+/* A squad card picked up (scripts/cards.ts): the copy sits over a dimmed, blurred page, big enough to read. */
+.card-zoom {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+.card-zoom-scrim {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  padding: 0;
+  background: rgb(10 10 12 / 0.72);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  cursor: zoom-out;
+  animation: card-zoom-in 0.26s ease both;
+}
+.card-zoom.closing .card-zoom-scrim {
+  animation: card-zoom-out 0.38s ease both;
+}
+.card-zoom-stage {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 1rem;
+  width: min(24rem, 86vw, 58svh);
+}
+.card-zoom-stage .slot {
+  width: 100%;
+}
+.card-zoom-close {
+  padding: 0.6rem 1rem;
+  border: 0;
+  background: none;
+  color: var(--text-2);
+  cursor: pointer;
+}
+.card-zoom-close:hover {
+  color: var(--text);
+}
+.card-zoom.closing .card-zoom-close {
+  visibility: hidden;
+}
+html.card-zoom-open {
+  overflow: hidden;
+}
+@keyframes card-zoom-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes card-zoom-out {
+  to {
+    opacity: 0;
+  }
+}

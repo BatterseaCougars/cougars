@@ -13,18 +13,19 @@ in the app shouldn't have to wait for one to see them.
 ## Decision
 
 - **Snapshot at build.** `scripts/roster-snapshot.mjs` runs before `astro dev` and `astro build` (apps/web's
-  `predev`/`prebuild`). It reads active members from the environment's D1 (local D1 on a laptop; in CI, the
+  `predev`/`prebuild`). It reads the active Cougars (the `cougar` flag) from the environment's D1 (local D1 on a laptop; in CI, the
   D1 API with `ROSTER_SNAPSHOT_ENV`) into `apps/web/src/data/roster.local.json`, gitignored. If it can't read the
   database the roster is empty and the site falls back to Sanity players or the samples; a build never fails on it.
-- **Only what the website shows leaves the database:** first name and last initial ("Adrian K."), position and bio.
-  Active members, the Cougars first.
-- **Refreshed per card.** Flipping a roster card fetches `/api/players/<id>` (live from D1, active members only)
-  and changes whatever differs: name, position, bio.
+- **Only what the website shows leaves the database:** the member's name as they chose it on their app profile
+  (_Name on the website_: first name and initial, the default; full name; first name; or a nickname; stored in
+  `members.web_name`, migration `0014`), position and bio.
+- **Picked up, as in the app.** Pressing a card lifts a copy to the middle of the screen, big enough to read,
+  turning to its back on the way; it's put back with Close, the scrim or Escape. Picking it up fetches
+  `/api/players/<id>` (live from D1, active Cougars only) and changes whatever differs: name, position, bio.
 
 ## Consequences
 
-- A new or departed player shows after the next build (daily in production, [ADR 0018](0018-rebuilds-until-team-app.md));
-  a changed bio or position shows as soon as someone flips that card.
-- Names are published without anyone being asked. If that's not wanted, a member-level "show me on the website"
-  flag is the next step.
+- A new or departed Cougar shows after the next build (daily in production, [ADR 0018](0018-rebuilds-until-team-app.md));
+  a changed name, bio or position shows as soon as someone picks up that card. Locally, re-run the snapshot.
+- Each Cougar decides how their name appears; nobody's full name is published unless they choose it.
 - Photos, shirt numbers and nicknames aren't in D1 yet, so roster cards show the club logo and no number.
