@@ -1,14 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { roundRobin, standings, type Match } from "./kumite";
-
-describe("roundRobin", () => {
-  it("has every team play every other exactly once", () => {
-    const pairs = roundRobin([1, 2, 3, 4, 5]).flat();
-    expect(pairs).toHaveLength(10);
-    const keys = new Set(pairs.map(([a, b]) => [a, b].sort().join("-")));
-    expect(keys.size).toBe(10);
-  });
-});
+import { standings, type Match } from "./kumite";
 
 describe("standings", () => {
   it("ranks by points, then goal difference", () => {

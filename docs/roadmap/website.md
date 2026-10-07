@@ -98,6 +98,16 @@ worktree under `.worktrees/`. Each stream lands on `main` when it passes the pre
 - [ ] Cloudflare Web Analytics (free, no cookie banner needed).
 - [ ] "I'm interested" RSVP on events (stored in D1, counts shown to the admin).
 - [x] Per-page share pictures for WhatsApp and Facebook, drawn at build time ([ADR 0020](../adr/0020-drawn-share-cards.md)).
+- [ ] **Staying inside the free plans** (one Cloudflare account and one Sanity project carry the club):
+  - [x] Outside services behind circuit breakers; the team app brakes itself; `astro dev` falls back when Sanity
+        can't be read ([ADR 0055](../adr/0055-circuit-breakers.md), [ADR 0058](../adr/0058-degrade-instead-of-break.md)).
+  - [x] Settings → Usage: today's Worker requests and D1 rows; an hourly check emails the admins at 80%
+        ([ADR 0059](../adr/0059-usage-page-and-check.md)). Needs `CLOUDFLARE_ANALYTICS_TOKEN` in both accounts.
+  - [ ] Sanity's quotas counted and warned on by us, not only on sanity.io/manage
+        ([#15](https://github.com/das974/cougars/issues/15)).
+  - [ ] Saving mode from 80%: the app and the live pages cut back, so the day degrades instead of stopping
+        ([#16](https://github.com/das974/cougars/issues/16)).
+  - [ ] Cloudflare's free rate-limiting rule on the domain: blocks a scraper before the Worker, so it doesn't count.
 - [ ] Go live: `git push origin main:release`.
 
 The old M6 (team app), M7 (payments) and M8 (live Kumite) moved to the [team-app roadmap](team-app.md). The

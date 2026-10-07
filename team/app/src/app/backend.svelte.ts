@@ -17,6 +17,7 @@ import {
   TOURNAMENTS,
   TOURNAMENT_TYPES,
   VENUES,
+  AGENDA,
 } from "../demo/data";
 import type { Position, Slices } from "../demo/data";
 import type { Quip, QuipKind } from "../lib/quips";
@@ -31,18 +32,37 @@ export const saving = $state({ busy: 0, message: "", failed: false });
 // Each slice of the club, copied into the store from demo/data.ts once it's in place there
 const COPY: Record<keyof Slices, () => void> = {
   everydayRole: () => {},
-  members: () => (db.members = structuredClone(MEMBERS)),
-  roles: () => (db.roles = structuredClone(ROLES)),
-  venues: () => (db.venues = structuredClone(VENUES)),
-  series: () => (db.series = structuredClone(SERIES)),
+  members: () => {
+    db.members = structuredClone(MEMBERS);
+  },
+  roles: () => {
+    db.roles = structuredClone(ROLES);
+  },
+  venues: () => {
+    db.venues = structuredClone(VENUES);
+  },
+  series: () => {
+    db.series = structuredClone(SERIES);
+  },
   sessions: () => {
     db.sessions = structuredClone(SESSIONS);
     db.teams = structuredClone(TEAMS);
   },
-  tournamentTypes: () => (db.tournamentTypes = structuredClone(TOURNAMENT_TYPES)),
-  tournaments: () => (db.tournaments = structuredClone(TOURNAMENTS)),
-  clubEvents: () => (db.oneOffs = structuredClone(ONE_OFFS)),
-  quips: () => (db.quips = structuredClone(QUIPS)),
+  tournamentTypes: () => {
+    db.tournamentTypes = structuredClone(TOURNAMENT_TYPES);
+  },
+  tournaments: () => {
+    db.tournaments = structuredClone(TOURNAMENTS);
+  },
+  clubEvents: () => {
+    db.oneOffs = structuredClone(ONE_OFFS);
+  },
+  quips: () => {
+    db.quips = structuredClone(QUIPS);
+  },
+  agenda: () => {
+    db.agenda = structuredClone(AGENDA);
+  },
 };
 const copyAll = () => Object.values(COPY).forEach((copy) => copy());
 
@@ -87,6 +107,8 @@ function say(message: string, failed: boolean) {
  * for taps that show their own result. Returns the server's reply, or null if it failed.
  */
 export async function save<T>(change: () => Promise<T>, done = "Saved"): Promise<T | null> {
+  // A new save: the last one's note gives way to this one's
+  if (done) saving.message = "";
   saving.busy++;
   try {
     const result = await change();
@@ -224,6 +246,7 @@ const typeBody = (t: TournamentType) => ({
   active: t.active,
   defaultFeePence: t.defaultFeePence,
   awards: t.awards,
+  playoffs: t.playoffs,
   venueId: t.venueId,
   location: t.location,
   mapUrl: t.mapUrl,
@@ -257,6 +280,7 @@ const tournamentBody = (t: Tournament) => ({
   gameMinutes: t.gameMinutes,
   kind: t.kind,
   awards: t.awards,
+  playoffs: t.playoffs,
   teams: t.teams,
 });
 /** The captain on the clock (or whoever's running the draft) picks a member. */
@@ -265,6 +289,18 @@ export const draftPick = (tournamentId: number, memberId: number) =>
 /** Whoever's running the draft takes back the last pick. */
 export const undoDraftPick = (tournamentId: number) =>
   save(() => api("DELETE", `/api/tournaments/${tournamentId}/draft/picks/last`), "Pick undone");
+/** Whoever runs the draft opens it (ADR 0060): the captains can pick. */
+export const openDraft = (tournamentId: number) =>
+  save(() => api("POST", `/api/tournaments/${tournamentId}/draft/open`, {}), "The draft is open");
+/** ...and closes it: everyone's picked, or the rest are left out on purpose. The teams are then set. */
+export const closeDraft = (tournamentId: number, leaveOut = false) =>
+  save(() => api("POST", `/api/tournaments/${tournamentId}/draft/close`, { leaveOut }), "The draft is closed");
+/** The round robin and its playoffs, once the teams are set (ADR 0061). */
+export const makeFixtures = (tournamentId: number) =>
+  save(() => api("POST", `/api/tournaments/${tournamentId}/fixtures`), "Fixtures made");
+/** A game's final score; the last group result fills the playoffs. */
+export const scoreGame = (tournamentId: number, gameId: number, homeGoals: number, awayGoals: number) =>
+  save(() => api("PUT", `/api/tournaments/${tournamentId}/games/${gameId}`, { homeGoals, awayGoals }), "Result saved");
 export const createTournament = (t: Tournament) =>
   save(() => api<{ id: number }>("POST", "/api/tournaments", tournamentBody(t)), "Date added");
 export const updateTournament = (t: Tournament) =>

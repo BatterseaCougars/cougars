@@ -1,7 +1,7 @@
 // The club's data as the app holds it: filled from D1 by /api/bootstrap before the app mounts (app/backend.ts);
 // after a change, only the parts it touched come back and are put in place (applySlices). The shapes match the D1 tables (docs/team-app-data-model.md).
 import type { Action } from "../access/actions";
-import type { OneOff, Tournament, TournamentType, TrainingSeries, TrainingSession, Venue } from "./model";
+import type { AgendaRow, OneOff, Tournament, TournamentType, TrainingSeries, TrainingSession, Venue } from "./model";
 import type { Quip } from "../lib/quips";
 import type { Team } from "../lib/snake";
 
@@ -44,6 +44,8 @@ export const SERIES: TrainingSeries[] = [];
 export const SESSIONS: TrainingSession[] = [];
 export const TOURNAMENT_TYPES: TournamentType[] = [];
 export const TOURNAMENTS: Tournament[] = [];
+/** The club's agenda, from today (ADR 0062). */
+export const AGENDA: AgendaRow[] = [];
 export const ONE_OFFS: OneOff[] = [];
 
 export interface Role {
@@ -98,6 +100,8 @@ export interface Bootstrap {
   tournaments: Tournament[];
   clubEvents: OneOff[];
   quips: Quip[];
+  /** What's on from today (ADR 0062). */
+  agenda: AgendaRow[];
 }
 
 /** Home's lines, from D1. */
@@ -156,6 +160,7 @@ export function applySlices(b: Slices) {
   if (b.tournamentTypes) fill(TOURNAMENT_TYPES, b.tournamentTypes);
   if (b.tournaments) fill(TOURNAMENTS, b.tournaments);
   if (b.clubEvents) fill(ONE_OFFS, b.clubEvents);
+  if (b.agenda) fill(AGENDA, b.agenda);
 }
 
 /** The old app's names: the Cougar players' team is "Cougars", the rest are colours (archive/team-manager). */

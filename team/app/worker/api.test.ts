@@ -236,7 +236,8 @@ describe("the schedule", () => {
       { draftOn: "2027-06-13" },
       { signupClosesOn: "2027-06-20" },
       { teams: [{ ...team("Reg Player"), captainMemberId: null, captainName: "Someone" }] },
-      { teams: [team("Reg Player"), team("Dana Admin", ["Reg Player"])] },
+      // (A draft's players come from its picks, never the editor: the same captain twice is how it'd clash)
+      { teams: [team("Reg Player"), team("Reg Player")] },
     ];
     for (const b of bad)
       expect((await call("PUT", `/api/tournaments/${date.id}`, { ...details, ...b })).status).toBe(400);

@@ -7,6 +7,7 @@
   // Settings → Tournament Series: a kind of tournament the club runs again and again (The Cougars Kumite), as a card.
   // Its defaults (rules, fee, location, awards, look) are set once here; a new tournament that picks the series
   // starts from them (Settings → Tournaments). A series gets its own section in the menu.
+  import { saving } from "../app/backend.svelte";
   import { kindLabel } from "../demo/model";
   import PageHeader from "../lib/PageHeader.svelte";
   import ScheduleCards, { type ScheduleCard } from "../lib/ScheduleCards.svelte";
@@ -65,7 +66,9 @@
     >
       <TournamentEditor typeId={editing?.id} oncreated={(id) => (open = id)} />
       {#snippet footer()}
-        <button class="btn primary" type="submit" form="tournament-form">{editing ? "Save" : "Add series"}</button>
+        <button class="btn primary" type="submit" form="tournament-form" disabled={saving.busy > 0}
+          >{editing ? "Save" : "Add series"}</button
+        >
       {/snippet}
     </EditorPanel>
   {/key}

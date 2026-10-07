@@ -22,7 +22,15 @@ export default defineConfig(({ command }) => ({
       // A build never carries either.
       config:
         command === "serve"
-          ? { vars: { TEAM_ENV: "local", TEAM_AUTO_ADMIN: process.env.TEAM_AUTO_ADMIN === "1" ? "1" : "" } }
+          ? {
+              vars: {
+                TEAM_ENV: "local",
+                TEAM_AUTO_ADMIN: process.env.TEAM_AUTO_ADMIN === "1" ? "1" : "",
+                // The Usage page (ADR 0059), when started through env-pull: in memory, never in a file
+                CLOUDFLARE_ANALYTICS_TOKEN: process.env.CLOUDFLARE_ANALYTICS_TOKEN ?? "",
+                CLOUDFLARE_ACCOUNT_ID: process.env.CLOUDFLARE_ACCOUNT_ID ?? "",
+              },
+            }
           : undefined,
     }),
   ],

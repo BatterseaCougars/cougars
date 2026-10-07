@@ -6,6 +6,7 @@ import { all, first, run } from "../../../shared/d1";
 import { londonToday } from "../src/lib/dates";
 import { HttpError } from "./http";
 import { offTeams } from "./teams";
+import { leaveDraft } from "./draft";
 
 export type EntryKind = "session" | "tournament" | "event";
 export type Answer = "in" | "out";
@@ -106,6 +107,8 @@ export async function answer(db: D1Database, kind: EntryKind, id: number, member
   const was = await current(db, kind, id, memberId);
   if (a === "out") {
     if (was?.signup === "out") return;
+    // Drafted: off their team while the draft's open; once it's closed (or a captain), through an admin
+    if (kind === "tournament") await leaveDraft(db, id, memberId);
     await put(db, kind, id, memberId, "out", now);
     if (was?.signup === "in") {
       if (kind === "session") await offTeams(db, id, memberId);

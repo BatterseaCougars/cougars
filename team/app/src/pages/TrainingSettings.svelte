@@ -1,6 +1,7 @@
 <script lang="ts">
   // Settings → Training: every training as a card, as Gwenda ops shows its series. A card opens that training's
   // editor in a modal panel; "New training" opens a blank one. New trainings appear in the menu and calendar at once.
+  import { saving } from "../app/backend.svelte";
   import PageHeader from "../lib/PageHeader.svelte";
   import ScheduleCards, { type ScheduleCard } from "../lib/ScheduleCards.svelte";
   import EditorPanel from "../lib/EditorPanel.svelte";
@@ -63,7 +64,9 @@
     >
       <TrainingEditor seriesId={editing?.id} oncreated={(id) => (open = id)} />
       {#snippet footer()}
-        <button class="btn primary" type="submit" form="training-form">{editing ? "Save" : "Add training"}</button>
+        <button class="btn primary" type="submit" form="training-form" disabled={saving.busy > 0}
+          >{editing ? "Save" : "Add training"}</button
+        >
       {/snippet}
     </EditorPanel>
   {/key}

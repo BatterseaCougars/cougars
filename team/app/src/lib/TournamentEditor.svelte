@@ -4,6 +4,7 @@
   // and how it looks in the menu. Each tournament is edited on its own card (TournamentDateEditor). A new series gets
   // its own section in the menu.
   import { tick } from "svelte";
+  import PlayoffsField from "./PlayoffsField.svelte";
   import { createTournamentType, updateTournamentType } from "../app/backend.svelte";
   import { TOURNAMENT_KINDS, type TournamentType } from "../demo/model";
   import { db } from "../demo/store.svelte";
@@ -39,6 +40,7 @@
       { name: "Champions", about: "The team on top of the table at the end of the day." },
       { name: "Top scorer", about: "Most goals across every game." },
     ],
+    playoffs: [{ name: "Final", home: 1, away: 2 }],
   });
   const MAX_AWARDS = 8;
 
@@ -161,6 +163,9 @@
                   <input class="input num" type="number" min="1" max="90" bind:value={form.gameMinutes} />
                 </label>
               </div>
+            </FormSection>
+            <FormSection title="Playoffs" description="After the round robin, by place in the table.">
+              <PlayoffsField bind:playoffs={form.playoffs} />
             </FormSection>
             <!-- What's handed out on the day, shown on the website. A fun one is half the point. -->
             <FormSection title="Awards" description="Handed out on the day, and shown on the website.">

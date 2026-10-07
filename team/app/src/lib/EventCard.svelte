@@ -151,11 +151,13 @@
       </div>
       <p class="when">
         <span class="time num">
-          {event.season
-            ? "Day and time to be confirmed"
-            : event.dateTbc
-              ? "Date and time to be confirmed"
-              : `${formatTime(event.startsAt)}–${formatTime(event.endsAt)}`}
+          {event.timeText
+            ? event.timeText
+            : event.season
+              ? "Day and time to be confirmed"
+              : event.dateTbc
+                ? "Date and time to be confirmed"
+                : `${formatTime(event.startsAt)}–${formatTime(event.endsAt)}`}
         </span>
         {#if event.venue}<span class="venue"><Icon name="pin" size={13} />{event.venue}</span>{/if}
         {#if soon}<span class="soon" class:open={event.signup && !full}>{soon}</span>{/if}

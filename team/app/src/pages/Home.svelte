@@ -7,7 +7,8 @@
   import AccountMenu from "../app/shell/AccountMenu.svelte";
   import Icon from "../app/shell/Icon.svelte";
   import EventCard from "../lib/EventCard.svelte";
-  import { londonToday, pounds } from "../lib/dates";
+  import { formatDayDate, formatTime, londonToday, pounds } from "../lib/dates";
+  import { onTheClock } from "../lib/draft";
   import { downloadIcs } from "../lib/ics";
   import { fill, slot } from "../lib/greetings";
   import { currentTournament, nextSession, sessionBookable, tournamentBookable } from "../demo/schedule.svelte";
@@ -45,6 +46,69 @@
     [...others.map((o) => sessionBookable(o.session)), ...tournaments.map(({ t }) => tournamentBookable(t!))].sort(
       (x, y) => x.startsAt.localeCompare(y.startsAt),
     ),
+  );
+  // For you (ADR 0060, 0062): a captain's draft, the draft an admin runs, a sign-up about to close you haven't answered
+  const nth = (n: number) => `${n}${n === 1 ? "st" : n === 2 ? "nd" : n === 3 ? "rd" : "th"}`;
+  const today = londonToday();
+  const nudges = $derived(
+    db.agenda
+      .filter((r) => r.day >= today && (r.kind === "draft" || r.kind === "signup_closes"))
+      .flatMap((r): { key: string; href: string; text: string; sub: string; hot: boolean }[] => {
+        const t = db.tournaments.find((x) => x.id === r.sourceId);
+        const type = t && db.tournamentTypes.find((y) => y.id === t.typeId);
+        if (!t || !type) return [];
+        const when = r.allDay ? formatDayDate(r.startsAt) : `${formatDayDate(r.startsAt)} at ${formatTime(r.startsAt)}`;
+        if (r.kind === "signup_closes") {
+          if (t.status !== "open" || t.going.includes(who.id) || t.waitlist.includes(who.id)) return [];
+          return [
+            {
+              key: r.key,
+              href: `/tournaments/${type.slug}`,
+              text: `Sign-up for ${t.name} closes ${when}`,
+              sub: "Are you in?",
+              hot: false,
+            },
+          ];
+        }
+        const draft = `/tournaments/${type.slug}/draft`;
+        const mine = t.teams.findIndex((x) => x.captainMemberId === who.id);
+        const picks = t.teams.reduce((n, x) => n + x.players.length, 0);
+        if (mine >= 0) {
+          if (t.draftState === "open") {
+            const yours = onTheClock(t.teams.length, picks) === mine;
+            return [
+              {
+                key: r.key,
+                href: draft,
+                text: yours ? "The draft's open: it's your pick" : "The draft's open",
+                sub: t.name,
+                hot: yours,
+              },
+            ];
+          }
+          return [
+            {
+              key: r.key,
+              href: draft,
+              text: `Draft ${when}`,
+              sub: `${t.name} · you pick ${nth(mine + 1)}`,
+              hot: false,
+            },
+          ];
+        }
+        if (!can(perms, "run:Draft")) return [];
+        return [
+          t.draftState === "open"
+            ? { key: r.key, href: draft, text: "The draft's open", sub: "Close it once everyone's picked", hot: true }
+            : {
+                key: r.key,
+                href: draft,
+                text: `Draft ${when}`,
+                sub: `${t.name} · open it when the captains are ready`,
+                hot: false,
+              },
+        ];
+      }),
   );
   const isIn = $derived(next.going.includes(who.id));
   const waiting = $derived(next.waitlist.includes(who.id));
@@ -138,6 +202,18 @@
       <span class="owing-cta">{owed > 0 ? "Settle up" : "Dues"} <Icon name="chevronRight" size={16} /></span>
     </a>
   </header>
+
+  {#if nudges.length}
+    <div class="nudges">
+      {#each nudges as n (n.key)}
+        <a class="nudge rise" class:hot={n.hot} href={n.href}>
+          <Icon name="draft" size={18} />
+          <span class="grow"><span class="nudge-text">{n.text}</span><span class="nudge-sub">{n.sub}</span></span>
+          <Icon name="chevronRight" size={16} />
+        </a>
+      {/each}
+    </div>
+  {/if}
 
   {#if series && session && booking}
     <section>
@@ -385,5 +461,39 @@
       column-gap: var(--s-5);
       padding-inline: var(--s-4);
     }
+  }
+  /* For you: a nudge per thing to do, quiet unless it's your move now */
+  .nudges {
+    display: grid;
+    gap: var(--s-2);
+    margin-bottom: var(--s-5);
+  }
+  .nudge {
+    display: flex;
+    align-items: center;
+    gap: var(--s-3);
+    padding: var(--s-3) var(--s-4);
+    border-radius: var(--r-lg);
+    background: var(--surface-1);
+    color: var(--fg);
+  }
+  .nudge:hover {
+    background: var(--surface-2);
+  }
+  .nudge.hot {
+    background: var(--red-wash);
+  }
+  .nudge.hot :global(svg:first-child) {
+    color: var(--red-hot);
+  }
+  .nudge .grow {
+    display: grid;
+  }
+  .nudge-text {
+    font-weight: 600;
+  }
+  .nudge-sub {
+    color: var(--fg-muted);
+    font-size: var(--text-sm);
   }
 </style>

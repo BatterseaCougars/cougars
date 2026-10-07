@@ -1,7 +1,7 @@
 // Reading the schedule: sessions resolved against their series, the next session or tournament, and the
 // calendar as one list. Everything here reads `db`, so pages that use it update when an admin edits a series.
-import { formatDayDate, londonISO, londonToday } from "../lib/dates";
-import type { Bookable, OneOff, Tournament, TournamentType, TrainingSeries, TrainingSession } from "./model";
+import { formatDayDate, formatTime, londonISO, londonToday } from "../lib/dates";
+import type { AgendaRow, Bookable, OneOff, Tournament, TournamentType, TrainingSeries, TrainingSession } from "./model";
 import { db } from "./store.svelte";
 import { seasonLabel, seasonYear } from "../../../../shared/seasons";
 import { placeOf, type Place } from "../../../../shared/places";
@@ -107,29 +107,66 @@ export function currentTournament(typeId: number, today = londonToday()): Tourna
   return mine.find((t) => t.status === "live") ?? mine.find((t) => t.heldOn >= today) ?? mine.at(-1);
 }
 
-/** Everything from today on: training sessions, tournaments and one-offs, in date order. */
+const oneOffBookable = (o: OneOff): Bookable => ({
+  key: `oneoff:${o.id}`,
+  kind: "social",
+  filter: "social",
+  icon: "glass",
+  tone: "amber",
+  title: o.title,
+  startsAt: o.startsAt,
+  endsAt: o.endsAt,
+  ...where(oneOffPlace(o)),
+  description: o.description,
+  signup: o.signup && !o.cancelledAt,
+  capacity: o.capacity,
+  cancelled: !!o.cancelledAt,
+  entries: o,
+});
+
+/** A tournament's draft night or sign-up deadline: a reminder on the calendar, linking to where to act. */
+function reminderBookable(row: AgendaRow, t: Tournament): Bookable {
+  const type = typeById(t.typeId);
+  return {
+    key: row.key,
+    kind: "tournament",
+    filter: type ? `type:${type.id}` : "tournaments",
+    icon: row.kind === "draft" ? "draft" : (type?.icon ?? "trophy"),
+    tone: type?.tone ?? "red",
+    title: row.title,
+    startsAt: row.startsAt,
+    endsAt: row.endsAt ?? row.startsAt,
+    venue: row.kind === "draft" ? "" : row.venue,
+    timeText:
+      row.kind === "signup_closes"
+        ? "Last day to say you're in"
+        : row.allDay
+          ? "Time to be set"
+          : `From ${formatTime(row.startsAt)}`,
+    signup: false,
+    href: type ? `/tournaments/${type.slug}${row.kind === "draft" ? "/draft" : ""}` : undefined,
+    entries: { going: [], waitlist: [] },
+  };
+}
+
+/**
+ * Everything from today on, in date order, as the club's agenda has it (ADR 0062): the server decides what's on (and
+ * a draft night only for its captains); each one's sign-up comes from its session, tournament or event.
+ */
 export function calendar(today = londonToday()): Bookable[] {
-  const start = londonISO(today, "00:00");
-  return [
-    ...db.sessions.filter((s) => s.heldOn >= today && seriesById(s.seriesId)).map(sessionBookable),
-    ...db.tournaments.filter((t) => t.heldOn >= today).map(tournamentBookable),
-    ...db.oneOffs
-      .filter((o) => o.startsAt >= start)
-      .map((o): Bookable => ({
-        key: `oneoff:${o.id}`,
-        kind: "social",
-        filter: "social",
-        icon: "glass",
-        tone: "amber",
-        title: o.title,
-        startsAt: o.startsAt,
-        endsAt: o.endsAt,
-        ...where(oneOffPlace(o)),
-        description: o.description,
-        signup: o.signup && !o.cancelledAt,
-        capacity: o.capacity,
-        cancelled: !!o.cancelledAt,
-        entries: o,
-      })),
-  ].sort((a, b) => a.startsAt.localeCompare(b.startsAt));
+  return db.agenda
+    .filter((r) => r.day >= today)
+    .flatMap((r): Bookable[] => {
+      if (r.source === "session") {
+        const s = db.sessions.find((x) => x.id === r.sourceId);
+        return s && seriesById(s.seriesId) ? [sessionBookable(s)] : [];
+      }
+      if (r.source === "club_event") {
+        const o = db.oneOffs.find((x) => x.id === r.sourceId);
+        return o ? [oneOffBookable(o)] : [];
+      }
+      const t = db.tournaments.find((x) => x.id === r.sourceId);
+      if (!t) return [];
+      return [r.kind === "tournament" ? tournamentBookable(t) : reminderBookable(r, t)];
+    });
 }

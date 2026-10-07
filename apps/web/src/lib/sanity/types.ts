@@ -71,7 +71,11 @@ export interface Award {
 export interface SiteSettings extends Club, Fridays {
   pub: Pub;
   team: Team;
-  kumite: Omit<Kumite, "awards"> & { awards: Award[] };
+  /** Its awards and the next one come from the team app, through the build's club snapshot (ADR 0044, 0062). */
+  kumite: Omit<Kumite, "awards"> & {
+    awards: Award[];
+    next: { startsAt: string; venue: string; dateTbc: boolean; season: string | null } | null;
+  };
 }
 
 export interface KumiteResult {

@@ -204,6 +204,18 @@ const STATIC_TAIL: Route[] = [
     section: "Security",
     hint: "What each role can do",
   },
+  {
+    id: "usage",
+    path: "/settings/usage",
+    name: "Usage",
+    tab: "more",
+    page: "usage",
+    action: "read:Usage",
+    icon: "clock",
+    group: "Settings",
+    section: "Security",
+    hint: "Today's use of the free Cloudflare plan",
+  },
 ];
 
 export function buildRoutes(config: NavConfig): Route[] {

@@ -67,6 +67,8 @@ Rules ([ADR 0002](docs/adr/0002-secrets-in-bitwarden.md), [ADR 0010](docs/adr/00
 | [`CLOUDFLARE_ACCOUNT_ID__PRODUCTION`](#cloudflare_account_id__production) | `cougars`     | Cloudflare, Cougars         | Production deploys           |
 | [`CLOUDFLARE_API_TOKEN__DEV`](#cloudflare_api_token__dev)                 | `cougars-dev` | Cloudflare, Cougars Dev     | PR previews, `deploy-dev.sh` |
 | [`CLOUDFLARE_ACCOUNT_ID__DEV`](#cloudflare_account_id__dev)               | `cougars-dev` | Cloudflare, Cougars Dev     | PR previews, `deploy-dev.sh` |
+| [`CLOUDFLARE_ANALYTICS_TOKEN__PRODUCTION`](#cloudflare_analytics_token)   | `cougars`     | Cloudflare, Cougars         | Team app Usage page          |
+| [`CLOUDFLARE_ANALYTICS_TOKEN__DEV`](#cloudflare_analytics_token)          | `cougars-dev` | Cloudflare, Cougars Dev     | Team app Usage page (dev)    |
 | [`SANITY_DEPLOY_TOKEN__PRODUCTION`](#sanity_deploy_token__production)     | `cougars`     | Sanity                      | Studio deploys               |
 | [`YOUTUBE_API_KEY__PRODUCTION`](#youtube-api-keys)                        | `cougars`     | Google Cloud                | Website (production)         |
 | [`YOUTUBE_API_KEY__DEV`](#youtube-api-keys)                               | `cougars-dev` | Google Cloud                | Website (dev)                |
@@ -129,6 +131,25 @@ Deploys the `cougars` worker and migrates the `cougars` D1 database on the **Cou
 ### `CLOUDFLARE_ACCOUNT_ID__PRODUCTION`
 
 The Cougars account's id (account home page). Not secret. Account tokens need it.
+
+### `CLOUDFLARE_ANALYTICS_TOKEN`
+
+Read-only. The team app's Usage page and its hourly check read today's Worker requests and D1 rows from Cloudflare's
+analytics, to warn the admins before the free allowance runs out ([ADR 0059](docs/adr/0059-usage-page-and-check.md)).
+Never the deploy token: this one lives in the Worker.
+
+- **Issued by:** Cloudflare, each account (Cougars, Cougars Dev) → Manage Account → **Account API Tokens**. Token
+  name: `CLOUDFLARE_ANALYTICS_TOKEN__PRODUCTION` / `CLOUDFLARE_ANALYTICS_TOKEN__DEV`.
+
+  | Applies to                   | Permission             | Why                                 |
+  | ---------------------------- | ---------------------- | ----------------------------------- |
+  | Entire Cougars (Dev) account | Account Analytics Read | Today's Worker requests and D1 rows |
+
+- **Used by:** the team Worker (`team/app/worker/usage.ts`), with `CLOUDFLARE_ACCOUNT_ID`.
+- **Gets there by:** a Worker secret when the team app deploys; locally, `node scripts/env-pull.mjs -- npm run dev
+-w @cougars/team` passes it to the dev server (`vite.config.ts`), never to a file.
+- **Expires:** no, unless you set a TTL.
+- **Rotate:** roll it in the dashboard, update Secrets Manager.
 
 ### `CLOUDFLARE_API_TOKEN__DEV`
 

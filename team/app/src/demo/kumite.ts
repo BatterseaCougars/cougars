@@ -1,5 +1,6 @@
 // A sample Kumite: four teams, a round robin, some games played. Points and tiebreaks are placeholders until
 // the club confirms them (team-app roadmap T5, open questions).
+import { roundRobin } from "../lib/fixtures";
 import { PLAYERS } from "./data";
 
 export const KUMITE_TEAMS = [
@@ -15,23 +16,6 @@ export interface Match {
   away: number;
   goals: { team: number; scorer: number; assist?: number }[];
   status: "done" | "live" | "next";
-}
-
-/** Round-robin fixtures by the circle method: every team plays every other once. */
-export function roundRobin(teamIds: number[]): [number, number][][] {
-  const ids = teamIds.length % 2 ? [...teamIds, -1] : [...teamIds];
-  const rounds: [number, number][][] = [];
-  for (let r = 0; r < ids.length - 1; r++) {
-    const round: [number, number][] = [];
-    for (let i = 0; i < ids.length / 2; i++) {
-      const a = ids[i];
-      const b = ids[ids.length - 1 - i];
-      if (a !== -1 && b !== -1) round.push([a, b]);
-    }
-    rounds.push(round);
-    ids.splice(1, 0, ids.pop()!);
-  }
-  return rounds;
 }
 
 const g = (team: number, scorer: number, assist?: number) => ({ team, scorer, assist });

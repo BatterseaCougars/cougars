@@ -1,6 +1,7 @@
 // The team app's Worker (ADR 0022): the JSON API under /api, and the built app for everything else (the assets
 // binding falls back to index.html, so the app's own router takes any path).
 import { handleApi, type Env } from "./api";
+import { checkUsage } from "./usage";
 
 // On every response: never shown inside another site's frame, no sniffing a type, and no full URLs to other sites
 const SECURITY_HEADERS: Record<string, string> = {
@@ -22,5 +23,9 @@ export default {
     if (url.pathname.startsWith("/api/"))
       return secured(await handleApi(request, env, new Date(), (p) => ctx.waitUntil(p)));
     return secured(await env.ASSETS.fetch(request));
+  },
+  // Hourly (wrangler.jsonc triggers): warn the admins before the free allowance runs out (ADR 0059)
+  async scheduled(controller: ScheduledController, env: Env) {
+    await checkUsage(env, new Date(controller.scheduledTime));
   },
 } satisfies ExportedHandler<Env & { ASSETS: Fetcher }>;

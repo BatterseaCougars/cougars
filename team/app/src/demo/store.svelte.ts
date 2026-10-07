@@ -5,6 +5,7 @@ import { londonToday } from "../lib/dates";
 import type { Charge } from "../lib/dues";
 import type { Team } from "../lib/snake";
 import {
+  AGENDA,
   FEES,
   MEMBERS,
   ONE_OFFS,
@@ -25,6 +26,8 @@ export const db = $state({
   tournamentTypes: structuredClone(TOURNAMENT_TYPES),
   tournaments: structuredClone(TOURNAMENTS),
   oneOffs: structuredClone(ONE_OFFS),
+  /** What's on from today, from the server (ADR 0062). */
+  agenda: structuredClone(AGENDA),
   roles: structuredClone(ROLES),
   members: structuredClone(MEMBERS),
   fees: structuredClone(FEES),

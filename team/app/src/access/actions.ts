@@ -18,6 +18,7 @@ export const ACTIONS = {
   "score:Match": "Score Kumite games",
   "run:Draft": "Run a Kumite draft",
   "pick:Draft": "Pick in a draft (captains only)",
+  "read:Usage": "See the club's free Cloudflare allowance",
   "upload:Photo": "Upload photos",
   "upload:Video": "Upload videos (on YouTube)",
   "publish:Media": "Publish photos and videos",

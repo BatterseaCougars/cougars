@@ -6,6 +6,8 @@ import { isSeason, seasonEnd, seasonYear, type Season } from "../../../shared/se
 import { SCHEDULE_ICONS, TONES } from "../src/demo/model";
 import { WEEKDAYS, addDays, datesToMake, type Weekday } from "../src/lib/recurrence";
 import { HttpError, bool, date, int, oneOf, text, time } from "./http";
+import { listGames } from "./fixtures";
+import { syncAll, syncClubEvent, syncSeries, syncTournament, syncTournamentsOf } from "../../../shared/agenda";
 
 const slugify = (s: string) =>
   s
@@ -56,6 +58,8 @@ export async function updateVenue(db: D1Database, id: number, o: Record<string, 
     id,
   ]);
   if (!res.meta.changes) throw new HttpError(404, "No such venue.");
+  // It's the place of everything held there: the agenda's rows say where (ADR 0062)
+  await syncAll(db);
 }
 
 /**
@@ -136,8 +140,11 @@ export async function ensureSessions(db: D1Database, today: string) {
       startsOn: s.starts_on,
       endsOn: s.ends_on,
     };
-    for (const d of datesToMake(rule, existing, today))
+    const made = datesToMake(rule, existing, today);
+    for (const d of made)
       await run(db, "INSERT OR IGNORE INTO training_sessions (series_id, held_on) VALUES (?, ?)", [s.id, d]);
+    // Only when there are new ones: this runs on every load of the app
+    if (made.length) await syncSeries(db, s.id);
   }
 }
 
@@ -164,6 +171,7 @@ export async function moreSessions(db: D1Database, seriesId: number, today: stri
   };
   for (const d of datesToMake(rule, existing, today, to))
     await run(db, "INSERT OR IGNORE INTO training_sessions (series_id, held_on) VALUES (?, ?)", [s.id, d]);
+  await syncSeries(db, s.id);
 }
 
 export async function listSessions(db: D1Database, from: string) {
@@ -245,6 +253,7 @@ export async function createSeries(db: D1Database, o: Record<string, unknown>, t
     [...seriesParams(f), slug],
   );
   await ensureSessions(db, today);
+  await syncSeries(db, Number(res.meta.last_row_id));
   return { id: Number(res.meta.last_row_id), slug };
 }
 
@@ -295,12 +304,17 @@ export async function updateSeries(db: D1Database, id: number, o: Record<string,
     if (!keep.has(s.held_on) && !s.moved_from && !s.cancelled_at && !s.answered)
       await run(db, "DELETE FROM training_sessions WHERE id = ?", [s.id]);
   await ensureSessions(db, today);
+  await syncSeries(db, id);
 }
 
 /** Cancel one session (Christmas, Easter), or restore it. It stays a row, so whoever signed up can be told. */
 export async function setSessionCancelled(db: D1Database, id: number, cancelled: boolean, now: string) {
   const res = await run(db, "UPDATE training_sessions SET cancelled_at = ? WHERE id = ?", [cancelled ? now : null, id]);
   if (!res.meta.changes) throw new HttpError(404, "No such session.");
+  const s = await first<{ seriesId: number }>(db, "SELECT series_id seriesId FROM training_sessions WHERE id = ?", [
+    id,
+  ]);
+  if (s) await syncSeries(db, s.seriesId);
 }
 
 // ─── Tournaments ───
@@ -321,6 +335,7 @@ interface TypeRow {
   active: number;
   default_fee_pence: number;
   awards: string;
+  playoffs: string;
   venue_id: number | null;
   location: string;
   map_url: string;
@@ -359,6 +374,40 @@ function awardsOf(o: Record<string, unknown>): string {
   return JSON.stringify(awards);
 }
 
+/** A playoff game by table position (ADR 0061): "Final", 1st v 2nd. */
+export interface Playoff {
+  name: string;
+  home: number;
+  away: number;
+}
+
+const parsePlayoffs = (json: string): Playoff[] => {
+  try {
+    const list = JSON.parse(json);
+    return Array.isArray(list) ? list : [];
+  } catch {
+    return [];
+  }
+};
+
+/** Up to 8 playoff games, each a name and two different table positions (1–16). */
+function playoffsOf(o: Record<string, unknown>): string {
+  const list = o.playoffs ?? [];
+  if (!Array.isArray(list)) throw new HttpError(400, "playoffs should be a list.");
+  if (list.length > 8) throw new HttpError(400, "Up to 8 playoff games.");
+  const games = list.map((g: Record<string, unknown>) => {
+    const game = {
+      name: text(g, "name", { max: 40 }).trim(),
+      home: int(g, "home", { min: 1, max: 16 }),
+      away: int(g, "away", { min: 1, max: 16 }),
+    };
+    if (!game.name) throw new HttpError(400, "Every playoff game needs a name.");
+    if (game.home === game.away) throw new HttpError(400, "A playoff game is between two different places.");
+    return game;
+  });
+  return JSON.stringify(games);
+}
+
 export async function listTournamentTypes(db: D1Database) {
   return (await all<TypeRow>(db, "SELECT * FROM tournament_types ORDER BY id")).map((t) => ({
     id: t.id,
@@ -376,6 +425,7 @@ export async function listTournamentTypes(db: D1Database) {
     active: Boolean(t.active),
     defaultFeePence: t.default_fee_pence,
     awards: parseAwards(t.awards),
+    playoffs: parsePlayoffs(t.playoffs),
     venueId: t.venue_id,
     location: t.location,
     mapUrl: t.map_url,
@@ -397,6 +447,7 @@ async function typeFields(db: D1Database, o: Record<string, unknown>) {
     int(o, "defaultFeePence", { max: 100_000 }),
     awardsOf(o),
     ...(await placeFields(db, o, "location")),
+    playoffsOf(o),
   ] as Param[];
 }
 
@@ -406,8 +457,8 @@ export async function createTournamentType(db: D1Database, o: Record<string, unk
   const res = await run(
     db,
     `INSERT INTO tournament_types (name, short_name, icon, tone, points_win, points_draw, points_loss, game_minutes,
-       kind, active, default_fee_pence, awards, venue_id, location, map_url, slug)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       kind, active, default_fee_pence, awards, venue_id, location, map_url, playoffs, slug)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [...f, slug],
   );
   return { id: Number(res.meta.last_row_id), slug };
@@ -418,11 +469,13 @@ export async function updateTournamentType(db: D1Database, id: number, o: Record
     db,
     `UPDATE tournament_types SET name = ?, short_name = ?, icon = ?, tone = ?, points_win = ?, points_draw = ?,
        points_loss = ?, game_minutes = ?, kind = ?, active = ?, default_fee_pence = ?, awards = ?, venue_id = ?,
-       location = ?, map_url = ?
+       location = ?, map_url = ?, playoffs = ?
      WHERE id = ?`,
     [...(await typeFields(db, o)), id],
   );
-  if (!res.meta.changes) throw new HttpError(404, "No such tournament.");
+  if (!res.meta.changes) throw new HttpError(404, "No such tournament series.");
+  // Its place is its tournaments' fallback
+  await syncTournamentsOf(db, id);
 }
 
 /**
@@ -431,7 +484,7 @@ export async function updateTournamentType(db: D1Database, id: number, o: Record
  * entered, each with its players in order (ADR 0052).
  */
 export async function listTournaments(db: D1Database) {
-  const [rows, teams, players] = await Promise.all([
+  const [rows, teams, players, games] = await Promise.all([
     all<{
       id: number;
       typeId: number;
@@ -458,12 +511,14 @@ export async function listTournaments(db: D1Database) {
       gameMinutes: number;
       kind: Kind;
       awards: string;
+      playoffs: string;
+      draftState: string;
     }>(
       db,
       `SELECT t.id, t.type_id typeId, t.name, t.venue_id venueId, t.location, t.map_url mapUrl, t.held_on heldOn, t.start_time startTime, t.end_time endTime, t.capacity, t.status, t.champions,
               t.fee_pence feePence, t.date_confirmed dateConfirmed, t.season, t.public, t.signup_closes_on signupClosesOn,
               t.draft_on draftOn, t.draft_time draftTime, t.points_win pointsWin, t.points_draw pointsDraw,
-              t.points_loss pointsLoss, t.game_minutes gameMinutes, t.kind, t.awards
+              t.points_loss pointsLoss, t.game_minutes gameMinutes, t.kind, t.awards, t.playoffs, t.draft_state draftState
        FROM tournaments t ORDER BY t.held_on`,
     ),
     all<{
@@ -483,14 +538,22 @@ export async function listTournaments(db: D1Database) {
     ),
     all<{ teamId: number; memberId: number | null; name: string }>(
       db,
-      "SELECT team_id teamId, member_id memberId, name FROM tournament_team_players ORDER BY team_id, position, id",
+      `SELECT team_id teamId, member_id memberId, name FROM tournament_team_players
+       ORDER BY team_id, coalesce(pick_number, position), id`,
     ),
+    listGames(db),
   ]);
   return rows.map((t) => ({
     ...t,
+    draftState: draftStateOf(
+      t,
+      teams.some((team) => team.tournamentId === t.id),
+    ),
     dateConfirmed: Boolean(t.dateConfirmed),
     public: Boolean(t.public),
     awards: parseAwards(t.awards),
+    playoffs: parsePlayoffs(t.playoffs),
+    games: games.filter((g) => g.tournamentId === t.id).map(({ tournamentId: _, ...g }) => g),
     teams: teams
       .filter((team) => team.tournamentId === t.id)
       .map(({ tournamentId: _, ...team }) => ({
@@ -498,6 +561,16 @@ export async function listTournaments(db: D1Database) {
         players: players.filter((p) => p.teamId === team.id).map(({ teamId: _, ...p }) => p),
       })),
   }));
+}
+
+/**
+ * Where a captains' draft is (ADR 0060): "none" (not a draft, or no day or captains yet), "scheduled" (a day and
+ * captains, not opened), "open" (an admin opened it: captains pick) or "closed" (an admin closed it: teams locked).
+ */
+export function draftStateOf(t: { kind: string; draftOn: string | null; draftState: string }, hasTeams: boolean) {
+  if (t.kind !== "draft") return "none";
+  if (t.draftState === "open" || t.draftState === "closed") return t.draftState;
+  return t.draftOn && hasTeams ? "scheduled" : "none";
 }
 
 async function tournamentFields(db: D1Database, o: Record<string, unknown>) {
@@ -535,6 +608,8 @@ async function tournamentFields(db: D1Database, o: Record<string, unknown>) {
 
 /** A team as the app sends it (ADR 0052). */
 interface TeamIn {
+  /** The team it is, if it's been saved before: teams are changed in place, never remade (ADR 0060). */
+  id: number | null;
   name: string;
   logo: string | null;
   captainMemberId: number | null;
@@ -560,6 +635,7 @@ function teamsOf(o: Record<string, unknown>, kind: Kind): TeamIn[] | null {
     const list = t.players ?? [];
     if (!Array.isArray(list) || list.length > 30) throw new HttpError(400, "Up to 30 players a team.");
     const team = {
+      id: int(t, "id", { min: 1, nullable: true }),
       name: text(t, "name", { optional: true, max: 40 }).trim(),
       logo,
       captainMemberId: int(t, "captainMemberId", { min: 1, nullable: true }),
@@ -577,42 +653,81 @@ function teamsOf(o: Record<string, unknown>, kind: Kind): TeamIn[] | null {
     if (kind === "teams" && !team.name) throw new HttpError(400, "Every team needs a name.");
     return team;
   });
+  // A draft's players come from its picks (draft.ts), never from the editor
+  if (kind === "draft") for (const t of teams) t.players = [];
   const members = teams.flatMap((t) => [t.captainMemberId, ...t.players.map((p) => p.memberId)]).filter((m) => m);
   if (new Set(members).size !== members.length) throw new HttpError(400, "Someone is on two teams.");
   return teams;
 }
 
+/**
+ * Save a tournament's teams as the editor sends them (ADR 0060): each one changed in place (by its id, or in a draft
+ * by its captain), new ones added, missing ones removed. A draft's picks are never touched here, and once its draft
+ * is open its captains and their order are fixed. A draft's captains are in the tournament automatically.
+ */
 async function setTeams(db: D1Database, id: number, kind: Kind, teams: TeamIn[] | null, now = new Date()) {
   if (!teams) return;
   for (const m of teams.flatMap((t) => [t.captainMemberId, ...t.players.map((p) => p.memberId)]))
     if (m !== null && !(await first(db, "SELECT 1 FROM members WHERE id = ?", [m])))
       throw new HttpError(400, "No such member.");
-  await run(db, "DELETE FROM tournament_teams WHERE tournament_id = ?", [id]);
-  for (const [i, t] of teams.entries()) {
-    const res = await run(
-      db,
-      `INSERT INTO tournament_teams (tournament_id, name, logo, captain_member_id, captain_name, contact, pick, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        id,
-        t.name,
-        t.logo,
-        t.captainMemberId,
-        t.captainName,
-        t.contact,
-        kind === "draft" ? i + 1 : null,
-        now.toISOString(),
-      ],
-    );
-    const teamId = Number(res.meta.last_row_id);
-    for (const [position, p] of t.players.entries())
-      await run(db, "INSERT INTO tournament_team_players (team_id, member_id, name, position) VALUES (?, ?, ?, ?)", [
-        teamId,
-        p.memberId,
-        p.name,
-        position,
-      ]);
+  const existing = await all<{ id: number; captain: number | null }>(
+    db,
+    "SELECT id, captain_member_id captain FROM tournament_teams WHERE tournament_id = ? ORDER BY coalesce(pick, 1000), id",
+    [id],
+  );
+  const state = (await first<{ s: string }>(db, "SELECT draft_state s FROM tournaments WHERE id = ?", [id]))?.s;
+  if (kind === "draft" && (state === "open" || state === "closed")) {
+    const same = teams.length === existing.length && teams.every((t, i) => t.captainMemberId === existing[i].captain);
+    if (!same) throw new HttpError(409, "The draft has started: the captains and their order are set.");
   }
+  const match = (t: TeamIn) =>
+    existing.find((e) => e.id === t.id) ??
+    (kind === "draft" ? existing.find((e) => e.captain !== null && e.captain === t.captainMemberId) : undefined);
+  const kept = new Set<number>();
+  for (const [i, t] of teams.entries()) {
+    const pick = kind === "draft" ? i + 1 : null;
+    const found = match(t);
+    let teamId: number;
+    if (found && !kept.has(found.id)) {
+      teamId = found.id;
+      await run(
+        db,
+        `UPDATE tournament_teams SET name = ?, logo = ?, captain_member_id = ?, captain_name = ?, contact = ?, pick = ?
+         WHERE id = ?`,
+        [t.name, t.logo, t.captainMemberId, t.captainName, t.contact, pick, teamId],
+      );
+    } else {
+      const res = await run(
+        db,
+        `INSERT INTO tournament_teams (tournament_id, name, logo, captain_member_id, captain_name, contact, pick, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [id, t.name, t.logo, t.captainMemberId, t.captainName, t.contact, pick, now.toISOString()],
+      );
+      teamId = Number(res.meta.last_row_id);
+    }
+    kept.add(teamId);
+    // A team that entered: its players are the editor's. A draft's come from its picks.
+    if (kind === "teams") {
+      await run(db, "DELETE FROM tournament_team_players WHERE team_id = ?", [teamId]);
+      for (const [position, p] of t.players.entries())
+        await run(db, "INSERT INTO tournament_team_players (team_id, member_id, name, position) VALUES (?, ?, ?, ?)", [
+          teamId,
+          p.memberId,
+          p.name,
+          position,
+        ]);
+    }
+  }
+  for (const e of existing) if (!kept.has(e.id)) await run(db, "DELETE FROM tournament_teams WHERE id = ?", [e.id]);
+  // A draft's captains play: they're in, and so never in the pool to pick from
+  if (kind === "draft")
+    for (const t of teams)
+      await run(
+        db,
+        `INSERT INTO tournament_entries (tournament_id, member_id, signup, signed_up_at) VALUES (?, ?, 'in', ?)
+         ON CONFLICT (tournament_id, member_id) DO UPDATE SET signup = 'in'`,
+        [id, t.captainMemberId, now.toISOString()],
+      );
 }
 
 /** Its series, if it has one: a tournament can stand on its own. */
@@ -626,9 +741,14 @@ async function seriesOf(db: D1Database, o: Record<string, unknown>) {
 
 /**
  * A tournament's own rules and awards, copied from its series and changed for it if need be (ADR 0049). One left
- * out takes the series' (or, with no series, the usual round robin's).
+ * out keeps what it was (on a change), or takes the series' (or, with no series, the usual round robin's).
  */
-function rulesOf(o: Record<string, unknown>, series: TypeRow | null) {
+type Rules = Pick<
+  TypeRow,
+  "points_win" | "points_draw" | "points_loss" | "game_minutes" | "kind" | "awards" | "playoffs"
+>;
+
+function rulesOf(o: Record<string, unknown>, series: Rules | null) {
   const given = (key: string) => o[key] != null;
   return [
     given("pointsWin") ? int(o, "pointsWin", { max: 10 }) : (series?.points_win ?? 3),
@@ -637,6 +757,7 @@ function rulesOf(o: Record<string, unknown>, series: TypeRow | null) {
     given("gameMinutes") ? int(o, "gameMinutes", { min: 1, max: 90 }) : (series?.game_minutes ?? 12),
     given("kind") ? oneOf(o, "kind", KINDS) : (series?.kind ?? "teams"),
     given("awards") ? awardsOf(o) : (series?.awards ?? "[]"),
+    given("playoffs") ? playoffsOf(o) : (series?.playoffs ?? "[]"),
   ] as Param[];
 }
 
@@ -650,18 +771,28 @@ export async function createTournament(db: D1Database, o: Record<string, unknown
     db,
     `INSERT INTO tournaments (type_id, name, venue_id, location, map_url, held_on, start_time, end_time, capacity, status, fee_pence,
        date_confirmed, season, public, signup_closes_on, draft_on, draft_time, points_win, points_draw, points_loss,
-       game_minutes, kind, awards)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       game_minutes, kind, awards, playoffs)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [typeId, ...fields],
   );
   const id = Number(res.meta.last_row_id);
   await setTeams(db, id, kind, teams);
+  await syncTournament(db, id);
   return { id };
 }
 
 export async function updateTournament(db: D1Database, id: number, o: Record<string, unknown>) {
-  const { typeId, series } = await seriesOf(db, o);
-  const rules = rulesOf(o, series);
+  const { typeId } = await seriesOf(db, o);
+  const current = await first<Rules & { draft_state: string }>(
+    db,
+    `SELECT points_win, points_draw, points_loss, game_minutes, kind, awards, playoffs, draft_state
+     FROM tournaments WHERE id = ?`,
+    [id],
+  );
+  if (!current) throw new HttpError(404, "No such tournament.");
+  const rules = rulesOf(o, current);
+  if (rules[4] !== current.kind && current.draft_state !== "none")
+    throw new HttpError(409, "The draft has started: it stays a draft.");
   const fields = [...(await tournamentFields(db, o)), ...rules];
   const kind = rules[4] as Kind;
   const teams = teamsOf(o, kind);
@@ -669,12 +800,13 @@ export async function updateTournament(db: D1Database, id: number, o: Record<str
     db,
     `UPDATE tournaments SET type_id = ?, name = ?, venue_id = ?, location = ?, map_url = ?, held_on = ?, start_time = ?, end_time = ?, capacity = ?,
        status = ?, fee_pence = ?, date_confirmed = ?, season = ?, public = ?, signup_closes_on = ?, draft_on = ?, draft_time = ?,
-       points_win = ?, points_draw = ?, points_loss = ?, game_minutes = ?, kind = ?, awards = ?
+       points_win = ?, points_draw = ?, points_loss = ?, game_minutes = ?, kind = ?, awards = ?, playoffs = ?
      WHERE id = ?`,
     [typeId, ...fields, id],
   );
   if (!res.meta.changes) throw new HttpError(404, "No such tournament.");
   await setTeams(db, id, kind, teams);
+  await syncTournament(db, id);
 }
 
 // ─── One-off events ───
@@ -731,6 +863,7 @@ export async function createClubEvent(db: D1Database, o: Record<string, unknown>
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     await clubEventFields(db, o),
   );
+  await syncClubEvent(db, Number(res.meta.last_row_id));
   return { id: Number(res.meta.last_row_id) };
 }
 
@@ -742,10 +875,12 @@ export async function updateClubEvent(db: D1Database, id: number, o: Record<stri
     [...(await clubEventFields(db, o)), id],
   );
   if (!res.meta.changes) throw new HttpError(404, "No such event.");
+  await syncClubEvent(db, id);
 }
 
 /** Cancelling keeps the event (and who said they're in), marked as off; un-cancelling puts it back. */
 export async function setClubEventCancelled(db: D1Database, id: number, cancelled: boolean, now: string) {
   const res = await run(db, "UPDATE club_events SET cancelled_at = ? WHERE id = ?", [cancelled ? now : null, id]);
   if (!res.meta.changes) throw new HttpError(404, "No such event.");
+  await syncClubEvent(db, id);
 }

@@ -99,7 +99,7 @@ async function audit(db: D1Database, now: Date, memberId: number | null, action:
 
 const TOO_MANY_TRIES = "Too many tries from here. Wait a few minutes.";
 
-const mailConfig = (env: AuthEnv): MailConfig => ({
+export const mailConfig = (env: AuthEnv): MailConfig => ({
   siteEnv: env.SITE_ENV,
   gmail:
     env.GMAIL_CLIENT_ID && env.GMAIL_CLIENT_SECRET && env.GMAIL_REFRESH_TOKEN

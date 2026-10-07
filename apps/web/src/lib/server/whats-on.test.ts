@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createTestD1 } from "../../../../../shared/testing/d1-sqlite";
+import { syncAll } from "../../../../../shared/agenda";
 import { clearCache } from "./cache";
 import { cachedWhatsOn, whatsOn } from "./whats-on";
 
@@ -50,17 +51,20 @@ describe("what's on", () => {
 
   it("shows a tournament that's just a season as the season, sorted at its end", async () => {
     db.raw.prepare("UPDATE tournaments SET season = 'summer', held_on = '2027-08-31'").run();
+    await syncAll(db); // as the team app does when it changes a tournament
     const kumite = (await whatsOn(db, NOW)).find((i) => i.title === "The Cougars Kumite");
     expect(kumite).toMatchObject({ season: "Summer 2027", dateTbc: true });
   });
 
   it("leaves out what isn't public", async () => {
     db.raw.exec("UPDATE training_series SET public = 0; UPDATE tournaments SET public = 0");
+    await syncAll(db);
     expect((await whatsOn(db, NOW)).map((i) => i.title)).toEqual(["Summer social", "Kit day"]);
   });
 
   it("reads the calendar once a minute, however many people look", async () => {
     clearCache();
+    await syncAll(db); // the team app keeps the agenda; reading it is what's counted
     const prepare = vi.spyOn(db, "prepare");
     let t = NOW.getTime();
     const deps = { now: () => t, edge: null };

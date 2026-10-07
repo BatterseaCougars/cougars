@@ -1,10 +1,11 @@
 <script lang="ts">
-  // One team in a tournament's editor (ADR 0052): its logo, name and captain, then its players. In a draft the
-  // captain is a member and the team's place is its pick order; a team that entered may be from outside the club, so
-  // its captain and players can be just names, with a way to reach the captain.
+  // One team in a tournament's editor (ADR 0052). In a draft it's a row: its pick, its captain (a member, found by
+  // typing) and an optional name; its players come from the draft. A team that entered may be from outside the club,
+  // so it's a card: its logo and name, a captain who's a member or just a name with a way to reach them, and its
+  // players, members found by typing or names from outside.
   import type { TournamentKind, TournamentTeam } from "../demo/model";
   import Icon from "../app/shell/Icon.svelte";
-  import Select from "./Select.svelte";
+  import PersonPicker from "./PersonPicker.svelte";
 
   let {
     team = $bindable(),
@@ -22,8 +23,8 @@
     members: { id: number; name: string }[];
     /** Members already on a team (this one's included), who can't be added again. */
     taken: Set<number>;
-    /** Earlier (-1) or later (1) in the pick order; absent where it can't move that way. */
-    onmove?: (by: -1 | 1) => void;
+    /** Earlier (-1) or later (1) in the pick order; absent where it can't move. */
+    onmove?: { up?: () => void; down?: () => void };
     onremove: () => void;
   } = $props();
 
@@ -37,7 +38,6 @@
       .slice(0, 2)
       .toUpperCase(),
   );
-  const free = $derived(members.filter((m) => !taken.has(m.id)));
 
   // A logo: shrunk in the browser to 256px on its longest side, so it's small enough to keep in the database
   let fileInput = $state<HTMLInputElement | undefined>();
@@ -59,158 +59,258 @@
     }
   }
 
-  function pickCaptain(id: string) {
-    team.captainMemberId = id ? Number(id) : null;
-    if (team.captainMemberId) team.captainName = "";
+  /** Changing a draft captain: the name gives way to a search box. */
+  let changing = $state(false);
+
+  function pickCaptain(id: number) {
+    team.captainMemberId = id;
+    team.captainName = "";
   }
 
-  let playerPick = $state("");
-  let playerName = $state("");
-  function addMember(id: string) {
-    if (id) team.players.push({ memberId: Number(id), name: "" });
-    playerPick = "";
-  }
-  function addName() {
-    const name = playerName.trim();
+  let outsider = $state("");
+  function addOutsider() {
+    const name = outsider.trim();
     if (name) team.players.push({ memberId: null, name });
-    playerName = "";
+    outsider = "";
   }
 </script>
 
-<article class="team">
-  <header class="head">
-    {#if kind === "draft"}<span class="pick num" title="Pick order">{pick}</span>{/if}
-    <button
-      type="button"
-      class="logo"
-      aria-label={team.logo ? `Change ${label}'s logo` : `Add a logo for ${label}`}
-      onclick={() => fileInput?.click()}
-    >
-      {#if team.logo}<img src={team.logo} alt="" />{:else}<span>{initials}</span>{/if}
-    </button>
-    <input
-      bind:this={fileInput}
-      class="file"
-      type="file"
-      accept="image/png,image/jpeg,image/webp"
-      tabindex="-1"
-      onchange={(e) => pickLogo(e.currentTarget.files?.[0])}
-    />
-    <label class="field grow">
-      <span
-        >Team name {#if kind === "draft"}<span class="hint">· optional</span>{/if}</span
-      >
-      <input
-        class="input"
-        bind:value={team.name}
-        placeholder={kind === "draft" ? "e.g. Team Red" : "e.g. Clapham Crushers"}
-        maxlength="40"
-        required={kind === "teams"}
+{#snippet logo()}
+  <button
+    type="button"
+    class="logo"
+    aria-label={team.logo ? `Change ${label}'s logo` : `Add a logo for ${label}`}
+    title={team.logo ? "Change the logo" : "Add a logo"}
+    onclick={() => fileInput?.click()}
+  >
+    {#if team.logo}<img src={team.logo} alt="" />{:else}<span>{initials}</span>{/if}
+  </button>
+  <input
+    bind:this={fileInput}
+    class="file"
+    type="file"
+    accept="image/png,image/jpeg,image/webp"
+    tabindex="-1"
+    onchange={(e) => pickLogo(e.currentTarget.files?.[0])}
+  />
+{/snippet}
+
+{#if kind === "draft"}
+  <!-- A captain, in pick order -->
+  <div class="captain">
+    <span class="pick num" title="Pick order">{pick}</span>
+    {@render logo()}
+    {#if changing || !team.captainMemberId}
+      <PersonPicker
+        id="captain-{pick}"
+        {members}
+        value={team.captainMemberId}
+        exclude={taken}
+        autofocus={changing}
+        aria-label="Captain, pick {pick}"
+        onpick={(id) => (pickCaptain(id), (changing = false))}
+        ondone={() => (changing = false)}
       />
-    </label>
+    {:else}
+      <!-- Who it is, as a name; click to change them -->
+      <button type="button" class="who" title="Change the captain" onclick={() => (changing = true)}>
+        <span class="who-name">{nameOf(team.captainMemberId)}</span>
+      </button>
+    {/if}
+    <input
+      class="input"
+      bind:value={team.name}
+      placeholder="Team name (optional)"
+      maxlength="40"
+      aria-label="Team name"
+    />
     <div class="actions">
-      {#if kind === "draft"}
-        <button
-          type="button"
-          class="btn sm ghost icon"
-          aria-label="Pick earlier"
-          disabled={!onmove}
-          onclick={() => onmove?.(-1)}><Icon name="chevronUp" size={16} /></button
-        >
-      {/if}
+      <button
+        type="button"
+        class="btn sm ghost icon"
+        aria-label="Pick earlier"
+        disabled={!onmove?.up}
+        onclick={() => onmove?.up?.()}><Icon name="chevronUp" size={16} /></button
+      >
+      <button
+        type="button"
+        class="btn sm ghost icon"
+        aria-label="Pick later"
+        disabled={!onmove?.down}
+        onclick={() => onmove?.down?.()}><Icon name="chevronDown" size={16} /></button
+      >
+      <button type="button" class="btn sm ghost icon" aria-label="Remove {label}" onclick={onremove}>
+        <Icon name="x" size={16} />
+      </button>
+    </div>
+  </div>
+  {#if team.players.length}
+    <p class="picked hint small">
+      Picked: {team.players.map((p) => (p.memberId ? nameOf(p.memberId).split(" ")[0] : p.name)).join(", ")}
+    </p>
+  {/if}
+  {#if logoError}<p class="error small">{logoError}</p>{/if}
+{:else}
+  <!-- A team that entered -->
+  <article class="team">
+    <header class="head">
+      {@render logo()}
+      <input
+        class="input grow"
+        bind:value={team.name}
+        placeholder="Team name, e.g. Clapham Crushers"
+        maxlength="40"
+        required
+        aria-label="Team name"
+      />
       {#if team.logo}
         <button type="button" class="btn sm ghost" onclick={() => (team.logo = null)}>Remove logo</button>
       {/if}
       <button type="button" class="btn sm ghost icon" aria-label="Remove {label}" onclick={onremove}>
         <Icon name="x" size={16} />
       </button>
-    </div>
-  </header>
-  {#if logoError}<p class="error small">{logoError}</p>{/if}
+    </header>
+    {#if logoError}<p class="error small">{logoError}</p>{/if}
 
-  <div class="cols">
-    <div class="field">
-      Captain
-      <Select
-        id="captain-{pick}"
-        value={team.captainMemberId ? String(team.captainMemberId) : ""}
-        onchange={pickCaptain}
-        options={[
-          { value: "", label: kind === "draft" ? "Pick a member…" : "Not a member", disabled: kind === "draft" },
-          ...members
-            .filter((m) => !taken.has(m.id) || m.id === team.captainMemberId)
-            .map((m) => ({ value: String(m.id), label: m.name })),
-        ]}
-        aria-label="Captain"
-      />
-    </div>
-    {#if kind === "teams" && !team.captainMemberId}
-      <label class="field">Captain's name <input class="input" bind:value={team.captainName} maxlength="60" /></label>
-      <label class="field"
-        >How to reach them <input
-          class="input"
-          bind:value={team.contact}
-          placeholder="Email or phone"
-          maxlength="120"
-        /></label
-      >
-    {/if}
-  </div>
-
-  <div class="field">
-    <span
-      >Players <span class="hint">· {team.players.length}{kind === "draft" ? ", in the order picked" : ""}</span></span
-    >
-    {#if team.players.length}
-      <ol class="players">
-        {#each team.players as p, i (i)}
-          <li>
-            <span class="grow">{p.memberId ? nameOf(p.memberId) : p.name}</span>
-            {#if !p.memberId}<span class="hint small">not a member</span>{/if}
-            <button
-              type="button"
-              class="btn sm ghost icon"
-              aria-label="Remove {p.memberId ? nameOf(p.memberId) : p.name}"
-              onclick={() => team.players.splice(i, 1)}><Icon name="x" size={14} /></button
-            >
-          </li>
-        {/each}
-      </ol>
-    {/if}
-    {#if team.players.length < 30}
-      <div class="add">
-        <Select
-          id="player-pick-{pick}"
-          bind:value={playerPick}
-          onchange={addMember}
-          options={[
-            { value: "", label: "Add a member…", disabled: true },
-            ...free.map((m) => ({ value: String(m.id), label: m.name })),
-          ]}
-          aria-label="Add a member"
+    <div class="cols">
+      <div class="field">
+        <span
+          >Captain {#if team.captainMemberId}<span class="hint">· a member</span>{/if}</span
+        >
+        <PersonPicker
+          id="captain-{pick}"
+          {members}
+          value={team.captainMemberId}
+          exclude={taken}
+          placeholder="A member, or leave empty"
+          aria-label="Captain"
+          onpick={pickCaptain}
         />
-        {#if kind === "teams"}
+        {#if team.captainMemberId}
+          <button type="button" class="link small" onclick={() => (team.captainMemberId = null)}>Not a member?</button>
+        {/if}
+      </div>
+      {#if !team.captainMemberId}
+        <label class="field">Captain's name <input class="input" bind:value={team.captainName} maxlength="60" /></label>
+        <label class="field"
+          >How to reach them <input
+            class="input"
+            bind:value={team.contact}
+            placeholder="Email or phone"
+            maxlength="120"
+          /></label
+        >
+      {/if}
+    </div>
+
+    <div class="field">
+      <span>Players <span class="hint">· {team.players.length}</span></span>
+      {#if team.players.length}
+        <ol class="players">
+          {#each team.players as p, i (i)}
+            <li>
+              <span class="grow">{p.memberId ? nameOf(p.memberId) : p.name}</span>
+              {#if !p.memberId}<span class="hint small">not a member</span>{/if}
+              <button
+                type="button"
+                class="btn sm ghost icon"
+                aria-label="Remove {p.memberId ? nameOf(p.memberId) : p.name}"
+                onclick={() => team.players.splice(i, 1)}><Icon name="x" size={14} /></button
+              >
+            </li>
+          {/each}
+        </ol>
+      {/if}
+      {#if team.players.length < 30}
+        <div class="add">
+          <PersonPicker
+            id="player-{pick}"
+            {members}
+            exclude={taken}
+            clearOnPick
+            placeholder="Add a member…"
+            aria-label="Add a member"
+            onpick={(id) => team.players.push({ memberId: id, name: "" })}
+          />
           <input
             class="input"
-            bind:value={playerName}
+            bind:value={outsider}
             placeholder="or someone from outside"
             maxlength="60"
             aria-label="A player from outside the club"
             onkeydown={(e) => {
               if (e.key === "Enter") {
                 e.preventDefault();
-                addName();
+                addOutsider();
               }
             }}
           />
-          <button type="button" class="btn sm" disabled={!playerName.trim()} onclick={addName}>Add</button>
-        {/if}
-      </div>
-    {/if}
-  </div>
-</article>
+          <button type="button" class="btn sm" disabled={!outsider.trim()} onclick={addOutsider}>Add</button>
+        </div>
+      {/if}
+    </div>
+  </article>
+{/if}
 
 <style>
+  /* A draft captain (not `.row`, the app's list row with lines): one line, everything the height of a field */
+  .captain {
+    display: grid;
+    grid-template-columns: 1.5rem var(--control-h) minmax(0, 1fr) minmax(8rem, 15rem) auto;
+    gap: var(--s-2);
+    align-items: center;
+  }
+  /* The captain, as a person: their name; click it to change them */
+  .who {
+    display: grid;
+    justify-items: start;
+    align-items: center;
+    height: var(--control-h);
+    min-width: 0;
+    padding: 0 var(--s-2);
+    border: 0;
+    border-radius: var(--r-md);
+    background: none;
+    text-align: left;
+    cursor: pointer;
+  }
+  .who:hover {
+    background: var(--surface-2);
+  }
+  .who-name {
+    max-width: 100%;
+    overflow: hidden;
+    color: var(--fg);
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .pick {
+    color: var(--fg-muted);
+    font-weight: 600;
+    text-align: center;
+  }
+  .picked {
+    margin: calc(-1 * var(--s-1)) 0 0 calc(1.5rem + var(--control-h) + 2 * var(--s-2));
+  }
+  .actions {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+  }
+  @container (max-width: 34rem) {
+    .captain {
+      grid-template-columns: 1.5rem var(--control-h) minmax(0, 1fr) auto;
+    }
+    .captain > .input {
+      grid-column: 3 / -1;
+    }
+    .picked {
+      margin-left: 0;
+    }
+  }
+
+  /* A team that entered: a quiet card */
   .team {
     display: grid;
     gap: var(--s-4);
@@ -220,17 +320,10 @@
   }
   .head {
     display: flex;
-    align-items: end;
+    align-items: center;
     gap: var(--s-3);
   }
-  .pick {
-    align-self: center;
-    width: 1.5rem;
-    color: var(--fg-muted);
-    font-weight: 600;
-    text-align: center;
-  }
-  /* The logo, or its initials: a square the height of the name's box */
+  /* The logo, or its initials: a square the height of a field */
   .logo {
     display: grid;
     place-items: center;
@@ -255,12 +348,6 @@
   .file {
     display: none;
   }
-  .actions {
-    display: flex;
-    align-items: center;
-    gap: var(--s-1);
-    min-height: var(--control-h);
-  }
   .cols {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -271,6 +358,15 @@
     .cols {
       grid-template-columns: minmax(0, 1fr);
     }
+  }
+  .link {
+    justify-self: start;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--fg-muted);
+    text-decoration: underline;
+    cursor: pointer;
   }
   .players {
     display: grid;
@@ -298,9 +394,6 @@
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
     gap: var(--s-2);
     align-items: center;
-  }
-  .add:has(> :only-child) {
-    grid-template-columns: minmax(0, 1fr);
   }
   .error {
     color: var(--red-hot);

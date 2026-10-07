@@ -16,13 +16,21 @@
   // then change for this one. The series' look (icon, colour) stays the series'.
   import { tick } from "svelte";
   import { createTournament, updateTournament } from "../app/backend.svelte";
-  import { TOURNAMENT_KINDS, type Tournament, type TournamentKind, type TournamentTeam } from "../demo/model";
+  import {
+    TOURNAMENT_KINDS,
+    type Playoff,
+    type Tournament,
+    type TournamentKind,
+    type TournamentTeam,
+  } from "../demo/model";
   import { db } from "../demo/store.svelte";
   import { collectedFor } from "../demo/dues.svelte";
   import Icon from "../app/shell/Icon.svelte";
   import Select from "./Select.svelte";
   import FormSection from "./FormSection.svelte";
   import PlacePicker from "./PlacePicker.svelte";
+  import PersonPicker from "./PersonPicker.svelte";
+  import PlayoffsField from "./PlayoffsField.svelte";
   import TeamCard from "./TeamCard.svelte";
   import { typePlace } from "../demo/schedule.svelte";
   import { londonToday, pounds } from "./dates";
@@ -62,6 +70,7 @@
     gameMinutes: number;
     kind: TournamentKind;
     awards: { name: string; about: string }[];
+    playoffs: Playoff[];
     teams: TournamentTeam[];
   }
   const MAX_AWARDS = 8;
@@ -100,6 +109,7 @@
         gameMinutes: t.gameMinutes,
         kind: t.kind,
         awards: t.awards.map((a) => ({ ...a })),
+        playoffs: (t.playoffs ?? []).map((g) => ({ ...g })),
         teams: t.teams.map((team) => ({ ...team, players: team.players.map((p) => ({ ...p })) })),
       };
     // A new one stands on its own until a series is picked
@@ -130,6 +140,7 @@
       gameMinutes: 12,
       kind: "teams",
       awards: [],
+      playoffs: [],
       teams: [],
     };
   }
@@ -165,6 +176,7 @@
     date.gameMinutes = t.gameMinutes;
     date.kind = t.kind;
     date.awards = t.awards.map((a) => ({ ...a }));
+    date.playoffs = (t.playoffs ?? []).map((g) => ({ ...g }));
   }
 
   /** Off to the series' own page, its defaults open. */
@@ -216,6 +228,9 @@
   function addTeam() {
     date.teams.push({ name: "", logo: null, captainMemberId: null, captainName: "", contact: "", players: [] });
   }
+  function addCaptain(memberId: number) {
+    date.teams.push({ name: "", logo: null, captainMemberId: memberId, captainName: "", contact: "", players: [] });
+  }
   function moveTeam(i: number, by: -1 | 1) {
     const [t] = date.teams.splice(i, 1);
     date.teams.splice(i + by, 0, t);
@@ -264,6 +279,7 @@
     gameMinutes: d.gameMinutes,
     kind: d.kind,
     awards: d.awards.filter((a) => a.name.trim()),
+    playoffs: d.playoffs.filter((g) => g.name.trim()),
     teams: d.teams,
     going: [],
     waitlist: [],
@@ -414,6 +430,9 @@
               </label>
             </div>
           </FormSection>
+          <FormSection title="Playoffs" description="After the round robin, by place in the table.">
+            <PlayoffsField bind:playoffs={date.playoffs} />
+          </FormSection>
           <FormSection title="Awards" description="Handed out on the day, and shown on the website.">
             {#each date.awards as award, i (i)}
               <div class="award">
@@ -515,28 +534,50 @@
             </FormSection>
           {/if}
           <FormSection
-            title="Teams"
+            title={date.kind === "draft" ? "Captains" : "Teams"}
             description={date.kind === "draft"
-              ? "One per captain, in pick order. Their players come from the draft."
+              ? "The captains, in pick order. Their players come from the draft."
               : "Each team that's entered: its name, logo, captain and players."}
           >
-            {#each date.teams as _, i (i)}
-              <TeamCard
-                bind:team={date.teams[i]}
-                kind={date.kind}
-                pick={i + 1}
-                members={memberList}
-                {taken}
-                onmove={i > 0 ? (by) => moveTeam(i, by) : undefined}
-                onremove={() => date.teams.splice(i, 1)}
-              />
-            {:else}
-              <p class="hint">No teams yet.</p>
-            {/each}
+            <div class="teams" class:draft={date.kind === "draft"}>
+              {#each date.teams as _, i (i)}
+                <TeamCard
+                  bind:team={date.teams[i]}
+                  kind={date.kind}
+                  pick={i + 1}
+                  members={memberList}
+                  {taken}
+                  onmove={{
+                    up: i > 0 ? () => moveTeam(i, -1) : undefined,
+                    down: i < date.teams.length - 1 ? () => moveTeam(i, 1) : undefined,
+                  }}
+                  onremove={() => date.teams.splice(i, 1)}
+                />
+              {:else}
+                {#if date.kind !== "draft"}<p class="hint">No teams yet.</p>{/if}
+              {/each}
+            </div>
             {#if date.teams.length < MAX_TEAMS}
-              <button type="button" class="btn sm add-award" onclick={addTeam}>
-                <Icon name="plus" size={16} />{date.kind === "draft" ? "Captain" : "Team"}
-              </button>
+              {#if date.kind === "draft"}
+                <!-- The next pick's slot: find a member and they're its captain -->
+                <div class="add-captain">
+                  <span class="next num" aria-hidden="true">{date.teams.length + 1}</span>
+                  <span class="slot" aria-hidden="true"><Icon name="plus" size={16} /></span>
+                  <PersonPicker
+                    id="add-captain"
+                    members={memberList}
+                    exclude={taken}
+                    clearOnPick
+                    placeholder="Add a captain: type a name…"
+                    aria-label="Add a captain"
+                    onpick={addCaptain}
+                  />
+                </div>
+              {:else}
+                <button type="button" class="btn sm add-award" onclick={addTeam}>
+                  <Icon name="plus" size={16} />Team
+                </button>
+              {/if}
             {/if}
           </FormSection>
         {/if}
@@ -617,5 +658,32 @@
   }
   .kind {
     justify-self: start;
+  }
+  .teams {
+    display: grid;
+    gap: var(--s-3);
+  }
+  .teams.draft {
+    gap: var(--s-2);
+  }
+  /* Lines up with the captains above: pick number, logo square, then the search */
+  .add-captain {
+    display: grid;
+    grid-template-columns: 1.5rem var(--control-h) minmax(0, 22rem);
+    gap: var(--s-2);
+    align-items: center;
+  }
+  .add-captain .next {
+    color: var(--fg-subtle);
+    font-weight: 600;
+    text-align: center;
+  }
+  .add-captain .slot {
+    display: grid;
+    place-items: center;
+    height: var(--control-h);
+    border: 1px dashed var(--border-strong);
+    border-radius: var(--r-md);
+    color: var(--fg-subtle);
   }
 </style>

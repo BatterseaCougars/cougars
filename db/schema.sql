@@ -150,6 +150,8 @@ CREATE TABLE tournament_types (
   -- Copied onto each new edition, where it can be changed (ADR 0032)
   default_fee_pence INTEGER NOT NULL DEFAULT 0,
   awards TEXT NOT NULL DEFAULT '[]',
+  -- The playoff games after the round robin, by table position: [{name, home, away}] (ADR 0061)
+  playoffs TEXT NOT NULL DEFAULT '[]',
   -- Its usual place (ADR 0046, 0051): a saved venue, else a name and map link
   venue_id INTEGER REFERENCES venues (id),
   location TEXT NOT NULL DEFAULT '',
@@ -178,6 +180,8 @@ CREATE TABLE tournaments (
   signup_closes_on TEXT,
   draft_on TEXT,
   draft_time TEXT,
+  -- The captains' draft (ADR 0060): none until an admin opens it, then open, then closed (teams locked)
+  draft_state TEXT NOT NULL DEFAULT 'none',
   season TEXT,
   points_win INTEGER NOT NULL DEFAULT 3,
   points_draw INTEGER NOT NULL DEFAULT 1,
@@ -185,7 +189,9 @@ CREATE TABLE tournaments (
   game_minutes INTEGER NOT NULL DEFAULT 12,
   -- teams (teams enter) or draft (captains draft members), copied from its series (ADR 0052)
   kind TEXT NOT NULL DEFAULT 'teams',
-  awards TEXT NOT NULL DEFAULT '[]'
+  awards TEXT NOT NULL DEFAULT '[]',
+  -- The playoff games after the round robin, by table position: [{name, home, away}] (ADR 0061)
+  playoffs TEXT NOT NULL DEFAULT '[]'
 );
 
 CREATE INDEX tournaments_held_on ON tournaments (held_on);
@@ -356,7 +362,9 @@ CREATE TABLE tournament_team_players (
   member_id INTEGER REFERENCES members (id) ON DELETE CASCADE,
   name TEXT NOT NULL DEFAULT '',
   -- Their order on the team (a draft's picks come in this order)
-  position INTEGER NOT NULL DEFAULT 0
+  position INTEGER NOT NULL DEFAULT 0,
+  -- A draft pick: its number in the whole draft (1, 2, …), which decides whose turn it is and what Undo takes back
+  pick_number INTEGER
 );
 
 CREATE INDEX tournament_team_players_team ON tournament_team_players (team_id);
@@ -368,3 +376,69 @@ CREATE TABLE data_version (
   id INTEGER PRIMARY KEY CHECK (id = 1),
   version INTEGER NOT NULL
 );
+
+-- The usage check's warnings (team/app/worker/usage.ts, ADR 0059): one email per metric per day (UTC)
+CREATE TABLE usage_warnings (
+  day TEXT NOT NULL,
+  metric TEXT NOT NULL,
+  PRIMARY KEY (day, metric)
+);
+
+-- A tournament's games (ADR 0061): its round robin, then its playoffs, which know their seeds (1st v 2nd) until the
+-- table fills them in. Scores are the final ones; goal by goal comes with live scoring (T5).
+CREATE TABLE tournament_games (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  tournament_id INTEGER NOT NULL REFERENCES tournaments (id) ON DELETE CASCADE,
+  -- group / playoff
+  stage TEXT NOT NULL,
+  round INTEGER NOT NULL,
+  -- Its place in the day's order
+  position INTEGER NOT NULL,
+  name TEXT NOT NULL DEFAULT '',
+  home_team_id INTEGER REFERENCES tournament_teams (id) ON DELETE CASCADE,
+  away_team_id INTEGER REFERENCES tournament_teams (id) ON DELETE CASCADE,
+  home_seed INTEGER,
+  away_seed INTEGER,
+  home_goals INTEGER,
+  away_goals INTEGER,
+  -- next / live / done
+  status TEXT NOT NULL DEFAULT 'next'
+);
+
+CREATE INDEX tournament_games_tournament ON tournament_games (tournament_id, position);
+
+
+-- The club's agenda (ADR 0062): what's on and when, one row per thing on a day. Every part of the club pushes its own
+-- rows when it changes (shared/agenda.ts): each training session, a tournament's day, its draft night and its sign-up
+-- deadline, each one-off event. The website's What's on and the app's calendar both read it.
+CREATE TABLE agenda (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  -- What pushed it: session / tournament / club_event, and which one
+  source TEXT NOT NULL,
+  source_id INTEGER NOT NULL,
+  -- training / tournament / draft / signup_closes / event
+  kind TEXT NOT NULL,
+  -- The calendar's filter it belongs to: series:1 / type:1 / tournament / social
+  group_key TEXT NOT NULL,
+  title TEXT NOT NULL,
+  starts_at TEXT NOT NULL,
+  ends_at TEXT,
+  -- Its London date, for "from today"
+  day TEXT NOT NULL,
+  -- A day without a time (a deadline, a draft night with no time yet)
+  all_day INTEGER NOT NULL DEFAULT 0,
+  -- A tournament whose date isn't fixed, or that's only a season ("Summer 2027")
+  date_tbc INTEGER NOT NULL DEFAULT 0,
+  season TEXT,
+  venue TEXT NOT NULL DEFAULT '',
+  map_url TEXT NOT NULL DEFAULT '',
+  description TEXT NOT NULL DEFAULT '',
+  -- On the website
+  public INTEGER NOT NULL DEFAULT 0,
+  cancelled INTEGER NOT NULL DEFAULT 0,
+  -- Who sees it: everyone, or only its tournament's captains (and those running the draft)
+  audience TEXT NOT NULL DEFAULT 'everyone',
+  UNIQUE (source, source_id, kind)
+);
+
+CREATE INDEX agenda_day ON agenda (day, starts_at);

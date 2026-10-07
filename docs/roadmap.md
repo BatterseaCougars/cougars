@@ -16,6 +16,7 @@ checks. `main` deploys dev; `release` deploys production ([ADR 0013](adr/0013-ma
 | Service                   | Free allowance                                                | Expected use                                       |
 | ------------------------- | ------------------------------------------------------------- | -------------------------------------------------- |
 | Cloudflare Workers        | 100k dynamic requests a day; static assets free and unlimited | Form posts, photo pages, team-app API, live Kumite |
+| Workers CPU               | 10 ms per request and per cron run; waiting on I/O is free    | 1–5 ms; watched on the Usage page (ADR 0063)       |
 | D1                        | 5 GB storage, 5M rows read a day                              | Tiny                                               |
 | Cron Triggers             | Free                                                          | Friday series, quarterly dues                      |
 | Sanity                    | Free plan: 1M CDN, 250k API requests a month; see below       | A handful of editors; live photo reads             |

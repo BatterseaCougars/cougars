@@ -25,12 +25,20 @@ const nextUp = next[0];
       <p class="intro" data-reveal>
         {s.kumite.intro}
       </p>
-      {nextUp && (
+      {s.kumite.next ? (
         <p class="next" data-reveal>
-          <a class="btn btn--primary" href={`/events/${nextUp.slug}/`}>
-            Next Kumite details
+          <a class="btn btn--primary" href="/events/">
+            What's on
           </a>
         </p>
+      ) : (
+        nextUp && (
+          <p class="next" data-reveal>
+            <a class="btn btn--primary" href={`/events/${nextUp.slug}/`}>
+              Next Kumite details
+            </a>
+          </p>
+        )
       )}
       <div class="cols">
         <section data-reveal>

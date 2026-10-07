@@ -1,10 +1,14 @@
 // The team app's JSON API. Every route declares the action it needs (ADR 0024); a request is refused unless the
 // signed-in member's roles grant it (manage:all grants everything). Anything not listed here is a 404.
 import { londonToday } from "../src/lib/dates";
-import type { Action } from "../src/access/actions";
+import { can, type Action } from "../src/access/actions";
+import { all } from "../../../shared/d1";
 import { handleAuth, sessionOf, type AuthEnv } from "./auth";
 import { answer, listEntries, mark, setPlayer, type EntryKind } from "./entries";
-import { pick, undoPick } from "./draft";
+import { closeDraft, openDraft, pick, undoPick } from "./draft";
+import { makeFixtures, scoreGame } from "./fixtures";
+import { readUsage } from "./usage";
+import { readAgenda } from "../../../shared/agenda";
 import { HttpError, body, json, sameOrigin } from "./http";
 import { LIMITS, addressOf, enforce } from "./limits";
 import { bootstrapTag, buildOf, bumpDataVersion, dataVersion, notModified, tagged } from "./version";
@@ -53,6 +57,9 @@ export interface Env extends AuthEnv {
   TEAM_AUTO_ADMIN?: string;
   /** This deploy's version (wrangler.jsonc version_metadata): part of the bootstrap's ETag. */
   CF_VERSION_METADATA?: { id: string };
+  /** Read-only (Account Analytics: Read), for the Usage page and the hourly check (ADR 0059). */
+  CLOUDFLARE_ANALYTICS_TOKEN?: string;
+  CLOUDFLARE_ACCOUNT_ID?: string;
 }
 
 export interface Ctx {
@@ -109,8 +116,27 @@ const SLICES = {
   tournaments: async (c: Ctx) => withEntries(c.env.DB, "tournament", await listTournaments(c.env.DB)),
   clubEvents: async (c: Ctx) => withEntries(c.env.DB, "event", await listClubEvents(c.env.DB, c.now)),
   quips: (c: Ctx) => listQuips(c.env.DB),
+  // What's on from today (ADR 0062). A tournament's draft night is for its captains and whoever runs the draft.
+  agenda: async (c: Ctx) => {
+    const rows = await readAgenda(c.env.DB, c.today);
+    if (!rows.some((r) => r.audience === "captains")) return rows;
+    if (can(c.actions, "run:Draft")) return rows;
+    const mine = new Set(
+      (
+        await all<{ id: number }>(
+          c.env.DB,
+          "SELECT DISTINCT tournament_id id FROM tournament_teams WHERE captain_member_id = ?",
+          [c.memberId],
+        )
+      ).map((t) => t.id),
+    );
+    return rows.filter((r) => r.audience !== "captains" || (r.source === "tournament" && mine.has(r.sourceId)));
+  },
 };
 export type Slice = keyof typeof SLICES;
+
+/** Anything on the calendar changed: the agenda comes back with it (ADR 0062). */
+const SCHEDULE: readonly Slice[] = ["series", "sessions", "venues", "tournamentTypes", "tournaments", "clubEvents"];
 
 /** The named parts of the club, read one after another. */
 async function slices(c: Ctx, names: readonly Slice[]): Promise<Partial<Record<Slice, unknown>>> {
@@ -328,6 +354,13 @@ export const ROUTES: Route[] = [
     changes: ["tournaments"],
     handle: async (c) => (await updateTournament(c.env.DB, id(c), await body(c.request)), ok()),
   },
+  {
+    method: "GET",
+    path: /^\/api\/usage$/,
+    action: "read:Usage",
+    // Today's use of the club's free Cloudflare allowance (ADR 0059)
+    handle: async (c) => json(await readUsage(c.env, new Date(c.now))),
+  },
   ...ENTRY_ROUTES,
   {
     method: "POST",
@@ -337,7 +370,7 @@ export const ROUTES: Route[] = [
     changes: ["tournaments"],
     handle: async (c) => {
       const { memberId } = await memberIdIn(c);
-      await pick(c.env.DB, id(c), memberId, c, c.now);
+      await pick(c.env.DB, id(c), memberId, c);
       return ok();
     },
   },
@@ -346,7 +379,39 @@ export const ROUTES: Route[] = [
     path: /^\/api\/tournaments\/(\d+)\/draft\/picks\/last$/,
     action: "run:Draft",
     changes: ["tournaments"],
-    handle: async (c) => (await undoPick(c.env.DB, id(c), c.now), ok()),
+    handle: async (c) => (await undoPick(c.env.DB, id(c)), ok()),
+  },
+  {
+    method: "POST",
+    path: /^\/api\/tournaments\/(\d+)\/fixtures$/,
+    action: "manage:Tournament",
+    changes: ["tournaments"],
+    // The round robin and its playoffs, once the teams are set (ADR 0061)
+    handle: async (c) => (await makeFixtures(c.env.DB, id(c)), ok()),
+  },
+  {
+    method: "PUT",
+    path: /^\/api\/tournaments\/(\d+)\/games\/(\d+)$/,
+    action: "score:Match",
+    changes: ["tournaments"],
+    // A game's final score; the last group result fills the playoffs
+    handle: async (c) => (await scoreGame(c.env.DB, id(c), Number(c.params[1]), await body(c.request)), ok()),
+  },
+  {
+    method: "POST",
+    path: /^\/api\/tournaments\/(\d+)\/draft\/open$/,
+    action: "run:Draft",
+    changes: ["tournaments"],
+    // The night of the draft: the captains can pick (ADR 0060)
+    handle: async (c) => (await openDraft(c.env.DB, id(c)), ok()),
+  },
+  {
+    method: "POST",
+    path: /^\/api\/tournaments\/(\d+)\/draft\/close$/,
+    action: "run:Draft",
+    changes: ["tournaments"],
+    // Everyone's picked (or the rest are left out on purpose): the teams are locked
+    handle: async (c) => (await closeDraft(c.env.DB, id(c), (await body(c.request)).leaveOut === true), ok()),
   },
   {
     method: "POST",
@@ -505,7 +570,8 @@ export async function handleApi(
       // A change: every member's bootstrap is out of date (ADR 0054)
       await bumpDataVersion(env.DB);
       // ...and this member gets the parts it touched back, to put in place
-      const changes = hit.r.changes ?? [];
+      const declared = hit.r.changes ?? [];
+      const changes = declared.some((d) => SCHEDULE.includes(d)) ? [...declared, "agenda" as const] : declared;
       if (changes.length) {
         const now = changes.some((s) => ACCESS.includes(s))
           ? { ...ctx, actions: await actionsOf(env.DB, memberId) }

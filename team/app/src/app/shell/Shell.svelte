@@ -12,7 +12,8 @@
   import { type Route, type TabId } from "../nav-routes";
   import { folds, routes, tabs } from "../routes.svelte";
   import { navigate, router } from "../router.svelte";
-  import { eject, prefersReducedMotion, zoom } from "../motion";
+  import { fly } from "svelte/transition";
+  import { easeOut, eject, fadeMs, flyMs, prefersReducedMotion, zoom } from "../motion";
   import type { IconName } from "./icons";
   import AccountMenu from "./AccountMenu.svelte";
   import Icon from "./Icon.svelte";
@@ -107,6 +108,27 @@
   );
   // Each row's place in the list, so they arrive one after another
   const settingsOrder = $derived(new Map(settingsNav.flatMap((s) => s.routes).map((r, i) => [r.id, i])));
+
+  // The save note: "Saving…" once a save has taken a moment (a quick one doesn't flash), then its outcome
+  let slow = $state(false);
+  $effect(() => {
+    if (!saving.busy) return void (slow = false);
+    const t = setTimeout(() => (slow = true), 250);
+    return () => clearTimeout(t);
+  });
+  const note = $derived<{ kind: "busy" | "done" | "failed"; text: string } | null>(
+    saving.message
+      ? { kind: saving.failed ? "failed" : "done", text: saving.message }
+      : slow
+        ? { kind: "busy", text: "Saving…" }
+        : null,
+  );
+
+  // The save note lives on the page body, like an open editor panel, so it shows above one
+  function onBody(node: HTMLElement) {
+    document.body.append(node);
+    return { destroy: () => node.remove() };
+  }
 
   // London time in the corner, to the minute.
   let now = $state(Date.now());
@@ -402,10 +424,23 @@
   </main>
 
   <!-- What the last save did: "Saved", or what went wrong. Floats over the page, so nothing moves. -->
-  {#if saving.message}
-    <p class="save-note" class:failed={saving.failed} role={saving.failed ? "alert" : "status"}>
-      <span class="note-icon" aria-hidden="true"><Icon name={saving.failed ? "alert" : "check"} size={16} /></span>
-      <span>{saving.message}</span>
+  {#if note}
+    <!-- Rises from the bottom edge; "Saving…" turns into "Saved" (or what went wrong) in place -->
+    <p
+      class="save-note {note.kind}"
+      use:onBody
+      role={note.kind === "failed" ? "alert" : "status"}
+      in:fly={{ y: 64, duration: flyMs, easing: easeOut, opacity: 0 }}
+      out:fly={{ y: 64, duration: fadeMs, opacity: 0 }}
+    >
+      {#if note.kind === "busy"}
+        <span class="spinner" aria-hidden="true"></span>
+      {:else}
+        <span class="note-icon" aria-hidden="true"
+          ><Icon name={note.kind === "failed" ? "alert" : "check"} size={14} /></span
+        >
+      {/if}
+      <span>{note.text}</span>
     </p>
   {/if}
 </div>
@@ -539,55 +574,49 @@
     opacity: 1;
   }
 
-  /* ─── The save note (toast): bottom centre, above the tabs on a phone. A solid card with a coloured edge and an
-     icon, so "Saved" and a failure read at a glance. ─── */
+  /* ─── The save note (toast): a small pill at the bottom centre, above the tabs on a phone. It rises from the
+     bottom edge and drops back. Busy: a spinner; saved: a green tick; failed: red. ─── */
   .save-note {
     position: fixed;
     left: 50%;
-    bottom: calc(var(--s-6) + env(safe-area-inset-bottom, 0px));
-    z-index: 70;
+    bottom: calc(var(--s-4) + env(safe-area-inset-bottom, 0px));
+    /* On the body (onBody), above an open editor panel (80) so it shows while one's open; below menus (90) */
+    z-index: 85;
     display: flex;
     align-items: center;
-    gap: var(--s-3);
-    max-width: min(26rem, calc(100vw - 2 * var(--gutter)));
+    gap: var(--s-2);
+    max-width: min(24rem, calc(100vw - 2 * var(--gutter)));
     margin: 0;
-    padding: var(--s-3) var(--s-4) var(--s-3) var(--s-3);
-    border-radius: var(--r-lg);
-    background: var(--surface-2);
-    box-shadow:
-      inset 3px 0 0 var(--green),
-      inset 0 1px 0 rgb(255 255 255 / 0.05),
-      var(--shadow-pop);
+    padding: var(--s-2) var(--s-4) var(--s-2) var(--s-3);
+    border-radius: 999px;
+    background: var(--surface-3);
+    box-shadow: var(--shadow-pop);
     color: var(--fg);
     font-size: var(--text-sm);
     font-weight: 500;
     translate: -50% 0;
-    animation: note-in var(--t-slow) var(--ease);
   }
   .note-icon {
     display: grid;
     flex-shrink: 0;
     place-items: center;
-    width: 1.5rem;
-    height: 1.5rem;
-    border-radius: var(--r-sm);
-    background: var(--green-wash);
     color: var(--green);
   }
-  .save-note.failed {
-    box-shadow:
-      inset 3px 0 0 var(--red-hot),
-      inset 0 1px 0 rgb(255 255 255 / 0.05),
-      var(--shadow-pop);
-  }
   .save-note.failed .note-icon {
-    background: var(--red-wash);
     color: var(--red-hot);
   }
-  @keyframes note-in {
-    from {
-      opacity: 0;
-      translate: -50% 10px;
+  .spinner {
+    flex-shrink: 0;
+    width: 14px;
+    height: 14px;
+    border: 2px solid color-mix(in srgb, var(--fg) 20%, transparent);
+    border-top-color: var(--fg);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin {
+    to {
+      rotate: 360deg;
     }
   }
   @media (max-width: 900px) {

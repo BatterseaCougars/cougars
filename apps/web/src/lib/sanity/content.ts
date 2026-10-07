@@ -68,14 +68,26 @@ export const getPub = memo(async () => mergePub(FALLBACK_PUB, await fetchOr(q.PU
 export const getTeam = memo(async () => mergeTeam(FALLBACK_TEAM, await fetchOr(q.TEAM, null)));
 // The Kumite's awards come from the team app (ADR 0044), through the build's club snapshot; Sanity's list (names
 // only) until the snapshot has them.
-const kumiteSnapshot = import.meta.glob<{ awards: Award[] } | null>("../../data/kumite.local.json", {
-  eager: true,
-  import: "default",
-});
+/** The next Kumite as the team app has it (ADR 0062): when, where, or that it's TBC or only a season so far. */
+export interface NextKumite {
+  startsAt: string;
+  venue: string;
+  dateTbc: boolean;
+  season: string | null;
+}
+const kumiteSnapshot = import.meta.glob<{ awards: Award[]; next?: NextKumite | null } | null>(
+  "../../data/kumite.local.json",
+  { eager: true, import: "default" },
+);
 export const getKumite = memo(async () => {
   const k = mergeKumite(FALLBACK_KUMITE, await fetchOr(q.KUMITE, null));
-  const fromApp = Object.values(kumiteSnapshot)[0]?.awards;
-  return { ...k, awards: fromApp?.length ? fromApp : k.awards.map((name): Award => ({ name })) };
+  const snapshot = Object.values(kumiteSnapshot)[0];
+  const fromApp = snapshot?.awards;
+  return {
+    ...k,
+    awards: fromApp?.length ? fromApp : k.awards.map((name): Award => ({ name })),
+    next: snapshot?.next ?? null,
+  };
 });
 
 /** Every club fact in one object. */

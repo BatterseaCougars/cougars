@@ -19,6 +19,7 @@
   import Profile from "./pages/Profile.svelte";
   import Quips from "./pages/Quips.svelte";
   import Roles from "./pages/Roles.svelte";
+  import Usage from "./pages/Usage.svelte";
   import Standings from "./pages/Standings.svelte";
   import Teammates from "./pages/Teammates.svelte";
   import TournamentSeries from "./pages/TournamentSeries.svelte";
@@ -45,6 +46,7 @@
     profile: Profile,
     tab: MyTab,
     roles: Roles,
+    usage: Usage,
     "training-settings": TrainingSettings,
     "tournament-settings": TournamentSettings,
     "tournament-series": TournamentSeries,

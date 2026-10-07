@@ -101,6 +101,8 @@ export interface TournamentType {
   defaultFeePence: number;
   /** What's handed out at each edition (ADR 0044), shown on the website. */
   awards: { name: string; about: string }[];
+  /** The playoff games after the round robin, by table position (ADR 0061). */
+  playoffs: Playoff[];
   /** Where its dates are, unless a date says otherwise (ADR 0046): a saved venue, else a name and map link. */
   venueId: number | null;
   location: string;
@@ -166,6 +168,11 @@ export interface Tournament extends Entries {
   /** The captains' draft, for a drafted one. */
   draftOn: string | null;
   draftTime: string | null;
+  /** Where its draft is (ADR 0060): none, scheduled (a day and captains), open (captains pick), closed (locked). */
+  draftState?: DraftState;
+  /** Its playoffs (copied from its series, ADR 0061), and its games once the fixtures are made. */
+  playoffs: Playoff[];
+  games?: TournamentGame[];
   /** Its teams: in pick order for a draft, else in the order they entered. */
   teams: TournamentTeam[];
 }
@@ -214,5 +221,56 @@ export interface Bookable {
   /** Just a season so far: shown as "Summer 2027" instead (ADR 0048). */
   season?: { name: string; year: number };
   href?: string;
+  /** Said instead of its times: a reminder's ("Last day to say you're in", "Time to be set"). */
+  timeText?: string;
   entries: Entries;
+}
+
+/** Where a captains' draft is (ADR 0060). */
+export type DraftState = "none" | "scheduled" | "open" | "closed";
+
+/** A playoff game by table position (ADR 0061): "Final", 1st v 2nd. */
+export interface Playoff {
+  name: string;
+  home: number;
+  away: number;
+}
+
+/** One of a tournament's games (ADR 0061): its round robin, then its playoffs (seeds until the table fills them). */
+export interface TournamentGame {
+  id: number;
+  stage: "group" | "playoff";
+  round: number;
+  position: number;
+  name: string;
+  homeTeamId: number | null;
+  awayTeamId: number | null;
+  homeSeed: number | null;
+  awaySeed: number | null;
+  homeGoals: number | null;
+  awayGoals: number | null;
+  status: "next" | "live" | "done";
+}
+
+/** A row of the club's agenda (ADR 0062, shared/agenda.ts): what's on and when, from today. */
+export interface AgendaRow {
+  key: string;
+  source: "session" | "tournament" | "club_event";
+  sourceId: number;
+  kind: "training" | "tournament" | "draft" | "signup_closes" | "event";
+  /** The calendar's filter: series:1, type:1, tournament, social. */
+  group: string;
+  title: string;
+  startsAt: string;
+  endsAt: string | null;
+  day: string;
+  allDay: boolean;
+  dateTbc: boolean;
+  season: string | null;
+  venue: string;
+  mapUrl: string;
+  description: string;
+  public: boolean;
+  cancelled: boolean;
+  audience: "everyone" | "captains";
 }

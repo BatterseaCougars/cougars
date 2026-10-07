@@ -219,13 +219,21 @@ Open questions: match length, tiebreak order, whether a draw scores 1 point, the
 
 ## T6: Kumite draft
 
-- [ ] An admin (`run:Draft`) picks the captains and the players in the draft (by default, that day's register).
-- [ ] **The draft room** on the captains' phones, refreshing every 2–3 seconds: whose pick it is, a pick clock, the
-      players left with their positions, and a _Pick_ button (`pick:Draft`, for that draft's captains only).
-- [ ] Picks are saved with a unique pick number, so two taps at once can't both count. An admin can undo or make a
-      pick.
-- [ ] Pick order is a setting (snake by default) until the rules are written.
-- [ ] Drafted teams go straight into the tournament (T5).
+- [x] An admin sets a draft tournament's captains, in pick order, and its draft night; the pool is the members who
+      said they're in once sign-up opened; captains are in automatically ([ADR 0052](../adr/0052-tournament-types-and-teams.md),
+      [ADR 0060](../adr/0060-draft-lifecycle.md)).
+- [x] An admin opens the draft on the night and closes it once everyone's picked (or leaving the rest out); closed
+      locks the teams. Captains see "Draft on …, you pick 2nd" on Home, then "it's your pick".
+- [x] **The draft room** for that draft's captains and those running it (`run:Draft`): whose pick it is, the
+      players left, and a _Pick_ button for the captain on the clock. Refreshes every 10 seconds, not 2–3, to stay
+      inside the free plan ([ADR 0058](../adr/0058-degrade-instead-of-break.md)).
+- [x] A pick only counts if nobody picked since, so two taps at once can't both count. An admin can undo or make a
+      pick. Snake order. Told as a story in `tournament.use-cases.test.ts`.
+- [ ] A pick clock, and positions on the players left.
+- [ ] Pick order as a setting, once the rules are written.
+- [x] Drafted teams go into the tournament: the app makes the fixtures (a round robin, then the playoffs set for it,
+      e.g. a Final of 1st v 2nd), admins enter final scores, the table fills the playoffs
+      ([ADR 0061](../adr/0061-fixtures-and-playoffs.md)).
 
 Open questions: the rules; whether captains see ratings; the pick time limit; whether the solver can suggest
 teams instead.

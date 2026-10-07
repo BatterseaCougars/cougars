@@ -2,6 +2,7 @@
   // Settings → Tournaments: the schedule, a card for each tournament, what an admin comes here to change: when and
   // where it is, sign-up, the draft and its captains. A card opens that tournament's editor in a modal panel; "New
   // tournament" opens a blank one, which can start from a series' defaults (Settings → Tournament Series).
+  import { saving } from "../app/backend.svelte";
   import PageHeader from "../lib/PageHeader.svelte";
   import ScheduleCards, { type ScheduleCard } from "../lib/ScheduleCards.svelte";
   import EditorPanel from "../lib/EditorPanel.svelte";
@@ -79,7 +80,9 @@
     >
       <TournamentDateEditor dateId={date?.id} oncreated={(id) => (open = id)} />
       {#snippet footer()}
-        <button class="btn primary" type="submit" form="date-form">{date ? "Save" : "Schedule it"}</button>
+        <button class="btn primary" type="submit" form="date-form" disabled={saving.busy > 0}
+          >{date ? "Save" : "Schedule it"}</button
+        >
       {/snippet}
     </EditorPanel>
   {/key}

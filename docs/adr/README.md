@@ -68,3 +68,8 @@ rule, a trade-off. Copy [template.md](template.md), take the next number, keep i
 | [0056](0056-rate-limits-on-every-api.md)             | Every live route and API is rate limited                                                 | Accepted              |
 | [0057](0057-changes-reply-with-what-they-touched.md) | A change replies with the parts of the club it touched                                   | Accepted              |
 | [0058](0058-degrade-instead-of-break.md)             | Degrade instead of break: the app's own brake, and local fallback content                | Accepted              |
+| [0059](0059-usage-page-and-check.md)                 | Admins see the free Cloudflare allowance, and are warned at 80%                          | Accepted              |
+| [0060](0060-draft-lifecycle.md)                      | A captains' draft is opened and closed by an admin                                       | Accepted              |
+| [0061](0061-fixtures-and-playoffs.md)                | The app makes a tournament's fixtures: a round robin, then its playoffs                  | Accepted              |
+| [0062](0062-the-club-agenda.md)                      | One agenda that every part of the club pushes to                                         | Accepted              |
+| [0063](0063-cpu-time-on-the-usage-page.md)           | The Usage page shows CPU time per request; a stopped request is an email                 | Accepted              |
