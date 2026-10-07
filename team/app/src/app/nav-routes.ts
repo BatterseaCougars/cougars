@@ -50,9 +50,14 @@ export interface NavConfig {
     name: string;
     shortName: string;
     icon: IconName;
-    draft: boolean;
+    /** A draft tournament gets a Draft page (ADR 0052). */
+    kind: "teams" | "draft";
     active: boolean;
+    /** The captains of its next tournament: they see its Draft page, as do those running the draft. */
+    captains?: number[];
   }[];
+  /** Who's signed in (or being viewed as). */
+  me?: number;
   /** Members, for their profile pages under Settings → Members. */
   members?: { id: number; name: string }[];
 }
@@ -125,7 +130,31 @@ const STATIC_TAIL: Route[] = [
     icon: "trophy",
     group: "Settings",
     section: "Schedule",
-    hint: "Tournament types and each one's dates",
+    hint: "Every tournament: when, sign-up, teams, the draft",
+  },
+  {
+    id: "tournament-series",
+    path: "/settings/tournament-series",
+    name: "Tournament Series",
+    tab: "more",
+    page: "tournament-series",
+    action: "manage:Tournament",
+    icon: "medal",
+    group: "Settings",
+    section: "Schedule",
+    hint: "Defaults a new tournament can start from: rules, fee, awards",
+  },
+  {
+    id: "venues",
+    path: "/settings/venues",
+    name: "Venues",
+    tab: "more",
+    page: "venues",
+    action: "manage:Venue",
+    icon: "pin",
+    group: "Settings",
+    section: "Schedule",
+    hint: "Places the club goes: address and map link, picked once",
   },
   {
     id: "overdue",
@@ -180,6 +209,7 @@ const STATIC_TAIL: Route[] = [
 export function buildRoutes(config: NavConfig): Route[] {
   const series = config.series.filter((s) => s.active);
   const types = config.types.filter((t) => t.active);
+  const me = config.me;
   return [
     { id: "home", path: "/", name: "Home", tab: "home", page: "home", action: "authenticated", icon: "home" },
     ...series.flatMap((s): Route[] => [
@@ -237,7 +267,7 @@ export function buildRoutes(config: NavConfig): Route[] {
           action: "read:Event",
           icon: "list",
         },
-        ...(t.draft
+        ...(t.kind === "draft"
           ? [
               {
                 ...base,
@@ -245,7 +275,8 @@ export function buildRoutes(config: NavConfig): Route[] {
                 path: `/tournaments/${t.slug}/draft`,
                 name: "Draft",
                 page: "draft",
-                action: "read:Event" as const,
+                // Only its captains, and whoever runs the draft
+                action: me !== undefined && t.captains?.includes(me) ? ("read:Event" as const) : ("run:Draft" as const),
                 icon: "draft" as const,
               },
             ]

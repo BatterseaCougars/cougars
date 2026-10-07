@@ -5,15 +5,15 @@
   import Sheet from "../lib/Sheet.svelte";
   import { PLAYERS } from "../demo/data";
   import { KUMITE_TEAMS, MATCHES } from "../demo/kumite";
-  import { typeById } from "../demo/schedule.svelte";
+  import { currentTournament, typeById } from "../demo/schedule.svelte";
 
   let { typeId }: { typeId: number } = $props();
   const type = $derived(typeById(typeId)!);
 
   const match = MATCHES.find((m) => m.status === "live")!;
   const teams = [match.home, match.away].map((id) => KUMITE_TEAMS.find((t) => t.id === id)!);
-  // Game length comes from the tournament type (Settings → Tournaments).
-  const GAME_MS = $derived(type.gameMinutes * 60_000);
+  // Game length comes from the tournament (Settings → Tournaments), else its series
+  const GAME_MS = $derived((currentTournament(typeId) ?? type).gameMinutes * 60_000);
 
   // The clock is derived from start/pause events, so it survives a reload or a locked phone (T5 stores them).
   let remaining = $state(untrack(() => GAME_MS));

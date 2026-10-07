@@ -2,14 +2,14 @@
   // The top of every tournament page: the type as the eyebrow, the page, its status, and which edition it's showing.
   import type { Tournament, TournamentType } from "../demo/model";
   import PageHeader from "./PageHeader.svelte";
-  import { whenOf } from "../demo/schedule.svelte";
+  import { tournamentPlace, whenOf } from "../demo/schedule.svelte";
 
   let { type, tournament, title }: { type: TournamentType; tournament?: Tournament; title: string } = $props();
 
   const STATUS = { planned: "Coming up", open: "Sign-up open", live: "Live", finished: "Finished" } as const;
   const subtitle = $derived(
     tournament
-      ? [tournament.name, whenOf(tournament), tournament.venue].filter(Boolean).join(" · ")
+      ? [tournament.name, whenOf(tournament), tournamentPlace(tournament)?.name].filter(Boolean).join(" · ")
       : `No ${type.shortName} scheduled yet. An admin can add one under Settings → Tournaments.`,
   );
 </script>

@@ -25,6 +25,13 @@ const sample = (path: RegExp) =>
     .replace(/\(\\d\+\)/g, "1")
     .replace(/\\\//g, "/");
 
+describe("every change", () => {
+  it("says which parts of the club it touches, so the app gets them back (ADR 0054)", () => {
+    const silent = ROUTES.filter((r) => r.method !== "GET" && !r.changes?.length).map((r) => `${r.method} ${r.path}`);
+    expect(silent).toEqual([]);
+  });
+});
+
 describe("every route", () => {
   it("answers no one who isn't signed in", async () => {
     const stranger = w.browser();

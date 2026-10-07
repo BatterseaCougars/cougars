@@ -1,6 +1,7 @@
 # 0041. Live reads are cached in production only
 
-- **Status:** Accepted. Amends [0016](0016-live-photo-gallery.md) and [0019](0019-live-videos.md) (their caching).
+- **Status:** Superseded by [0054](0054-live-reads-are-cached-everywhere.md) (its "Sanity's API, not the CDN" first by
+  [0053](0053-sanity-reads-through-its-cdn.md)).
 - **Date:** 2026-10-07
 
 ## Context

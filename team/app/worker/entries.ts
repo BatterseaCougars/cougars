@@ -1,5 +1,5 @@
 // Who's in (T2): sign-ups for training sessions, tournaments and club events, and the register on the night. One
-// row per person per event (db/migrations/0005_team_entries.sql). The rules live here, not in the app: a full
+// row per person per event (db/schema.sql). The rules live here, not in the app: a full
 // event puts you on the waitlist, and when someone who was in drops out (or is taken off) the first on the
 // waitlist moves up. Admins can put someone in past the limit.
 import { all, first, run } from "../../../shared/d1";
@@ -114,13 +114,16 @@ export async function answer(db: D1Database, kind: EntryKind, id: number, member
     return;
   }
   if (was?.signup === "in" || was?.signup === "waitlist") return;
-  // A tournament's sign-up closes at the end of its last day (London); saying you're out is always fine
+  // A tournament takes sign-ups once an admin opens them, until the end of the closing day (London); saying you're
+  // out is always fine
   if (kind === "tournament") {
-    const t = await first<{ closes: string | null }>(
+    const t = await first<{ status: string; closes: string | null }>(
       db,
-      "SELECT signup_closes_on closes FROM tournaments WHERE id = ?",
+      "SELECT status, signup_closes_on closes FROM tournaments WHERE id = ?",
       [id],
     );
+    if (t?.status === "planned") throw new HttpError(409, "Sign-up isn't open yet.");
+    if (t && t.status !== "open") throw new HttpError(409, "Sign-up has closed.");
     if (t?.closes && londonToday(new Date(now)) > t.closes) throw new HttpError(409, "Sign-up has closed.");
   }
   await put(db, kind, id, memberId, { join: limit }, now);

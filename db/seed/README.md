@@ -1,6 +1,6 @@
 # Seed data
 
-Data D1 starts with that isn't in a migration. Migrations are public, so they only seed things that aren't about
+Data D1 starts with. `club.sql` is public, so it only seeds things that aren't about
 people (roles, Friday Training, the Kumite). Anything personal comes from here, and never from this repo
 ([ADR 0033](../../docs/adr/0033-personal-data-out-of-the-repo.md)).
 
@@ -25,8 +25,8 @@ git ignores (`db/seed/*.local.*`).
 case) is left alone (its rating, position and Cougar flag included), an email is filled in only where there's
 none, and roles are added, never removed. So what admins change in the app always wins, and it's safe to run on every deploy.
 
-- Local: `npm run db:migrate:local && npm run db:seed:local` (local D1 is shared by the website and the team app).
-- Dev and production: the "Seed the team roster" step in `.github/workflows/deploy.yml`, after the migrations.
+- Local: `npm run db:rebuild:local && npm run db:seed:local` (local D1 is shared by the website and the team app).
+- Dev and production: the "Seed the team roster" step in `.github/workflows/deploy.yml`, after the rebuild.
 
 Changing the roster: edit the local copy, then put it back in Secrets Manager (both names) with the command in
 [README.md#team-roster](../../README.md#team-roster). Once the app is live, add and edit members in the app

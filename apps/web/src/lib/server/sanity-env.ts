@@ -4,14 +4,7 @@
 // Worker's environment on each request, so it is only there if it's set as a Worker secret (ADR 0016).
 // YOUTUBE_API_KEY is a secret too: a Worker secret in production and dev (deploy.yml), the build's environment
 // otherwise.
-import {
-  CACHE_READS,
-  DEMO_CONTENT,
-  SANITY_API_TOKEN,
-  SANITY_DATASET,
-  SANITY_PROJECT_ID,
-  YOUTUBE_API_KEY,
-} from "astro:env/server";
+import { DEMO_CONTENT, SANITY_API_TOKEN, SANITY_DATASET, SANITY_PROJECT_ID, YOUTUBE_API_KEY } from "astro:env/server";
 import { CACHE_CONTROL, UNAVAILABLE_CACHE_CONTROL, type PhotosConfig } from "./photos";
 import type { VideosConfig } from "./videos";
 
@@ -20,12 +13,10 @@ export const photosConfig = (): PhotosConfig => ({
   dataset: SANITY_DATASET,
   token: SANITY_API_TOKEN,
   demo: DEMO_CONTENT,
-  cache: CACHE_READS,
 });
 
-/** A live page's Cache-Control: cached in production, never elsewhere or when Sanity is unreachable. */
-export const cacheControl = (unavailable: boolean) =>
-  CACHE_READS && !unavailable ? CACHE_CONTROL : UNAVAILABLE_CACHE_CONTROL;
+/** A live page's Cache-Control: cached, except when Sanity is unreachable (ADR 0054). */
+export const cacheControl = (unavailable: boolean) => (unavailable ? UNAVAILABLE_CACHE_CONTROL : CACHE_CONTROL);
 
 export const videosConfig = (): VideosConfig => ({
   sanity: photosConfig(),

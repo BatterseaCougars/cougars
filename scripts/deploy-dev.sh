@@ -20,5 +20,5 @@ export PUBLIC_BUILD_VERSION="dev-$(git rev-parse --short HEAD)"
 
 npm run build
 node scripts/ci/target.mjs dev
-(cd apps/web && npx wrangler d1 migrations apply DB --remote -c dist/server/wrangler.json && npx wrangler deploy --message "$PUBLIC_BUILD_VERSION")
+(cd apps/web && node ../../scripts/db-rebuild.mjs --remote -c dist/server/wrangler.json && npx wrangler deploy --message "$PUBLIC_BUILD_VERSION")
 echo "Dev: $SITE_URL"

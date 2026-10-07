@@ -12,7 +12,7 @@
   import { type Route, type TabId } from "../nav-routes";
   import { folds, routes, tabs } from "../routes.svelte";
   import { navigate, router } from "../router.svelte";
-  import { prefersReducedMotion, zoom } from "../motion";
+  import { eject, prefersReducedMotion, zoom } from "../motion";
   import type { IconName } from "./icons";
   import AccountMenu from "./AccountMenu.svelte";
   import Icon from "./Icon.svelte";
@@ -81,16 +81,32 @@
     const more = all.find((r) => r.id === "more");
     if (more) {
       const settings = all.some((r) => r.group === "Settings" && allowed(r));
+      // Settings opens on its first page, with every settings page listed beside it
+      const firstSetting = all.find((r) => r.group === "Settings" && allowed(r));
       items.push({
         id: more.id,
         name: settings ? "Settings" : "More",
         icon: settings ? "settings" : "more",
-        href: more.path,
+        href: firstSetting?.path ?? more.path,
         on: route.tab === "more" && route.id !== "tab",
       });
     }
     return items;
   });
+
+  // Desktop settings: every settings page in a list beside the dock while you're in one, so moving between them is
+  // one click, not Back to the list. Grouped as the list is (More); a narrower desktop gets a link back to it.
+  const inSettings = $derived(route.group === "Settings" && !route.focus);
+  const settingsNav = $derived(
+    (["Schedule", "Money", "Club", "Security"] as const)
+      .map((section) => ({
+        section,
+        routes: all.filter((r) => r.group === "Settings" && r.section === section && allowed(r)),
+      }))
+      .filter((s) => s.routes.length),
+  );
+  // Each row's place in the list, so they arrive one after another
+  const settingsOrder = $derived(new Map(settingsNav.flatMap((s) => s.routes).map((r, i) => [r.id, i])));
 
   // London time in the corner, to the minute.
   let now = $state(Date.now());
@@ -209,7 +225,7 @@
   );
 </script>
 
-<div class="shell" class:focus={route.focus}>
+<div class="shell" class:focus={route.focus} class:in-settings={inSettings && !phone.current}>
   <!-- Desktop: the dock, floating mid-left -->
   <nav class="dock" aria-label="Main" inert={route.focus || undefined}>
     {#each dock as item (item.id)}
@@ -226,6 +242,32 @@
       </a>
     {/each}
   </nav>
+
+  {#if inSettings && !phone.current}
+    <!-- Desktop: every settings page, beside the dock -->
+    <nav class="settings-nav" aria-label="Settings" in:eject out:eject={{ out: true }}>
+      <p class="settings-home"><Icon name="settings" size={16} />Settings</p>
+      {#each settingsNav as s (s.section)}
+        <p
+          class="settings-section"
+          in:eject|global={{ delay: 60 + (settingsOrder.get(s.routes[0].id) ?? 0) * 28, x: 14 }}
+        >
+          {s.section}
+        </p>
+        {#each s.routes as r (r.id)}
+          <a
+            in:eject|global={{ delay: 80 + (settingsOrder.get(r.id) ?? 0) * 28, x: 14 }}
+            class="settings-link"
+            class:on={r.id === route.id}
+            href={r.path}
+            aria-current={r.id === route.id ? "page" : undefined}
+          >
+            <Icon name={r.icon} size={16} />{r.name}
+          </a>
+        {/each}
+      {/each}
+    </nav>
+  {/if}
 
   <main class="main">
     <header class="chrome" bind:clientHeight={chromeH}>
@@ -283,6 +325,10 @@
           <a class="brand" href="/" aria-label="Home">
             <img src={logo} alt="" width="36" height="36" />
           </a>
+          {#if inSettings}
+            <!-- Too narrow for the settings list: a way back to it -->
+            <a class="settings-back" href="/more"><Icon name="chevronLeft" size={16} />Settings</a>
+          {/if}
           <AccountMenu />
         </div>
       {/if}
@@ -725,7 +771,100 @@
     .shell:not(.focus) .view {
       padding-left: 6rem;
       padding-right: 6rem;
+      /* Eases across as the settings list slides out beside it */
+      transition: padding var(--t-slow) var(--ease);
     }
+    .settings-nav {
+      display: none;
+    }
+    .settings-back {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--s-1);
+      margin-right: auto;
+      margin-left: var(--s-4);
+      padding: var(--s-1) var(--s-3) var(--s-1) var(--s-2);
+      border-radius: var(--r-md);
+      color: var(--fg-muted);
+      font-size: var(--text-sm);
+      font-weight: 500;
+    }
+    .settings-back:hover {
+      color: var(--fg);
+      background: var(--surface-2);
+    }
+  }
+
+  /* Wide enough for the settings list beside the dock: the page moves over to make room */
+  @media (min-width: 1100px) {
+    .settings-back {
+      display: none;
+    }
+    .settings-nav {
+      position: fixed;
+      top: 50%;
+      translate: 0 -50%;
+      left: calc(var(--s-5) + 3rem + var(--s-5));
+      z-index: 6;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      width: 13rem;
+      max-height: calc(100dvh - 8rem);
+      overflow-y: auto;
+    }
+    /* The dock's hover names would land on the list */
+    .shell.in-settings .dock-label {
+      display: none;
+    }
+    .shell.in-settings .view {
+      padding-left: calc(var(--s-5) + 3rem + var(--s-5) + 13rem + var(--s-5));
+      padding-right: var(--s-6);
+    }
+  }
+  .settings-home {
+    display: flex;
+    margin: 0;
+    align-items: center;
+    gap: var(--s-2);
+    margin-bottom: var(--s-2);
+    padding: var(--s-2) var(--s-3);
+    color: var(--fg);
+    font-weight: 600;
+  }
+  .settings-section {
+    margin: var(--s-3) 0 var(--s-1);
+    padding: 0 var(--s-3);
+    color: var(--fg-subtle);
+    font-size: var(--text-2xs);
+    font-weight: 700;
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+  }
+  /* A page: a quiet row; the one you're on, a soft fill. No lines (fewer borders, more space). */
+  .settings-link {
+    display: flex;
+    align-items: center;
+    gap: var(--s-3);
+    padding: var(--s-2) var(--s-3);
+    border-radius: var(--r-md);
+    color: var(--fg-muted);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    transition:
+      color var(--t-fast) var(--ease-in-out),
+      background-color var(--t-fast) var(--ease-in-out);
+  }
+  .settings-link:hover {
+    color: var(--fg);
+    background: color-mix(in srgb, var(--surface-2) 70%, transparent);
+  }
+  .settings-link.on {
+    color: var(--fg);
+    background: var(--surface-2);
+  }
+  .settings-link.on :global(svg) {
+    color: var(--red-hot);
   }
 
   @media (max-width: 900px) {

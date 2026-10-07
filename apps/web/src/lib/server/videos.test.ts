@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import fixtures from "../fixtures/youtube.json";
+import { resetBreakers } from "../../../../../shared/breaker";
 import { clearCache } from "./cache";
 import { liveVideos, type VideosConfig } from "./videos";
 import { DEMO_VIDEOS } from "../sanity/demo";
@@ -42,6 +43,7 @@ describe("liveVideos", () => {
   const now = () => t;
   beforeEach(() => {
     clearCache();
+    resetBreakers();
     t = 1_000_000;
     vi.spyOn(console, "warn").mockImplementation(() => {});
     vi.spyOn(console, "error").mockImplementation(() => {});
@@ -85,16 +87,11 @@ describe("liveVideos", () => {
     expect(calls.youtube).toBe(4);
   });
 
-  it("reads Sanity and YouTube on every call outside production", async () => {
-    const { fetch, calls } = fakeNetwork({ club: { socials: { youtube: "https://www.youtube.com/@club" } } });
+  it("reads Sanity through its API CDN", async () => {
+    const { fetch } = fakeNetwork();
     vi.stubGlobal("fetch", fetch);
-    const fresh = config({ sanity: { ...sanity, cache: false } });
-    const edge = { match: vi.fn(), put: vi.fn() };
-    for (let i = 0; i < 3; i++) await liveVideos(fresh, { now, edge });
-    expect(calls).toEqual({ sanity: 3, youtube: 6 }); // channels + playlistItems, each time
-    expect(edge.match).not.toHaveBeenCalled();
-    expect(edge.put).not.toHaveBeenCalled();
-    expect(String(fetch.mock.calls[0][0])).toContain("https://proj.api.sanity.io/");
+    await liveVideos(config(), { now, edge: null });
+    expect(String(fetch.mock.calls[0][0])).toContain("https://proj.apicdn.sanity.io/");
   });
 
   it("keeps showing the last YouTube list when YouTube fails", async () => {
@@ -104,6 +101,17 @@ describe("liveVideos", () => {
     t += 11 * 60_000;
     vi.stubGlobal("fetch", fakeNetwork({ club, youtube: "down" }).fetch);
     expect((await liveVideos(config(), { now, edge: null })).data).toEqual(before);
+  });
+
+  it("stops asking YouTube once its daily quota is spent, until it resets", async () => {
+    const club = { socials: { youtube: "https://www.youtube.com/@club" } };
+    const { fetch, calls } = fakeNetwork({ club, youtube: "down" });
+    vi.stubGlobal("fetch", fetch);
+    for (let i = 0; i < 3; i++) {
+      await liveVideos(config(), { now, edge: null });
+      t += 11 * 60_000; // past the cache each time
+    }
+    expect(calls.youtube).toBe(1); // the first 403 paused YouTube until midnight Pacific
   });
 
   it("still shows the Sanity videos when YouTube fails with nothing cached", async () => {

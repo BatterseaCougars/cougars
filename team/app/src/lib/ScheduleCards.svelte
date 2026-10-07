@@ -11,6 +11,8 @@
     eyebrow: string;
     name: string;
     next: string;
+    /** What `next` is: "Next" unless said ("When", for a tournament date). */
+    nextLabel?: string;
     /** Smaller lines under Next. */
     lines: string[];
   }
@@ -39,7 +41,7 @@
         </span>
         <span class="eyebrow">{c.eyebrow}</span>
         <span class="name">{c.name}</span>
-        <span class="line"><span class="label">Next</span> {c.next}</span>
+        <span class="line"><span class="label">{c.nextLabel ?? "Next"}</span> {c.next}</span>
         {#each c.lines as line, i (i)}<span class="line muted num">{line}</span>{/each}
         <span class="go"><Icon name="chevronRight" size={18} /></span>
       </button>

@@ -17,6 +17,7 @@
   import { phone } from "../lib/viewport.svelte";
   import { londonISO, londonTime, londonToday } from "../lib/dates";
   import type { Bookable, OneOff } from "../demo/model";
+  import PlacePicker from "../lib/PlacePicker.svelte";
 
   const perms = $derived(granted());
 
@@ -70,7 +71,9 @@
     date: "",
     start: "19:30",
     end: "22:30",
+    venueId: null as number | null,
     venue: "",
+    mapUrl: "",
     description: "",
     public: true,
     signup: true,
@@ -92,7 +95,9 @@
       date: londonToday(new Date(o.startsAt)),
       start: londonTime(o.startsAt),
       end: londonTime(o.endsAt),
+      venueId: o.venueId,
       venue: o.venue,
+      mapUrl: o.mapUrl,
       description: o.description,
       public: o.public,
       signup: o.signup,
@@ -112,7 +117,9 @@
       title: draft.title,
       startsAt,
       endsAt,
-      venue: draft.venue,
+      venueId: draft.venueId,
+      venue: draft.venueId ? "" : draft.venue,
+      mapUrl: draft.venueId ? "" : draft.mapUrl,
       description: draft.description,
       public: draft.public,
       signup: draft.signup,
@@ -205,9 +212,7 @@
         <label class="field">Starts <input class="input" type="time" bind:value={draft.start} required /></label>
         <label class="field">Ends <input class="input" type="time" bind:value={draft.end} /></label>
       </div>
-      <label class="field"
-        >Location <input class="input" bind:value={draft.venue} placeholder="e.g. The Latchmere, Battersea" /></label
-      >
+      <PlacePicker id="event-place" bind:venueId={draft.venueId} bind:name={draft.venue} bind:mapUrl={draft.mapUrl} />
       <label class="field"
         >Description <textarea
           class="input"

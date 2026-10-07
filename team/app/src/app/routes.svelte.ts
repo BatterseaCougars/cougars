@@ -1,10 +1,16 @@
 // The live route tree: rebuilt whenever an admin adds, renames or pauses a training or tournament type.
+import { currentTournament } from "../demo/schedule.svelte";
+import { me } from "../demo/session.svelte";
 import { db } from "../demo/store.svelte";
 import { buildFolds, buildRoutes, buildTabs, type NavConfig } from "./nav-routes";
 
 const config = (): NavConfig => ({
   series: db.series,
-  types: db.tournamentTypes,
+  types: db.tournamentTypes.map((t) => ({
+    ...t,
+    captains: (currentTournament(t.id)?.teams ?? []).flatMap((team) => team.captainMemberId ?? []),
+  })),
+  me: me().id,
   members: db.members.filter((m) => m.status === "active").map((m) => ({ id: m.player.id, name: m.player.name })),
 });
 

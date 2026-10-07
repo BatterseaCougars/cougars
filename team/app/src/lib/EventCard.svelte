@@ -125,7 +125,12 @@
 >
   <div class="top">
     <div class="date">
-      {#if event.dateTbc}
+      {#if event.season}
+        <!-- Just a season so far: the season over its year -->
+        <span class="eyebrow">{event.season.name}</span>
+        <span class="display day">'{String(event.season.year).slice(2)}</span>
+        <span class="eyebrow">&nbsp;</span>
+      {:else if event.dateTbc}
         <!-- Not confirmed: the date it has only decides where it sorts, so it isn't shown -->
         <span class="eyebrow">Date</span>
         <span class="display day">TBC</span>
@@ -146,9 +151,11 @@
       </div>
       <p class="when">
         <span class="time num">
-          {event.dateTbc
-            ? "Date and time to be confirmed"
-            : `${formatTime(event.startsAt)}–${formatTime(event.endsAt)}`}
+          {event.season
+            ? "Day and time to be confirmed"
+            : event.dateTbc
+              ? "Date and time to be confirmed"
+              : `${formatTime(event.startsAt)}–${formatTime(event.endsAt)}`}
         </span>
         {#if event.venue}<span class="venue"><Icon name="pin" size={13} />{event.venue}</span>{/if}
         {#if soon}<span class="soon" class:open={event.signup && !full}>{soon}</span>{/if}

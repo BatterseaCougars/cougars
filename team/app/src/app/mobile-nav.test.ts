@@ -28,7 +28,7 @@ const kumite = {
   name: "The Cougars Kumite",
   shortName: "Kumite",
   icon: "swords" as const,
-  draft: true,
+  kind: "draft" as const,
   active: true,
 };
 const cup = {
@@ -37,7 +37,7 @@ const cup = {
   name: "Summer Cup",
   shortName: "Cup",
   icon: "trophy" as const,
-  draft: false,
+  kind: "teams" as const,
   active: true,
 };
 
@@ -57,6 +57,19 @@ describe("buildRoutes", () => {
   it("leaves paused trainings out", () => {
     const routes = buildRoutes({ ...many, series: [friday, { ...sunday, active: false }] });
     expect(routeFor(routes, "/training/sunday")?.page).not.toBe("training");
+  });
+});
+
+describe("the Draft page", () => {
+  const CARA = 7;
+  const config = (me: number): NavConfig => ({ ...one, types: [{ ...kumite, captains: [CARA, 8] }], me });
+  const draftFor = (me: number, perms: Set<Action>) =>
+    tabRoutes(buildRoutes(config(me)), "tournaments", perms).some((r) => r.page === "draft");
+
+  it("is there for the next tournament's captains and whoever runs the draft, and nobody else", () => {
+    expect(draftFor(CARA, member)).toBe(true);
+    expect(draftFor(99, admin)).toBe(true);
+    expect(draftFor(99, member)).toBe(false);
   });
 });
 

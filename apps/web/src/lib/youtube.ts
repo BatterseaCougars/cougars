@@ -1,3 +1,4 @@
+import { HttpFailure, QuotaError, guard, nextMidnight, retryAfter } from "../../../../shared/breaker";
 import { londonDay } from "./dates";
 import type { Video, VideoOverride } from "./sanity/types";
 
@@ -171,17 +172,35 @@ interface FetchOptions {
   fetch?: typeof globalThis.fetch;
 }
 
-// One API call. Throws on any API or network error, with a message that never contains the key.
+type ApiError = { error?: { message?: string; errors?: { reason?: string }[] } };
+
+/**
+ * YouTube's refusal as an error the circuit breaker understands (ADR 0055): a spent daily quota pauses YouTube until
+ * it resets at midnight Pacific time; a rate limit for a minute.
+ */
+export function youtubeError(path: string, res: Response, body: ApiError, now = Date.now()): Error {
+  const message = `YouTube ${path}: ${res.status} ${body.error?.message ?? res.statusText}`;
+  const reasons = (body.error?.errors ?? []).map((e) => e.reason);
+  if (reasons.some((r) => r === "quotaExceeded" || r === "dailyLimitExceeded"))
+    return new QuotaError(message, nextMidnight("America/Los_Angeles", now));
+  if (res.status === 429 || reasons.some((r) => r === "rateLimitExceeded" || r === "userRateLimitExceeded"))
+    return new QuotaError(message, retryAfter(res, 60_000, now));
+  return new HttpFailure(message, res.status);
+}
+
+// One API call, behind YouTube's circuit breaker. Throws on any API or network error (or while paused), with a
+// message that never contains the key.
 const apiGet =
   (key: string, fetch: typeof globalThis.fetch) =>
-  async <T>(path: string, params: Record<string, string>): Promise<T> => {
-    const res = await fetch(`${API}/${path}?${new URLSearchParams({ ...params, key })}`, {
-      signal: AbortSignal.timeout(15_000),
+  <T>(path: string, params: Record<string, string>): Promise<T> =>
+    guard("youtube", async () => {
+      const res = await fetch(`${API}/${path}?${new URLSearchParams({ ...params, key })}`, {
+        signal: AbortSignal.timeout(15_000),
+      });
+      const body = (await res.json().catch(() => ({}))) as T & ApiError;
+      if (!res.ok) throw youtubeError(path, res, body);
+      return body;
     });
-    const body = (await res.json().catch(() => ({}))) as T & { error?: { message?: string } };
-    if (!res.ok) throw new Error(`YouTube ${path}: ${res.status} ${body.error?.message ?? res.statusText}`);
-    return body;
-  };
 
 /** A playlist's videos in playlist order, at most `max`. Unlisted ones count when `unlisted` is set. Throws. */
 export async function fetchPlaylistVideos(

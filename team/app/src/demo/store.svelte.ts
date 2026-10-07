@@ -4,9 +4,22 @@
 import { londonToday } from "../lib/dates";
 import type { Charge } from "../lib/dues";
 import type { Team } from "../lib/snake";
-import { FEES, MEMBERS, ONE_OFFS, QUIPS, ROLES, SERIES, SESSIONS, TEAMS, TOURNAMENTS, TOURNAMENT_TYPES } from "./data";
+import {
+  FEES,
+  MEMBERS,
+  ONE_OFFS,
+  QUIPS,
+  ROLES,
+  SERIES,
+  SESSIONS,
+  TEAMS,
+  TOURNAMENTS,
+  TOURNAMENT_TYPES,
+  VENUES,
+} from "./data";
 
 export const db = $state({
+  venues: structuredClone(VENUES),
   series: structuredClone(SERIES),
   sessions: structuredClone(SESSIONS),
   tournamentTypes: structuredClone(TOURNAMENT_TYPES),

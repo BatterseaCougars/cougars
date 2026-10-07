@@ -1,7 +1,7 @@
 # 0046. A tournament date has its own details: location, sign-up deadline, draft night, captains
 
-- **Status:** Accepted. Builds on [0030](0030-training-series-and-tournaments.md) and
-  [0042](0042-whats-on-from-the-club-calendar.md).
+- **Status:** Accepted; its locations are places since [0051](0051-venues-and-map-links.md). Builds on
+  [0030](0030-training-series-and-tournaments.md) and [0042](0042-whats-on-from-the-club-calendar.md).
 - **Date:** 2026-10-07
 
 ## Context

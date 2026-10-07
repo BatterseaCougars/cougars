@@ -43,8 +43,8 @@ if [ ! -d "$ROOT/node_modules" ] || [ "$ROOT/package-lock.json" -nt "$ROOT/node_
   (cd "$ROOT" && npm install)
 fi
 
-# Local D1 (apps/web/.wrangler) — idempotent, applies only new migrations.
-(cd "$ROOT" && npm run --silent db:migrate:local >/dev/null) || echo "Local D1 migration failed; run: npm run db:migrate:local"
+# Local D1 (apps/web/.wrangler): rebuilt from db/schema.sql, keeping its data (ADR 0050).
+(cd "$ROOT" && npm run --silent db:rebuild:local >/dev/null) || echo "Local D1 rebuild failed; run: npm run db:rebuild:local"
 
 echo "Cougars monorepo ready — web :4500 and the team app :4510 start automatically (.vscode/tasks.json). See README.md"
 # Cougars' own Bitwarden login (a volume, not the host's: that may be another org's account)

@@ -19,7 +19,10 @@ try {
 }
 
 function showError(e: unknown) {
-  target.innerHTML = `<div class="boot-error"><p class="display">Can't reach the club's data</p><p class="hint"></p></div>`;
+  // Resting (the day's free allowance is used up, ADR 0058) isn't broken: say when it's back
+  const title = e instanceof ApiError && e.status === 429 ? "Back soon" : "Can't reach the club's data";
+  target.innerHTML = `<div class="boot-error"><p class="display"></p><p class="hint"></p></div>`;
+  target.querySelector(".display")!.textContent = title;
   target.querySelector(".hint")!.textContent = e instanceof Error ? e.message : String(e);
 }
 

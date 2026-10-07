@@ -33,12 +33,7 @@ export async function liveVideos(
   config: VideosConfig,
   deps: CacheDeps & { fetch?: typeof globalThis.fetch } = {},
 ): Promise<Live<Video[]>> {
-  const { fetch, ...rest } = deps;
-  // Outside production (config.sanity.cache false) every call reads the sources: nothing is fresh for later and the
-  // edge cache isn't used. The last good list still covers a failure.
-  const fresh = config.sanity.cache === false;
-  const cacheDeps: CacheDeps = fresh ? { ...rest, edge: null } : rest;
-  const ttl = (o: CacheOptions): CacheOptions => (fresh ? { ...o, ttlMs: 0 } : o);
+  const { fetch, ...cacheDeps } = deps;
   let unavailable = false;
   let data: SanityVideoData = { club: null, videos: [] };
   if (config.sanity.projectId) {
@@ -46,7 +41,7 @@ export async function liveVideos(
       const key = `sanity:${config.sanity.projectId}:${config.sanity.dataset}:videos`;
       data = await cached(
         key,
-        ttl(SANITY_CACHE),
+        SANITY_CACHE,
         () => sanityQuery<SanityVideoData>(config.sanity, q.VIDEO_DATA),
         cacheDeps,
       );
@@ -58,9 +53,7 @@ export async function liveVideos(
 
   const source = data.club ? videoSource(data.club) : null;
   const channel =
-    source && config.youtubeKey
-      ? await youtubeVideos(source, config.youtubeKey, ttl(YOUTUBE_CACHE), cacheDeps, fetch)
-      : [];
+    source && config.youtubeKey ? await youtubeVideos(source, config.youtubeKey, YOUTUBE_CACHE, cacheDeps, fetch) : [];
   const videos = mergeVideos(channel, data.videos ?? []);
   if (config.demo && videos.length === 0) return { data: DEMO_VIDEOS, unavailable: false };
   return { data: videos, unavailable: unavailable && videos.length === 0 };

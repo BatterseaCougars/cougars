@@ -8,7 +8,9 @@
   const type = $derived(typeById(typeId)!);
   const tournament = $derived(currentTournament(typeId));
   const matches = $derived(tournament?.id === SAMPLE_TOURNAMENT_ID ? MATCHES : []);
-  const points = $derived({ win: type.pointsWin, draw: type.pointsDraw, loss: type.pointsLoss });
+  // This tournament's own points (ADR 0049), else the series'
+  const rules = $derived(tournament ?? type);
+  const points = $derived({ win: rules.pointsWin, draw: rules.pointsDraw, loss: rules.pointsLoss });
   const table = $derived(standings(matches, points));
   const top = $derived(leaders(matches).slice(0, 8));
 </script>
@@ -32,8 +34,8 @@
     </table>
   </div>
   <p class="hint">
-    Points, then goal difference, then goals for. Win {type.pointsWin}, draw {type.pointsDraw}, loss
-    {type.pointsLoss}: set under Settings → Tournaments.
+    Points, then goal difference, then goals for. Win {rules.pointsWin}, draw {rules.pointsDraw}, loss
+    {rules.pointsLoss}: set under Settings → Tournaments.
   </p>
 
   <h2 class="section-title">Points leaders</h2>

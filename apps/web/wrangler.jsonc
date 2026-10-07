@@ -15,7 +15,6 @@
     {
       "binding": "DB",
       "database_name": "cougars",
-      "migrations_dir": "../../db/migrations",
     },
   ],
 }

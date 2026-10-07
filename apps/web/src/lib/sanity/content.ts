@@ -2,14 +2,15 @@
 // rebuilds daily and on each release (ADR 0018). Until a Sanity project is configured, pages
 // render from the fallback club facts (fallback.ts) and empty lists. The merge
 // rules are in merge.ts.
-import { CACHE_READS, DEMO_CONTENT } from "astro:env/server";
+import { DEMO_CONTENT } from "astro:env/server";
 import { onWorker, sanity } from "./client";
 import * as q from "./queries";
 import { FALLBACK_CLUB, FALLBACK_FRIDAYS, FALLBACK_KUMITE, FALLBACK_PUB, FALLBACK_TEAM } from "./fallback";
 import { liveVideos } from "../server/videos";
 import { videosConfig } from "../server/sanity-env";
 import { demoAlbums, DEMO_EVENTS, DEMO_KUMITE_RESULTS, DEMO_PLAYERS } from "./demo";
-import { toAlbum } from "../server/photos";
+import { sanityError, toAlbum } from "../server/photos";
+import { guard } from "../../../../../shared/breaker";
 import { toPlayer, type RosterRow } from "../roster";
 import { listOr, mergeClub, mergeFridays, mergeKumite, mergePub, mergeTeam, newestFirst } from "./merge";
 import type { Album, ClubEvent, KumiteResult, Player, SiteSettings, Sponsor, Award } from "./types";
@@ -19,14 +20,26 @@ import type { Album, ClubEvent, KumiteResult, Player, SiteSettings, Sponsor, Awa
 // production. Pages built with it are noindex.
 export const demo = DEMO_CONTENT;
 
+/** In `astro dev`: why Sanity couldn't be read on the last try, or "". The layout shows it in a banner. */
+export const devSanity = { problem: "" };
+
 async function fetchOr<T>(query: string, fallback: T): Promise<T> {
   const client = sanity();
   if (!client) return fallback;
   try {
-    return (await client.fetch<T | null>(query)) ?? fallback;
+    // Behind the same circuit breaker as the live reads (ADR 0055): a spent quota stops every Sanity call
+    const result = await guard("sanity", () =>
+      client.fetch<T | null>(query).catch((e: { statusCode?: number }) => {
+        throw e?.statusCode ? sanityError(e.statusCode) : e;
+      }),
+    );
+    if (import.meta.env.DEV) devSanity.problem = "";
+    return result ?? fallback;
   } catch (error) {
-    // A build fails loudly; a server route (ADR 0016) renders with the fallback rather than a 500.
-    if (!onWorker) throw error;
+    // A build fails loudly. A server route (ADR 0016), and a page in `astro dev`, render with the fallback rather
+    // than an error page (ADR 0058): degraded, not broken.
+    if (!onWorker && !import.meta.env.DEV) throw error;
+    if (import.meta.env.DEV) devSanity.problem = String(error);
     console.error(JSON.stringify({ event: "content.sanity_error", error: String(error) }));
     return fallback;
   }
@@ -36,12 +49,12 @@ async function fetchOr<T>(query: string, fallback: T): Promise<T> {
 const fetchList = async <T>(query: string, demoList: T[] | null = null) =>
   listOr(await fetchOr<T[] | null>(query, null), demo ? demoList : null);
 
-// Once per build. On the production Worker, an isolate lives on between requests, so re-read every five minutes.
-// `astro dev` and the dev Worker re-read on every call, so a Studio change shows on the next page load.
+// Once per build. A Worker isolate lives on between requests, so it re-reads every five minutes; `astro dev` every
+// minute, so a Studio change shows soon without a query per page load (ADR 0054).
 const memo = <T>(fn: () => Promise<T>) => {
   let p: Promise<T> | undefined;
   let at = 0;
-  const reuse = () => !import.meta.env.DEV && (!onWorker || (CACHE_READS && Date.now() - at < 5 * 60_000));
+  const reuse = () => (import.meta.env.DEV ? Date.now() - at < 60_000 : !onWorker || Date.now() - at < 5 * 60_000);
   return () => {
     if (!p || !reuse()) [p, at] = [fn(), Date.now()];
     return p;

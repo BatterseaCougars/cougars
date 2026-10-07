@@ -1,5 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { CLUB_ADDRESS, clearTokenCache, MailRefused, mime, safeMail, sendMail, type MailConfig } from "./email";
+import { BreakerOpen, resetBreakers } from "./breaker";
+import {
+  CLUB_ADDRESS,
+  clearTokenCache,
+  mailPausedUntil,
+  MailRefused,
+  mime,
+  safeMail,
+  sendMail,
+  type MailConfig,
+} from "./email";
 
 const gmail = { clientId: "id", clientSecret: "secret", refreshToken: "refresh" };
 const enquiry = {
@@ -13,7 +23,7 @@ const idToken = (email: string) =>
   `x.${btoa(JSON.stringify({ email })).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "")}.y`;
 
 // The network boundary: Google's token endpoint and the Gmail API. Records every email that would leave.
-function fakeGoogle({ account = "cougars.dev@gmail.com", tokenStatus = 200 } = {}) {
+function fakeGoogle({ account = "cougars.dev@gmail.com", tokenStatus = 200, sendStatus = 200 } = {}) {
   const sent: { to: string; subject: string; raw: string }[] = [];
   let tokenCalls = 0;
   const fetch = vi.fn(async (input: string | URL, init?: RequestInit) => {
@@ -23,6 +33,11 @@ function fakeGoogle({ account = "cougars.dev@gmail.com", tokenStatus = 200 } = {
       if (tokenStatus !== 200) return Response.json({ error: "invalid_grant" }, { status: tokenStatus });
       return Response.json({ access_token: "at", expires_in: 3600, id_token: idToken(account) });
     }
+    if (sendStatus !== 200)
+      return Response.json(
+        { error: { message: "Too many", errors: [{ reason: "rateLimitExceeded" }] } },
+        { status: sendStatus },
+      );
     const raw = atob(JSON.parse(String(init?.body)).raw.replace(/-/g, "+").replace(/_/g, "/"));
     sent.push({ to: raw.match(/^To: (.*)$/m)![1], subject: raw.match(/^Subject: (.*)$/m)![1], raw });
     return Response.json({ id: `msg${sent.length}` });
@@ -55,9 +70,28 @@ describe("safeMail", () => {
 describe("sendMail", () => {
   beforeEach(() => {
     clearTokenCache();
+    resetBreakers();
     vi.spyOn(console, "log").mockImplementation(() => {});
   });
   afterEach(() => vi.restoreAllMocks());
+
+  it("stops sending for a while once Gmail says the account is sending too much", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const google = fakeGoogle({ sendStatus: 429 });
+    await expect(sendMail(enquiry, config(), { fetch: google.fetch })).rejects.toThrow("Gmail send: 429");
+    expect(await mailPausedUntil()).toBeGreaterThan(Date.now());
+    const calls = google.mock.mock.calls.length;
+    await expect(sendMail(enquiry, config(), { fetch: google.fetch })).rejects.toBeInstanceOf(BreakerOpen);
+    expect(google.mock.mock.calls.length).toBe(calls); // Google wasn't asked again
+  });
+
+  it("doesn't pause Gmail for a refusal of ours", async () => {
+    const google = fakeGoogle();
+    await expect(
+      sendMail(enquiry, config({ siteEnv: "dev", safeTo: CLUB_ADDRESS }), { fetch: google.fetch }),
+    ).rejects.toBeInstanceOf(MailRefused);
+    expect(await mailPausedUntil()).toBeNull();
+  });
 
   it("on dev, sends from the dev account to itself, never to the club", async () => {
     const google = fakeGoogle();

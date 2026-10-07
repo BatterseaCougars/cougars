@@ -1,6 +1,7 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createTestD1 } from "../../../../../shared/testing/d1-sqlite";
-import { whatsOn } from "./whats-on";
+import { clearCache } from "./cache";
+import { cachedWhatsOn, whatsOn } from "./whats-on";
 
 // Tuesday 6 October 2026, late morning in London
 const NOW = new Date("2026-10-06T11:00:00Z");
@@ -47,8 +48,28 @@ describe("what's on", () => {
     expect(items[0].venue).toBe("Battersea Sports Centre");
   });
 
+  it("shows a tournament that's just a season as the season, sorted at its end", async () => {
+    db.raw.prepare("UPDATE tournaments SET season = 'summer', held_on = '2027-08-31'").run();
+    const kumite = (await whatsOn(db, NOW)).find((i) => i.title === "The Cougars Kumite");
+    expect(kumite).toMatchObject({ season: "Summer 2027", dateTbc: true });
+  });
+
   it("leaves out what isn't public", async () => {
     db.raw.exec("UPDATE training_series SET public = 0; UPDATE tournaments SET public = 0");
     expect((await whatsOn(db, NOW)).map((i) => i.title)).toEqual(["Summer social", "Kit day"]);
+  });
+
+  it("reads the calendar once a minute, however many people look", async () => {
+    clearCache();
+    const prepare = vi.spyOn(db, "prepare");
+    let t = NOW.getTime();
+    const deps = { now: () => t, edge: null };
+    const first = await cachedWhatsOn(db, undefined, deps);
+    const reads = prepare.mock.calls.length;
+    for (let i = 0; i < 5; i++) expect(await cachedWhatsOn(db, undefined, deps)).toBe(first);
+    expect(prepare.mock.calls.length).toBe(reads);
+    t += 61_000;
+    await cachedWhatsOn(db, undefined, deps);
+    expect(prepare.mock.calls.length).toBe(reads * 2);
   });
 });

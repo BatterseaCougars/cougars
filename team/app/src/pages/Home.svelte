@@ -160,13 +160,8 @@
             </a>
           {/if}
           <div class="status-row">
-            {#if booking.venue}
-              <a
-                class="status"
-                href="https://www.google.com/maps/search/?api=1&query={encodeURIComponent(booking.venue)}"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
+            {#if booking.mapUrl}
+              <a class="status" href={booking.mapUrl} target="_blank" rel="noopener noreferrer">
                 <Icon name="pin" size={18} />
                 <span>Directions</span>
               </a>

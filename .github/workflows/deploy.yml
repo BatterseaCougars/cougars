@@ -100,12 +100,12 @@ jobs:
       - name: Target ${{ env.SITE_ENV }}
         run: node scripts/ci/target.mjs "$SITE_ENV"
 
-      # Each environment has its own database, so a PR migrates dev, never production.
-      # Keep migrations additive (db/README.md).
-      - name: Apply D1 migrations
+      # Not live yet, so no migrations (ADR 0050): the database is rebuilt from db/schema.sql, keeping its data, and
+      # topped up with the club's seed. Each environment has its own database, so a PR rebuilds dev, never production.
+      - name: Rebuild D1 from the schema
         working-directory: apps/web
         # D1 commands don't follow the build's config redirect, so name the generated config
-        run: npx wrangler d1 migrations apply DB --remote -c dist/server/wrangler.json
+        run: node ../../scripts/db-rebuild.mjs --remote -c dist/server/wrangler.json
 
       # The team roster: personal data, so it lives in Secrets Manager (TEAM_ROSTER), never in this public repo
       # (ADR 0033). Adds players who aren't there yet and changes no one, so it's safe on every deploy.

@@ -5,7 +5,7 @@
   import ScheduleCards, { type ScheduleCard } from "../lib/ScheduleCards.svelte";
   import EditorPanel from "../lib/EditorPanel.svelte";
   import TrainingEditor from "../lib/TrainingEditor.svelte";
-  import { nextSession, sessionBookable } from "../demo/schedule.svelte";
+  import { nextSession, seriesPlace, sessionBookable } from "../demo/schedule.svelte";
   import { db } from "../demo/store.svelte";
   import { formatDayDate, londonToday, pounds } from "../lib/dates";
   import { feeOn } from "../lib/dues";
@@ -27,7 +27,7 @@
         name: s.name,
         next: next ? formatDayDate(sessionBookable(next).startsAt) : "No sessions coming up",
         lines: [
-          `${s.startTime}–${s.endTime} · ${s.venue || "No venue"}`,
+          `${s.startTime}–${s.endTime} · ${seriesPlace(s)?.name ?? "No venue"}`,
           `${pounds(feeOn(s.fees, londonToday())) || "Free"} a session`,
           ...(next ? [`${next.going.length}${s.capacity ? ` / ${s.capacity}` : ""} in`] : []),
         ],

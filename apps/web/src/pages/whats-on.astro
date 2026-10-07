@@ -4,7 +4,7 @@
 import { env } from "cloudflare:workers";
 import WhatsOn from "../components/WhatsOn.astro";
 import { getSettings } from "../lib/sanity/content";
-import { whatsOn, type WhatsOnItem } from "../lib/server/whats-on";
+import { cachedWhatsOn, type WhatsOnItem } from "../lib/server/whats-on";
 import { cacheControl } from "../lib/server/sanity-env";
 
 export const prerender = false;
@@ -13,7 +13,7 @@ export const partial = true;
 let items: WhatsOnItem[] = [];
 let unavailable = false;
 try {
-  items = await whatsOn(env.DB);
+  items = await cachedWhatsOn(env.DB);
 } catch (error) {
   console.error(JSON.stringify({ event: "whats_on.d1_error", error: String(error) }));
   unavailable = true;

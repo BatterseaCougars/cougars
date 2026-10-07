@@ -687,7 +687,7 @@ button.row:hover:not(:disabled) {
   padding: 0 var(--s-3);
   font-size: var(--text-xs);
 }
-.seg > button:hover:not([aria-pressed="true"]) {
+.seg > button:hover:not([aria-pressed="true"], [aria-selected="true"]) {
   color: var(--fg);
 }
 .seg > button[aria-pressed="true"],

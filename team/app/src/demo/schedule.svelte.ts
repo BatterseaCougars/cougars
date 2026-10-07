@@ -1,15 +1,36 @@
 // Reading the schedule: sessions resolved against their series, the next session or tournament, and the
 // calendar as one list. Everything here reads `db`, so pages that use it update when an admin edits a series.
 import { formatDayDate, londonISO, londonToday } from "../lib/dates";
-import type { Bookable, Tournament, TrainingSeries, TrainingSession } from "./model";
+import type { Bookable, OneOff, Tournament, TournamentType, TrainingSeries, TrainingSession } from "./model";
 import { db } from "./store.svelte";
+import { seasonLabel, seasonYear } from "../../../../shared/seasons";
+import { placeOf, type Place } from "../../../../shared/places";
 
 export const seriesById = (id: number) => db.series.find((s) => s.id === id);
-export const typeById = (id: number) => db.tournamentTypes.find((t) => t.id === id);
+export const typeById = (id: number | null) => db.tournamentTypes.find((t) => t.id === id);
 
-/** When a tournament is, for a line of text: "Sat 12 June · 11:00–16:00", or "Date TBC" until it's confirmed. */
+/**
+ * When a tournament is, for a line of text: "Sat 12 June · 11:00–16:00", "Summer 2027" while it's just a season, or
+ * "Date TBC" until it's confirmed.
+ */
 export const whenOf = (t: Tournament) =>
-  t.dateConfirmed ? `${formatDayDate(londonISO(t.heldOn, t.startTime))} · ${t.startTime}–${t.endTime}` : "Date TBC";
+  t.season
+    ? seasonLabel(t.season, t.heldOn)
+    : t.dateConfirmed
+      ? `${formatDayDate(londonISO(t.heldOn, t.startTime))} · ${t.startTime}–${t.endTime}`
+      : "Date TBC";
+
+// Where each thing really is (ADR 0051): its saved venue, else its own name and map link, else its series' place
+export const seriesPlace = (s: TrainingSeries) =>
+  placeOf({ venueId: s.venueId, name: s.venue, mapUrl: s.mapUrl }, db.venues);
+export const typePlace = (t: TournamentType | undefined) =>
+  t ? placeOf({ venueId: t.venueId, name: t.location, mapUrl: t.mapUrl }, db.venues) : null;
+export const tournamentPlace = (t: Tournament) =>
+  placeOf({ venueId: t.venueId, name: t.location, mapUrl: t.mapUrl }, db.venues, typePlace(typeById(t.typeId)));
+export const oneOffPlace = (o: OneOff) => placeOf({ venueId: o.venueId, name: o.venue, mapUrl: o.mapUrl }, db.venues);
+
+/** A Bookable's where: the name, the address and the map link. */
+const where = (p: Place | null) => ({ venue: p?.name ?? "", address: p?.address ?? "", mapUrl: p?.mapUrl ?? "" });
 
 /** A session with the series filled in where it doesn't override. */
 export function resolve(session: TrainingSession, series = seriesById(session.seriesId)!) {
@@ -19,7 +40,11 @@ export function resolve(session: TrainingSession, series = seriesById(session.se
     heldOn: session.heldOn,
     startTime: session.startTime ?? series.startTime,
     endTime: session.endTime ?? series.endTime,
-    venue: session.venue ?? series.venue,
+    place: placeOf(
+      { venueId: session.venueId ?? null, name: session.venue ?? "", mapUrl: session.mapUrl ?? "" },
+      db.venues,
+      seriesPlace(series),
+    ),
     capacity: session.capacity ?? series.capacity,
     cancelled: Boolean(session.cancelledAt),
   };
@@ -36,7 +61,7 @@ export function sessionBookable(session: TrainingSession): Bookable {
     title: r.series.name,
     startsAt: londonISO(r.heldOn, r.startTime),
     endsAt: londonISO(r.heldOn, r.endTime),
-    venue: r.venue,
+    ...where(r.place),
     signup: !r.cancelled,
     capacity: r.capacity,
     cancelled: r.cancelled,
@@ -46,21 +71,23 @@ export function sessionBookable(session: TrainingSession): Bookable {
 }
 
 export function tournamentBookable(t: Tournament): Bookable {
-  const type = typeById(t.typeId)!;
+  // One on its own, in no series: a trophy in the club's red, with no section of its own to link to
+  const type = typeById(t.typeId);
   return {
     key: `tournament:${t.id}`,
     kind: "tournament",
-    filter: `type:${type.id}`,
-    icon: type.icon,
-    tone: type.tone,
+    filter: type ? `type:${type.id}` : "tournaments",
+    icon: type?.icon ?? "trophy",
+    tone: type?.tone ?? "red",
     title: t.name,
     startsAt: londonISO(t.heldOn, t.startTime),
     endsAt: londonISO(t.heldOn, t.endTime),
-    venue: t.venue,
+    ...where(tournamentPlace(t)),
     signup: t.status === "open" && !signupClosed(t),
     capacity: t.capacity,
     dateTbc: !t.dateConfirmed,
-    href: `/tournaments/${type.slug}`,
+    season: t.season ? { name: t.season, year: seasonYear(t.season, t.heldOn) } : undefined,
+    href: type ? `/tournaments/${type.slug}` : undefined,
     entries: t,
   };
 }
@@ -85,7 +112,7 @@ export function calendar(today = londonToday()): Bookable[] {
   const start = londonISO(today, "00:00");
   return [
     ...db.sessions.filter((s) => s.heldOn >= today && seriesById(s.seriesId)).map(sessionBookable),
-    ...db.tournaments.filter((t) => t.heldOn >= today && typeById(t.typeId)).map(tournamentBookable),
+    ...db.tournaments.filter((t) => t.heldOn >= today).map(tournamentBookable),
     ...db.oneOffs
       .filter((o) => o.startsAt >= start)
       .map((o): Bookable => ({
@@ -97,7 +124,7 @@ export function calendar(today = londonToday()): Bookable[] {
         title: o.title,
         startsAt: o.startsAt,
         endsAt: o.endsAt,
-        venue: o.venue,
+        ...where(oneOffPlace(o)),
         description: o.description,
         signup: o.signup && !o.cancelledAt,
         capacity: o.capacity,

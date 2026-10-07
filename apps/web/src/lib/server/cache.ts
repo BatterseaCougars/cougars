@@ -5,7 +5,8 @@
 //      domain (roadmap M5); on *.workers.dev its calls do nothing, which is fine.
 //   3. The source itself. Concurrent misses share one fetch.
 // If the source fails, the last good value is served for up to `staleMs`, so a YouTube outage or a spent quota
-// shows yesterday's list rather than nothing.
+// shows yesterday's list rather than nothing. Every live read goes through here (ADR 0054); the sources themselves
+// are behind circuit breakers (shared/breaker.ts, ADR 0055).
 
 interface Entry<T> {
   value: T;
@@ -26,7 +27,14 @@ export interface CacheDeps {
   edge?: Pick<Cache, "match" | "put"> | null;
 }
 
+// Bounded, so made-up addresses (an album slug, a player id) can't grow it forever; the oldest goes first.
+const MAX_ENTRIES = 500;
 const memory = new Map<string, Entry<unknown>>();
+function remember(key: string, entry: Entry<unknown>) {
+  memory.delete(key);
+  memory.set(key, entry);
+  if (memory.size > MAX_ENTRIES) memory.delete(memory.keys().next().value!);
+}
 const inFlight = new Map<string, Promise<unknown>>();
 
 // The edge cache stores Responses under URLs; this host is never fetched, it only names entries.
@@ -54,18 +62,20 @@ export async function cached<T>(
   const refresh = (async () => {
     const shared = await edgeGet<T>(edge, key);
     if (shared && now() - shared.at < ttlMs) {
-      memory.set(key, shared);
+      remember(key, shared);
       return shared.value;
     }
     try {
       const entry = { value: await load(), at: now() };
-      memory.set(key, entry);
+      remember(key, entry);
       await edgePut(edge, key, entry, ttlMs + staleMs);
       return entry.value;
     } catch (error) {
       const last = [hit, shared].filter((e): e is Entry<T> => !!e).sort((a, b) => b.at - a.at)[0];
       if (last && now() - last.at < ttlMs + staleMs) {
-        console.warn(JSON.stringify({ event: "cache.stale", key, error: String(error) }));
+        // A paused source (circuit breaker) was logged once when it paused
+        if ((error as Error)?.name !== "BreakerOpen")
+          console.warn(JSON.stringify({ event: "cache.stale", key, error: String(error) }));
         return last.value;
       }
       throw error;
@@ -97,6 +107,13 @@ async function edgePut<T>(edge: CacheDeps["edge"], key: string, entry: Entry<T>,
   } catch {
     // as above
   }
+}
+
+/** A short, stable name for a query and its parameters, for cache keys. */
+export function hashKey(text: string): string {
+  let h = 0x811c9dc5; // FNV-1a
+  for (let i = 0; i < text.length; i++) h = Math.imul(h ^ text.charCodeAt(i), 0x01000193);
+  return (h >>> 0).toString(36);
 }
 
 /** Forget everything (tests). */

@@ -19,7 +19,9 @@ a new ADR that supersedes it, never a quiet edit.
 - **Never deploy to production by hand.** Production deploys only from the `release` branch via
   `.github/workflows/deploy.yml`; `main` and PRs deploy dev ([ADR 0013](docs/adr/0013-main-deploys-dev.md)).
   Dev is a separate Cloudflare account (worker `cougars-dev`) ([ADR 0010](docs/adr/0010-two-environments.md)). Your machine is dev; production secrets are `NAME__PRODUCTION`.
-- **D1 migrations are additive.** Never edit a migration that has run. See db/README.md.
+- **Not live yet: no migrations.** The database is `db/schema.sql` plus `db/seed/club.sql`; change them and run
+  `npm run db:rebuild:local` (dev rebuilds on deploy), which keeps the data. Dev's data becomes production at
+  launch; only then do migrations start ([ADR 0050](docs/adr/0050-schema-and-seed-until-launch.md), db/README.md).
 - `archive/` is read-only reference. Don't import from it.
 
 ## Web app (apps/web)
@@ -38,6 +40,12 @@ Worker ([ADR 0022](docs/adr/0022-team-app-svelte-pwa.md)); its permissions follo
 - Forms must work without JavaScript (POST + 303 redirect), enhanced with fetch + JSON.
 - Dates: always format in Europe/London via `src/lib/dates.ts`.
 - Images: Sanity CDN via `src/lib/sanity/images.ts`; local assets in `src/assets/` (no `public/` except favicons).
+
+## Team app dev server (team/app)
+
+- A library the browser imports goes in team/app `package.json` **dependencies** (not devDependencies). Vite
+  pre-bundles exactly that list at startup; `scripts/team-app-deps.test.mjs` enforces it ([ADR 0047](docs/adr/0047-team-app-dev-server-bundles-up-front.md)).
+- One dev server on 4510. A second `vite` is refused; stop the running one to restart. Never `--force` beside it.
 
 ## Tests
 

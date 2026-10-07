@@ -1,7 +1,10 @@
-// Photo albums, read live from Sanity on every request (ADR 0016), so a published album is on the site
-// without a rebuild. Reads go through Sanity's API CDN with plain fetch (no client library in the Worker).
+// Photo albums, read live from Sanity (ADR 0016), so a published album is on the site without a rebuild. Reads go
+// through Sanity's API CDN with plain fetch (no client library in the Worker), behind a circuit breaker
+// (ADR 0055), and are cached for a minute (ADR 0054).
 // When Sanity can't be reached, callers get empty data and `unavailable: true` and show a friendly empty
 // state instead of an error page. With DEMO_CONTENT, the sample albums stand in until Sanity has some.
+import { HttpFailure, QuotaError, guard, retryAfter } from "../../../../../shared/breaker";
+import { cached, hashKey, type CacheOptions } from "./cache";
 import * as q from "../sanity/queries";
 import { demoAlbums as rawDemoAlbums } from "../sanity/demo";
 import type { Album, AlbumSummary, Photo, SanityImage } from "../sanity/types";
@@ -12,8 +15,6 @@ export interface PhotosConfig {
   /** Viewer token. Only needed for a private dataset; Sanity's free plan only has public ones. */
   token?: string;
   demo?: boolean;
-  /** False outside production: read Sanity's API directly, not its CDN, and cache nothing (CACHE_READS). */
-  cache?: boolean;
 }
 
 /** Browsers re-check after a minute; Cloudflare's edge keeps a page for five (once there's a domain, M5). */
@@ -22,6 +23,8 @@ export const CACHE_CONTROL = "public, max-age=60, s-maxage=300, stale-while-reva
 export const UNAVAILABLE_CACHE_CONTROL = "no-store";
 
 export const API_VERSION = "v2025-01-01";
+/** Fresh for a minute, so a Studio change shows soon; the last good copy for a day if Sanity fails. */
+export const PHOTOS_CACHE: CacheOptions = { ttlMs: 60_000, staleMs: 24 * 60 * 60_000 };
 const TIMEOUT_MS = 5000;
 
 export type Live<T> = { data: T; unavailable: boolean };
@@ -36,14 +39,22 @@ interface RawAlbum {
   photoCount?: number | null;
 }
 
-/** Run a GROQ query against the published content on Sanity's API CDN. Throws on any failure. */
-export async function sanityQuery<T>(
-  config: PhotosConfig,
-  query: string,
-  params: Record<string, string> = {},
-): Promise<T> {
-  const host = config.cache === false ? "api" : "apicdn";
-  const url = new URL(`https://${config.projectId}.${host}.sanity.io/${API_VERSION}/data/query/${config.dataset}`);
+/**
+ * Sanity's answer as an error the circuit breaker understands: 402 is a spent plan quota (look again in an hour),
+ * 429 too many requests at once.
+ */
+export function sanityError(status: number, res?: Response, now = Date.now()): Error {
+  if (status === 402) return new QuotaError("Sanity: HTTP 402, the plan's quota is spent", now + 60 * 60_000);
+  if (status === 429) return new QuotaError("Sanity: HTTP 429", res ? retryAfter(res, 60_000, now) : now + 60_000);
+  return new HttpFailure(`Sanity query failed: HTTP ${status}`, status);
+}
+
+/** Run a GROQ query against the published content on Sanity's API CDN. Throws on any failure, or while paused. */
+export const sanityQuery = <T>(config: PhotosConfig, query: string, params: Record<string, string> = {}) =>
+  guard("sanity", () => querySanity<T>(config, query, params));
+
+async function querySanity<T>(config: PhotosConfig, query: string, params: Record<string, string>): Promise<T> {
+  const url = new URL(`https://${config.projectId}.apicdn.sanity.io/${API_VERSION}/data/query/${config.dataset}`);
   url.searchParams.set("query", query);
   url.searchParams.set("perspective", "published");
   for (const [k, v] of Object.entries(params)) url.searchParams.set(`$${k}`, JSON.stringify(v));
@@ -51,7 +62,7 @@ export async function sanityQuery<T>(
     headers: config.token ? { Authorization: `Bearer ${config.token}` } : {},
     signal: AbortSignal.timeout(TIMEOUT_MS),
   });
-  if (!res.ok) throw new Error(`Sanity query failed: HTTP ${res.status}`);
+  if (!res.ok) throw sanityError(res.status, res);
   return ((await res.json()) as { result: T }).result;
 }
 
@@ -68,7 +79,9 @@ async function live<Raw, T>(
     config.demo ? { data: demoData(), unavailable: false } : { data: map(null), unavailable };
   if (!config.projectId) return fallback(false);
   try {
-    const data = map(await sanityQuery<Raw | null>(config, query, params));
+    const key = `sanity:${config.projectId}:${config.dataset}:${hashKey(query + JSON.stringify(params))}`;
+    const raw = await cached(key, PHOTOS_CACHE, () => sanityQuery<Raw | null>(config, query, params));
+    const data = map(raw);
     return config.demo && isEmpty(data) ? fallback(false) : { data, unavailable: false };
   } catch (error) {
     console.error(JSON.stringify({ event: "photos.sanity_error", error: String(error) }));

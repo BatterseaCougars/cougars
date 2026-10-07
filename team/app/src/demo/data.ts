@@ -1,7 +1,7 @@
-// The club's data as the app holds it: filled from D1 by /api/bootstrap before the app mounts (app/backend.ts),
-// and refreshed after each change. The shapes match the D1 tables (docs/team-app-data-model.md).
+// The club's data as the app holds it: filled from D1 by /api/bootstrap before the app mounts (app/backend.ts);
+// after a change, only the parts it touched come back and are put in place (applySlices). The shapes match the D1 tables (docs/team-app-data-model.md).
 import type { Action } from "../access/actions";
-import type { OneOff, Tournament, TournamentType, TrainingSeries, TrainingSession } from "./model";
+import type { OneOff, Tournament, TournamentType, TrainingSeries, TrainingSession, Venue } from "./model";
 import type { Quip } from "../lib/quips";
 import type { Team } from "../lib/snake";
 
@@ -39,6 +39,7 @@ export const emailFor = (p: Player) => EMAILS.get(p.id) ?? "No email yet";
 /** Their bank reference (ADR 0038), or a dash: one that isn't sent is never made up, as it's what they pay with. */
 export const referenceFor = (id: number) => REFERENCES.get(id) ?? "—";
 
+export const VENUES: Venue[] = [];
 export const SERIES: TrainingSeries[] = [];
 export const SESSIONS: TrainingSession[] = [];
 export const TOURNAMENT_TYPES: TournamentType[] = [];
@@ -90,6 +91,7 @@ export interface Bootstrap {
     quarterly: boolean;
   }[];
   roles: Role[];
+  venues: Venue[];
   series: TrainingSeries[];
   sessions: (TrainingSession & { teams: Team[] })[];
   tournamentTypes: TournamentType[];
@@ -105,42 +107,55 @@ export const TEAMS: Record<number, Team[]> = {};
 
 const fill = <T>(list: T[], items: T[]) => list.splice(0, list.length, ...items);
 
-/** Put the club's data in place. Runs before the app mounts, and again after each change. */
+/** The parts of the club's data that a change sends back (worker/api.ts SLICES): all of it but who you are. */
+export type Slices = Partial<Omit<Bootstrap, "me" | "actions">>;
+
+/** Put the club's data in place. Runs before the app mounts, and again whenever the whole club is reloaded. */
 export function hydrate(b: Bootstrap) {
   REAL_ID = b.me;
-  EVERYDAY_ROLE = b.everydayRole ?? null;
-  EMAILS.clear();
-  REFERENCES.clear();
-  PHONES.clear();
-  const players = b.members.map((m) => {
-    EMAILS.set(m.id, m.email);
-    REFERENCES.set(m.id, m.paymentReference);
-    PHONES.set(m.id, m.phone);
-    const { id, name, position, rating, cougar, bio, webName, played } = m;
-    return { id, name, position, rating, cougar, bio, webName, played };
-  });
-  fill(PLAYERS, players);
-  fill(
-    MEMBERS,
-    b.members.map((m, i) => ({
-      player: players[i],
-      status: m.status,
-      roles: m.roles,
-      plan: m.quarterly ? ("Subscription" as const) : ("Pay as you go" as const),
-    })),
-  );
-  fill(ROLES, b.roles);
-  fill(SERIES, b.series);
-  fill(
-    SESSIONS,
-    b.sessions.map(({ teams: _, ...s }) => s),
-  );
-  for (const k of Object.keys(TEAMS)) delete TEAMS[Number(k)];
-  for (const s of b.sessions) if (s.teams.length) TEAMS[s.id] = s.teams;
-  fill(QUIPS, b.quips);
-  fill(TOURNAMENT_TYPES, b.tournamentTypes);
-  fill(TOURNAMENTS, b.tournaments);
-  fill(ONE_OFFS, b.clubEvents);
+  applySlices(b);
+}
+
+/** Put the parts of the club's data that came back in place; the rest stays as it is. */
+export function applySlices(b: Slices) {
+  if (b.everydayRole !== undefined) EVERYDAY_ROLE = b.everydayRole;
+  if (b.members) {
+    EMAILS.clear();
+    REFERENCES.clear();
+    PHONES.clear();
+    const players = b.members.map((m) => {
+      EMAILS.set(m.id, m.email);
+      REFERENCES.set(m.id, m.paymentReference);
+      PHONES.set(m.id, m.phone);
+      const { id, name, position, rating, cougar, bio, webName, played } = m;
+      return { id, name, position, rating, cougar, bio, webName, played };
+    });
+    fill(PLAYERS, players);
+    fill(
+      MEMBERS,
+      b.members.map((m, i) => ({
+        player: players[i],
+        status: m.status,
+        roles: m.roles,
+        plan: m.quarterly ? ("Subscription" as const) : ("Pay as you go" as const),
+      })),
+    );
+  }
+  if (b.roles) fill(ROLES, b.roles);
+  if (b.venues) fill(VENUES, b.venues);
+  if (b.series) fill(SERIES, b.series);
+  if (b.sessions) {
+    fill(
+      SESSIONS,
+      b.sessions.map(({ teams: _, ...s }) => s),
+    );
+    for (const k of Object.keys(TEAMS)) delete TEAMS[Number(k)];
+    for (const s of b.sessions) if (s.teams.length) TEAMS[s.id] = s.teams;
+  }
+  if (b.quips) fill(QUIPS, b.quips);
+  if (b.tournamentTypes) fill(TOURNAMENT_TYPES, b.tournamentTypes);
+  if (b.tournaments) fill(TOURNAMENTS, b.tournaments);
+  if (b.clubEvents) fill(ONE_OFFS, b.clubEvents);
 }
 
 /** The old app's names: the Cougar players' team is "Cougars", the rest are colours (archive/team-manager). */

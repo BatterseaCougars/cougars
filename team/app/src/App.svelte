@@ -21,10 +21,12 @@
   import Roles from "./pages/Roles.svelte";
   import Standings from "./pages/Standings.svelte";
   import Teammates from "./pages/Teammates.svelte";
+  import TournamentSeries from "./pages/TournamentSeries.svelte";
   import TournamentSettings from "./pages/TournamentSettings.svelte";
   import Training from "./pages/Training.svelte";
   import TrainingSettings from "./pages/TrainingSettings.svelte";
   import Upload from "./pages/Upload.svelte";
+  import Venues from "./pages/Venues.svelte";
 
   // Page components by route.page; a route's params (seriesId, typeId) are passed as props. Pages take different
   // props, so the map is loosely typed; nav-routes.ts is what pairs each page with its params.
@@ -45,6 +47,8 @@
     roles: Roles,
     "training-settings": TrainingSettings,
     "tournament-settings": TournamentSettings,
+    "tournament-series": TournamentSeries,
+    venues: Venues,
     fees: Fees,
     overdue: Overdue,
     quips: Quips,

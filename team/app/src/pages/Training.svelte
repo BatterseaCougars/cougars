@@ -17,7 +17,7 @@
   import { formatDayDate } from "../lib/dates";
   import { describeRule } from "../lib/recurrence";
   import { snakeTeams, type Team } from "../lib/snake";
-  import { nextSession, resolve, seriesById, sessionBookable } from "../demo/schedule.svelte";
+  import { nextSession, resolve, seriesById, seriesPlace, sessionBookable } from "../demo/schedule.svelte";
 
   let { seriesId }: { seriesId: number } = $props();
 
@@ -27,6 +27,7 @@
   const series = $derived((last.series = seriesById(seriesId) ?? last.series)!);
   const session = $derived(nextSession(series));
   const info = $derived(session && resolve(session, series));
+  const usual = $derived(seriesPlace(series));
   const who = $derived(me());
   const ratings = $derived(can(perms, "read:Rating"));
   const next = $derived(session ?? { id: 0, going: [] as number[], waitlist: [] as number[] });
@@ -140,7 +141,7 @@
 <div class="page">
   <PageHeader
     title={series.name}
-    subtitle="{describeRule(series)} · {series.startTime}–{series.endTime} · {series.venue}"
+    subtitle="{describeRule(series)} · {series.startTime}–{series.endTime}{usual ? ` · ${usual.name}` : ''}"
   >
     {#snippet toolbar()}
       {#if session}
@@ -167,9 +168,10 @@
   {#if !session}
     <p class="note">No sessions coming up. An admin can set the dates under Settings → Training.</p>
   {:else}
-    {#if info && (info.venue !== series.venue || info.startTime !== series.startTime)}
+    {#if info && (info.place?.name !== usual?.name || info.startTime !== series.startTime)}
       <p class="note">
-        This week: {formatDayDate(sessionBookable(session).startsAt)}, {info.startTime} at {info.venue}.
+        This week: {formatDayDate(sessionBookable(session).startsAt)}, {info.startTime} at {info.place?.name ??
+          "somewhere new"}.
       </p>
     {/if}
 

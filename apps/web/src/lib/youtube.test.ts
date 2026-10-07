@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { resetBreakers } from "../../../../shared/breaker";
 import fixtures from "./fixtures/youtube.json";
 import type { Video, VideoOverride } from "./sanity/types";
 import {
@@ -13,6 +14,8 @@ import {
   videoSource,
   youtubeId,
 } from "./youtube";
+
+beforeEach(() => resetBreakers());
 
 describe("youtubeId", () => {
   it.each([

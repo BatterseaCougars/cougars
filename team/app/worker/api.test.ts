@@ -6,6 +6,7 @@ import { createTestD1 } from "../../../shared/testing/d1-sqlite";
 import { parseRoster, rosterSql } from "../../../scripts/lib/roster.mjs";
 import { ACTIONS } from "../src/access/actions";
 import { ROUTES, handleApi, type Env } from "./api";
+import { whatsOn } from "../../../apps/web/src/lib/server/whats-on";
 
 const ROSTER = [
   { name: "Dana Admin", position: "D", rating: 75, email: "dana@example.com", roles: ["Admin"] },
@@ -50,10 +51,13 @@ describe("opening the app", () => {
         weekdays: ["fri"],
         startTime: "19:30",
         endTime: "21:30",
-        venue: "Battersea Sports Centre",
+        venueId: b.venues[0].id,
         capacity: 21,
         goalieCapacity: 3,
       }),
+    ]);
+    expect(b.venues).toEqual([
+      expect.objectContaining({ name: "Battersea Sports Centre", mapUrl: "https://maps.app.goo.gl/w5GZTqQF9Qekgeaa6" }),
     ]);
     const dates = ahead(b).map((s: { heldOn: string }) => s.heldOn);
     expect(dates[0]).toBe("2026-10-09");
@@ -133,48 +137,235 @@ describe("the schedule", () => {
     expect((await call("PUT", `/api/tournament-types/${kumite.id}`, { ...kumite, awards: tooMany })).status).toBe(400);
   });
 
-  it("a Kumite date is at the sports centre unless it says otherwise, and follows the usual place", async () => {
+  it("a Kumite date is at the series' saved venue, and the website's map follows when the venue's link changes", async () => {
     const b = await boot();
-    const [kumite, date] = [b.tournamentTypes[0], b.tournaments[0]];
-    expect(kumite.location).toBe("Battersea Sports Centre");
-    expect(date).toMatchObject({ location: "", venue: "Battersea Sports Centre" });
+    const [rink, kumite, date] = [b.venues[0], b.tournamentTypes[0], b.tournaments[0]];
+    expect(kumite.venueId).toBe(rink.id);
+    expect(date).toMatchObject({ venueId: null, location: "", mapUrl: "" });
+    const kumiteOnline = async () => (await whatsOn(env.DB, NOW)).find((i) => i.kind === "tournament")!;
+    expect(await kumiteOnline()).toMatchObject({ venue: "Battersea Sports Centre", mapUrl: rink.mapUrl });
+
+    const moved = { ...rink, mapUrl: "https://maps.app.goo.gl/NewEntrance" };
+    expect((await call("PUT", `/api/venues/${rink.id}`, moved)).status).toBe(200);
+    expect((await kumiteOnline()).mapUrl).toBe("https://maps.app.goo.gl/NewEntrance");
+
+    // This one date somewhere else, with the link pasted for it: no venue saved
     const put = (changes: object) => call("PUT", `/api/tournaments/${date.id}`, { ...date, ...changes });
-    expect((await put({ location: "Latchmere Leisure Centre" })).status).toBe(200);
-    expect((await boot()).tournaments[0].venue).toBe("Latchmere Leisure Centre");
-    await put({ location: "" });
-    await call("PUT", `/api/tournament-types/${kumite.id}`, { ...kumite, location: "Battersea Park courts" });
-    expect((await boot()).tournaments[0].venue).toBe("Battersea Park courts");
+    expect((await put({ location: "Latchmere Leisure Centre", mapUrl: "https://maps.app.goo.gl/Latch" })).status).toBe(
+      200,
+    );
+    expect(await kumiteOnline()).toMatchObject({
+      venue: "Latchmere Leisure Centre",
+      mapUrl: "https://maps.app.goo.gl/Latch",
+    });
+    expect((await put({ venueId: 999 })).status).toBe(400);
   });
 
-  it("an admin sets a Kumite's sign-up deadline, draft night and captains in pick order", async () => {
+  it("an admin saves a venue, and a new training picks it", async () => {
+    const saved = await call("POST", "/api/venues", {
+      name: "Latchmere Leisure Centre",
+      address: "Burns Road, London SW11 5AD",
+      mapUrl: "",
+    });
+    expect(saved.status).toBe(201);
+    expect((await boot()).venues.map((v: { name: string }) => v.name)).toEqual([
+      "Battersea Sports Centre",
+      "Latchmere Leisure Centre",
+    ]);
+    // A link that isn't a web link never reaches a page
+    const bad = { name: "Nowhere", mapUrl: "javascript:alert(1)" };
+    expect((await call("POST", "/api/venues", bad)).status).toBe(400);
+
+    const t = await call("POST", "/api/series", {
+      name: "Sunday Skills",
+      shortName: "Sunday",
+      icon: "skate",
+      tone: "green",
+      repeatEvery: 1,
+      weekdays: ["sun"],
+      startsOn: "2026-10-11",
+      endsOn: null,
+      startTime: "10:00",
+      endTime: "11:30",
+      venueId: saved.body.id,
+      venue: "ignored when there's a venue",
+      capacity: 12,
+      goalieCapacity: 2,
+      public: true,
+      active: true,
+    });
+    expect(t.status).toBe(201);
+    const sunday = (await boot()).series.find((s: { id: number }) => s.id === t.body.id);
+    expect(sunday).toMatchObject({ venueId: saved.body.id, venue: "", mapUrl: "" });
+    // No link saved: the website's map searches for the name and address
+    const online = (await whatsOn(env.DB, NOW)).find((i) => i.title === "Sunday Skills")!;
+    expect(online.mapUrl).toBe(
+      "https://www.google.com/maps/search/?api=1&query=Latchmere%20Leisure%20Centre%2C%20Burns%20Road%2C%20London%20SW11%205AD",
+    );
+  });
+
+  it("an admin sets a Kumite's sign-up deadline, draft night and its captains' teams in pick order", async () => {
     const b = await boot();
     const date = b.tournaments[0];
     const ids = Object.fromEntries(b.members.map((m: { name: string; id: number }) => [m.name, m.id]));
+    const team = (captain: string, players: string[] = []) => ({
+      name: "",
+      logo: null,
+      captainMemberId: ids[captain],
+      players: players.map((p) => ({ memberId: ids[p] })),
+    });
     const details = {
       ...date,
+      kind: "draft",
       heldOn: "2027-06-12",
       dateConfirmed: true,
       signupClosesOn: "2027-06-05",
       draftOn: "2027-06-09",
       draftTime: "19:30",
-      captains: [ids["Reg Player"], ids["Dana Admin"]],
+      teams: [team("Reg Player"), team("Dana Admin")],
     };
     expect((await call("PUT", `/api/tournaments/${date.id}`, details)).status).toBe(200);
-    expect((await boot()).tournaments[0]).toMatchObject({
-      dateConfirmed: true,
-      signupClosesOn: "2027-06-05",
-      draftOn: "2027-06-09",
-      draftTime: "19:30",
-      captains: [ids["Reg Player"], ids["Dana Admin"]],
-    });
-    // Nothing after the day itself, and nobody captains twice
+    const saved = (await boot()).tournaments[0];
+    expect(saved).toMatchObject({ kind: "draft", signupClosesOn: "2027-06-05", draftOn: "2027-06-09" });
+    expect(saved.teams.map((t: { captainMemberId: number; pick: number }) => [t.captainMemberId, t.pick])).toEqual([
+      [ids["Reg Player"], 1],
+      [ids["Dana Admin"], 2],
+    ]);
+    // Nothing after the day itself; a draft's captain is a member; nobody on two teams
     const bad = [
       { draftOn: "2027-06-13" },
       { signupClosesOn: "2027-06-20" },
-      { captains: [ids["Reg Player"], ids["Reg Player"]] },
+      { teams: [{ ...team("Reg Player"), captainMemberId: null, captainName: "Someone" }] },
+      { teams: [team("Reg Player"), team("Dana Admin", ["Reg Player"])] },
     ];
     for (const b of bad)
       expect((await call("PUT", `/api/tournaments/${date.id}`, { ...details, ...b })).status).toBe(400);
+  });
+
+  it("teams enter a cup: a name, a logo, a captain from outside the club, and players by name", async () => {
+    const ids = Object.fromEntries((await boot()).members.map((m: { name: string; id: number }) => [m.name, m.id]));
+    const logo = "data:image/png;base64,iVBORw0KGgo=";
+    const cup = {
+      typeId: null,
+      kind: "teams",
+      name: "Charity Cup",
+      location: "",
+      heldOn: "2027-03-20",
+      startTime: "10:00",
+      endTime: "15:00",
+      capacity: null,
+      status: "open",
+      feePence: 0,
+      teams: [
+        {
+          name: "Clapham Crushers",
+          logo,
+          captainMemberId: null,
+          captainName: "Jo Outsider",
+          contact: "jo@example.com",
+          players: [{ name: "Jo Outsider" }, { name: "Max Visitor" }],
+        },
+        {
+          name: "Cougars B",
+          logo: null,
+          captainMemberId: ids["Reg Player"],
+          players: [{ memberId: ids["Dana Admin"] }],
+        },
+      ],
+    };
+    const t = await call("POST", "/api/tournaments", cup);
+    expect(t.status).toBe(201);
+    const saved = (await boot()).tournaments.find((x: { id: number }) => x.id === t.body.id);
+    expect(saved.teams).toMatchObject([
+      {
+        name: "Clapham Crushers",
+        logo,
+        captainName: "Jo Outsider",
+        contact: "jo@example.com",
+        pick: null,
+        players: [
+          { memberId: null, name: "Jo Outsider" },
+          { memberId: null, name: "Max Visitor" },
+        ],
+      },
+      { name: "Cougars B", captainMemberId: ids["Reg Player"], players: [{ memberId: ids["Dana Admin"] }] },
+    ]);
+    // Every team needs a name, and a logo has to be a small image
+    const put = (teams: object[]) => call("PUT", `/api/tournaments/${t.body.id}`, { ...cup, teams });
+    expect((await put([{ ...cup.teams[0], name: "" }])).status).toBe(400);
+    expect((await put([{ ...cup.teams[0], logo: "javascript:alert(1)" }])).status).toBe(400);
+  });
+
+  it("an admin plans a Kumite for next summer before anyone knows the day", async () => {
+    const date = (await boot()).tournaments[0];
+    const put = (changes: object) => call("PUT", `/api/tournaments/${date.id}`, { ...date, ...changes });
+    // Just a season: its day is the season's last, so it sorts after summer's dates and isn't confirmed
+    expect((await put({ season: "summer", heldOn: "2027-08-31", dateConfirmed: true })).status).toBe(200);
+    expect((await boot()).tournaments[0]).toMatchObject({
+      season: "summer",
+      heldOn: "2027-08-31",
+      dateConfirmed: false,
+    });
+    // Winter runs into the next year
+    expect((await put({ season: "winter", heldOn: "2028-02-29" })).status).toBe(200);
+    // A made-up day, or a season that isn't one, is refused
+    expect((await put({ season: "summer", heldOn: "2027-07-01" })).status).toBe(400);
+    expect((await put({ season: "monsoon", heldOn: "2027-08-31" })).status).toBe(400);
+    // Then the day is set: no season, confirmed
+    expect((await put({ season: null, heldOn: "2027-06-12", dateConfirmed: true })).status).toBe(200);
+    expect((await boot()).tournaments[0]).toMatchObject({ season: null, heldOn: "2027-06-12", dateConfirmed: true });
+  });
+
+  it("an admin schedules a one-off tournament in no series, then puts it in one", async () => {
+    const kumite = (await boot()).tournamentTypes[0];
+    const oneOff = {
+      name: "Charity Cup",
+      location: "Battersea Park courts",
+      heldOn: "2027-03-20",
+      startTime: "10:00",
+      endTime: "15:00",
+      capacity: 30,
+      status: "planned",
+      feePence: 500,
+    };
+    const t = await call("POST", "/api/tournaments", { ...oneOff, typeId: null });
+    expect(t.status).toBe(201);
+    const listed = (await boot()).tournaments.find((x: { id: number }) => x.id === t.body.id);
+    expect(listed).toMatchObject({ typeId: null, venueId: null, location: "Battersea Park courts" });
+    // Into the Kumite series, and out again; a series that doesn't exist is refused
+    expect((await call("PUT", `/api/tournaments/${t.body.id}`, { ...oneOff, typeId: kumite.id })).status).toBe(200);
+    expect((await boot()).tournaments.find((x: { id: number }) => x.id === t.body.id).typeId).toBe(kumite.id);
+    expect((await call("PUT", `/api/tournaments/${t.body.id}`, { ...oneOff, typeId: null })).status).toBe(200);
+    expect((await call("PUT", `/api/tournaments/${t.body.id}`, { ...oneOff, typeId: 999 })).status).toBe(400);
+  });
+
+  it("a tournament copies its series' rules and awards, and can change them for itself", async () => {
+    const kumite = (await boot()).tournamentTypes[0];
+    const base = {
+      typeId: kumite.id,
+      name: "Spring Kumite",
+      location: "",
+      heldOn: "2027-04-10",
+      startTime: "11:00",
+      endTime: "16:00",
+      capacity: null,
+      status: "planned",
+      feePence: 0,
+    };
+    // Left out: the series' own
+    const t = await call("POST", "/api/tournaments", base);
+    const copied = () => boot().then((b) => b.tournaments.find((x: { id: number }) => x.id === t.body.id));
+    expect(await copied()).toMatchObject({
+      pointsWin: kumite.pointsWin,
+      gameMinutes: kumite.gameMinutes,
+      kind: kumite.kind,
+      awards: kumite.awards,
+    });
+    // This one plays 15-minute games for 2 points a win, with one award; the series is untouched
+    const changed = { ...base, pointsWin: 2, gameMinutes: 15, awards: [{ name: "Champions", about: "" }] };
+    expect((await call("PUT", `/api/tournaments/${t.body.id}`, changed)).status).toBe(200);
+    expect(await copied()).toMatchObject({ pointsWin: 2, gameMinutes: 15, awards: [{ name: "Champions" }] });
+    expect((await boot()).tournamentTypes[0]).toMatchObject({ pointsWin: kumite.pointsWin, awards: kumite.awards });
   });
 
   it("a new training gets its own sessions and a slug", async () => {
@@ -238,13 +429,19 @@ describe("the schedule", () => {
       startsAt: "2026-10-24T18:00:00.000Z",
       endsAt: "2026-10-24T22:00:00.000Z",
       venue: "The Latchmere",
+      // A pub the club goes to once: no venue saved, just the link pasted from Google Maps
+      mapUrl: "https://maps.app.goo.gl/TheLatchmere",
       description: "Drinks after the last Friday of the month.",
       signup: false,
       capacity: null,
     });
     expect(added.status).toBe(201);
-    // On the website unless they say otherwise
+    // On the website unless they say otherwise, its name opening the pasted map
     expect((await boot()).clubEvents[0]).toMatchObject({ title: "Summer social", public: true, cancelledAt: null });
+    expect((await whatsOn(env.DB, NOW)).find((i) => i.kind === "event")).toMatchObject({
+      venue: "The Latchmere",
+      mapUrl: "https://maps.app.goo.gl/TheLatchmere",
+    });
 
     const id = added.body.id;
     const changed = await call("PUT", `/api/club-events/${id}`, {

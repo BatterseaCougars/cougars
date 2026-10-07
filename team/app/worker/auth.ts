@@ -9,14 +9,14 @@
 // sent all at once can't get past the limits, and a code is spent the same way, so it signs in once.
 import { all, first, run } from "../../../shared/d1";
 import { assignReferenceSql } from "../../../shared/payment-reference";
-import { sendMail, type MailConfig } from "../../../shared/email";
-import { rateLimit } from "../../../shared/rate-limit";
+import { mailPausedUntil, sendMail, type MailConfig } from "../../../shared/email";
+import { LIMITS, addressOf, enforce } from "./limits";
 import { londonToday } from "../src/lib/dates";
 import { HttpError, body, json, oneOf, text } from "./http";
 
 export interface AuthEnv {
   DB: D1Database;
-  /** "local" only under `vite` on your machine: no email leaves it, so the code is shown on screen instead. */
+  /** "local" only under `vite` on your machine: no email leaves it, even with Gmail set up; the code is shown on screen. */
   TEAM_ENV?: string;
   SITE_ENV?: string;
   GMAIL_CLIENT_ID?: string;
@@ -97,6 +97,8 @@ async function audit(db: D1Database, now: Date, memberId: number | null, action:
   ]);
 }
 
+const TOO_MANY_TRIES = "Too many tries from here. Wait a few minutes.";
+
 const mailConfig = (env: AuthEnv): MailConfig => ({
   siteEnv: env.SITE_ENV,
   gmail:
@@ -105,17 +107,6 @@ const mailConfig = (env: AuthEnv): MailConfig => ({
       : null,
   safeTo: env.MAIL_SAFE_TO ?? null,
 });
-
-/**
- * At most `limit` requests from one address in the window, best effort (shared/rate-limit.ts). Where there's no
- * Cache API (tests) it lets everything through; the per-member limits still hold.
- */
-async function perAddress(request: Request, bucket: string, limit: number, windowSeconds: number) {
-  if (typeof caches === "undefined") return;
-  const ip = request.headers.get("cf-connecting-ip") ?? "unknown";
-  const { allowed } = await rateLimit(await caches.open("team-rate-limit"), bucket, ip, { limit, windowSeconds });
-  if (!allowed) throw new HttpError(429, "Too many tries from here. Wait a few minutes.");
-}
 
 // ─── Sessions ───
 
@@ -223,8 +214,12 @@ async function failuresToday(db: D1Database, memberId: number, now: Date) {
  * working), and a code to the member, if it's a member's.
  */
 async function start(request: Request, env: AuthEnv, now: Date, waitUntil?: Waiter): Promise<Response> {
-  await perAddress(request, "sign-in", 10, 600);
+  await enforce("sign-in", addressOf(request), LIMITS.signIn, TOO_MANY_TRIES);
   const address = email(await body(request));
+  // Gmail is paused (circuit breaker, ADR 0055): no code could reach anyone, so say so now. The same for everyone,
+  // member or not, so it gives nothing away.
+  if (env.TEAM_ENV !== "local" && mailConfig(env).gmail && (await mailPausedUntil()))
+    throw new HttpError(503, "Email isn't sending right now, so a code can't reach you. Try again in a few minutes.");
   const nonce = cookie(request, cookieName(request, "nonce")) ?? token();
   const res = (devCode?: string) =>
     withCookies(json({ ok: true, message: SAME_REPLY, ...(devCode ? { devCode } : {}) }), [
@@ -257,7 +252,8 @@ async function start(request: Request, env: AuthEnv, now: Date, waitUntil?: Wait
     `INSERT INTO login_challenges (member_id, code_hash, nonce_hash, expires_at, created_at) VALUES (?, ?, ?, ?, ?)`,
     [member.id, await sha256(theCode), await sha256(nonce), addMs(now, CHALLENGE_MINUTES * 60_000), now.toISOString()],
   );
-  const config = mailConfig(env);
+  // On your own machine nothing is emailed, even with Gmail set up: the code comes back to the screen
+  if (env.TEAM_ENV === "local") return res(theCode);
   const sending = sendMail(
     {
       to: [address],
@@ -272,12 +268,11 @@ async function start(request: Request, env: AuthEnv, now: Date, waitUntil?: Wait
         "Battersea Cougars",
       ].join("\n"),
     },
-    config,
+    mailConfig(env),
   ).catch((e) => console.error(JSON.stringify({ event: "sign_in.email_failed", error: String(e) })));
   if (waitUntil) waitUntil(sending);
   else await sending;
-  // On your own machine nothing is emailed, so the code comes back to the screen
-  return res(env.TEAM_ENV === "local" && !config.gmail ? theCode : undefined);
+  return res();
 }
 
 interface Challenge {
@@ -375,7 +370,7 @@ async function signOut(request: Request, env: AuthEnv, now: Date): Promise<Respo
 
 /** Someone new asks to join: a pending member an admin approves. The reply never says the email was taken. */
 async function requestAccess(request: Request, env: AuthEnv, now: Date): Promise<Response> {
-  await perAddress(request, "join", 5, 3600);
+  await enforce("join", addressOf(request), LIMITS.join, TOO_MANY_TRIES);
   const b = await body(request);
   const name = text(b, "name", { max: 80 });
   const address = email(b);

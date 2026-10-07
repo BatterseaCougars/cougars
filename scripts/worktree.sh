@@ -46,7 +46,7 @@ case "$cmd" in
     fi
     # .env holds local, non-secret overrides only (ADR 0002), so it's safe to copy.
     [ -f "$root/.env" ] && cp "$root/.env" "$dir/.env"
-    (cd "$dir" && npm ci --no-audit --no-fund && npm run db:migrate:local)
+    (cd "$dir" && npm ci --no-audit --no-fund && npm run db:rebuild:local)
     echo
     echo "Ready: $dir (branch $name)"
     echo "  website: bash scripts/worktree.sh dev $name     → http://localhost:450$n"

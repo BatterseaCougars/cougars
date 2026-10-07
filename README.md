@@ -21,7 +21,7 @@ Running cost is £0: every service is on a free tier (see [docs/roadmap.md](docs
 
 ```sh
 npm ci
-npm run db:migrate:local   # create the local D1 database
+npm run db:rebuild:local   # create the local D1 database (db/schema.sql + the club seed)
 npm run dev                # http://localhost:4500
 npm test
 ```

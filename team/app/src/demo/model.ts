@@ -4,6 +4,10 @@
 import type { IconName } from "../app/shell/icons";
 import type { DatedFee } from "../lib/dues";
 import type { Weekday } from "../lib/recurrence";
+import type { Season } from "../../../../shared/seasons";
+import type { Venue } from "../../../../shared/places";
+
+export type { Venue };
 
 /** The colours an admin can give a training or tournament, so each is easy to spot (app.css --tone-*). */
 export const TONES = ["red", "blue", "green", "amber", "violet", "teal"] as const;
@@ -36,7 +40,10 @@ export interface TrainingSeries {
   endsOn: string | null;
   startTime: string;
   endTime: string;
+  /** Where (ADR 0051): a saved venue, else a name and the map link pasted for it. */
+  venueId: number | null;
   venue: string;
+  mapUrl: string;
   /** Places for skaters; null: no limit. */
   capacity: number | null;
   /** Places for goalies, counted apart from the skaters; null: no limit. */
@@ -56,7 +63,10 @@ export interface TrainingSession extends Entries {
   movedFrom?: string | null;
   startTime?: string | null;
   endTime?: string | null;
+  /** Somewhere else this week; none of the three: the series'. */
+  venueId?: number | null;
   venue?: string | null;
+  mapUrl?: string | null;
   capacity?: number | null;
   note?: string | null;
   cancelledAt?: string | null;
@@ -84,25 +94,52 @@ export interface TournamentType {
   pointsDraw: number;
   pointsLoss: number;
   gameMinutes: number;
-  /** Captains draft the teams (otherwise the team generator makes them). */
-  draft: boolean;
+  /** How its tournaments make teams (ADR 0052). */
+  kind: TournamentKind;
   active: boolean;
   /** Copied onto each new edition, where it can be changed. */
   defaultFeePence: number;
   /** What's handed out at each edition (ADR 0044), shown on the website. */
   awards: { name: string; about: string }[];
-  /** Where its dates are, unless a date says otherwise (ADR 0046). */
+  /** Where its dates are, unless a date says otherwise (ADR 0046): a saved venue, else a name and map link. */
+  venueId: number | null;
   location: string;
+  mapUrl: string;
 }
 
 export type TournamentStatus = "planned" | "open" | "live" | "finished";
 
+/** How a tournament makes its teams (ADR 0052): teams enter (a name, a captain, players), or captains draft members. */
+export type TournamentKind = "teams" | "draft";
+export const TOURNAMENT_KINDS: { id: TournamentKind; label: string; hint: string }[] = [
+  { id: "teams", label: "Teams enter", hint: "Teams sign up with a name, a captain and their players." },
+  { id: "draft", label: "Captains draft", hint: "Members sign up; captains draft them into teams." },
+];
+export const kindLabel = (kind: TournamentKind) => TOURNAMENT_KINDS.find((k) => k.id === kind)?.label ?? kind;
+
+/** A team in a tournament: its captain is a member, or (a team from outside) a name and how to reach them. */
+export interface TournamentTeam {
+  id?: number;
+  name: string;
+  /** A small image (a data: URL); null: its initials. */
+  logo: string | null;
+  captainMemberId: number | null;
+  captainName: string;
+  contact: string;
+  /** Members, or players from outside the club by name, in order (a draft's in the order they were picked). */
+  players: { memberId: number | null; name: string }[];
+}
+
 /** One edition, scheduled on its own: a name, a location, a date. */
 export interface Tournament extends Entries {
   id: number;
-  typeId: number;
+  /** Its series (a tournament type), if it has one: a tournament can stand on its own. */
+  typeId: number | null;
   name: string;
+  /** Its own place: a saved venue, else a name and map link; none of them, its series' (ADR 0051). */
+  venueId: number | null;
   location: string;
+  mapUrl: string;
   heldOn: string;
   startTime: string;
   endTime: string;
@@ -112,17 +149,25 @@ export interface Tournament extends Entries {
   feePence: number;
   /** False: "Date TBC". The date still decides where it sorts. */
   dateConfirmed: boolean;
-  /** Where it is: its own `location`, or its type's when that's empty. Set by the server. */
-  venue: string;
+  /** Just a season so far, "Summer 2027" (ADR 0048): heldOn is then the season's last day, never shown. */
+  season: Season | null;
   /** Listed on the website. */
   public: boolean;
   /** The last day members can say they're in; null: up to the day. */
   signupClosesOn: string | null;
-  /** The captains' draft, for a drafted type. */
+  /** Its own rules and awards, copied from its series and changed for it if need be (ADR 0049). */
+  pointsWin: number;
+  pointsDraw: number;
+  pointsLoss: number;
+  gameMinutes: number;
+  /** How it makes teams (ADR 0052): teams enter, or captains draft members. */
+  kind: TournamentKind;
+  awards: { name: string; about: string }[];
+  /** The captains' draft, for a drafted one. */
   draftOn: string | null;
   draftTime: string | null;
-  /** Member ids, in pick order. */
-  captains: number[];
+  /** Its teams: in pick order for a draft, else in the order they entered. */
+  teams: TournamentTeam[];
 }
 
 /** Anything else on the calendar: a social, a kit day. */
@@ -131,7 +176,10 @@ export interface OneOff extends Entries {
   title: string;
   startsAt: string;
   endsAt: string;
+  /** A saved venue, else a name and the map link pasted for it. */
+  venueId: number | null;
   venue: string;
+  mapUrl: string;
   /** A line or two, shown on the website and on the card. */
   description: string;
   /** Listed on the website's What's on. */
@@ -152,13 +200,19 @@ export interface Bookable {
   title: string;
   startsAt: string;
   endsAt: string;
+  /** Where it really is (ADR 0051); "" for nowhere yet. */
   venue: string;
+  address?: string;
+  /** Opens the map. */
+  mapUrl?: string;
   signup: boolean;
   capacity?: number | null;
   cancelled?: boolean;
   description?: string;
   /** The date isn't confirmed: shown as "TBC", sorted by the date it has. */
   dateTbc?: boolean;
+  /** Just a season so far: shown as "Summer 2027" instead (ADR 0048). */
+  season?: { name: string; year: number };
   href?: string;
   entries: Entries;
 }

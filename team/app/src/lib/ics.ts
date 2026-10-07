@@ -23,7 +23,8 @@ export function icsFor(event: Bookable, now = new Date()): string {
     `DTSTART:${stamp(event.startsAt)}`,
     `DTEND:${stamp(event.endsAt)}`,
     `SUMMARY:${text(event.title)}`,
-    ...(event.venue ? [`LOCATION:${text(event.venue)}`] : []),
+    // The venue and its address, so the phone's calendar can find it
+    ...(event.venue ? [`LOCATION:${text([event.venue, event.address].filter(Boolean).join(", "))}`] : []),
     "END:VEVENT",
     "END:VCALENDAR",
     "",

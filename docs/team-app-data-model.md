@@ -24,15 +24,20 @@ shapes in memory.
 
 [ADR 0030](adr/0030-training-series-and-tournaments.md).
 
-| Table               | Columns                                                                                                                                                                                                                           |
-| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `training_series`   | slug (unique), name, short_name, icon, tone, repeat_every (weeks), weekdays (`mon,fri`), starts_on, ends_on (null: ongoing), start_time, end_time, venue, capacity (skaters), goalie_capacity, signup_closes_mins, public, active |
-| `training_sessions` | series_id, held_on, moved_from, start_time, end_time, venue, capacity, goalie_capacity (each null: follows the series), note, cancelled_at, register_closed_at; unique (series_id, held_on)                                       |
-| `tournament_types`  | slug (unique), name, short_name, icon, tone, format (`round_robin`), points_win, points_draw, points_loss, game_minutes, draft, active                                                                                            |
-| `tournaments`       | type_id, name, location, held_on, start_time, end_time, capacity, status (planned/open/live/finished), public                                                                                                                     |
-| `club_events`       | title, starts_at, ends_at, venue, public, signup_enabled, capacity                                                                                                                                                                |
+| Table               | Columns                                                                                                                                                                                                                                              |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `venues`            | name, address, map_url (pasted from Google Maps; empty: a map search), active (offered when picking)                                                                                                                                                 |
+| `training_series`   | slug (unique), name, short_name, icon, tone, repeat_every (weeks), weekdays (`mon,fri`), starts_on, ends_on (null: ongoing), start_time, end_time, venue_id, venue, map_url, capacity (skaters), goalie_capacity, signup_closes_mins, public, active |
+| `training_sessions` | series_id, held_on, moved_from, start_time, end_time, venue_id, venue, map_url, capacity, goalie_capacity (each null: follows the series), note, cancelled_at, register_closed_at; unique (series_id, held_on)                                       |
+| `tournament_types`  | slug (unique), name, short_name, icon, tone, format (`round_robin`), points_win, points_draw, points_loss, game_minutes, draft, active, venue_id, location, map_url                                                                                  |
+| `tournaments`       | type_id, name, venue_id, location, map_url, held_on, start_time, end_time, capacity, status (planned/open/live/finished), public                                                                                                                     |
+| `club_events`       | title, starts_at, ends_at, venue_id, venue, map_url, public, signup_enabled, capacity                                                                                                                                                                |
 
 The calendar is a union of the three: sessions (with series defaults filled in), tournaments and club events.
+
+Where each is held ([ADR 0051](adr/0051-venues-and-map-links.md)): `venue_id` (a saved venue) wins; else its own name
+(`venue`, or `location` on tournaments) and `map_url`; none of them, its series' place. One rule for both apps:
+`placeOf` in `shared/places.ts`.
 
 ## Sign-up, register and teams (T2, T3)
 
@@ -74,6 +79,7 @@ Also: `training_sessions.fee_pence` (written when the register closes, or an adm
 
 ## Club (T1)
 
-| Table   | Columns                                                                                                                                                                                       |
-| ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `quips` | kind (replies: ask/in/waitlist/out; greetings: morning/afternoon/evening/late/training/nag), text (each kind its own limit, lib/quips.ts); admins edit them, and each kind keeps at least one |
+| Table          | Columns                                                                                                                                                                                       |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `data_version` | version: one more on every change through the team app, the seed and the roster; the bootstrap's ETag ([ADR 0054](adr/0054-live-reads-are-cached-everywhere.md))                              |
+| `quips`        | kind (replies: ask/in/waitlist/out; greetings: morning/afternoon/evening/late/training/nag), text (each kind its own limit, lib/quips.ts); admins edit them, and each kind keeps at least one |

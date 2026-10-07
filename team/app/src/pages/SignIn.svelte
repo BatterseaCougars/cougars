@@ -33,7 +33,7 @@
       const r = await api<{ message: string; devCode?: string }>("POST", "/api/auth/start", { email });
       note = r.message;
       devCode = r.devCode ?? "";
-      code = "";
+      code = devCode;
       step = "code";
     });
 
@@ -78,10 +78,12 @@
       </form>
       <p class="hint">New to the club? <button class="link" onclick={() => go("join")}>Ask to join</button></p>
     {:else if step === "code"}
-      <h1 class="display">Check your email</h1>
-      <p class="hint">{note}</p>
       {#if devCode}
+        <h1 class="display">Your code</h1>
         <p class="flag">On this machine nothing is emailed. Your code is <b class="num">{devCode}</b>.</p>
+      {:else}
+        <h1 class="display">Check your email</h1>
+        <p class="hint">{note}</p>
       {/if}
       <form
         class="form"
@@ -104,9 +106,13 @@
         </label>
         <button class="btn primary block" disabled={busy}>Sign in</button>
       </form>
-      <p class="hint">
-        Nothing came? <button class="link" onclick={() => go("email")}>Try again</button> or check your spam.
-      </p>
+      {#if devCode}
+        <p class="hint">Not you? <button class="link" onclick={() => go("email")}>Use another email</button></p>
+      {:else}
+        <p class="hint">
+          Nothing came? <button class="link" onclick={() => go("email")}>Try again</button> or check your spam.
+        </p>
+      {/if}
     {:else if step === "join"}
       <h1 class="display">Ask to join</h1>
       <p class="hint">An admin lets you in; then you sign in with this email.</p>

@@ -1,0 +1,370 @@
+-- The database, as it is today: every table and index D1 has, in one place (ADR 0050).
+-- Not live yet, so there are no migrations: change this file, then rebuild local and dev with
+-- scripts/db-rebuild.mjs, which keeps their data. Migrations start from this file at launch.
+
+CREATE TABLE enquiries (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  name        TEXT NOT NULL,
+  email       TEXT NOT NULL,
+  phone       TEXT,
+  experience  TEXT,          -- never | some | regular
+  message     TEXT,
+  source      TEXT,          -- page path the form was submitted from
+  status      TEXT NOT NULL DEFAULT 'new',  -- new | contacted | joined | closed
+  created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  verified INTEGER NOT NULL DEFAULT 0,
+  auto_replied_at TEXT
+);
+
+CREATE INDEX enquiries_created_at ON enquiries (created_at);
+
+CREATE INDEX enquiries_auto_replied_at ON enquiries (auto_replied_at);
+
+CREATE INDEX enquiries_email ON enquiries (email);
+
+CREATE TABLE members (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  -- Null until known; sign-in needs it. Unique where set.
+  email TEXT UNIQUE,
+  phone TEXT,
+  -- F (forward), D (defence) or G (goalie)
+  position TEXT NOT NULL DEFAULT 'F',
+  -- 0–100, for balancing teams; only read:Rating sees it
+  rating INTEGER NOT NULL DEFAULT 50,
+  cougar INTEGER NOT NULL DEFAULT 0,
+  photo TEXT,
+  -- pending (asked to join), active, inactive
+  status TEXT NOT NULL DEFAULT 'active',
+  -- The bank-transfer reference, COU-0001; set from the id once the row exists
+  payment_reference TEXT UNIQUE,
+  joined_on TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  bio TEXT NOT NULL DEFAULT '',
+  everyday_role_id INTEGER REFERENCES roles (id) ON DELETE SET NULL,
+  web_name TEXT
+);
+
+CREATE INDEX members_status ON members (status);
+
+CREATE TABLE roles (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL UNIQUE,
+  description TEXT NOT NULL DEFAULT '',
+  -- 1: can't be deleted or have its actions changed (Admin)
+  is_system INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE role_actions (
+  role_id INTEGER NOT NULL REFERENCES roles (id) ON DELETE CASCADE,
+  action TEXT NOT NULL,
+  PRIMARY KEY (role_id, action)
+);
+
+CREATE TABLE member_roles (
+  member_id INTEGER NOT NULL REFERENCES members (id) ON DELETE CASCADE,
+  role_id INTEGER NOT NULL REFERENCES roles (id) ON DELETE CASCADE,
+  PRIMARY KEY (member_id, role_id)
+);
+
+CREATE INDEX member_roles_role ON member_roles (role_id);
+
+-- Places the club goes again and again (ADR 0051), picked by trainings, tournaments and events. Each of those also
+-- has a name and map_url of its own, for a one-off that needn't be saved; empty map links mean a map search.
+CREATE TABLE venues (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  address TEXT NOT NULL DEFAULT '',
+  -- Pasted from Google Maps (Share → Copy link)
+  map_url TEXT NOT NULL DEFAULT '',
+  -- 0: no longer offered when picking; what already has it keeps it
+  active INTEGER NOT NULL DEFAULT 1
+);
+
+CREATE TABLE training_series (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  slug TEXT NOT NULL UNIQUE,
+  name TEXT NOT NULL,
+  -- The phone tab label, e.g. Friday
+  short_name TEXT NOT NULL,
+  icon TEXT NOT NULL,
+  tone TEXT NOT NULL,
+  -- Every N weeks on these days (mon,fri), from starts_on to ends_on (null: ongoing)
+  repeat_every INTEGER NOT NULL DEFAULT 1,
+  weekdays TEXT NOT NULL,
+  starts_on TEXT NOT NULL,
+  ends_on TEXT,
+  start_time TEXT NOT NULL,
+  end_time TEXT NOT NULL,
+  -- Where (ADR 0051): a saved venue, else its own name and map link
+  venue_id INTEGER REFERENCES venues (id),
+  venue TEXT NOT NULL DEFAULT '',
+  map_url TEXT NOT NULL DEFAULT '',
+  -- Places for skaters, and separately for goalies; null: no limit
+  capacity INTEGER,
+  goalie_capacity INTEGER,
+  signup_closes_mins INTEGER,
+  -- Listed on the website calendar
+  public INTEGER NOT NULL DEFAULT 1,
+  -- 0: paused, no new sessions
+  active INTEGER NOT NULL DEFAULT 1
+);
+
+CREATE TABLE training_sessions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  series_id INTEGER NOT NULL REFERENCES training_series (id),
+  held_on TEXT NOT NULL,
+  moved_from TEXT,
+  start_time TEXT,
+  end_time TEXT,
+  -- Somewhere else this week: a venue, or a name and map link; none of them: the series'
+  venue_id INTEGER REFERENCES venues (id),
+  venue TEXT,
+  map_url TEXT,
+  capacity INTEGER,
+  goalie_capacity INTEGER,
+  note TEXT,
+  cancelled_at TEXT,
+  register_closed_at TEXT,
+  UNIQUE (series_id, held_on)
+);
+
+CREATE INDEX training_sessions_held_on ON training_sessions (held_on);
+
+CREATE TABLE tournament_types (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  slug TEXT NOT NULL UNIQUE,
+  name TEXT NOT NULL,
+  short_name TEXT NOT NULL,
+  icon TEXT NOT NULL,
+  tone TEXT NOT NULL,
+  -- round_robin
+  format TEXT NOT NULL DEFAULT 'round_robin',
+  points_win INTEGER NOT NULL DEFAULT 3,
+  points_draw INTEGER NOT NULL DEFAULT 1,
+  points_loss INTEGER NOT NULL DEFAULT 0,
+  game_minutes INTEGER NOT NULL DEFAULT 12,
+  -- How its tournaments make teams (ADR 0052): teams (teams enter) or draft (captains draft members)
+  kind TEXT NOT NULL DEFAULT 'teams',
+  active INTEGER NOT NULL DEFAULT 1,
+  -- Copied onto each new edition, where it can be changed (ADR 0032)
+  default_fee_pence INTEGER NOT NULL DEFAULT 0,
+  awards TEXT NOT NULL DEFAULT '[]',
+  -- Its usual place (ADR 0046, 0051): a saved venue, else a name and map link
+  venue_id INTEGER REFERENCES venues (id),
+  location TEXT NOT NULL DEFAULT '',
+  map_url TEXT NOT NULL DEFAULT ''
+);
+
+CREATE TABLE tournaments (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  -- Its series, if it has one: a tournament can stand on its own
+  type_id INTEGER REFERENCES tournament_types (id),
+  name TEXT NOT NULL,
+  -- Its place (ADR 0051): a saved venue, else a name and map link; none of them: its series'
+  venue_id INTEGER REFERENCES venues (id),
+  location TEXT NOT NULL DEFAULT '',
+  map_url TEXT NOT NULL DEFAULT '',
+  held_on TEXT NOT NULL,
+  start_time TEXT NOT NULL,
+  end_time TEXT NOT NULL,
+  capacity INTEGER,
+  -- planned, open, live, finished
+  status TEXT NOT NULL DEFAULT 'planned',
+  champions TEXT,
+  fee_pence INTEGER NOT NULL DEFAULT 0,
+  public INTEGER NOT NULL DEFAULT 1,
+  date_confirmed INTEGER NOT NULL DEFAULT 1,
+  signup_closes_on TEXT,
+  draft_on TEXT,
+  draft_time TEXT,
+  season TEXT,
+  points_win INTEGER NOT NULL DEFAULT 3,
+  points_draw INTEGER NOT NULL DEFAULT 1,
+  points_loss INTEGER NOT NULL DEFAULT 0,
+  game_minutes INTEGER NOT NULL DEFAULT 12,
+  -- teams (teams enter) or draft (captains draft members), copied from its series (ADR 0052)
+  kind TEXT NOT NULL DEFAULT 'teams',
+  awards TEXT NOT NULL DEFAULT '[]'
+);
+
+CREATE INDEX tournaments_held_on ON tournaments (held_on);
+
+CREATE TABLE club_events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  title TEXT NOT NULL,
+  starts_at TEXT NOT NULL,
+  ends_at TEXT NOT NULL,
+  -- A saved venue, else a name and the map link pasted for it (ADR 0051)
+  venue_id INTEGER REFERENCES venues (id),
+  venue TEXT NOT NULL DEFAULT '',
+  map_url TEXT NOT NULL DEFAULT '',
+  public INTEGER NOT NULL DEFAULT 0,
+  signup_enabled INTEGER NOT NULL DEFAULT 0,
+  capacity INTEGER,
+  description TEXT NOT NULL DEFAULT '',
+  cancelled_at TEXT
+);
+
+CREATE INDEX club_events_starts_at ON club_events (starts_at);
+
+CREATE TABLE attendance (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  session_id INTEGER NOT NULL REFERENCES training_sessions (id) ON DELETE CASCADE,
+  member_id INTEGER NOT NULL REFERENCES members (id) ON DELETE CASCADE,
+  -- in / waitlist / out
+  signup TEXT NOT NULL,
+  signed_up_at TEXT NOT NULL,
+  -- From the register: NULL not recorded (a sign-up is expected), 1 came, 0 no-show
+  attended INTEGER,
+  -- Came without signing up; the register added them
+  walk_in INTEGER NOT NULL DEFAULT 0,
+  recorded_by INTEGER REFERENCES members (id),
+  recorded_at TEXT,
+  UNIQUE (session_id, member_id)
+);
+
+CREATE INDEX attendance_member ON attendance (member_id);
+
+CREATE TABLE tournament_entries (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  tournament_id INTEGER NOT NULL REFERENCES tournaments (id) ON DELETE CASCADE,
+  member_id INTEGER NOT NULL REFERENCES members (id) ON DELETE CASCADE,
+  -- in / waitlist / out
+  signup TEXT NOT NULL,
+  signed_up_at TEXT NOT NULL,
+  attended INTEGER,
+  UNIQUE (tournament_id, member_id)
+);
+
+CREATE INDEX tournament_entries_member ON tournament_entries (member_id);
+
+CREATE TABLE club_event_entries (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  event_id INTEGER NOT NULL REFERENCES club_events (id) ON DELETE CASCADE,
+  member_id INTEGER NOT NULL REFERENCES members (id) ON DELETE CASCADE,
+  -- in / waitlist / out
+  signup TEXT NOT NULL,
+  signed_up_at TEXT NOT NULL,
+  UNIQUE (event_id, member_id)
+);
+
+CREATE INDEX club_event_entries_member ON club_event_entries (member_id);
+
+CREATE TABLE session_teams (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  session_id INTEGER NOT NULL REFERENCES training_sessions (id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  -- Display order
+  position INTEGER NOT NULL DEFAULT 0,
+  published_at TEXT NOT NULL,
+  published_by INTEGER REFERENCES members (id)
+);
+
+CREATE INDEX session_teams_session ON session_teams (session_id);
+
+CREATE TABLE session_team_players (
+  team_id INTEGER NOT NULL REFERENCES session_teams (id) ON DELETE CASCADE,
+  member_id INTEGER NOT NULL REFERENCES members (id) ON DELETE CASCADE,
+  PRIMARY KEY (team_id, member_id)
+);
+
+CREATE INDEX session_team_players_member ON session_team_players (member_id);
+
+CREATE TABLE quips (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  kind TEXT NOT NULL,
+  text TEXT NOT NULL
+);
+
+CREATE INDEX quips_kind ON quips (kind);
+
+CREATE TABLE subscriptions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  member_id INTEGER NOT NULL REFERENCES members (id) ON DELETE CASCADE,
+  starts_on TEXT NOT NULL,
+  ends_on TEXT,
+  created_at TEXT NOT NULL
+);
+
+CREATE INDEX subscriptions_member ON subscriptions (member_id);
+
+CREATE TABLE login_challenges (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  member_id INTEGER NOT NULL REFERENCES members (id) ON DELETE CASCADE,
+  code_hash TEXT NOT NULL,
+  nonce_hash TEXT NOT NULL,
+  -- Wrong codes so far; at 5 the challenge is spent
+  attempts INTEGER NOT NULL DEFAULT 0,
+  expires_at TEXT NOT NULL,
+  used_at TEXT,
+  created_at TEXT NOT NULL
+);
+
+CREATE INDEX login_challenges_nonce ON login_challenges (nonce_hash);
+
+CREATE INDEX login_challenges_member ON login_challenges (member_id, created_at);
+
+CREATE TABLE auth_sessions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  member_id INTEGER NOT NULL REFERENCES members (id) ON DELETE CASCADE,
+  token_hash TEXT NOT NULL UNIQUE,
+  -- "code" (later "google"), and the browser, so a member can tell their devices apart
+  method TEXT NOT NULL,
+  user_agent TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL,
+  last_seen_at TEXT NOT NULL,
+  expires_at TEXT NOT NULL,
+  revoked_at TEXT
+);
+
+CREATE INDEX auth_sessions_member ON auth_sessions (member_id);
+
+CREATE TABLE audit_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  at TEXT NOT NULL,
+  member_id INTEGER REFERENCES members (id) ON DELETE SET NULL,
+  action TEXT NOT NULL,
+  detail TEXT NOT NULL DEFAULT '{}'
+);
+
+CREATE INDEX audit_log_at ON audit_log (at);
+
+-- A tournament's teams (ADR 0052). Teams enter: each signs up with a name, a captain and its players, who may be
+-- from outside the club. Captains draft: each captain is a member, given a pick order, and drafts members.
+CREATE TABLE tournament_teams (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  tournament_id INTEGER NOT NULL REFERENCES tournaments (id) ON DELETE CASCADE,
+  name TEXT NOT NULL DEFAULT '',
+  -- A small image, resized in the browser (a data: URL); null: its initials
+  logo TEXT,
+  -- The captain: a member, else (a team from outside) a name and how to reach them
+  captain_member_id INTEGER REFERENCES members (id) ON DELETE SET NULL,
+  captain_name TEXT NOT NULL DEFAULT '',
+  contact TEXT NOT NULL DEFAULT '',
+  -- Captains draft: the captain's pick order, from 1; null for a team that entered
+  pick INTEGER,
+  created_at TEXT NOT NULL
+);
+
+CREATE INDEX tournament_teams_tournament ON tournament_teams (tournament_id);
+
+CREATE TABLE tournament_team_players (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  team_id INTEGER NOT NULL REFERENCES tournament_teams (id) ON DELETE CASCADE,
+  -- A member, else a player from outside the club: just a name
+  member_id INTEGER REFERENCES members (id) ON DELETE CASCADE,
+  name TEXT NOT NULL DEFAULT '',
+  -- Their order on the team (a draft's picks come in this order)
+  position INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE INDEX tournament_team_players_team ON tournament_team_players (team_id);
+
+-- One number for "the club's data has changed": one more on every change through the team app, the seed and the
+-- roster, so the app's bootstrap can answer "nothing's changed" (ETag, ADR 0054). It starts from the time it was
+-- made, so a remade database never repeats an old version.
+CREATE TABLE data_version (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  version INTEGER NOT NULL
+);

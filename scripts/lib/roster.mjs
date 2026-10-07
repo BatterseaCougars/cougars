@@ -74,5 +74,10 @@ export function rosterSql(players, now = new Date()) {
           `SELECT m.id, r.id FROM members m, roles r WHERE lower(m.name) = lower(${q(p.name)}) AND r.name = ${q(role)};`,
       );
   }
+  // The roster changed the club's data: the team app reloads it (data_version, ADR 0054)
+  out.push(
+    "INSERT INTO data_version (id, version) VALUES (1, CAST(strftime('%s', 'now') AS INTEGER)) " +
+      "ON CONFLICT (id) DO UPDATE SET version = version + 1;",
+  );
   return out.join("\n");
 }

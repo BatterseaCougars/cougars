@@ -4,7 +4,8 @@
 
 <script lang="ts" generics="T extends string">
   // Styled select, after Gwenda ops' NativeSelect: native option menus can't be themed, so this is a button that
-  // opens a listbox. The menu is fixed-position so panels and scrollers never clip it.
+  // opens a listbox. The menu is fixed-position so panels and scrollers never clip it, and it lives at the end of
+  // the page (or of the open dialog it's in), so nothing it sits inside, an animated tab say, can shift it.
   import { onMount, tick } from "svelte";
   import Icon from "../app/shell/Icon.svelte";
 
@@ -46,6 +47,12 @@
     const height = Math.min(280, up ? above : below);
     const top = up ? Math.max(12, r.top - gap - height) : r.bottom + gap;
     menuStyle = `top:${Math.round(top)}px;left:${Math.round(r.left)}px;min-width:${Math.round(r.width)}px;max-height:${Math.round(height)}px`;
+  }
+
+  /** Moves the menu out to the page, or to the native modal it's in: that sits above the page. */
+  function portal(node: HTMLElement) {
+    (trigger?.closest("dialog") ?? document.body).append(node);
+    return { destroy: () => node.remove() };
   }
 
   function focusActive() {
@@ -127,7 +134,7 @@
   </button>
 
   {#if open}
-    <div bind:this={menu} class="menu" style={menuStyle} role="listbox" tabindex="-1" onkeydown={onMenuKey}>
+    <div bind:this={menu} use:portal class="menu" style={menuStyle} role="listbox" tabindex="-1" onkeydown={onMenuKey}>
       {#each options as o, i (o.value)}
         <button
           type="button"
@@ -191,7 +198,8 @@
 
   .menu {
     position: fixed;
-    z-index: 80;
+    /* Above the editor panel (80) it may open from */
+    z-index: 90;
     display: grid;
     gap: 2px;
     padding: var(--s-1);

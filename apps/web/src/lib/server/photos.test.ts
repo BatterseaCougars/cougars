@@ -1,4 +1,6 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { resetBreakers } from "../../../../../shared/breaker";
+import { clearCache } from "./cache";
 import { findAlbum, latestPhotos, listAlbums, type PhotosConfig } from "./photos";
 import { demoAlbums } from "../sanity/demo";
 
@@ -14,9 +16,36 @@ function sanityReturns(result: unknown, status = 200) {
   return fetch;
 }
 
+beforeEach(() => {
+  clearCache();
+  resetBreakers();
+});
+
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
+});
+
+describe("reading Sanity", () => {
+  it("asks once a minute, however many people look", async () => {
+    const fetch = sanityReturns([]);
+    for (let i = 0; i < 5; i++) await listAlbums(config);
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("stops asking while Sanity's quota is spent, and keeps showing the last albums", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.spyOn(Date, "now").mockReturnValue(Date.parse("2026-10-07T12:00:00Z"));
+    sanityReturns([{ title: "Kumite", slug: "kumite", date: "2026-09-12", photos: [img("image-a")] }]);
+    expect((await listAlbums(config)).data).toHaveLength(1);
+
+    vi.spyOn(Date, "now").mockReturnValue(Date.parse("2026-10-07T12:02:00Z"));
+    const spent = vi.fn(async () => Response.json({ error: "plan_limit_reached" }, { status: 402 }));
+    vi.stubGlobal("fetch", spent);
+    expect(await listAlbums(config)).toMatchObject({ data: [{ slug: "kumite" }], unavailable: false });
+    expect(await findAlbum(config, "kumite")).toMatchObject({ unavailable: true }); // never fetched: nothing to show
+    expect(spent).toHaveBeenCalledTimes(1); // paused for an hour after the first 402
+  });
 });
 
 describe("listAlbums", () => {
@@ -57,6 +86,7 @@ describe("listAlbums", () => {
   it("queries the API CDN's published content, with a token only when there is one", async () => {
     const fetch = sanityReturns([]);
     await listAlbums(config);
+    clearCache();
     await listAlbums({ ...config, token: "viewer" });
     const [url, init] = fetch.mock.calls[0];
     expect(url.host).toBe("abc123.apicdn.sanity.io");

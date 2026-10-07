@@ -1,18 +1,15 @@
-// In-memory SQLite that quacks like the subset of D1Database we use, with every
-// migration in db/migrations applied. For Vitest only.
+// In-memory SQLite that quacks like the subset of D1Database we use: db/schema.sql with the club's seed
+// (db/seed/club.sql), as a fresh database starts. For Vitest only.
 import Database from "better-sqlite3";
-import { readdirSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-const MIGRATIONS_DIR = join(import.meta.dirname, "../../db/migrations");
+const DB_DIR = join(import.meta.dirname, "../../db");
 
 export function createTestD1(): D1Database & { raw: Database.Database } {
   const sqlite = new Database(":memory:");
-  for (const file of readdirSync(MIGRATIONS_DIR)
-    .filter((f) => f.endsWith(".sql"))
-    .sort()) {
-    sqlite.exec(readFileSync(join(MIGRATIONS_DIR, file), "utf8"));
-  }
+  sqlite.exec(readFileSync(join(DB_DIR, "schema.sql"), "utf8"));
+  sqlite.exec(readFileSync(join(DB_DIR, "seed/club.sql"), "utf8"));
 
   const prepare = (sql: string) => {
     let params: unknown[] = [];

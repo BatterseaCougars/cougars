@@ -8,6 +8,10 @@
 //     from cougars.dev to cougars.dev); the real recipients go in the subject and a header;
 //   - the club's own inbox is refused, as the safe address and as the sending account;
 //   - without Gmail credentials (a laptop, tests) it logs the email instead of sending.
+//
+// Gmail is behind a circuit breaker (shared/breaker.ts, ADR 0055): when it's down or has rate-limited the account,
+// sends fail at once for a while instead of each waiting for Google, and the sign-in page can say so up front.
+import { HttpFailure, QuotaError, guard, pausedUntil, retryAfter } from "./breaker";
 
 export const CLUB_ADDRESS = "batterseahockey@gmail.com";
 const FROM_NAME = "Battersea Cougars";
@@ -92,7 +96,8 @@ export async function accessToken(
     error?: string;
   };
   // The error code only (e.g. invalid_grant: the token was revoked); never the response, which holds the token.
-  if (!res.ok || !body.access_token) throw new Error(`Gmail token: ${res.status} ${body.error ?? "no access token"}`);
+  if (!res.ok || !body.access_token)
+    throw gmailError(`Gmail token: ${res.status} ${body.error ?? "no access token"}`, res);
   const account = body.id_token ? accountOf(body.id_token) : "";
   if (!account) throw new Error("Gmail token: no account address (re-run scripts/gmail-auth.mjs)");
   cachedToken = {
@@ -131,7 +136,8 @@ export async function sendMail(
     console.log(JSON.stringify({ event: "mail.logged", to: safe.to, subject: safe.subject, text: safe.text }));
     return { status: "logged", to: safe.to };
   }
-  const { token, account } = await accessToken(config.gmail, { fetch, now });
+  const gmail = config.gmail;
+  const { token, account } = await guard("gmail", () => accessToken(gmail, { fetch, now }));
   if (!isProduction(config.siteEnv) && account === CLUB_ADDRESS) {
     throw new MailRefused(`Outside production the club's account must never send (it's ${account}).`);
   }
@@ -139,16 +145,38 @@ export async function sendMail(
   if (safe.to !== mail.to) {
     console.log(JSON.stringify({ event: "mail.redirected", to: safe.to, originalTo: mail.to }));
   }
-  const res = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ raw: base64url(mime(safe, account)) }),
-    signal: AbortSignal.timeout(15_000),
+  const id = await guard("gmail", async () => {
+    const res = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ raw: base64url(mime(safe, account)) }),
+      signal: AbortSignal.timeout(15_000),
+    });
+    const body = (await res.json().catch(() => ({}))) as {
+      id?: string;
+      error?: { message?: string; errors?: { reason?: string }[] };
+    };
+    if (!res.ok || !body.id) {
+      const reasons = (body.error?.errors ?? []).map((e) => e.reason ?? "");
+      throw gmailError(`Gmail send: ${res.status} ${body.error?.message ?? "no message id"}`, res, reasons);
+    }
+    return body.id;
   });
-  const body = (await res.json().catch(() => ({}))) as { id?: string; error?: { message?: string } };
-  if (!res.ok || !body.id) throw new Error(`Gmail send: ${res.status} ${body.error?.message ?? "no message id"}`);
-  return { status: "sent", id: body.id, to: safe.to };
+  return { status: "sent", id, to: safe.to };
 }
+
+/**
+ * Google's refusal as an error the circuit breaker understands: a rate limit or a spent sending limit pauses Gmail
+ * (for Retry-After, else 15 minutes); another 4xx is ours to fix and doesn't count against Gmail.
+ */
+function gmailError(message: string, res: Response, reasons: string[] = []): Error {
+  if (res.status === 429 || reasons.some((r) => /rateLimitExceeded|dailyLimitExceeded|quotaExceeded/.test(r)))
+    return new QuotaError(message, retryAfter(res, 15 * 60_000));
+  return new HttpFailure(message, res.status);
+}
+
+/** Until when sending is paused by the circuit breaker (epoch ms), or null when email should work. */
+export const mailPausedUntil = () => pausedUntil("gmail");
 
 // Header values come partly from a form, so no line breaks may get through (header injection).
 const clean = (value: string) => value.replace(/[\r\n]+/g, " ").trim();

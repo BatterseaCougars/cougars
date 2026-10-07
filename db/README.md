@@ -2,14 +2,20 @@
 
 One database, `cougars`, bound as `DB` in `apps/web/wrangler.jsonc`.
 
-## Migrations
+## Schema and seed (until launch)
 
-- Plain SQL in `db/migrations/NNNN_description.sql`, applied in CI with
-  `wrangler d1 migrations apply DB --remote -c dist/server/wrangler.json` (the built config, which
-  names the right database for each environment) before every deploy.
-- Local: `npm run db:migrate:local` (state lives in `apps/web/.wrangler/`).
-- **Additive only.** Never edit a migration that has run. Removing or renaming
-  a column = new table/column + backfill + drop in a later migration.
+Not live yet, so there are no migrations ([ADR 0050](../docs/adr/0050-schema-and-seed-until-launch.md)):
+
+- `db/schema.sql` is the whole database: every table and index. Change it directly.
+- `db/seed/club.sql` is what it starts with that isn't about anyone (roles, Friday Training, the Kumite series,
+  quips): `INSERT OR IGNORE` by id, so it never overwrites what admins changed. People come from the roster
+  ([seed/README.md](seed/README.md)).
+- `scripts/db-rebuild.mjs` rebuilds a database from the schema **keeping its data**: rows are read out (and backed
+  up to a private temp file), the tables are made again, the rows go back (new columns take their defaults), then
+  the club seed tops up. Local: `npm run db:rebuild:local`. Dev: every deploy (`.github/workflows/deploy.yml`), or
+  `node scripts/env-pull.mjs -- bash scripts/deploy-dev.sh`.
+- Dev's data is the club's: at launch it becomes production, and `schema.sql` becomes the first migration. From
+  then on, migrations, additive only.
 
 ## Conventions
 

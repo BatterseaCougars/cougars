@@ -2,12 +2,14 @@
   // One training's editor, inside the panel a card opens (Settings → Training). A series is a rule (every N weeks on
   // some days, from a first date, optionally to a last one) plus what every session shares (ADR 0030). Saving makes
   // its sessions; each one can then be cancelled on its own.
+  import { tick } from "svelte";
   import type { TrainingSeries } from "../demo/model";
   import { resolve } from "../demo/schedule.svelte";
   import { db } from "../demo/store.svelte";
   import { createSeries, moreSessions, setCancelled, updateSeries } from "../app/backend.svelte";
   import Icon from "../app/shell/Icon.svelte";
   import StylePicker from "./StylePicker.svelte";
+  import PlacePicker from "./PlacePicker.svelte";
   import { formatDayDate, londonISO, londonToday, pounds } from "./dates";
   import { feeOn } from "./dues";
   import { collectedFor } from "../demo/dues.svelte";
@@ -39,7 +41,9 @@
       endsOn: null,
       startTime: "19:30",
       endTime: "21:00",
+      venueId: null,
       venue: "",
+      mapUrl: "",
       capacity: 20,
       goalieCapacity: 2,
       public: true,
@@ -117,9 +121,29 @@
     form.weekdays = form.weekdays.includes(d) ? form.weekdays.filter((x) => x !== d) : [...form.weekdays, d];
   }
 
+  // Its fields on tabs, as Gwenda ops lays out a menu item (Build, Menu, Pricing): what it is, when it runs, and
+  // (once saved) its sessions. Each tab lays its fields out on a 12-column grid.
+  type Tab = "details" | "schedule" | "sessions";
+  let tab = $state<Tab>("details");
+  const tabs = $derived<{ id: Tab; label: string }[]>([
+    { id: "details", label: "Details" },
+    { id: "schedule", label: "Schedule" },
+    ...(typeof selected === "number" ? [{ id: "sessions" as const, label: "Sessions" }] : []),
+  ]);
+  let formEl = $state<HTMLFormElement | undefined>();
+
+  /** Save from another tab with something missing: go to its tab and say what. */
+  async function showMissing(on: Tab) {
+    tab = on;
+    await tick();
+    formEl?.reportValidity();
+  }
+
   async function save(e: SubmitEvent) {
     e.preventDefault();
-    if (!form || !form.name || !form.weekdays.length) return;
+    if (!form) return;
+    if (!form.name) return showMissing("details");
+    if (!form.weekdays.length || !form.startsOn) return showMissing("schedule");
     if (!form.shortName) form.shortName = form.name.split(" ")[0];
     applyFee();
     if (selected === "new") {
@@ -140,171 +164,209 @@
 
 <div class="editor">
   {#if form}
-    <!-- Saved from the panel's footer (form="training-form") -->
-    <form class="form" id="training-form" onsubmit={save}>
-      <div class="checks">
-        <label class="check"><input type="checkbox" bind:checked={form.active} /> Running</label>
-        <label class="check"><input type="checkbox" bind:checked={form.public} /> On the website calendar</label>
-        <span class="hint">Untick Running to pause it: no new sessions.</span>
-      </div>
-      <div class="two">
-        <label class="field"
-          >Name <input class="input" bind:value={form.name} placeholder="e.g. Sunday Skills" required /></label
+    <div class="seg tabs" role="tablist" aria-label="Training">
+      {#each tabs as t (t.id)}
+        <button
+          type="button"
+          role="tab"
+          id="training-tab-{t.id}"
+          aria-selected={tab === t.id}
+          aria-controls="training-panel"
+          onclick={() => (tab = t.id)}
         >
-        <label class="field">
-          Short name
-          <input class="input" bind:value={form.shortName} placeholder="e.g. Sunday" maxlength="12" />
-        </label>
-      </div>
-      <StylePicker bind:icon={form.icon} bind:tone={form.tone} />
-
-      <fieldset class="field">
-        <legend>Repeats</legend>
-        <div class="repeat">
-          Every
-          <input class="input num every" type="number" min="1" max="8" bind:value={form.repeatEvery} />
-          {form.repeatEvery === 1 ? "week" : "weeks"} on
+          {t.label}
+        </button>
+      {/each}
+    </div>
+    <!-- Saved from the panel's footer (form="training-form"), whichever tab is showing -->
+    <form class="form" id="training-form" onsubmit={save} bind:this={formEl}>
+      {#key tab}
+        <div class="panel-tab rise" id="training-panel" role="tabpanel" aria-labelledby="training-tab-{tab}">
+          {#if tab === "details"}
+            <div class="grid">
+              <div class="checks span-12">
+                <label class="check"><input type="checkbox" bind:checked={form.active} /> Running</label>
+                <label class="check"><input type="checkbox" bind:checked={form.public} /> On the website calendar</label
+                >
+                <span class="hint">Untick Running to pause it: no new sessions.</span>
+              </div>
+              <label class="field span-8"
+                >Name <input class="input" bind:value={form.name} placeholder="e.g. Sunday Skills" required /></label
+              >
+              <label class="field span-4">
+                Short name
+                <input class="input" bind:value={form.shortName} placeholder="e.g. Sunday" maxlength="12" />
+              </label>
+              <!-- Icon and colour side by side -->
+              <div class="style span-12"><StylePicker bind:icon={form.icon} bind:tone={form.tone} /></div>
+              <label class="field span-3">
+                Skater places
+                <input
+                  class="input num"
+                  type="number"
+                  min="0"
+                  value={form.capacity ?? ""}
+                  onchange={(e) => form && (form.capacity = Number(e.currentTarget.value) || null)}
+                />
+              </label>
+              <label class="field span-3">
+                Goalie places
+                <input
+                  class="input num"
+                  type="number"
+                  min="0"
+                  value={form.goalieCapacity ?? ""}
+                  onchange={(e) =>
+                    form && (form.goalieCapacity = e.currentTarget.value === "" ? null : Number(e.currentTarget.value))}
+                />
+              </label>
+              <label class="field span-3">
+                Fee per session (£)
+                <input class="input num" inputmode="decimal" bind:value={feeAmount} />
+              </label>
+              <label class="field span-3">Fee from <input class="input" type="date" bind:value={feeFrom} /></label>
+              <div class="span-12 tuck">
+                <p class="hint small">
+                  Leave places empty for no limit. {current ? `${pounds(current)} now.` : "Free now."} A new fee applies from
+                  its date; sessions already held keep theirs. Subscribers aren't charged.
+                </p>
+                {#if form.fees.length > 1}
+                  <p class="hint small">
+                    {#each [...form.fees].reverse() as f, i (f.from)}{i ? " · " : ""}{pounds(f.pence)} from {fullDate(
+                        f.from,
+                      )}{/each}
+                  </p>
+                {/if}
+              </div>
+            </div>
+          {:else if tab === "schedule"}
+            <div class="grid">
+              <fieldset class="field span-12">
+                <legend>Repeats</legend>
+                <div class="repeat">
+                  Every
+                  <input class="input num every" type="number" min="1" max="8" bind:value={form.repeatEvery} />
+                  {form.repeatEvery === 1 ? "week" : "weeks"} on
+                  <div class="days" role="group" aria-label="Days">
+                    {#each WEEKDAYS as d (d)}
+                      <button
+                        type="button"
+                        class="day"
+                        aria-pressed={form.weekdays.includes(d)}
+                        onclick={() => toggleDay(d)}
+                      >
+                        {DAY_NAMES[d]}
+                      </button>
+                    {/each}
+                  </div>
+                </div>
+                <p class="hint">{describeRule(form)}</p>
+              </fieldset>
+              <label class="field span-3"
+                >First session <input class="input" type="date" bind:value={form.startsOn} required /></label
+              >
+              <label class="field span-3">
+                Last session
+                <input
+                  class="input"
+                  type="date"
+                  value={form.endsOn ?? ""}
+                  onchange={(e) => form && (form.endsOn = e.currentTarget.value || null)}
+                />
+              </label>
+              <label class="field span-3">Starts <input class="input" type="time" bind:value={form.startTime} /></label>
+              <label class="field span-3">Ends <input class="input" type="time" bind:value={form.endTime} /></label>
+              <p class="hint small span-12 tuck">
+                Leave Last session empty to keep going; sessions are made 12 weeks ahead.
+              </p>
+              <div class="span-12">
+                <PlacePicker
+                  id="training-place"
+                  bind:venueId={form.venueId}
+                  bind:name={form.venue}
+                  bind:mapUrl={form.mapUrl}
+                  placeholder="e.g. The rink"
+                />
+              </div>
+            </div>
+          {:else}
+            <div class="sessions">
+              {#if upcoming.length}
+                <!-- The coming sessions as a grid, as Gwenda ops lays out a series' nights -->
+                <section class="nights">
+                  <div class="nights-head">
+                    <h2>Upcoming sessions</h2>
+                    <span class="pager" role="group" aria-label="Weeks">
+                      <button
+                        type="button"
+                        class="btn ghost icon"
+                        aria-label="12 weeks before"
+                        disabled={page === 0}
+                        onclick={() => page--}
+                      >
+                        <Icon name="chevronLeft" size={18} />
+                      </button>
+                      <span class="range num" aria-live="polite">{range}</span>
+                      <button
+                        type="button"
+                        class="btn ghost icon"
+                        aria-label="12 weeks after"
+                        disabled={fetching || addDays(pageStart, PAGE_DAYS) > addDays(londonToday(), 2 * 365)}
+                        onclick={nextPage}
+                      >
+                        <Icon name="chevronRight" size={18} />
+                      </button>
+                    </span>
+                  </div>
+                  <div class="nights-grid">
+                    {#each shown as session (session.id)}
+                      {@const r = resolve(session)}
+                      <div class="night" class:off={r.cancelled}>
+                        <span class="when">{formatDayDate(londonISO(r.heldOn, r.startTime))}</span>
+                        <button type="button" class="act" onclick={() => toggleCancel(session.id)}>
+                          {r.cancelled ? "Restore" : "Cancel"}
+                        </button>
+                        <span class="sub num">{r.startTime}–{r.endTime}</span>
+                        <span class="sub">{r.cancelled ? "Cancelled" : `${session.going.length} in`}</span>
+                      </div>
+                    {/each}
+                  </div>
+                  <p class="hint">Cancelling keeps the session, so whoever signed up can be told.</p>
+                </section>
+              {/if}
+              {#if held.length}
+                <section class="nights">
+                  <h2>Held</h2>
+                  <div class="nights-grid">
+                    {#each held as session (session.id)}
+                      {@const c = collectedFor("session", session.id)}
+                      <div class="night">
+                        <span class="when"
+                          >{formatDayDate(londonISO(session.heldOn, session.startTime ?? form.startTime))}</span
+                        >
+                        <span class="collected num" class:short={c.paid < c.due}>
+                          <strong>{pounds(c.paid)}</strong> / {pounds(c.due)}
+                        </span>
+                        <span class="sub num">{session.attended?.length ?? 0} came</span>
+                        <span class="sub num">
+                          {c.paidPeople} of {c.people} paid · {pounds(session.feePence ?? 0)} each
+                        </span>
+                      </div>
+                    {/each}
+                  </div>
+                  <p class="hint">
+                    What each session collected against what it was due. Mark payments on a member's profile.
+                  </p>
+                </section>
+              {/if}
+              {#if !upcoming.length && !held.length}
+                <p class="hint">No sessions yet. Set when it runs under Schedule, then save.</p>
+              {/if}
+            </div>
+          {/if}
         </div>
-        <div class="days" role="group" aria-label="Days">
-          {#each WEEKDAYS as d (d)}
-            <button type="button" class="day" aria-pressed={form.weekdays.includes(d)} onclick={() => toggleDay(d)}>
-              {DAY_NAMES[d]}
-            </button>
-          {/each}
-        </div>
-        <p class="hint">{describeRule(form)}</p>
-      </fieldset>
-
-      <div class="two">
-        <label class="field"
-          >First session <input class="input" type="date" bind:value={form.startsOn} required /></label
-        >
-        <label class="field">
-          Last session
-          <input
-            class="input"
-            type="date"
-            value={form.endsOn ?? ""}
-            onchange={(e) => form && (form.endsOn = e.currentTarget.value || null)}
-          />
-        </label>
-      </div>
-      <p class="hint small">Leave Last session empty to keep going; sessions are made 12 weeks ahead.</p>
-      <div class="two">
-        <label class="field">Starts <input class="input" type="time" bind:value={form.startTime} /></label>
-        <label class="field">Ends <input class="input" type="time" bind:value={form.endTime} /></label>
-      </div>
-      <label class="field">Venue <input class="input" bind:value={form.venue} placeholder="e.g. The rink" /></label>
-      <div class="two">
-        <label class="field">
-          Skater places
-          <input
-            class="input"
-            type="number"
-            min="0"
-            value={form.capacity ?? ""}
-            onchange={(e) => form && (form.capacity = Number(e.currentTarget.value) || null)}
-          />
-        </label>
-        <label class="field">
-          Goalie places
-          <input
-            class="input"
-            type="number"
-            min="0"
-            value={form.goalieCapacity ?? ""}
-            onchange={(e) =>
-              form && (form.goalieCapacity = e.currentTarget.value === "" ? null : Number(e.currentTarget.value))}
-          />
-        </label>
-      </div>
-      <p class="hint small">Leave either empty for no limit.</p>
-      <fieldset class="field">
-        <legend>Fee per session</legend>
-        <div class="two">
-          <label class="field">
-            Amount (£)
-            <input class="input num" inputmode="decimal" bind:value={feeAmount} />
-          </label>
-          <label class="field">From <input class="input" type="date" bind:value={feeFrom} /></label>
-        </div>
-        <p class="hint small">
-          {current ? `${pounds(current)} now.` : "Free now."} A new fee applies from its date; sessions already held keep
-          theirs. Subscribers aren't charged.
-        </p>
-        {#if form.fees.length > 1}
-          <p class="hint small">
-            {#each [...form.fees].reverse() as f, i (f.from)}{i ? " · " : ""}{pounds(f.pence)} from {fullDate(
-                f.from,
-              )}{/each}
-          </p>
-        {/if}
-      </fieldset>
+      {/key}
     </form>
-    {#if upcoming.length}
-      <!-- The coming sessions as a grid, as Gwenda ops lays out a series' nights -->
-      <section class="nights">
-        <div class="nights-head">
-          <h2>Upcoming sessions</h2>
-          <span class="pager" role="group" aria-label="Weeks">
-            <button
-              type="button"
-              class="btn ghost icon"
-              aria-label="12 weeks before"
-              disabled={page === 0}
-              onclick={() => page--}
-            >
-              <Icon name="chevronLeft" size={18} />
-            </button>
-            <span class="range num" aria-live="polite">{range}</span>
-            <button
-              type="button"
-              class="btn ghost icon"
-              aria-label="12 weeks after"
-              disabled={fetching || addDays(pageStart, PAGE_DAYS) > addDays(londonToday(), 2 * 365)}
-              onclick={nextPage}
-            >
-              <Icon name="chevronRight" size={18} />
-            </button>
-          </span>
-        </div>
-        <div class="nights-grid">
-          {#each shown as session (session.id)}
-            {@const r = resolve(session)}
-            <div class="night" class:off={r.cancelled}>
-              <span class="when">{formatDayDate(londonISO(r.heldOn, r.startTime))}</span>
-              <button type="button" class="act" onclick={() => toggleCancel(session.id)}>
-                {r.cancelled ? "Restore" : "Cancel"}
-              </button>
-              <span class="sub num">{r.startTime}–{r.endTime}</span>
-              <span class="sub">{r.cancelled ? "Cancelled" : `${session.going.length} in`}</span>
-            </div>
-          {/each}
-        </div>
-        <p class="hint">Cancelling keeps the session, so whoever signed up can be told.</p>
-      </section>
-    {/if}
-    {#if held.length}
-      <section class="nights">
-        <h2>Held</h2>
-        <div class="nights-grid">
-          {#each held as session (session.id)}
-            {@const c = collectedFor("session", session.id)}
-            <div class="night">
-              <span class="when">{formatDayDate(londonISO(session.heldOn, session.startTime ?? form.startTime))}</span>
-              <span class="collected num" class:short={c.paid < c.due}>
-                <strong>{pounds(c.paid)}</strong> / {pounds(c.due)}
-              </span>
-              <span class="sub num">{session.attended?.length ?? 0} came</span>
-              <span class="sub num">
-                {c.paidPeople} of {c.people} paid · {pounds(session.feePence ?? 0)} each
-              </span>
-            </div>
-          {/each}
-        </div>
-        <p class="hint">What each session collected against what it was due. Mark payments on a member's profile.</p>
-      </section>
-    {/if}
   {/if}
 </div>
 
@@ -365,10 +427,56 @@
     text-decoration: underline;
     text-underline-offset: 0.2em;
   }
-  /* The form, then the dates under it, spaced like the panel's sections */
+  /* The tabs, then the tab showing. Its grid answers to the panel's width, not the screen's */
   .editor {
     display: grid;
     gap: var(--s-5);
+    container-type: inline-size;
+  }
+  .tabs {
+    justify-self: start;
+  }
+  .tabs > button {
+    flex: none;
+    min-width: 6.5rem;
+  }
+  /* Twelve columns, as Gwenda's Build tab: fields span 3, 4, 8 or 12 */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: var(--s-5) var(--s-4);
+  }
+  .span-3 {
+    grid-column: span 3;
+  }
+  .span-4 {
+    grid-column: span 4;
+  }
+  .span-8 {
+    grid-column: span 8;
+  }
+  .span-12 {
+    grid-column: 1 / -1;
+  }
+  /* Narrower: fours become twos, and name and short name stack */
+  @container (max-width: 44rem) {
+    .span-3 {
+      grid-column: span 6;
+    }
+    .span-4,
+    .span-8 {
+      grid-column: 1 / -1;
+    }
+  }
+  /* Icon and colour on one line while they fit */
+  .style {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-5) var(--s-8);
+  }
+  .sessions {
+    display: grid;
+    gap: var(--s-6);
   }
   .night .collected {
     grid-column: 2;
@@ -428,8 +536,10 @@
     padding: 0;
     margin-bottom: var(--s-2);
   }
+  /* Every 1 week on Mon … Sun, on one line while it fits */
   .repeat {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: var(--s-2);
     color: var(--fg-body);
@@ -442,7 +552,7 @@
     display: flex;
     flex-wrap: wrap;
     gap: var(--s-1);
-    margin: var(--s-2) 0;
+    margin-left: var(--s-2);
   }
   /* Filled tiles, as the icon picker's: lit in the training's colour when on */
   .day {
@@ -467,7 +577,9 @@
     color: var(--fg);
   }
   /* Tucked under the fields it explains */
-  .small {
-    margin-top: calc(-1 * var(--s-2));
+  .tuck {
+    display: grid;
+    gap: var(--s-1);
+    margin-top: calc(-1 * var(--s-3));
   }
 </style>
