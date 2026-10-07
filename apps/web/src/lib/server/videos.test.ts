@@ -22,7 +22,7 @@ function fakeNetwork({
   const calls = { sanity: 0, youtube: 0 };
   const fetch = vi.fn(async (input: string | URL) => {
     const url = new URL(input);
-    if (url.hostname.endsWith("apicdn.sanity.io")) {
+    if (url.hostname.endsWith(".sanity.io")) {
       calls.sanity++;
       if (!sanityUp) return new Response("down", { status: 500 });
       return Response.json({ result: { club: { socials: {}, ...club }, videos } });
@@ -83,6 +83,18 @@ describe("liveVideos", () => {
     t += 10 * 60_000;
     await liveVideos(config(), { now, edge: null });
     expect(calls.youtube).toBe(4);
+  });
+
+  it("reads Sanity and YouTube on every call outside production", async () => {
+    const { fetch, calls } = fakeNetwork({ club: { socials: { youtube: "https://www.youtube.com/@club" } } });
+    vi.stubGlobal("fetch", fetch);
+    const fresh = config({ sanity: { ...sanity, cache: false } });
+    const edge = { match: vi.fn(), put: vi.fn() };
+    for (let i = 0; i < 3; i++) await liveVideos(fresh, { now, edge });
+    expect(calls).toEqual({ sanity: 3, youtube: 6 }); // channels + playlistItems, each time
+    expect(edge.match).not.toHaveBeenCalled();
+    expect(edge.put).not.toHaveBeenCalled();
+    expect(String(fetch.mock.calls[0][0])).toContain("https://proj.api.sanity.io/");
   });
 
   it("keeps showing the last YouTube list when YouTube fails", async () => {

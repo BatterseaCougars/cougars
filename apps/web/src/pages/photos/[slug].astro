@@ -7,8 +7,8 @@ import Empty from "../../components/Empty.astro";
 import Lightbox from "../../components/Lightbox.astro";
 import { imageUrl, imageSrcSet } from "../../lib/sanity/images";
 import { formatDate } from "../../lib/dates";
-import { CACHE_CONTROL, UNAVAILABLE_CACHE_CONTROL, findAlbum } from "../../lib/server/photos";
-import { photosConfig } from "../../lib/server/sanity-env";
+import { findAlbum } from "../../lib/server/photos";
+import { cacheControl, photosConfig } from "../../lib/server/sanity-env";
 
 export const prerender = false;
 
@@ -16,7 +16,7 @@ const { data: album, unavailable } = await findAlbum(photosConfig(), Astro.param
 // An empty 404 makes Astro serve the site's own 404 page.
 if (!album && !unavailable) return new Response(null, { status: 404 });
 
-Astro.response.headers.set("Cache-Control", unavailable ? UNAVAILABLE_CACHE_CONTROL : CACHE_CONTROL);
+Astro.response.headers.set("Cache-Control", cacheControl(unavailable));
 if (unavailable) Astro.response.status = 503;
 ---
 

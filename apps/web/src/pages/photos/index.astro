@@ -7,8 +7,8 @@ import Empty from "../../components/Empty.astro";
 import { getSettings } from "../../lib/sanity/content";
 import { imageSrcSet, imageUrl } from "../../lib/sanity/images";
 import { formatDate } from "../../lib/dates";
-import { CACHE_CONTROL, UNAVAILABLE_CACHE_CONTROL, listAlbums } from "../../lib/server/photos";
-import { photosConfig } from "../../lib/server/sanity-env";
+import { listAlbums } from "../../lib/server/photos";
+import { cacheControl, photosConfig } from "../../lib/server/sanity-env";
 
 export const prerender = false;
 
@@ -17,7 +17,7 @@ const s = await getSettings();
 const day = s.training[0]?.day ?? "Friday";
 const plural = (n: number) => `${n} photo${n === 1 ? "" : "s"}`;
 
-Astro.response.headers.set("Cache-Control", unavailable ? UNAVAILABLE_CACHE_CONTROL : CACHE_CONTROL);
+Astro.response.headers.set("Cache-Control", cacheControl(unavailable));
 if (unavailable) Astro.response.status = 503;
 ---
 

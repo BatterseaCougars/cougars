@@ -12,6 +12,8 @@ export interface PhotosConfig {
   /** Viewer token. Only needed for a private dataset; Sanity's free plan only has public ones. */
   token?: string;
   demo?: boolean;
+  /** False outside production: read Sanity's API directly, not its CDN, and cache nothing (CACHE_READS). */
+  cache?: boolean;
 }
 
 /** Browsers re-check after a minute; Cloudflare's edge keeps a page for five (once there's a domain, M5). */
@@ -40,7 +42,8 @@ export async function sanityQuery<T>(
   query: string,
   params: Record<string, string> = {},
 ): Promise<T> {
-  const url = new URL(`https://${config.projectId}.apicdn.sanity.io/${API_VERSION}/data/query/${config.dataset}`);
+  const host = config.cache === false ? "api" : "apicdn";
+  const url = new URL(`https://${config.projectId}.${host}.sanity.io/${API_VERSION}/data/query/${config.dataset}`);
   url.searchParams.set("query", query);
   url.searchParams.set("perspective", "published");
   for (const [k, v] of Object.entries(params)) url.searchParams.set(`$${k}`, JSON.stringify(v));

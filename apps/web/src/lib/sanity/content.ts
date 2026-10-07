@@ -2,7 +2,7 @@
 // rebuilds daily and on each release (ADR 0018). Until a Sanity project is configured, pages
 // render from the fallback club facts (fallback.ts) and empty lists. The merge
 // rules are in merge.ts.
-import { DEMO_CONTENT } from "astro:env/server";
+import { CACHE_READS, DEMO_CONTENT } from "astro:env/server";
 import { onWorker, sanity } from "./client";
 import * as q from "./queries";
 import { FALLBACK_CLUB, FALLBACK_FRIDAYS, FALLBACK_KUMITE, FALLBACK_PUB, FALLBACK_TEAM } from "./fallback";
@@ -35,12 +35,14 @@ async function fetchOr<T>(query: string, fallback: T): Promise<T> {
 const fetchList = async <T>(query: string, demoList: T[] | null = null) =>
   listOr(await fetchOr<T[] | null>(query, null), demo ? demoList : null);
 
-// Once per build. On the Worker, an isolate lives on between requests, so re-read every five minutes.
+// Once per build. On the production Worker, an isolate lives on between requests, so re-read every five minutes.
+// `astro dev` and the dev Worker re-read on every call, so a Studio change shows on the next page load.
 const memo = <T>(fn: () => Promise<T>) => {
   let p: Promise<T> | undefined;
   let at = 0;
+  const reuse = () => !import.meta.env.DEV && (!onWorker || (CACHE_READS && Date.now() - at < 5 * 60_000));
   return () => {
-    if (!p || (onWorker && Date.now() - at > 5 * 60_000)) [p, at] = [fn(), Date.now()];
+    if (!p || !reuse()) [p, at] = [fn(), Date.now()];
     return p;
   };
 };

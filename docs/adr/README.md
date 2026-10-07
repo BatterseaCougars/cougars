@@ -39,3 +39,4 @@ rule, a trade-off. Copy [template.md](template.md), take the next number, keep i
 | [0028](0028-turnstile-and-auto-reply.md)      | Auto-replies only to people Turnstile verified, and capped                     | Accepted              |
 | [0029](0029-enquiry-retention.md)             | Enquiries are deleted after 12 months                                          | Accepted              |
 | [0040](0040-labelled-video-playlists.md)      | Videos come from several club playlists, each labelled                         | Accepted              |
+| [0041](0041-caches-in-production-only.md)     | Live reads are cached in production only                                       | Accepted              |

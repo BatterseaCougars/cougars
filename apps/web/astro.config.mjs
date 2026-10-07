@@ -50,6 +50,13 @@ export default defineConfig({
       TURNSTILE_SITE_KEY: envField.string({ context: "client", access: "public", default: "1x00000000000000000000AA" }),
       TURNSTILE_SECRET_KEY: envField.string({ context: "server", access: "secret", optional: true }),
       PUBLIC_BUILD_VERSION: envField.string({ context: "client", access: "public", default: "dev" }),
+      // Caches for live reads (Sanity's API CDN, the video cache, Cache-Control on live pages): production only.
+      // Everywhere else (a laptop, the dev site) every request reads fresh content.
+      CACHE_READS: envField.boolean({
+        context: "server",
+        access: "public",
+        default: process.env.SITE_ENV === "production",
+      }),
       // Sample content + noindex for dev builds (local, PR previews, scripts/deploy-dev.sh). Never in production.
       DEMO_CONTENT: envField.boolean({ context: "server", access: "public", default: false }),
     },
