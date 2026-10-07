@@ -1,12 +1,17 @@
 <script lang="ts">
-  // One session, tournament or social, with In/Out. Every kind carries its own icon and colour (set by an admin
-  // per training and tournament type), so the calendar reads at a glance.
+  // One session, tournament or social, with In/Out ("Roster", picked 2026-10-07). The header says what and when, with
+  // how soon it is and where you stand on the right. Below it, the question people bring to the card, who's going:
+  // their faces and first names, the count and spaces left, and In and Out at the end of that row, so you answer
+  // next to the people you'd be playing with. Every kind carries its own icon and colour (set by an admin per
+  // training and tournament type), so the calendar reads at a glance. Nothing moves when you answer.
   import type { Snippet } from "svelte";
   import type { Bookable } from "../demo/model";
   import { impersonating, me } from "../demo/session.svelte";
   import { answerFor } from "../app/backend.svelte";
   import Icon from "../app/shell/Icon.svelte";
-  import { dateBadge, formatTime } from "./dates";
+  import { PLAYERS } from "../demo/data";
+  import { dateBadge, formatTime, londonToday } from "./dates";
+  import { initials } from "./initials";
 
   let {
     event,
@@ -20,7 +25,7 @@
     event: Bookable;
     canSignUp?: boolean;
     feature?: boolean;
-    /** Calendar rows: the type label and a link, no capacity meter. */
+    /** Calendar rows: the title links to its page, and the date gets a bar in the type's colour. */
     compact?: boolean;
     /** Called after a tap on In or Out with where the member ended up. */
     onanswer?: (status: "in" | "waitlist" | "out") => void;
@@ -43,7 +48,29 @@
   const waiting = $derived(entries.waitlist.includes(id));
   const out = $derived(entries.out?.includes(id) ?? false);
   const full = $derived(event.capacity != null && entries.going.length >= event.capacity);
-  const fill = $derived(event.capacity ? Math.min(1, entries.going.length / event.capacity) : 0);
+
+  // Who's going: the first five faces, in sign-up order, and first names (you first, when you're in)
+  const nameOf = (pid: number) => PLAYERS.find((p) => p.id === pid)?.name ?? "";
+  const faces = $derived(entries.going.slice(0, 5));
+  const others = $derived(entries.going.filter((x) => x !== id));
+  const names = $derived(
+    others
+      .slice(0, 3)
+      .map((x) => nameOf(x).split(" ")[0])
+      .filter(Boolean),
+  );
+  const rest = $derived(others.length - names.length);
+  const spaces = $derived(event.capacity ? Math.max(0, event.capacity - entries.going.length) : null);
+
+  // How soon, in days on London's calendar: Today, Tomorrow, In 3 days, In 2 weeks
+  const soon = $derived.by(() => {
+    if (event.dateTbc || event.cancelled) return "";
+    const day = (iso: string) => Date.parse(`${iso}T12:00:00Z`) / 86_400_000;
+    const n = Math.round(day(londonToday(new Date(event.startsAt))) - day(londonToday()));
+    if (n < 0) return "";
+    const when = n === 0 ? "Today" : n === 1 ? "Tomorrow" : n < 14 ? `In ${n} days` : `In ${Math.floor(n / 7)} weeks`;
+    return event.signup ? `${when} · ${full ? "full" : "sign-up open"}` : when;
+  });
 
   // Not in yet, whether unanswered or out: In pulses once to ask, and again if you say out
   const beckoning = $derived(beckon && canSignUp && event.signup && !inIt && !waiting && !locked);
@@ -83,71 +110,97 @@
   class:cancelled={event.cancelled}
   style:--tone="var(--tone-{event.tone})"
 >
-  <div class="date">
-    {#if event.dateTbc}
-      <!-- Not confirmed: the date it has only decides where it sorts, so it isn't shown -->
-      <span class="eyebrow">Date</span>
-      <span class="display day">TBC</span>
-      <span class="eyebrow">&nbsp;</span>
-    {:else}
-      <span class="eyebrow">{badge.weekday}</span>
-      <span class="display day">{badge.day}</span>
-      <span class="eyebrow">{badge.month}</span>
-    {/if}
-  </div>
-  <div class="body">
-    <!-- What matters first: which session (icon and name) and when. Where is a quiet second line. -->
-    <div class="head">
-      <span class="chip" title={KIND[event.kind]}><Icon name={event.icon} size={18} /></span>
-      <h3>
-        {#if compact && event.href}<a href={event.href}>{event.title}</a>{:else}{event.title}{/if}
-      </h3>
-      {#if event.cancelled}<span class="badge">Cancelled</span>{/if}
-    </div>
-    <p class="time num">
-      {event.dateTbc ? "Date and time to be confirmed" : `${formatTime(event.startsAt)}–${formatTime(event.endsAt)}`}
-    </p>
-    {#if event.venue}<p class="venue"><Icon name="pin" size={13} />{event.venue}</p>{/if}
-    {#if event.signup}
-      {#if !compact && event.capacity}
-        <div class="meter" aria-hidden="true"><span style:width="{fill * 100}%"></span></div>
+  <div class="top">
+    <div class="date">
+      {#if event.dateTbc}
+        <!-- Not confirmed: the date it has only decides where it sorts, so it isn't shown -->
+        <span class="eyebrow">Date</span>
+        <span class="display day">TBC</span>
+        <span class="eyebrow">&nbsp;</span>
+      {:else}
+        <span class="eyebrow">{badge.weekday}</span>
+        <span class="display day">{badge.day}</span>
+        <span class="eyebrow">{badge.month}</span>
       {/if}
-      <!-- One fixed-height line: the badge swaps in place, so answering never moves anything -->
-      <p class="count hint num">
-        <span><strong>{entries.going.length}</strong>{event.capacity ? ` / ${event.capacity}` : ""} in</span>
-        {#if entries.waitlist.length}<span>· {entries.waitlist.length} waiting</span>{/if}
-        {#if inIt}<span class="badge green">You're in</span>{:else if waiting}<span class="badge amber">Waitlist</span
-          >{:else if out}<span class="badge red">You're out</span>{/if}
+    </div>
+    <!-- What matters first: which session (icon and name) and when. Where is a quiet second line. -->
+    <div class="what">
+      <div class="head">
+        <span class="chip" title={KIND[event.kind]}><Icon name={event.icon} size={18} /></span>
+        <h3>
+          {#if compact && event.href}<a href={event.href}>{event.title}</a>{:else}{event.title}{/if}
+        </h3>
+      </div>
+      <p class="when">
+        <span class="time num">
+          {event.dateTbc
+            ? "Date and time to be confirmed"
+            : `${formatTime(event.startsAt)}–${formatTime(event.endsAt)}`}
+        </span>
+        {#if event.venue}<span class="venue"><Icon name="pin" size={13} />{event.venue}</span>{/if}
       </p>
-    {/if}
+    </div>
+    <!-- How soon, and where you stand: a fixed slot, so answering swaps the badge in place -->
+    <div class="side">
+      {#if soon}<span class="soon" class:open={event.signup && !full}>{soon}</span>{/if}
+      <span class="status">
+        {#if event.cancelled}<span class="badge">Cancelled</span>
+        {:else if inIt}<span class="badge green num">You're number {entries.going.indexOf(id) + 1}</span>
+        {:else if waiting}<span class="badge amber num">Waitlist · {entries.waitlist.indexOf(id) + 1}</span>
+        {:else if out}<span class="badge red">You're out</span>{/if}
+      </span>
+    </div>
   </div>
-  {#if event.signup && canSignUp}
-    <div class="seg answer" role="group" aria-label="Are you in?">
-      <button
-        class="yes"
-        class:beckon={beckoning && !out}
-        class:beckon-again={beckoning && out}
-        aria-pressed={inIt || waiting}
-        disabled={locked}
-        onclick={() => setIn(true)}
-      >
-        {#if inIt}<Icon name="check" size={16} />{/if}
-        {waiting ? "Waitlist" : full && !inIt ? "Join waitlist" : "In"}
-      </button>
-      <button class="no" aria-pressed={out} disabled={locked} onclick={() => setIn(false)}>
-        {#if out}<Icon name="x" size={16} />{/if}Out
-      </button>
+
+  {#if event.signup}
+    <div class="going">
+      <span class="faces" aria-hidden="true">
+        {#each faces as pid (pid)}<span class:you={pid === id}>{initials(nameOf(pid))}</span>{/each}
+        {#if entries.going.length > faces.length}<span class="more num">+{entries.going.length - faces.length}</span
+          >{/if}
+      </span>
+      <span class="who">
+        {#if !entries.going.length}
+          Nobody yet. First in, first on the list.
+        {:else}
+          {#if inIt}<strong>You</strong>{names.length ? ", " : ""}{/if}{names.join(", ")}{#if rest > 0}
+            and {rest} more{/if}
+        {/if}
+      </span>
+      <span class="tally num">
+        <strong>{entries.going.length}</strong>{event.capacity ? ` / ${event.capacity}` : ""} in{#if spaces !== null}
+          · {spaces} {spaces === 1 ? "space" : "spaces"}{/if}{#if entries.waitlist.length}
+          · {entries.waitlist.length} waiting{/if}
+      </span>
+      {#if canSignUp}
+        <div class="answer" role="group" aria-label="Are you in?">
+          <button
+            class="yes"
+            class:beckon={beckoning && !out}
+            class:beckon-again={beckoning && out}
+            aria-pressed={inIt || waiting}
+            disabled={locked}
+            onclick={() => setIn(true)}
+          >
+            {#if inIt}<Icon name="check" size={16} />{/if}
+            {waiting ? "Waitlist" : full && !inIt ? "Join waitlist" : "In"}
+          </button>
+          <button class="no" aria-pressed={out} disabled={locked} onclick={() => setIn(false)}>
+            {#if out}<Icon name="x" size={16} />{/if}Out
+          </button>
+        </div>
+      {/if}
     </div>
   {/if}
   {#if footer}<div class="foot">{@render footer()}</div>{/if}
 </article>
 
 <style>
+  /* The card is a container, so it lays itself out by its own width: a phone, a calendar row, a wide desktop */
   .event {
+    container-type: inline-size;
     display: grid;
-    grid-template-columns: 3.25rem 1fr;
-    gap: var(--s-3) var(--s-4);
-    align-items: start;
+    gap: var(--s-4);
     padding: var(--s-4);
   }
   .event.cancelled {
@@ -156,17 +209,35 @@
   .event.cancelled h3 {
     text-decoration: line-through;
   }
+  .event.feature {
+    border-color: var(--border-strong);
+    background: var(--panel-bg);
+  }
+  .feature h3 {
+    font-size: var(--text-lg);
+  }
+
+  /* ─── Header: date, what and when, how soon and your status ─── */
+  .top {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--s-4);
+  }
   .date {
     position: relative;
     display: grid;
     justify-items: center;
     gap: 0.1rem;
-    padding-right: var(--s-3);
+    min-width: 3.25rem;
+    padding-right: var(--s-4);
     border-right: 1px solid var(--border);
     text-align: center;
   }
-  /* Calendar rows: the divider beside the date takes the type's colour, a short lit bar, so a month reads at a
-     glance without colouring the whole card */
+  .day {
+    font-size: 1.9rem;
+    color: var(--fg);
+  }
+  /* Calendar rows: the divider beside the date takes the type's colour, so a month reads at a glance */
   .compact .date {
     border-right-color: transparent;
   }
@@ -181,16 +252,18 @@
     background: var(--tone);
     box-shadow: 0 0 10px color-mix(in srgb, var(--tone) 55%, transparent);
   }
-  .day {
-    font-size: 1.9rem;
-    color: var(--fg);
+  .what {
+    flex: 1;
+    display: grid;
+    gap: var(--s-2);
+    min-width: 0;
   }
   .head {
     display: flex;
     align-items: center;
     gap: var(--s-3);
   }
-  /* The only colour on the card: the type's icon */
+  /* The type's icon in its colour */
   .chip {
     display: grid;
     place-items: center;
@@ -202,101 +275,169 @@
     color: var(--tone);
   }
   h3 {
-    flex: 1;
     min-width: 0;
     font-size: var(--text-md);
     font-weight: 600;
     line-height: 1.2;
     color: var(--fg);
   }
+  h3 a:hover {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .when {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.15rem var(--s-3);
+  }
   .time {
-    margin-top: var(--s-2);
     font-size: var(--text-md);
     font-weight: 500;
     color: var(--fg);
   }
   .venue {
-    display: flex;
+    display: inline-flex;
     align-items: center;
     gap: var(--s-1);
-    margin-top: 0.15rem;
     font-size: var(--text-xs);
     color: var(--fg-subtle);
   }
-  /* The lead card is bigger, not red: a red fill muddied the In and Out tiles on it */
-  .event.feature {
-    border-color: var(--border-strong);
-    background: var(--panel-bg);
+  .side {
+    display: grid;
+    justify-items: end;
+    gap: var(--s-2);
+    flex-shrink: 0;
   }
-  .feature h3 {
-    font-size: var(--text-lg);
-  }
-  h3 a:hover {
-    text-decoration: underline;
-    text-underline-offset: 3px;
-  }
-  .meter {
-    height: 3px;
-    margin-top: var(--s-3);
-    border-radius: 2px;
-    background: color-mix(in srgb, var(--fg) 9%, transparent);
-    overflow: hidden;
-  }
-  .meter span {
-    display: block;
-    height: 100%;
-    border-radius: 2px;
-    background: color-mix(in srgb, var(--fg) 55%, transparent);
-    transition: width var(--t-slow) var(--ease);
-  }
-  .count {
-    display: flex;
+  .soon {
+    display: inline-flex;
     align-items: center;
     gap: var(--s-2);
-    min-height: 1.5rem;
-    margin-top: var(--s-2);
+    color: var(--fg-muted);
+    font-size: var(--text-xs);
+    font-weight: 600;
     white-space: nowrap;
   }
-  .count strong {
+  /* Sign-up open: a green light */
+  .soon.open::before {
+    content: "";
+    width: 0.4rem;
+    height: 0.4rem;
+    border-radius: 50%;
+    background: var(--green);
+  }
+  /* Always there, empty or not, so a badge arriving never moves anything */
+  .status {
+    display: flex;
+    min-height: 1.5rem;
+  }
+
+  /* ─── Who's going, and your answer at the end of the row ─── */
+  .going {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--s-3) var(--s-4);
+    padding: var(--s-3) var(--s-3) var(--s-3) var(--s-4);
+    border-radius: var(--r-md);
+    background: var(--surface-2);
+  }
+  .faces {
+    display: flex;
+    flex-shrink: 0;
+  }
+  .faces > span {
+    display: grid;
+    place-items: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    margin-left: -0.45rem;
+    border-radius: 50%;
+    background: var(--surface-3);
+    box-shadow: 0 0 0 2px var(--surface-2);
+    color: var(--fg-muted);
+    font-size: 0.625rem;
+    font-weight: 700;
+  }
+  .faces > span:first-child {
+    margin-left: 0;
+  }
+  .faces > .you {
+    background: color-mix(in srgb, var(--green) 30%, var(--surface-2));
     color: var(--fg);
   }
-  .count .badge {
-    margin-left: auto;
+  .faces > .more {
+    background: var(--surface-1);
+    color: var(--fg-subtle);
   }
-  .seg {
-    grid-column: 1 / -1;
-    display: flex;
+  .faces:empty {
+    display: none;
   }
-  .seg > button {
+  .who {
+    flex: 1 1 10rem;
+    min-width: 0;
+    overflow: hidden;
+    color: var(--fg-muted);
+    font-size: var(--text-sm);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .who strong {
+    color: var(--fg);
+    font-weight: 600;
+  }
+  .tally {
+    color: var(--fg-muted);
+    font-size: var(--text-sm);
+    white-space: nowrap;
+  }
+  .tally strong {
+    color: var(--fg);
+    font-weight: 600;
+  }
+  /* Two compact tiles, the same before and after you answer: a light fill until pressed, then In lights up green
+     with a tick, Out goes red with a cross. Fixed widths, so the label changing never moves them. */
+  .answer {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--s-2);
+    flex-shrink: 0;
+  }
+  .answer > button {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: var(--s-1);
+    min-width: 6.5rem;
     min-height: 2.5rem;
-    border: 1px solid transparent;
-  }
-  /* Two tiles, the same before and after you answer: a clear light fill until pressed, then In lights up green
-     with a tick, Out goes red with a cross. No track around them. */
-  .answer {
-    gap: var(--s-2);
-    border-color: transparent;
-    background: none;
-  }
-  .answer > button {
+    padding: 0 var(--s-3);
+    border: 0;
     border-radius: var(--r-md);
     background: color-mix(in srgb, var(--fg) 10%, transparent);
     color: var(--fg);
+    font-size: var(--text-sm);
     font-weight: 600;
+    white-space: nowrap;
     transition: background-color var(--t-fast) var(--ease-in-out);
   }
   .answer > button:hover:not(:disabled):not([aria-pressed="true"]) {
     background: color-mix(in srgb, var(--fg) 16%, transparent);
   }
-  /* The session you're asked about, while you're not in: In pulses once, a soft ring. A shadow, so nothing moves. */
-  .answer > .yes.beckon {
-    animation: beckon 1.2s 300ms var(--ease-in-out) 1 both;
+  .answer > button:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
   }
-  /* Said out: another class, so the pulse plays again for them */
+  .answer > .yes[aria-pressed="true"] {
+    background: color-mix(in srgb, var(--green) 22%, transparent);
+    color: var(--green);
+  }
+  /* Out, chosen: the mirror of In, in the club's red, so it can't be mistaken for "not answered yet" */
+  .answer > .no[aria-pressed="true"] {
+    background: var(--red-wash-strong);
+    color: var(--red-hot);
+  }
+  /* The session you're asked about, while you're not in: In pulses once, a soft ring. A shadow, so nothing moves. */
+  .answer > .yes.beckon,
   .answer > .yes.beckon-again {
     animation: beckon 1.2s 300ms var(--ease-in-out) 1 both;
   }
@@ -316,39 +457,27 @@
       animation: none;
     }
   }
-  .answer > .yes[aria-pressed="true"] {
-    background: color-mix(in srgb, var(--green) 22%, transparent);
-    color: var(--green);
-    box-shadow: none;
-  }
-  /* Out, chosen: the mirror of In, in the club's red, so it can't be mistaken for "not answered yet" */
-  .answer > .no[aria-pressed="true"] {
-    background: var(--red-wash-strong);
-    color: var(--red-hot);
-    box-shadow: none;
-  }
   .foot {
-    grid-column: 1 / -1;
     margin: 0 calc(-1 * var(--s-4)) calc(-1 * var(--s-4));
     border-top: 1px solid var(--border);
   }
-  .seg button:disabled {
-    cursor: not-allowed;
-    opacity: 0.6;
-  }
-  /* A wide desktop page: In and Out move up beside the details as a compact pair on the right, instead of two
-     long bars across the card */
-  @media (min-width: 1200px) {
-    .event:has(.answer) {
-      grid-template-columns: 3.25rem 1fr 16rem;
+
+  /* ─── Narrow (a phone, a calendar row on a phone): the names drop under the faces, the buttons fill the row ─── */
+  @container (max-width: 34rem) {
+    .soon {
+      display: none;
+    }
+    .going {
+      padding: var(--s-3);
+    }
+    .who {
+      flex-basis: calc(100% - 9rem);
     }
     .answer {
-      grid-column: 3;
-      grid-row: 1;
-      align-self: center;
+      width: 100%;
     }
     .answer > button {
-      min-height: 2.75rem;
+      min-width: 0;
     }
   }
 </style>
