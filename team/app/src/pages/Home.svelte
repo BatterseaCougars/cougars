@@ -124,16 +124,19 @@
       <span class="badge-slot"><AccountMenu /></span>
     </div>
     <h1 class="display poster">{hello}</h1>
-    {#if owed > 0}
-      <!-- You owe: said up front, every visit, until it's paid -->
-      <a class="owing" href="/me/tab">
-        <span class="owing-text">
+    <!-- Your dues, every visit: red until it's paid, then a quiet all-clear in the same space -->
+    <a class="owing" class:clear={owed <= 0} href="/me/tab">
+      <span class="owing-text">
+        {#if owed > 0}
           <span class="owing-head">You owe the club <strong class="display num">{pounds(owed)}</strong></span>
           <span class="owing-sub">Bank transfer, reference <strong>{referenceFor(who.id)}</strong></span>
-        </span>
-        <span class="owing-cta">Settle up <Icon name="chevronRight" size={16} /></span>
-      </a>
-    {/if}
+        {:else}
+          <span class="owing-head">You're all paid up</span>
+          <span class="owing-sub">Your reference is <strong>{referenceFor(who.id)}</strong></span>
+        {/if}
+      </span>
+      <span class="owing-cta">{owed > 0 ? "Settle up" : "Dues"} <Icon name="chevronRight" size={16} /></span>
+    </a>
   </header>
 
   {#if series && session && booking}
@@ -239,11 +242,22 @@
   .owing:hover {
     border-color: var(--red);
   }
+  /* Nothing owed: a plain fill, no red */
+  .owing.clear {
+    border-color: transparent;
+    background: var(--surface-1);
+  }
+  .owing.clear:hover {
+    border-color: var(--border-strong);
+  }
+  .owing.clear .owing-cta {
+    color: var(--fg-muted);
+  }
   .owing-text {
     display: grid;
     flex: 1;
     min-width: 0;
-    gap: 0.1rem;
+    gap: var(--s-1);
   }
   .owing-head {
     color: var(--fg);

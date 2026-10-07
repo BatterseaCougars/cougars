@@ -30,16 +30,23 @@ describe("seeding the roster", () => {
         rating: 75,
         status: "active",
         email: "pat@example.com",
-        payment_reference: "COU-0001",
+        payment_reference: "COUGARS PAT E",
       },
-      { name: "Sam O'Neill", position: "F", rating: 40, status: "active", email: null, payment_reference: "COU-0002" },
+      {
+        name: "Sam O'Neill",
+        position: "F",
+        rating: 40,
+        status: "active",
+        email: null,
+        payment_reference: "COUGARS SAM O",
+      },
       {
         name: "Kim Contributor",
         position: "F",
         rating: 45,
         status: "active",
         email: null,
-        payment_reference: "COU-0003",
+        payment_reference: "COUGARS KIM C",
       },
     ]);
     expect(rolesOf(raw, "Pat Example")).toEqual(["Admin", "Member"]);

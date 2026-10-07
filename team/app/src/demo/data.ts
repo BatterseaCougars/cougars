@@ -36,7 +36,8 @@ const PHONES = new Map<number, string | null>();
 /** Only yours, unless you manage members. */
 export const phoneFor = (id: number) => PHONES.get(id) ?? null;
 export const emailFor = (p: Player) => EMAILS.get(p.id) ?? "No email yet";
-export const referenceFor = (id: number) => REFERENCES.get(id) ?? `COU-${String(id).padStart(4, "0")}`;
+/** Their bank reference (ADR 0038), or a dash: one that isn't sent is never made up, as it's what they pay with. */
+export const referenceFor = (id: number) => REFERENCES.get(id) ?? "—";
 
 export const SERIES: TrainingSeries[] = [];
 export const SESSIONS: TrainingSession[] = [];

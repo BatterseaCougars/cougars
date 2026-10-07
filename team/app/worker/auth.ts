@@ -8,6 +8,7 @@
 // never says whether it's a member's. Guesses are counted before a code is checked, in one statement, so requests
 // sent all at once can't get past the limits, and a code is spent the same way, so it signs in once.
 import { all, first, run } from "../../../shared/d1";
+import { assignReferenceSql } from "../../../shared/payment-reference";
 import { sendMail, type MailConfig } from "../../../shared/email";
 import { rateLimit } from "../../../shared/rate-limit";
 import { londonToday } from "../src/lib/dates";
@@ -142,7 +143,20 @@ export async function sessionOf(
   return { memberId: row.member_id, setCookie: setCookie(request, "session", value, SESSION_DAYS * 86_400) };
 }
 
+/** A member's bank reference (ADR 0038), unless they have one. */
+async function giveReference(db: D1Database, memberId: number, name: string) {
+  const { sql, candidates } = assignReferenceSql(name, "id = ?");
+  await run(db, sql, [...candidates, memberId]);
+}
+
 async function startSession(request: Request, env: AuthEnv, now: Date, memberId: number, method: string) {
+  // Someone made before references read as names (migration 0012) gets theirs the next time they sign in
+  const unreferenced = await first<{ name: string }>(
+    env.DB,
+    `SELECT name FROM members WHERE id = ? AND payment_reference IS NULL`,
+    [memberId],
+  );
+  if (unreferenced) await giveReference(env.DB, memberId, unreferenced.name);
   const value = token();
   await run(
     env.DB,
@@ -380,7 +394,7 @@ async function requestAccess(request: Request, env: AuthEnv, now: Date): Promise
     [name, address, phone, position, londonToday(now), now.toISOString()],
   );
   const id = Number(res.meta.last_row_id);
-  await run(env.DB, `UPDATE members SET payment_reference = printf('COU-%04d', id) WHERE id = ?`, [id]);
+  await giveReference(env.DB, id, name);
   await audit(env.DB, now, id, "access.requested");
   return reply;
 }

@@ -47,6 +47,7 @@ rule, a trade-off. Copy [template.md](template.md), take the next number, keep i
 | [0035](0035-sessions-are-hashed-tokens.md)          | Sessions are hashed random tokens; sign-in is a code with no link                        | Accepted              |
 | [0036](0036-api-security.md)                        | Every API response sends only what that caller may see, decided on the server            | Accepted              |
 | [0037](0037-everyday-role.md)                       | People with more than Member can run the app day to day as a lesser role                 | Accepted              |
+| [0038](0038-name-payment-references.md)             | A member's bank reference is their name: COUGARS ADRIAN K                                | Accepted              |
 | [0039](0039-videos-uploaded-on-youtube.md)          | Videos are uploaded on YouTube with people's own access, not through the app             | Accepted              |
 | [0040](0040-labelled-video-playlists.md)            | Videos come from several club playlists, each labelled                                   | Accepted              |
 | [0041](0041-caches-in-production-only.md)           | Live reads are cached in production only                                                 | Accepted              |

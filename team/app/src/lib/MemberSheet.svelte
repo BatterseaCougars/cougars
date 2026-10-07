@@ -675,7 +675,9 @@
   /* The real fields fade in exactly where they'll stay, each in turn, along the header row then down the body */
   .details.in > *,
   section.in {
-    animation: field-in 320ms var(--ease) both;
+    /* backwards, not both: a fill that outlives the fade keeps each field its own stacking context, and a later
+       field would paint over an open Select menu */
+    animation: field-in 320ms var(--ease) backwards;
   }
   .details.in > :nth-child(2) {
     animation-delay: 40ms;
