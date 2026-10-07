@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 // The website's icons, from the club logo (apps/web/src/assets/cougars.png): the cougar's face only, because the
 // wordmark can't be read at tab size. Re-run after a logo change: node scripts/favicons.mjs
+// The team app (team/app/public) gets the same face on carbon for its tab and iPhone icons; its manifest icons
+// keep the full logo.
 //   favicon.ico            16, 32 and 48 px, for browsers and Google Search (which asks for /favicon.ico)
 //   favicon.png            96 px (Google wants a multiple of 48)
 //   apple-touch-icon.png   180 px on the site's carbon, for iPhone home screens
@@ -11,12 +13,24 @@ import sharp from "sharp";
 const web = new URL("../apps/web/", import.meta.url);
 const logo = new URL("src/assets/cougars.png", web).pathname;
 const out = (name) => new URL(`public/${name}`, web).pathname;
+const teamOut = (name) => new URL(`../team/app/public/${name}`, import.meta.url).pathname;
 const CARBON = "#0d0d0f";
 // The face, ear to fangs: chosen by eye at 16 px (2026-10-06).
 const FACE = { left: 715, top: 15, width: 635, height: 635 };
 
 const face = await sharp(logo).extract(FACE).png().toBuffer();
 const transparent = (size) => sharp(face).resize(size, size).png().toBuffer();
+// A carbon tile with rounded corners, so the tab icon reads as a square on light and dark browser chrome.
+const tile = async (size, padding) => {
+  const r = Math.round(size * 0.2);
+  const mask = Buffer.from(
+    `<svg width="${size}" height="${size}"><rect width="${size}" height="${size}" rx="${r}"/></svg>`,
+  );
+  return sharp(await onCarbon(size, padding))
+    .composite([{ input: mask, blend: "dest-in" }])
+    .png()
+    .toBuffer();
+};
 // On carbon, with the face inset by `padding` (a share of the side) so rounded or masked corners don't clip it.
 const onCarbon = async (size, padding) => {
   const inner = Math.round(size * (1 - 2 * padding));
@@ -56,4 +70,8 @@ writeFileSync(out("icon-192.png"), await onCarbon(192, 0.08));
 writeFileSync(out("icon-512.png"), await onCarbon(512, 0.08));
 // Android crops maskable icons to a circle: keep the face inside the middle 80%.
 writeFileSync(out("icon-maskable-512.png"), await onCarbon(512, 0.18));
-console.log("Wrote favicon.ico, favicon.png, apple-touch-icon.png, icon-192/512.png, icon-maskable-512.png");
+writeFileSync(teamOut("favicon.png"), await tile(96, 0.06));
+writeFileSync(teamOut("apple-touch-icon.png"), await onCarbon(180, 0.08));
+console.log(
+  "Wrote favicon.ico, favicon.png, apple-touch-icon.png, icon-192/512.png, icon-maskable-512.png, and the team app's favicon.png and apple-touch-icon.png",
+);
