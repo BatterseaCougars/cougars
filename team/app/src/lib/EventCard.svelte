@@ -117,7 +117,7 @@
         <span><strong>{entries.going.length}</strong>{event.capacity ? ` / ${event.capacity}` : ""} in</span>
         {#if entries.waitlist.length}<span>· {entries.waitlist.length} waiting</span>{/if}
         {#if inIt}<span class="badge green">You're in</span>{:else if waiting}<span class="badge amber">Waitlist</span
-          >{:else if out}<span class="badge">You're out</span>{/if}
+          >{:else if out}<span class="badge red">You're out</span>{/if}
       </p>
     {/if}
   </div>
@@ -276,7 +276,7 @@
     border: 1px solid transparent;
   }
   /* Two tiles, the same before and after you answer: a clear light fill until pressed, then In lights up green
-     with a tick and Out turns brighter with a cross. No track around them. */
+     with a tick, Out goes red with a cross. No track around them. */
   .answer {
     gap: var(--s-2);
     border-color: transparent;
@@ -321,9 +321,10 @@
     color: var(--green);
     box-shadow: none;
   }
+  /* Out, chosen: the mirror of In, in the club's red, so it can't be mistaken for "not answered yet" */
   .answer > .no[aria-pressed="true"] {
-    background: color-mix(in srgb, var(--fg) 24%, transparent);
-    color: var(--fg);
+    background: var(--red-wash-strong);
+    color: var(--red-hot);
     box-shadow: none;
   }
   .foot {
@@ -334,5 +335,20 @@
   .seg button:disabled {
     cursor: not-allowed;
     opacity: 0.6;
+  }
+  /* A wide desktop page: In and Out move up beside the details as a compact pair on the right, instead of two
+     long bars across the card */
+  @media (min-width: 1200px) {
+    .event:has(.answer) {
+      grid-template-columns: 3.25rem 1fr 16rem;
+    }
+    .answer {
+      grid-column: 3;
+      grid-row: 1;
+      align-self: center;
+    }
+    .answer > button {
+      min-height: 2.75rem;
+    }
   }
 </style>

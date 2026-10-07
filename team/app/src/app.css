@@ -139,7 +139,7 @@
     --gutter: 2rem;
     --control-h: 2.5rem;
     /* Desktop: the page takes about two thirds of the window, between a phone's column and a comfortable max */
-    --page-max: clamp(42rem, 62vw, 68rem);
+    --page-max: clamp(42rem, 60vw, 62rem);
   }
 }
 
