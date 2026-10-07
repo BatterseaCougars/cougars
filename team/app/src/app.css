@@ -837,6 +837,9 @@ input[type="checkbox"] {
   font-style: italic;
   font-weight: 400;
   letter-spacing: 0.01em;
+  line-height: 1;
+  /* Italic capitals lean right: this pulls their ink back to the middle of the disc (measured) */
+  padding-right: 0.21em;
 }
 
 /* Demo scaffolding note: dashed, quiet */

@@ -291,6 +291,9 @@
     font-family: var(--font-display);
     font-size: 9cqw;
     font-style: italic;
+    line-height: 1;
+    /* Italic capitals lean right: this pulls their ink back to the middle of the disc (measured) */
+    padding-right: 0.21em;
   }
   h2 {
     color: inherit;
