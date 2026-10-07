@@ -1,0 +1,39 @@
+// A calendar file for one session or tournament, so a member can put it in their phone's or laptop's calendar
+// (Add to calendar on Home's card). Times are written in UTC, which every calendar converts to the reader's zone.
+import type { Bookable } from "../demo/model";
+
+/** "2026-10-09T18:30:00.000Z" as iCalendar's "20261009T183000Z". */
+const stamp = (iso: string) => iso.replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+
+/** Commas, semicolons, backslashes and newlines are escaped in iCalendar text. */
+const text = (s: string) =>
+  s
+    .replace(/\\/g, "\\\\")
+    .replace(/([,;])/g, "\\$1")
+    .replace(/\r?\n/g, "\\n");
+
+export function icsFor(event: Bookable, now = new Date()): string {
+  return [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//Battersea Cougars//Team app//EN",
+    "BEGIN:VEVENT",
+    `UID:${event.key}@team.batterseacougars`,
+    `DTSTAMP:${stamp(now.toISOString())}`,
+    `DTSTART:${stamp(event.startsAt)}`,
+    `DTEND:${stamp(event.endsAt)}`,
+    `SUMMARY:${text(event.title)}`,
+    ...(event.venue ? [`LOCATION:${text(event.venue)}`] : []),
+    "END:VEVENT",
+    "END:VCALENDAR",
+    "",
+  ].join("\r\n");
+}
+
+/** Hands the browser the file; the phone offers to add it to the calendar. */
+export function downloadIcs(event: Bookable) {
+  const url = URL.createObjectURL(new Blob([icsFor(event)], { type: "text/calendar" }));
+  const a = Object.assign(document.createElement("a"), { href: url, download: `${event.title}.ics` });
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}

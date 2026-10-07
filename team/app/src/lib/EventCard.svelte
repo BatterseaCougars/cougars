@@ -60,10 +60,8 @@
       .filter(Boolean),
   );
   const rest = $derived(others.length - names.length);
-  // "You, Aman, Chris and 4 more", and "7 / 21 in · 14 spaces · 2 waiting": built here, so a formatter can't eat a space
-  const crowd = $derived(
-    [inIt ? "You" : "", ...names].filter(Boolean).join(", ") + (rest > 0 ? ` and ${rest} more` : ""),
-  );
+  // "You, Aman, Chris" (then "and 4 more", a link to the full list), and "7 / 21 in · 14 spaces · 2 waiting": built here, so a formatter can't eat a space
+  const crowd = $derived([inIt ? "You" : "", ...names].filter(Boolean).join(", "));
   const spaces = $derived(event.capacity ? Math.max(0, event.capacity - entries.going.length) : null);
   const tally = $derived(
     [
@@ -156,6 +154,8 @@
     <!-- How soon, and where you stand: a fixed slot, so answering swaps the badge in place -->
     <div class="side">
       {#if soon}<span class="soon" class:open={event.signup && !full}>{soon}</span>{/if}
+      <!-- Places: what members check first -->
+      {#if event.signup}<span class="tally num"><strong>{entries.going.length}</strong>{tally}</span>{/if}
       <span class="status">
         {#if event.cancelled}<span class="badge">Cancelled</span>
         {:else if inIt}<span class="badge green num">You're number {entries.going.indexOf(id) + 1}</span>
@@ -166,22 +166,22 @@
   </div>
 
   {#if event.signup}
+    <!-- Two rows at every width: who's going, then your answer -->
     <div class="going">
-      <span class="faces" aria-hidden="true">
-        {#each faces as pid (pid)}<span class:you={pid === id}>{initials(nameOf(pid))}</span>{/each}
-        {#if entries.going.length > faces.length}<span class="more num">+{entries.going.length - faces.length}</span
-          >{/if}
-      </span>
-      <span class="who">
-        {#if !entries.going.length}
-          Nobody yet. First in, first on the list.
-        {:else}
-          {crowd}
-        {/if}
-      </span>
-      <span class="tally num">
-        <strong>{entries.going.length}</strong>{tally}
-      </span>
+      <div class="crowd">
+        <span class="faces" aria-hidden="true">
+          {#each faces as pid (pid)}<span class:you={pid === id}>{initials(nameOf(pid))}</span>{/each}
+          {#if entries.going.length > faces.length}<span class="more num">+{entries.going.length - faces.length}</span
+            >{/if}
+        </span>
+        <span class="who">
+          {#if !entries.going.length}
+            Nobody yet. First in, first on the list.
+          {:else}
+            {crowd}{#if rest > 0}&nbsp;{#if event.href}<a href={event.href}>and {rest} more</a>{:else}and {rest} more{/if}{/if}
+          {/if}
+        </span>
+      </div>
       {#if canSignUp}
         <div class="answer" role="group" aria-label="Are you in?">
           <button
@@ -346,10 +346,14 @@
   /* Two rows, at every width: who's going (faces, names, the count), then your answer. No box of its own: the
      card is the box. */
   .going {
+    display: grid;
+    gap: var(--s-3);
+  }
+  .crowd {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: var(--s-3) var(--s-3);
+    gap: var(--s-2) var(--s-3);
   }
   .faces {
     display: flex;
@@ -392,9 +396,16 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  .who strong {
+  .who a {
     color: var(--fg);
-    font-weight: 600;
+    font-weight: 500;
+    text-decoration: underline;
+    text-decoration-color: color-mix(in srgb, var(--fg) 35%, transparent);
+    text-underline-offset: 3px;
+    transition: text-decoration-color var(--t-fast) var(--ease-in-out);
+  }
+  .who a:hover {
+    text-decoration-color: currentColor;
   }
   .tally {
     color: var(--fg-muted);
@@ -403,17 +414,20 @@
   }
   .tally strong {
     color: var(--fg);
-    font-weight: 600;
+    font-family: var(--font-display);
+    font-size: 1.35rem;
+    font-weight: 400;
+    line-height: 1;
+    margin-right: 0.1em;
   }
   /* Two compact tiles, the same before and after you answer: a light fill until pressed, then In lights up green
      with a tick, Out goes red with a cross. Fixed widths, so the label changing never moves them. */
-  /* The second row: its own line, two compact tiles on the left, under the faces */
+  /* The second row: two compact tiles on the left, under the faces */
   .answer {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: var(--s-2);
-    flex-basis: 100%;
-    max-width: 18rem;
+    width: min(100%, 18rem);
   }
   .answer > button {
     display: inline-flex;
@@ -482,11 +496,8 @@
     .who {
       flex-basis: calc(100% - 11rem);
     }
-    .tally {
-      flex-basis: 100%;
-    }
     .answer {
-      max-width: none;
+      width: 100%;
     }
     .answer > button {
       min-width: 0;

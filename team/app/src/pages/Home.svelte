@@ -8,6 +8,7 @@
   import Icon from "../app/shell/Icon.svelte";
   import EventCard from "../lib/EventCard.svelte";
   import { londonToday, pounds } from "../lib/dates";
+  import { downloadIcs } from "../lib/ics";
   import { fill, slot } from "../lib/greetings";
   import { currentTournament, nextSession, sessionBookable, tournamentBookable } from "../demo/schedule.svelte";
   import { pick, type Quip, type QuipKind } from "../lib/quips";
@@ -49,7 +50,6 @@
   const waiting = $derived(next.waitlist.includes(who.id));
   const declined = $derived(next.out?.includes(who.id) ?? false);
   const answered = $derived(isIn || waiting || declined);
-  const position = $derived(next.going.indexOf(who.id) + 1);
   const myTeam = $derived(db.teams[next.id]?.find((t) => t.players.includes(who.id)));
   const owed = $derived(owedBy(who.id));
   // Picked once per visit, from the time of day, a training night, or how often you've looked today. The count
@@ -148,24 +148,33 @@
       </p>
       <EventCard event={booking} canSignUp={can(perms, "signup:Event")} feature beckon {onanswer}>
         {#snippet footer()}
-          <!-- Where you stand, in one line that never changes height, and the way to the teams -->
-          <a class="status" href="/training/{series.slug}">
-            <Icon name="teams" size={18} />
-            <span class="grow">
-              {#if myTeam}
-                You're on <strong>{myTeam.name}</strong> with {teammates(myTeam.players)}
-              {:else if isIn}
-                You're <strong>number {position}</strong> · teams out after sign-up closes
-              {:else if waiting}
-                <strong>Waitlist</strong> · you'll move up if someone drops out
-              {:else if declined}
-                <strong>Out</strong> this {day} · see who's in
-              {:else}
-                See who's in · say in or out before {day}
+          <!-- Once the teams are out, yours; until then, getting there and keeping the date -->
+          {#if myTeam}
+            <a class="status" href="/training/{series.slug}">
+              <Icon name="teams" size={18} />
+              <span class="grow">You're on <strong>{myTeam.name}</strong> with {teammates(myTeam.players)}</span>
+              <Icon name="chevronRight" size={18} />
+            </a>
+          {:else}
+            <div class="status-row">
+              {#if booking.venue}
+                <a
+                  class="status"
+                  href="https://www.google.com/maps/search/?api=1&query={encodeURIComponent(booking.venue)}"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Icon name="pin" size={18} />
+                  <span class="grow">Directions</span>
+                  <Icon name="open" size={16} />
+                </a>
               {/if}
-            </span>
-            <Icon name="chevronRight" size={18} />
-          </a>
+              <button class="status" onclick={() => booking && downloadIcs(booking)}>
+                <Icon name="calendar" size={18} />
+                <span class="grow">Add to calendar</span>
+              </button>
+            </div>
+          {/if}
         {/snippet}
       </EventCard>
     </section>
@@ -324,8 +333,26 @@
     gap: var(--s-3);
     min-height: 3rem;
     padding: 0 var(--s-4);
+    border: 0;
+    background: none;
     color: var(--fg-muted);
     font-size: var(--text-sm);
+    text-align: left;
+    transition:
+      color var(--t-fast) var(--ease-in-out),
+      background-color var(--t-fast) var(--ease-in-out);
+  }
+  /* Directions and Add to calendar, side by side, split by a rule */
+  .status-row {
+    display: grid;
+    grid-auto-columns: minmax(0, 1fr);
+    grid-auto-flow: column;
+  }
+  .status-row > .status + .status {
+    border-left: 1px solid var(--border);
+  }
+  .status-row > .status:hover {
+    background: color-mix(in srgb, var(--fg) 4%, transparent);
   }
   .status .grow {
     overflow: hidden;
