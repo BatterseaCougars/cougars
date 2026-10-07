@@ -80,8 +80,9 @@
     }
     const view = el.closest<HTMLElement>(".view");
     if (!view) return;
-    const dockAt = parseFloat(getComputedStyle(el).top) || 0;
     const check = () => {
+      // Its sticky top, below the view's top padding: the height of whatever is pinned above (the View-as banner)
+      const dockAt = (parseFloat(getComputedStyle(el).top) || 0) + (parseFloat(getComputedStyle(view).paddingTop) || 0);
       docked = view.scrollTop > 0 && el.getBoundingClientRect().top - view.getBoundingClientRect().top <= dockAt + 0.5;
     };
     check();
@@ -204,7 +205,8 @@
       top: 0;
       left: 0;
       right: 0;
-      height: calc(var(--s-4) + 2.25rem + var(--s-4));
+      /* Down past whatever is pinned at the top (the View-as banner), which pushes the docked row down too */
+      height: calc(var(--chrome-h, 0px) + var(--s-4) + 2.25rem + var(--s-4));
       background: var(--chrome-bg-solid);
       backdrop-filter: var(--blur);
       -webkit-backdrop-filter: var(--blur);
