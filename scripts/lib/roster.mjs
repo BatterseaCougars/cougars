@@ -3,6 +3,8 @@
 // win; an email is filled in only where there's none yet; roles are added, never taken away. Safe to run on
 // every deploy.
 
+import { assignReferenceSql } from "../../shared/payment-reference.ts";
+
 const POSITIONS = new Set(["F", "D", "G"]);
 
 /** Check a roster and say what's wrong with it, by row. */
@@ -61,12 +63,16 @@ export function rosterSql(players, now = new Date()) {
         `UPDATE members SET email = ${q(p.email)} WHERE ${same(p.name)} AND email IS NULL ` +
           `AND NOT EXISTS (SELECT 1 FROM members WHERE email = ${q(p.email)});`,
       );
+    // Their bank reference (ADR 0038), filled in by value: the seed is one SQL file, not bound statements
+    const { sql, candidates } = assignReferenceSql(p.name, "lower(name) = lower(?)");
+    const values = [...candidates, p.name];
+    let i = 0;
+    out.push(`${sql.replace(/\?/g, () => q(values[i++]))};`);
     for (const role of ["Member", ...p.roles.filter((r) => r !== "Member")])
       out.push(
         `INSERT OR IGNORE INTO member_roles (member_id, role_id) ` +
           `SELECT m.id, r.id FROM members m, roles r WHERE lower(m.name) = lower(${q(p.name)}) AND r.name = ${q(role)};`,
       );
   }
-  out.push(`UPDATE members SET payment_reference = printf('COU-%04d', id) WHERE payment_reference IS NULL;`);
   return out.join("\n");
 }

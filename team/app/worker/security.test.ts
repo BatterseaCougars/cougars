@@ -61,7 +61,7 @@ describe("what bootstrap tells a plain member", () => {
     expect(names).toEqual(["Dana Admin", "Reg Player"]);
     const me = b.members.find((m: { id: number }) => m.id === b.me);
     const dana = b.members.find((m: { name: string }) => m.name === "Dana Admin");
-    expect(me).toMatchObject({ email: "reg@example.com", paymentReference: expect.stringMatching(/^COU-/) });
+    expect(me).toMatchObject({ email: "reg@example.com", paymentReference: expect.stringMatching(/^COUGARS [A-Z]+/) });
     expect(dana).toMatchObject({ email: null, paymentReference: null, phone: null, rating: 0 });
   });
 });

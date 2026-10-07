@@ -26,7 +26,7 @@ export interface Route {
   hint?: string;
   group?: Group;
   /** Sub-heading inside Settings. */
-  section?: "People" | "Schedule" | "Money" | "Club";
+  section?: "Schedule" | "Money" | "Club" | "Security";
   /** The folding rail section it sits in: a tournament type ("type:1"). */
   fold?: string;
   /** Reached from a page, not from any menu (the register). */
@@ -104,18 +104,6 @@ const STATIC_TAIL: Route[] = [
     hint: "Pay what you owe, and what you've paid",
   },
   {
-    id: "roles",
-    path: "/settings/roles",
-    name: "Roles",
-    tab: "more",
-    page: "roles",
-    action: "manage:Role",
-    icon: "key",
-    group: "Settings",
-    section: "People",
-    hint: "What each role can do",
-  },
-  {
     id: "training-settings",
     path: "/settings/training",
     name: "Training",
@@ -140,18 +128,6 @@ const STATIC_TAIL: Route[] = [
     hint: "Tournament types and each one's dates",
   },
   {
-    id: "fees",
-    path: "/settings/fees",
-    name: "Quarterly rate",
-    tab: "more",
-    page: "fees",
-    action: "manage:Fees",
-    icon: "pound",
-    group: "Settings",
-    section: "Money",
-    hint: "The quarterly fee (session fees are on each training)",
-  },
-  {
     id: "overdue",
     path: "/settings/overdue",
     name: "Overdue Rentals",
@@ -164,6 +140,18 @@ const STATIC_TAIL: Route[] = [
     hint: "Who owes what, and for how long",
   },
   {
+    id: "fees",
+    path: "/settings/fees",
+    name: "Quarterly rate",
+    tab: "more",
+    page: "fees",
+    action: "manage:Fees",
+    icon: "pound",
+    group: "Settings",
+    section: "Money",
+    hint: "The quarterly fee (session fees are on each training)",
+  },
+  {
     id: "quips",
     path: "/settings/quips",
     name: "Quips",
@@ -174,6 +162,18 @@ const STATIC_TAIL: Route[] = [
     group: "Settings",
     section: "Club",
     hint: "What Home says when people sign up",
+  },
+  {
+    id: "roles",
+    path: "/settings/roles",
+    name: "Roles",
+    tab: "more",
+    page: "roles",
+    action: "manage:Role",
+    icon: "key",
+    group: "Settings",
+    section: "Security",
+    hint: "What each role can do",
   },
 ];
 

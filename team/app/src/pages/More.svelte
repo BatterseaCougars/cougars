@@ -1,5 +1,5 @@
 <script lang="ts">
-  // Phones: everything that isn't a tab. You, the club, then Settings for admins, grouped People / Schedule / Money / Club.
+  // Phones: everything that isn't a tab. You, the club, then Settings for admins, grouped Schedule / Money / Club / Security.
   import { can } from "../access/actions";
   import AccountMenu from "../app/shell/AccountMenu.svelte";
   import Icon from "../app/shell/Icon.svelte";
@@ -12,7 +12,7 @@
   const club = $derived(visible("Club"));
   const you = $derived(visible("You"));
   const settings = $derived(
-    (["People", "Schedule", "Money", "Club"] as const)
+    (["Schedule", "Money", "Club", "Security"] as const)
       .map((section) => ({ section, routes: visible("Settings").filter((r) => r.section === section) }))
       .filter((s) => s.routes.length),
   );
