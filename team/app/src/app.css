@@ -73,6 +73,8 @@
   /* ─── Colour ─── */
   --red: #e5131f;
   --red-hot: #f4404a; /* red text on dark: a touch off pure, so it doesn't vibrate against the cream */
+  --red-on-wash: #ff6b72; /* red text on a red wash: lighter, so it still reads (5.3:1, where --red-hot is 3.9:1) */
+  --red-solid: #c8101b; /* a solid red fill that carries white text (5.9:1) */
   --red-muted: color-mix(in srgb, var(--red-hot) 62%, var(--fg-muted)); /* headings: red, but not shouting */
   --red-hover: color-mix(in srgb, var(--red) 86%, white);
   --red-wash: color-mix(in srgb, var(--red) 16%, transparent);
@@ -778,7 +780,7 @@ input[type="checkbox"] {
 }
 .badge.red {
   background: var(--red-wash-strong);
-  color: var(--red-hot);
+  color: var(--red-on-wash);
 }
 .badge.green {
   background: color-mix(in srgb, var(--green) 20%, transparent);
