@@ -325,24 +325,11 @@
     flex-shrink: 0;
     text-align: right;
   }
-  /* Your answer: the first thing on the card to read, so a size up from an ordinary badge, and solid: dark ink on
-     green or amber, white on the club's red (all well over 4.5:1). Not answered stays a quiet grey. */
+  /* Your answer: the first thing on the card to read, so a size up from an ordinary badge */
   .side .badge {
     height: 1.875rem;
     padding: 0 var(--s-3);
     font-size: var(--text-sm);
-  }
-  .side .badge.green {
-    background: var(--green);
-    color: var(--bg);
-  }
-  .side .badge.amber {
-    background: var(--amber);
-    color: var(--bg);
-  }
-  .side .badge.red {
-    background: var(--red-solid);
-    color: #fff;
   }
   .soon {
     display: inline-flex;
@@ -477,13 +464,13 @@
     opacity: 0.6;
   }
   .answer > .yes[aria-pressed="true"] {
-    background: color-mix(in srgb, var(--green) 22%, transparent);
-    color: var(--green);
+    background: color-mix(in srgb, var(--green) 18%, transparent);
+    color: var(--green-ink);
   }
   /* Out, chosen: the mirror of In, in the club's red, so it can't be mistaken for "not answered yet" */
   .answer > .no[aria-pressed="true"] {
-    background: var(--red-wash-strong);
-    color: var(--red-on-wash);
+    background: color-mix(in srgb, var(--red) 24%, transparent);
+    color: var(--red-ink);
   }
   /* The session you're asked about, while you're not in: In pulses once, a soft ring. A shadow, so nothing moves. */
   .answer > .yes.beckon,
