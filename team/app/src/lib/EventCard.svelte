@@ -223,6 +223,11 @@
     font-size: var(--text-xs);
     color: var(--fg-subtle);
   }
+  /* The lead card is bigger, not red: a red fill muddied the In and Out tiles on it */
+  .event.feature {
+    border-color: var(--border-strong);
+    background: var(--panel-bg);
+  }
   .feature h3 {
     font-size: var(--text-lg);
   }
