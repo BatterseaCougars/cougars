@@ -149,4 +149,7 @@ export interface Player {
   weakness?: string | null;
   quote?: string | null;
   photo?: SanityImage | null;
+  /** A roster player's record, as of the build (lib/roster.ts): training sessions played, this year and in all,
+   * and tournaments played. */
+  stats?: { sessions: number; season: number; tournaments: number };
 }

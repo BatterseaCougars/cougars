@@ -11,6 +11,10 @@ export interface RosterRow {
   web_name: string | null;
   position: string;
   bio: string;
+  /** From the build's snapshot only (the live lookup for a card doesn't send them). */
+  sessions?: number;
+  season?: number;
+  tournaments?: number;
 }
 
 const POSITIONS: Record<string, string> = { F: "Forward", D: "Defence", G: "Goalie" };
@@ -27,6 +31,9 @@ export const toPlayer = (r: RosterRow): Player => ({
   name: r.web_name?.trim() || publicName(r.name),
   position: POSITIONS[r.position] ?? null,
   quote: r.bio.trim() || null,
+  ...(r.sessions != null && {
+    stats: { sessions: r.sessions, season: r.season ?? 0, tournaments: r.tournaments ?? 0 },
+  }),
 });
 
 /** The member id behind a roster player, or null for a Sanity or sample one. */

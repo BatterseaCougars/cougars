@@ -9,9 +9,8 @@
 // An empty list is a real answer (no Cougars yet), and the site says the roster is coming.
 import { execFileSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
+import { ROSTER_SQL as SQL } from "./lib/roster-sql.mjs";
 
-const SQL = `SELECT id, name, web_name, position, bio FROM members WHERE status = 'active' AND cougar = 1
-  ORDER BY name COLLATE NOCASE`;
 const DATABASES = { production: "cougars", dev: "cougars-dev" };
 const web = new URL("../apps/web/", import.meta.url);
 const out = new URL("src/data/roster.local.json", web);

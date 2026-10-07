@@ -9,7 +9,12 @@ import { imageSrcSet, imageUrl, objectPosition } from "../../lib/sanity/images";
 const s = await getSettings();
 const players = await getPlayers();
 const photo = imageUrl(s.team.photo, 1600, 900);
-const roster = [...players].sort((a, b) => (a.number ?? 999) - (b.number ?? 999));
+// The table under the cards: the club's record for each Cougar, most sessions this year first
+const roster = [...players].sort(
+  (a, b) => (b.stats?.season ?? 0) - (a.stats?.season ?? 0) || (a.number ?? 999) - (b.number ?? 999),
+);
+const withStats = roster.some((p) => p.stats);
+const year = new Date().getFullYear();
 ---
 
 <Base title="Team" card="team" description="The official Battersea Cougars team: roster and player cards.">
@@ -32,46 +37,11 @@ const roster = [...players].sort((a, b) => (a.number ?? 999) - (b.number ?? 999)
       )}
     </figure>
 
-    <section class="block">
-      <p class="kicker" data-reveal>
-        Roster
-      </p>
-      {roster.length ? (
-        <table class="roster" data-reveal>
-          <thead>
-            <tr>
-              <th class="label">No.</th>
-              <th class="label">Player</th>
-              <th class="label">Position</th>
-              <th class="label">Shoots</th>
-              <th class="label">Since</th>
-            </tr>
-          </thead>
-          <tbody>
-            {roster.map((p) => (
-              <tr>
-                <td class="no">{p.number ?? "–"}</td>
-                <td>
-                  <strong>{p.name}</strong>
-                  {p.nickname && <span class="muted"> “{p.nickname}”</span>}
-                </td>
-                <td>{p.position ?? "–"}</td>
-                <td>{p.shoots ?? "–"}</td>
-                <td>{p.since ?? "–"}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      ) : (
-        <Empty>The roster is on its way.</Empty>
-      )}
-    </section>
-
     {players.length > 0 && (
       <section class="block">
         <div class="cards-head" data-reveal>
           <p class="kicker">Collect them all</p>
-          <p class="muted">Press a card to turn it over.</p>
+          <p class="muted">Press a card to pick it up.</p>
         </div>
         <ul class="cards">
           {players.map((p, i) => (
@@ -82,6 +52,60 @@ const roster = [...players].sort((a, b) => (a.number ?? 999) - (b.number ?? 999)
         </ul>
       </section>
     )}
+    <section class="block">
+      <p class="kicker" data-reveal>
+        Player stats
+      </p>
+      {roster.length ? (
+        <div class="table-scroll" data-reveal>
+          <table class="roster">
+            <thead>
+              <tr>
+                <th class="label" scope="col">
+                  Player
+                </th>
+                <th class="label" scope="col">
+                  Position
+                </th>
+                {withStats && (
+                  <>
+                    <th class="label stat" scope="col">
+                      Sessions {year}
+                    </th>
+                    <th class="label stat" scope="col">
+                      Sessions, all time
+                    </th>
+                    <th class="label stat" scope="col">
+                      Tournaments
+                    </th>
+                  </>
+                )}
+              </tr>
+            </thead>
+            <tbody>
+              {roster.map((p) => (
+                <tr>
+                  <th scope="row">
+                    <strong>{p.name}</strong>
+                    {p.nickname && <span class="muted"> “{p.nickname}”</span>}
+                  </th>
+                  <td>{p.position ?? "–"}</td>
+                  {withStats && (
+                    <>
+                      <td class="stat">{p.stats?.season ?? "–"}</td>
+                      <td class="stat">{p.stats?.sessions ?? "–"}</td>
+                      <td class="stat">{p.stats?.tournaments ?? "–"}</td>
+                    </>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <Empty>The roster is on its way.</Empty>
+      )}
+    </section>
   </div>
 </Base>
 
@@ -112,26 +136,35 @@ const roster = [...players].sort((a, b) => (a.number ?? 999) - (b.number ?? 999)
     border-collapse: collapse;
     font-variant-numeric: tabular-nums;
   }
-  .roster th {
+  .table-scroll {
+    overflow-x: auto;
+  }
+  /* .label makes headers inline-blocks; a header cell has to stay a table cell */
+  .roster thead th {
+    display: table-cell;
     padding: 0 1rem 0.9rem 0;
     text-align: left;
+    white-space: nowrap;
     border-bottom: 1px solid var(--rule-strong);
   }
+  .roster tbody th,
   .roster td {
     padding: 1rem 1rem 1rem 0;
+    text-align: left;
+    font-weight: inherit;
     border-bottom: 1px solid var(--rule);
     color: var(--text-2);
+  }
+  /* As specific as the header and cell rules above (Astro scopes every part of a selector), so it wins */
+  .roster thead th.stat,
+  .roster tbody td.stat {
+    padding-right: 0;
+    padding-left: 1rem;
+    text-align: right;
   }
   .roster strong {
     color: var(--text);
     font-weight: 600;
-  }
-  .roster .no {
-    width: 4.5rem;
-    font-family: var(--display);
-    font-size: 1.6rem;
-    line-height: 1;
-    color: var(--red-hot);
   }
   .cards-head {
     display: flex;

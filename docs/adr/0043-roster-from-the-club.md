@@ -19,6 +19,9 @@ in the app shouldn't have to wait for one to see them.
 - **Only what the website shows leaves the database:** the member's name as they chose it on their app profile
   (_Name on the website_: first name and initial, the default; full name; first name; or a nickname; stored in
   `members.web_name`, migration `0014`), position and bio.
+- **Player stats** under the cards on `/team/`: training sessions played this year and in all, and tournaments
+  played, counted as the team app counts them (signed up, not marked a no-show, not cancelled). They're part of the
+  snapshot, so they're as of the last build (`scripts/lib/roster-sql.mjs`).
 - **Picked up, as in the app.** Pressing a card lifts a copy to the middle of the screen, big enough to read,
   turning to its back on the way; it's put back with Close, the scrim or Escape. Picking it up fetches
   `/api/players/<id>` (live from D1, active Cougars only) and changes whatever differs: name, position, bio.
