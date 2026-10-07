@@ -10,6 +10,7 @@ import { liveVideos } from "../server/videos";
 import { videosConfig } from "../server/sanity-env";
 import { demoAlbums, DEMO_EVENTS, DEMO_KUMITE_RESULTS, DEMO_PLAYERS } from "./demo";
 import { toAlbum } from "../server/photos";
+import { toPlayer, type RosterRow } from "../roster";
 import { listOr, mergeClub, mergeFridays, mergeKumite, mergePub, mergeTeam, newestFirst } from "./merge";
 import type { Album, ClubEvent, KumiteResult, Player, SiteSettings, Sponsor } from "./types";
 
@@ -76,7 +77,13 @@ export const getEventPages = memo(() => fetchList<ClubEvent>(q.EVENT_PAGES, DEMO
 export const getAlbums = memo(async () =>
   (await fetchList<Album>(q.ALBUMS, demoAlbums())).flatMap((a) => toAlbum(a) ?? []),
 );
-export const getPlayers = memo(() => fetchList<Player>(q.PLAYERS, DEMO_PLAYERS));
+// The roster: the club's active members as of this build (lib/roster.ts, scripts/roster-snapshot.mjs). Until the
+// snapshot has anyone (a fresh checkout, a database without the team tables), Sanity's players or the samples.
+const snapshot = import.meta.glob<RosterRow[]>("../../data/roster.local.json", { eager: true, import: "default" });
+export const getPlayers = memo(async () => {
+  const roster = Object.values(snapshot)[0] ?? [];
+  return roster.length ? roster.map(toPlayer) : fetchList<Player>(q.PLAYERS, DEMO_PLAYERS);
+});
 export const getSponsors = memo(() => fetchList<Sponsor>(q.SPONSORS));
 
 /** Events that haven't finished yet, soonest first. */

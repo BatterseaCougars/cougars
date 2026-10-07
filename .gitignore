@@ -17,4 +17,5 @@ dist/
 # Personal data never goes in this public repo. The team roster lives in Bitwarden (TEAM_ROSTER) and in a local
 # copy for seeding (db/seed/README.md).
 db/seed/*.local.*
+apps/web/src/data/*.local.*
 airtable.md

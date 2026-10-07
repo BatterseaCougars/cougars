@@ -1,10 +1,12 @@
 ---
 // An old-school hockey trading card. Front: photo, number, nickname. Press it to flip
-// to the back: the vital statistics. Tilt and flip behaviour is in scripts/cards.ts.
+// to the back: the vital statistics. Tilt and flip behaviour is in scripts/cards.ts. A roster player (lib/roster.ts)
+// carries its member id, and flipping it fetches the latest name, position and bio into the data-field elements.
 import { Image } from "astro:assets";
 import logo from "../assets/cougars.png";
 import type { Player } from "../lib/sanity/types";
 import { imageUrl, objectPosition } from "../lib/sanity/images";
+import { memberId } from "../lib/roster";
 
 interface Props {
   player: Player;
@@ -12,6 +14,7 @@ interface Props {
 const { player: p } = Astro.props;
 const photo = imageUrl(p.photo, 640, 720);
 const title = p.nickname ?? p.name;
+const id = memberId(p);
 const stats = [
   ["Position", p.position],
   ["Shoots", p.shoots],
@@ -22,7 +25,14 @@ const stats = [
 ---
 
 <div class="slot">
-  <button class="pc" type="button" aria-pressed="false" data-card aria-label={`${title}: flip card`}>
+  <button
+    class="pc"
+    type="button"
+    aria-pressed="false"
+    data-card
+    data-player-id={id ?? undefined}
+    aria-label={`${title}: flip card`}
+  >
     <span class="face front">
       <span class="photo">
         {photo ? (
@@ -36,10 +46,14 @@ const stats = [
           <Image class="ghost" src={logo} alt="" width={360} loading="lazy" />
         )}
         {p.number != null && <span class="no">{p.number}</span>}
-        {p.position && <span class="pos">{p.position}</span>}
+        {p.position && (
+          <span class="pos" data-field="position">
+            {p.position}
+          </span>
+        )}
       </span>
       <span class="plate">
-        <strong>{title}</strong>
+        <strong data-field={p.nickname ? undefined : "name"}>{title}</strong>
       </span>
       <span class="foot">
         <span>{p.nickname ? p.name : "Battersea Cougars"}</span>
@@ -51,18 +65,22 @@ const stats = [
     <span class="face back">
       <span class="back-head">
         <span class="back-no">{p.number != null ? `No. ${p.number}` : "Cougar"}</span>
-        <strong>{title}</strong>
+        <strong data-field={p.nickname ? undefined : "name"}>{title}</strong>
         {p.nickname && <span class="real">{p.name}</span>}
       </span>
       <span class="stats">
         {stats.map(([k, v]) => (
           <span class="row">
             <span>{k}</span>
-            <span>{v}</span>
+            <span data-field={k === "Position" ? "position" : undefined}>{v}</span>
           </span>
         ))}
       </span>
-      {p.quote && <span class="quote">“{p.quote}”</span>}
+      {(p.quote || id) && (
+        <span class="quote" data-field="quote" hidden={!p.quote}>
+          {p.quote && `“${p.quote}”`}
+        </span>
+      )}
       <span class="back-foot">Battersea Cougars · Inline hockey · London</span>
     </span>
   </button>
