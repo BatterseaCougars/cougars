@@ -18,7 +18,7 @@ export const ACTIONS = {
   "run:Draft": "Run a Kumite draft",
   "pick:Draft": "Pick in a draft (captains only)",
   "upload:Photo": "Upload photos",
-  "upload:Video": "Upload videos",
+  "upload:Video": "Upload videos (on YouTube)",
   "publish:Media": "Publish photos and videos",
   "read:Rating": "See player ratings",
   "manage:Member": "Approve and edit members",

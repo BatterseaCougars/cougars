@@ -5,28 +5,22 @@
   import Icon from "../app/shell/Icon.svelte";
 
   const perms = $derived(granted());
-  let files = $state<{ name: string; url: string; video: boolean }[]>([]);
+  let files = $state<{ name: string; url: string }[]>([]);
   let album = $state("Friday hockey");
 
   function pick(e: Event) {
     const list = (e.currentTarget as HTMLInputElement).files ?? [];
-    files = [
-      ...files,
-      ...[...list].map((f) => ({ name: f.name, url: URL.createObjectURL(f), video: f.type.startsWith("video/") })),
-    ];
+    files = [...files, ...[...list].map((f) => ({ name: f.name, url: URL.createObjectURL(f) }))];
   }
 </script>
 
 <div class="page">
-  <PageHeader
-    title="Upload"
-    subtitle="Photos go to a website album. Videos go to the club YouTube channel, unlisted until an admin publishes."
-  />
+  <PageHeader title="Upload" subtitle="Photos go to a website album. Videos go straight to the club YouTube channel." />
   <label class="drop">
     <span class="mark"><Icon name="upload" /></span>
-    <span class="title">Add photos{can(perms, "upload:Video") ? " or videos" : ""}</span>
+    <span class="title">Add photos</span>
     <span class="hint">Tap to choose from your phone</span>
-    <input type="file" multiple accept={can(perms, "upload:Video") ? "image/*,video/*" : "image/*"} onchange={pick} />
+    <input type="file" multiple accept="image/*" onchange={pick} />
   </label>
 
   {#if files.length}
@@ -34,12 +28,26 @@
     <div class="grid rise">
       {#each files as f (f.url)}
         <figure>
-          {#if f.video}<video src={f.url} muted></video>{:else}<img src={f.url} alt={f.name} />{/if}
-          <figcaption class="hint">{f.video ? "→ YouTube" : `→ ${album}`}</figcaption>
+          <img src={f.url} alt={f.name} />
+          <figcaption class="hint">→ {album}</figcaption>
         </figure>
       {/each}
     </div>
     <button class="btn primary block" disabled>Upload {files.length} (arrives in T7)</button>
+  {/if}
+
+  <!-- Videos are uploaded on YouTube itself, signed in with your own access to the club channel (ADR 0039). -->
+  {#if can(perms, "upload:Video")}
+    <section class="videos">
+      <h2 class="title">Videos</h2>
+      <p class="hint">
+        Upload on YouTube, as the club channel: Unlisted, and add it to one playlist: Friday Hockey, Kumite, or Website
+        for anything else. It's on the website within about 10 minutes.
+      </p>
+      <a class="btn outline block" href="https://www.youtube.com/upload" target="_blank" rel="noopener noreferrer">
+        <Icon name="play" size={18} /> Upload on YouTube
+      </a>
+    </section>
   {/if}
 </div>
 
@@ -90,8 +98,16 @@
   figure {
     margin: 0;
   }
-  img,
-  video {
+  .videos {
+    display: grid;
+    gap: var(--s-2);
+    margin-top: var(--s-6);
+  }
+  .videos h2 {
+    margin: 0;
+    font-size: inherit;
+  }
+  img {
     width: 100%;
     aspect-ratio: 1;
     object-fit: cover;

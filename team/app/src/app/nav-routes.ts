@@ -79,7 +79,7 @@ const STATIC_TAIL: Route[] = [
     action: "upload:Photo",
     icon: "upload",
     group: "Club",
-    hint: "Photos to the website, videos to YouTube",
+    hint: "Photos to the website; videos on YouTube",
   },
   {
     id: "profile",

@@ -80,7 +80,6 @@ Copied in shape from Gwenda ops (`gwenda-hackney/ark`, `ops/site/src/app/`), whi
   - Vitest, lint, `svelte-check`
 - [ ] CI: a team-app job in `deploy.yml` with the same flow (`main` → `cougars-team-dev`, `release` →
       `cougars-team`, PRs → preview alias), a smoke test, and the checks in `pr.yml`.
-- [ ] Apply for the YouTube API compliance audit, so that uploads (T7) can be public. It can take weeks.
 
 ## T1: Accounts, actions and roles
 
@@ -235,14 +234,11 @@ Can start any time after T1.
 - [ ] **Photos → website gallery** (`upload:Photo`): resized on the phone, sent through the Worker to Sanity
       (`SANITY_WRITE_TOKEN`) into a chosen or new album. An admin (`publish:Media`) publishes the album; the website
       shows it live ([ADR 0016](../adr/0016-live-photo-gallery.md)).
-- [ ] **Videos → YouTube** (`upload:Video`): the Worker opens a resumable upload on the club channel (OAuth for
-      batterseahockey@gmail.com, `youtube.upload`), and the phone sends the file straight to YouTube, so the Worker's
-      100 MB request limit doesn't apply. Videos go up unlisted and into the club playlist the website reads
-      ([ADR 0019](../adr/0019-live-videos.md)); an admin makes them public.
-- [ ] Quota: an upload costs about 1,600 of the 10,000 daily units, so about 6 uploads a day.
+- [x] **Videos are uploaded on YouTube, not in the app** ([ADR 0039](../adr/0039-videos-uploaded-on-youtube.md)).
+      Upload links people with `upload:Video` to YouTube, where they upload as the club channel with their own
+      access, unlisted and into the club playlist the website reads ([ADR 0019](../adr/0019-live-videos.md)).
 
-Depends on: the club YouTube channel (website M3), the API audit (T0), and a spike confirming the browser can send
-to YouTube's resumable upload URL.
+Depends on: the club YouTube channel (website M3).
 
 ## T8: Website content from the app
 
