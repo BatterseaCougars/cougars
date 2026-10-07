@@ -325,6 +325,12 @@
     flex-shrink: 0;
     text-align: right;
   }
+  /* Your answer: the first thing on the card to read, so a size up from an ordinary badge */
+  .side .badge {
+    height: 1.875rem;
+    padding: 0 var(--s-3);
+    font-size: var(--text-sm);
+  }
   .soon {
     display: inline-flex;
     align-items: center;
