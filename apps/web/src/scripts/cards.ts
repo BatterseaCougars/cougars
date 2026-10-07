@@ -11,22 +11,56 @@ const cardAt = (e: Event) => (e.target as Element | null)?.closest<HTMLElement>(
 // screen, big enough to read, turning over to its back on the way. Pressing the big card turns it back and forth;
 // the scrim, the close button or Escape puts it down again. Without motion it just appears.
 const DURATION = 520;
+const CLOSE = DURATION - 60;
 const EASE = "cubic-bezier(0.22, 1, 0.36, 1)";
 const reducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-let zoomed: { overlay: HTMLElement; stage: HTMLElement; card: HTMLElement; source: HTMLElement } | null = null;
+let zoomed: {
+  overlay: HTMLElement;
+  lifted: HTMLElement;
+  card: HTMLElement;
+  source: HTMLElement;
+  sourceSlot: HTMLElement;
+} | null = null;
 
-// The page card's place, as a transform from the stage's own
-function fromSource(stage: HTMLElement, source: HTMLElement) {
-  const a = source.getBoundingClientRect();
-  const b = stage.getBoundingClientRect();
-  const dx = a.left + a.width / 2 - (b.left + b.width / 2);
-  const dy = a.top + a.height / 2 - (b.top + b.height / 2);
-  return `translate(${dx}px, ${dy}px) scale(${a.width / b.width})`;
+/**
+ * How an element lies on the page: the turn and scale it gets from its own transforms and its ancestors' (the home
+ * page's hand of cards turns each card). Only the 2D linear part matters, so translations are ignored.
+ */
+function lieOf(el: Element | null) {
+  let m = new DOMMatrix();
+  for (; el && el !== document.body; el = el.parentElement) {
+    // The individual `rotate` and `scale` properties (the hand uses `rotate`) as well as `transform`
+    const css = getComputedStyle(el);
+    const own = new DOMMatrix(css.transform && css.transform !== "none" ? css.transform : undefined);
+    if (css.rotate && css.rotate !== "none") own.rotateSelf(parseFloat(css.rotate));
+    if (css.scale && css.scale !== "none") own.scaleSelf(parseFloat(css.scale));
+    m = own.multiply(m);
+  }
+  return { deg: (Math.atan2(m.b, m.a) * 180) / Math.PI, scale: Math.hypot(m.a, m.b) };
 }
 
+/**
+ * The page card's place, as a transform from the big card's own: centre to centre, its size and the turn it lies
+ * at. Measured on the card alone (not with Close under it), so it lands exactly where it was.
+ */
+function fromSource(lifted: HTMLElement, sourceSlot: HTMLElement) {
+  const a = sourceSlot.getBoundingClientRect();
+  const b = lifted.getBoundingClientRect();
+  const dx = a.left + a.width / 2 - (b.left + b.width / 2);
+  const dy = a.top + a.height / 2 - (b.top + b.height / 2);
+  const { deg, scale } = lieOf(sourceSlot);
+  return `translate(${dx}px, ${dy}px) rotate(${deg}deg) scale(${(sourceSlot.offsetWidth * scale) / lifted.offsetWidth})`;
+}
+
+// The card turns over on its own transition; time it to the move, so both land together.
+const turn = (card: HTMLElement, pressed: boolean, ms: number) => {
+  card.style.transition = `transform ${ms}ms ${EASE}`;
+  card.setAttribute("aria-pressed", String(pressed));
+};
+
 function pickUp(source: HTMLElement) {
-  const slot = source.closest<HTMLElement>(".slot");
-  if (!slot || zoomed) return;
+  const sourceSlot = source.closest<HTMLElement>(".slot");
+  if (!sourceSlot || zoomed) return;
   const overlay = document.createElement("div");
   overlay.className = "card-zoom";
   const scrim = document.createElement("button");
@@ -39,8 +73,8 @@ function pickUp(source: HTMLElement) {
   stage.setAttribute("role", "dialog");
   stage.setAttribute("aria-modal", "true");
   stage.setAttribute("aria-label", source.getAttribute("aria-label")?.replace(/: pick up card$/, "") ?? "Player");
-  const copy = slot.cloneNode(true) as HTMLElement;
-  const card = copy.querySelector<HTMLElement>("[data-card]")!;
+  const lifted = sourceSlot.cloneNode(true) as HTMLElement;
+  const card = lifted.querySelector<HTMLElement>("[data-card]")!;
   card.setAttribute("aria-pressed", "false");
   card.classList.remove("is-tilting");
   for (const v of ["--rx", "--ry"]) card.style.setProperty(v, "0deg");
@@ -49,39 +83,39 @@ function pickUp(source: HTMLElement) {
   close.type = "button";
   close.textContent = "Close";
   // appendChild, not append: the Workers types' Element.append only takes strings
-  stage.appendChild(copy);
+  stage.appendChild(lifted);
   stage.appendChild(close);
   overlay.appendChild(scrim);
   overlay.appendChild(stage);
   document.body.appendChild(overlay);
   document.documentElement.classList.add("card-zoom-open");
-  zoomed = { overlay, stage, card, source };
+  zoomed = { overlay, lifted, card, source, sourceSlot };
   close.focus({ preventScroll: true });
   void refresh(card, source);
 
   if (reducedMotion()) return card.setAttribute("aria-pressed", "true");
-  stage.animate([{ transform: fromSource(stage, source) }, { transform: "none" }], {
-    duration: DURATION,
-    easing: EASE,
-  });
-  // The card's own flip transition turns it over while it travels
-  requestAnimationFrame(() => card.setAttribute("aria-pressed", "true"));
+  const from = fromSource(lifted, sourceSlot);
+  // The page card is the one being lifted: it isn't left behind while its copy travels
+  sourceSlot.style.visibility = "hidden";
+  lifted.animate([{ transform: from }, { transform: "none" }], { duration: DURATION, easing: EASE });
+  requestAnimationFrame(() => turn(card, true, DURATION));
 }
 
 function putDown() {
   if (!zoomed || zoomed.overlay.classList.contains("closing")) return;
-  const { overlay, stage, card, source } = zoomed;
+  const { overlay, lifted, card, source, sourceSlot } = zoomed;
   overlay.classList.add("closing");
   const done = () => {
+    sourceSlot.style.visibility = "";
     overlay.remove();
     document.documentElement.classList.remove("card-zoom-open");
     zoomed = null;
     source.focus({ preventScroll: true });
   };
-  if (reducedMotion() || !source.isConnected) return done();
-  card.setAttribute("aria-pressed", "false");
-  stage.animate([{ transform: "none" }, { transform: fromSource(stage, source) }], {
-    duration: DURATION - 80,
+  if (reducedMotion() || !sourceSlot.isConnected) return done();
+  turn(card, false, CLOSE);
+  lifted.animate([{ transform: "none" }, { transform: fromSource(lifted, sourceSlot) }], {
+    duration: CLOSE,
     easing: EASE,
     fill: "forwards",
   }).onfinish = done;
@@ -131,7 +165,8 @@ async function refresh(...cards: HTMLElement[]) {
 
 document.addEventListener("pointermove", (e) => {
   const card = cardAt(e);
-  if (!card || !canTilt()) return;
+  // Not the picked-up card: tilting would fight its move and its turn
+  if (!card || !canTilt() || card.closest(".card-zoom")) return;
   const r = card.getBoundingClientRect();
   const x = (e.clientX - r.left) / r.width;
   const y = (e.clientY - r.top) / r.height;
