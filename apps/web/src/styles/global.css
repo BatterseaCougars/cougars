@@ -613,10 +613,10 @@ html.is-navigating main {
 }
 @media (prefers-reduced-motion: no-preference) {
   ::view-transition-old(root) {
-    animation: page-out 0.4s cubic-bezier(0.45, 0.05, 0.55, 0.95) both;
+    animation: page-out 0.22s cubic-bezier(0.45, 0.05, 0.55, 0.95) both;
   }
   ::view-transition-new(root) {
-    animation: page-in 0.4s cubic-bezier(0.45, 0.05, 0.55, 0.95) both;
+    animation: page-in 0.22s cubic-bezier(0.45, 0.05, 0.55, 0.95) both;
   }
 }
 /* The Kumite poster on the home page and the Kumite page's header are nearly the same picture, so a crossfade looks like

@@ -102,10 +102,33 @@ document.addEventListener("astro:before-preparation", (e) => {
   root.classList.add("is-navigating");
 });
 // The swap replaces every <html> attribute, so re-apply the class afterwards.
-document.addEventListener("astro:after-swap", () => root.classList.toggle("navigation-restore", traversing));
+document.addEventListener("astro:after-swap", () => {
+  root.classList.toggle("navigation-restore", traversing);
+  landInView();
+});
 addEventListener("pageshow", (e) => e.persisted && root.classList.add("navigation-restore"));
 
+/**
+ * Arriving from another page, what's already in view is there at once: the page crossfade is its entrance, and a
+ * scroll-reveal on top of it made every page seem slow to load. Done before the view transition snapshots the new
+ * page; only what's further down fades in as you scroll to it.
+ */
+let landed: HTMLElement[] = [];
+function landInView() {
+  landed = [...document.querySelectorAll<HTMLElement>("[data-reveal]")].filter(
+    (el) => el.getBoundingClientRect().top < innerHeight,
+  );
+  for (const el of landed) {
+    el.style.transition = "none";
+    el.classList.add("is-in");
+  }
+}
+
 document.addEventListener("astro:page-load", () => {
+  // Their own transitions (hover and the like) back once they've landed
+  const settled = landed;
+  landed = [];
+  requestAnimationFrame(() => requestAnimationFrame(() => settled.forEach((el) => (el.style.transition = ""))));
   root.classList.remove("is-navigating");
   onPage();
   requestAnimationFrame(() => requestAnimationFrame(() => root.classList.remove("navigation-restore")));

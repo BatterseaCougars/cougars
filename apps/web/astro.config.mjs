@@ -18,6 +18,9 @@ export default defineConfig({
   // (phase 3) uses its own signed cookie + D1.
   session: false,
   trailingSlash: "ignore",
+  // Every link starts fetching its page when the pointer rests on it (or it's focused, or touched), so by the click
+  // the page is usually here already and the view transition starts at once.
+  prefetch: { prefetchAll: true, defaultStrategy: "hover" },
   // Old Wix addresses. /gallery/<album> is a server route (pages/gallery/[slug].ts): a config redirect to a
   // server-rendered page would point at a prerendered file that doesn't exist.
   redirects: { "/gallery": "/photos" },
