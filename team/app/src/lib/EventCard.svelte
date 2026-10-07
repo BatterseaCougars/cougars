@@ -89,6 +89,8 @@
   // The card answers at once; the server's word (in, or the waitlist) arrives with the refresh.
   function setIn(going: boolean) {
     if (locked) return;
+    // Tapping the answer you've already given changes nothing: no call to the server, no new quip on Home
+    if (going ? inIt || waiting : out) return;
     void answerFor(event.key, going ? "in" : "out");
     const wasIn = inIt;
     entries.going = entries.going.filter((x) => x !== id);
