@@ -51,6 +51,10 @@ export interface Team {
 
 export interface Kumite {
   intro: string;
+  /** Under the poster's title. */
+  tagline: string;
+  /** Typed out on the poster one after another, each erased before the next; the last one stays. */
+  typedLines: string[];
   format: string[];
   awards: string[];
 }

@@ -303,6 +303,23 @@ export const kumite = defineType({
       validation: (r) => r.required(),
     }),
     defineField({
+      name: "tagline",
+      title: "Poster tagline",
+      type: "string",
+      description: "The line under the title on the Kumite poster (homepage and Kumite page).",
+      validation: (r) => r.required().max(140),
+    }),
+    defineField({
+      name: "typedLines",
+      title: "Typed lines",
+      type: "array",
+      of: [defineArrayMember({ type: "string", validation: (r) => r.max(40) })],
+      description:
+        "Typed out on the poster, one after another: each is written, held, then erased before the next. The " +
+        "last one stays. Keep them short, e.g. “One team walks away.” then “Champions.”",
+      validation: (r) => r.min(1).max(4),
+    }),
+    defineField({
       name: "format",
       title: "How it works",
       type: "array",
