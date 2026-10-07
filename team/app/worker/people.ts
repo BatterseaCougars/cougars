@@ -259,6 +259,45 @@ export async function updateProfile(db: D1Database, id: number, o: Record<string
   await run(db, "UPDATE members SET position = ?, phone = ?, bio = ? WHERE id = ?", [position, phone || null, bio, id]);
 }
 
+/** The role someone runs the app as day to day (ADR 0037); null means their full role. */
+export async function everydayRoleOf(db: D1Database, id: number): Promise<number | null> {
+  const row = await first<{ everyday_role_id: number | null }>(
+    db,
+    "SELECT everyday_role_id FROM members WHERE id = ?",
+    [id],
+  );
+  return row?.everyday_role_id ?? null;
+}
+
+/**
+ * Choose your everyday role, or none (null) to use your full role. Only a role that can do less than you can: it's
+ * for showing the app to someone, never a way to gain anything.
+ */
+export async function setEverydayRole(
+  db: D1Database,
+  id: number,
+  o: Record<string, unknown>,
+  caller: ReadonlySet<Action>,
+) {
+  const roleId = o.roleId;
+  if (roleId === null) {
+    await run(db, "UPDATE members SET everyday_role_id = NULL WHERE id = ?", [id]);
+    return;
+  }
+  if (typeof roleId !== "number" || !Number.isInteger(roleId))
+    throw new HttpError(400, "roleId should be a role's id or null.");
+  if (!(await first(db, "SELECT 1 FROM roles WHERE id = ?", [roleId]))) throw new HttpError(404, "No such role.");
+  const actions = await all<{ action: string }>(db, "SELECT action FROM role_actions WHERE role_id = ?", [roleId]);
+  if (
+    !canGrant(
+      caller,
+      actions.map((a) => a.action),
+    )
+  )
+    throw new HttpError(403, "Your everyday role has to be one that can do less than you can.");
+  await run(db, "UPDATE members SET everyday_role_id = ? WHERE id = ?", [roleId, id]);
+}
+
 /**
  * An admin sets how to reach a member: the email they sign in with (ADR 0023), and a phone. A blank email means
  * none; an email is one member's only.

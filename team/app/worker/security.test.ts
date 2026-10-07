@@ -139,3 +139,29 @@ describe("requests from somewhere else", () => {
     });
   });
 });
+
+describe("an everyday role (ADR 0037)", () => {
+  const roleId = (b: { roles: { id: number; name: string }[] }, name: string) =>
+    b.roles.find((r) => r.name === name)!.id;
+
+  it("an admin opens the app as a plain member day to day, and can go back to their full role", async () => {
+    const dana = await w.signedIn("dana@example.com");
+    const b = (await dana.call("GET", "/api/bootstrap")).body;
+    expect(b.everydayRole).toBeNull();
+    const member = roleId(b, "Member");
+    expect((await dana.call("PUT", "/api/me/everyday-role", { roleId: member })).status).toBe(200);
+    expect((await dana.call("GET", "/api/bootstrap")).body.everydayRole).toBe(member);
+    // Still an admin underneath: the server goes by their real role
+    expect((await dana.call("GET", "/api/bootstrap")).body.actions).toContain("manage:all");
+    await dana.call("PUT", "/api/me/everyday-role", { roleId: null });
+    expect((await dana.call("GET", "/api/bootstrap")).body.everydayRole).toBeNull();
+  });
+
+  it("is never a way up: a plain member can't make Admin their everyday role", async () => {
+    const reg = await w.signedIn("reg@example.com");
+    const b = (await reg.call("GET", "/api/bootstrap")).body;
+    const res = await reg.call("PUT", "/api/me/everyday-role", { roleId: roleId(b, "Admin") });
+    expect(res.status).toBe(403);
+    expect((await reg.call("GET", "/api/bootstrap")).body.everydayRole).toBeNull();
+  });
+});

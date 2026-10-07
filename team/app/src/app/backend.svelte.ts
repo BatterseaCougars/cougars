@@ -85,6 +85,8 @@ export const publishTeams = (sessionId: number, teams: Team[]) =>
 /** Your own phone, position and bio. */
 export const saveProfile = (p: { position: Position; phone: string; bio: string }) =>
   save(() => api("PUT", "/api/me", p));
+/** The role the app opens as (ADR 0037); null for your full role. */
+export const saveEverydayRole = (roleId: number | null) => save(() => api("PUT", "/api/me/everyday-role", { roleId }));
 /** Make someone a Quarterly Member from today, or end it (ADR 0034). */
 export const setQuarterly = (memberId: number, quarterly: boolean) =>
   save(() => api("POST", `/api/members/${memberId}/quarterly`, { quarterly }));

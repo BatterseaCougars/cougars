@@ -10,10 +10,25 @@
   import { can } from "../../access/actions";
   import { db } from "../../demo/store.svelte";
   import { emailFor } from "../../demo/data";
-  import { impersonating, me, realGranted, realMember, rolesOf, viewAs } from "../../demo/session.svelte";
+  import {
+    elevated,
+    everydayName,
+    fullRole,
+    granted,
+    hasEveryday,
+    impersonating,
+    me,
+    realGranted,
+    realMember,
+    setElevated,
+    shownRoles,
+    viewAs,
+  } from "../../demo/session.svelte";
+  import { routeFor } from "../nav-routes";
+  import { routes } from "../routes.svelte";
   import { initials } from "../../lib/initials";
   import { api } from "../api";
-  import { navigate } from "../router.svelte";
+  import { navigate, router } from "../router.svelte";
   import Icon from "./Icon.svelte";
 
   let open = $state(false);
@@ -33,8 +48,18 @@
   }
 
   const shown = $derived(me());
-  const canViewAs = $derived(can(realGranted(), "impersonate:Member"));
-  const roles = $derived(rolesOf(shown.id));
+  // View as is an admin's tool: not offered while you're in your everyday role
+  const canViewAs = $derived(can(realGranted(), "impersonate:Member") && (!hasEveryday() || elevated()));
+  const roles = $derived(shownRoles(shown.id));
+
+  // Your full role and your everyday one (ADR 0037). Back to everyday on a page it can't see: Home.
+  function toggleMode() {
+    const up = !elevated();
+    setElevated(up);
+    if (up) return;
+    const here = routeFor(routes(), router.path);
+    if (here && !can(granted(), here.action)) navigate("/");
+  }
   const members = $derived(
     db.members
       .filter((m) => m.status === "active" && m.player.id !== realMember().id)
@@ -85,6 +110,19 @@
 />
 
 <div class="account" class:wide={card} bind:this={root}>
+  <!-- In your everyday role, a switch up to your full one; lit while you're in it (ADR 0037) -->
+  {#if hasEveryday() && !card}
+    <button
+      type="button"
+      class="mode"
+      class:on={elevated()}
+      aria-pressed={elevated()}
+      title={elevated() ? `Back to ${everydayName()}` : `Switch to ${fullRole()}`}
+      onclick={toggleMode}
+    >
+      <Icon name="key" size={15} />{fullRole()}
+    </button>
+  {/if}
   <button
     type="button"
     class="trigger"
@@ -148,6 +186,13 @@
           <button class="item" role="menuitem" onclick={() => go("/me/tab")}
             ><Icon name="pound" size={16} /> Dues</button
           >
+          {#if hasEveryday()}
+            <div class="sep" role="separator"></div>
+            <button class="item" role="menuitem" onclick={() => (toggleMode(), close())}>
+              <Icon name="key" size={16} />
+              {elevated() ? `Back to ${everydayName()}` : `Switch to ${fullRole()}`}
+            </button>
+          {/if}
           {#if impersonating()}
             <div class="sep" role="separator"></div>
             <button class="item accent" role="menuitem" onclick={() => become(null)}>
@@ -172,7 +217,38 @@
 <style>
   .account {
     position: relative;
+    display: flex;
+    align-items: center;
+    gap: var(--s-2);
     flex-shrink: 0;
+  }
+  /* The switch to your full role: the badge's glass tile, lit red while you're in it */
+  .mode {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s-2);
+    height: 2.25rem;
+    padding: 0 var(--s-3);
+    border: 1px solid rgb(236 232 225 / 0.07);
+    border-radius: var(--r-md);
+    background: color-mix(in srgb, var(--surface-1) 45%, transparent);
+    backdrop-filter: blur(14px) saturate(1.4);
+    -webkit-backdrop-filter: blur(14px) saturate(1.4);
+    color: var(--fg-muted);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    transition:
+      background-color var(--t-fast) var(--ease-in-out),
+      color var(--t-fast) var(--ease-in-out);
+  }
+  .mode:hover {
+    background: color-mix(in srgb, var(--surface-3) 90%, transparent);
+    color: var(--fg);
+  }
+  .mode.on {
+    border-color: transparent;
+    background: color-mix(in srgb, var(--red) 24%, transparent);
+    color: var(--red-ink);
   }
   /* The same glass tile as the dock, so the two pieces of chrome match */
   .trigger {

@@ -25,6 +25,8 @@ export const PLAYERS: Player[] = [];
 
 /** Who you really are (the signed-in member). */
 export let REAL_ID = 0;
+/** The role you run the app as day to day, if not your full one (ADR 0037). Read once by session.svelte.ts. */
+export let EVERYDAY_ROLE: number | null = null;
 
 const EMAILS = new Map<number, string | null>();
 const REFERENCES = new Map<number, string | null>();
@@ -66,6 +68,8 @@ export const FEES: { kind: string; amountPence: number; from: string; superseded
 export interface Bootstrap {
   me: number;
   actions: Action[];
+  /** The role the app opens as, when it isn't your full one (ADR 0037). */
+  everydayRole: number | null;
   members: {
     id: number;
     name: string;
@@ -100,6 +104,7 @@ const fill = <T>(list: T[], items: T[]) => list.splice(0, list.length, ...items)
 /** Put the club's data in place. Runs before the app mounts, and again after each change. */
 export function hydrate(b: Bootstrap) {
   REAL_ID = b.me;
+  EVERYDAY_ROLE = b.everydayRole ?? null;
   EMAILS.clear();
   REFERENCES.clear();
   PHONES.clear();

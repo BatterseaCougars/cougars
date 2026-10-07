@@ -16,6 +16,8 @@ import {
   setQuarterly,
   updateMember,
   updateProfile,
+  everydayRoleOf,
+  setEverydayRole,
   updateRole,
 } from "./people";
 import { createQuip, deleteQuip, listQuips, updateQuip } from "./quips";
@@ -116,6 +118,8 @@ export const ROUTES: Route[] = [
       return json({
         me: c.memberId,
         actions: [...c.actions],
+        // The role the app opens as, when it isn't your full one (ADR 0037)
+        everydayRole: await everydayRoleOf(db, c.memberId),
         members: await listMembers(db, {
           ratings: can("read:Rating"),
           privateFor: can("manage:Member") ? "all" : c.memberId,
@@ -145,6 +149,13 @@ export const ROUTES: Route[] = [
     action: "authenticated",
     // Your own phone, position and bio
     handle: async (c) => (await updateProfile(c.env.DB, c.memberId, await body(c.request)), ok()),
+  },
+  {
+    method: "PUT",
+    path: /^\/api\/me\/everyday-role$/,
+    action: "authenticated",
+    // { roleId: number | null }: the role the app opens as (ADR 0037)
+    handle: async (c) => (await setEverydayRole(c.env.DB, c.memberId, await body(c.request), c.actions), ok()),
   },
   {
     method: "GET",
