@@ -148,32 +148,36 @@
       </p>
       <EventCard event={booking} canSignUp={can(perms, "signup:Event")} feature beckon {onanswer}>
         {#snippet footer()}
-          <!-- Once the teams are out, yours; until then, getting there and keeping the date -->
+          <!-- Once the teams are out, yours. Always: getting there, keeping the date, and how to pay. -->
           {#if myTeam}
             <a class="status" href="/training/{series.slug}">
               <Icon name="teams" size={18} />
               <span class="grow">You're on <strong>{myTeam.name}</strong> with {teammates(myTeam.players)}</span>
               <Icon name="chevronRight" size={18} />
             </a>
-          {:else}
-            <div class="status-row">
-              {#if booking.venue}
-                <a
-                  class="status"
-                  href="https://www.google.com/maps/search/?api=1&query={encodeURIComponent(booking.venue)}"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <Icon name="pin" size={18} />
-                  <span>Directions</span>
-                </a>
-              {/if}
-              <button class="status" onclick={() => booking && downloadIcs(booking)}>
-                <Icon name="calendar" size={18} />
-                <span>Add to calendar</span>
-              </button>
-            </div>
           {/if}
+          <div class="status-row">
+            {#if booking.venue}
+              <a
+                class="status"
+                href="https://www.google.com/maps/search/?api=1&query={encodeURIComponent(booking.venue)}"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Icon name="pin" size={18} />
+                <span>Directions</span>
+              </a>
+            {/if}
+            <button class="status" onclick={() => booking && downloadIcs(booking)}>
+              <Icon name="calendar" size={18} />
+              <span>Add to calendar</span>
+            </button>
+            <!-- The club's bank details and your reference, on Dues -->
+            <a class="status" href="/me/tab">
+              <Icon name="pound" size={18} />
+              <span>Payment info</span>
+            </a>
+          </div>
         {/snippet}
       </EventCard>
     </section>
@@ -341,11 +345,12 @@
       color var(--t-fast) var(--ease-in-out),
       background-color var(--t-fast) var(--ease-in-out);
   }
-  /* Directions and Add to calendar: two quiet links on the left, apart by space alone */
+  /* Directions, Add to calendar, Payment info: quiet links on the left, apart by space alone. A narrow phone wraps
+     them onto a second line, with no extra gap between the lines (each link is already tall enough to tap). */
   .status-row {
     display: flex;
     flex-wrap: wrap;
-    gap: var(--s-6);
+    column-gap: var(--s-6);
     padding: 0 var(--s-6);
   }
   .status-row > .status {
@@ -368,6 +373,7 @@
   @media (max-width: 600px) {
     .status,
     .status-row {
+      column-gap: var(--s-5);
       padding-inline: var(--s-4);
     }
   }
