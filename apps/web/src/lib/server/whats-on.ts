@@ -55,9 +55,11 @@ export async function whatsOn(db: D1Database, now = new Date(), limits = LIMITS)
       dateConfirmed: number;
     }>(
       db,
-      `SELECT id, name, location, held_on heldOn, start_time startTime, end_time endTime,
-              date_confirmed dateConfirmed
-       FROM tournaments WHERE public = 1 AND status != 'finished' AND held_on >= ? ORDER BY held_on LIMIT ?`,
+      // A date's own location, else its type's (ADR 0046)
+      `SELECT t.id, t.name, COALESCE(NULLIF(t.location, ''), y.location) location, t.held_on heldOn,
+              t.start_time startTime, t.end_time endTime, t.date_confirmed dateConfirmed
+       FROM tournaments t JOIN tournament_types y ON y.id = t.type_id
+       WHERE t.public = 1 AND t.status != 'finished' AND t.held_on >= ? ORDER BY t.held_on LIMIT ?`,
       [today, limits.tournaments],
     ),
     all<{

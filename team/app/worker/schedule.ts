@@ -265,6 +265,7 @@ interface TypeRow {
   active: number;
   default_fee_pence: number;
   awards: string;
+  location: string;
 }
 
 /** A tournament type's award (ADR 0044): what it's called and a line on what it's for. */
@@ -313,6 +314,7 @@ export async function listTournamentTypes(db: D1Database) {
     active: Boolean(t.active),
     defaultFeePence: t.default_fee_pence,
     awards: parseAwards(t.awards),
+    location: t.location,
   }));
 }
 
@@ -330,6 +332,7 @@ function typeFields(o: Record<string, unknown>) {
     bool(o, "active") ? 1 : 0,
     int(o, "defaultFeePence", { max: 100_000 }),
     awardsOf(o),
+    text(o, "location", { optional: true, max: 120 }),
   ] as Param[];
 }
 
@@ -339,7 +342,7 @@ export async function createTournamentType(db: D1Database, o: Record<string, unk
   const res = await run(
     db,
     `INSERT INTO tournament_types (name, short_name, icon, tone, points_win, points_draw, points_loss, game_minutes,
-       draft, active, default_fee_pence, awards, slug) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       draft, active, default_fee_pence, awards, location, slug) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [...f, slug],
   );
   return { id: Number(res.meta.last_row_id), slug };
@@ -349,38 +352,69 @@ export async function updateTournamentType(db: D1Database, id: number, o: Record
   const res = await run(
     db,
     `UPDATE tournament_types SET name = ?, short_name = ?, icon = ?, tone = ?, points_win = ?, points_draw = ?,
-       points_loss = ?, game_minutes = ?, draft = ?, active = ?, default_fee_pence = ?, awards = ? WHERE id = ?`,
+       points_loss = ?, game_minutes = ?, draft = ?, active = ?, default_fee_pence = ?, awards = ?, location = ?
+     WHERE id = ?`,
     [...typeFields(o), id],
   );
   if (!res.meta.changes) throw new HttpError(404, "No such tournament.");
 }
 
+/**
+ * Every tournament date. `location` is the date's own, empty to use its type's; `venue` is where it really is.
+ * Captains come in pick order.
+ */
 export async function listTournaments(db: D1Database) {
-  return await all<{
-    id: number;
-    typeId: number;
-    name: string;
-    location: string;
-    heldOn: string;
-    startTime: string;
-    endTime: string;
-    capacity: number | null;
-    status: string;
-    champions: string | null;
-    feePence: number;
-    dateConfirmed: number;
-  }>(
-    db,
-    `SELECT id, type_id typeId, name, location, held_on heldOn, start_time startTime, end_time endTime, capacity,
-              status, champions, fee_pence feePence, date_confirmed dateConfirmed FROM tournaments ORDER BY held_on`,
-  ).then((rows) => rows.map((t) => ({ ...t, dateConfirmed: Boolean(t.dateConfirmed) })));
+  const [rows, captains] = await Promise.all([
+    all<{
+      id: number;
+      typeId: number;
+      name: string;
+      location: string;
+      venue: string;
+      heldOn: string;
+      startTime: string;
+      endTime: string;
+      capacity: number | null;
+      status: string;
+      champions: string | null;
+      feePence: number;
+      dateConfirmed: number;
+      public: number;
+      signupClosesOn: string | null;
+      draftOn: string | null;
+      draftTime: string | null;
+    }>(
+      db,
+      `SELECT t.id, t.type_id typeId, t.name, t.location, COALESCE(NULLIF(t.location, ''), y.location) venue,
+              t.held_on heldOn, t.start_time startTime, t.end_time endTime, t.capacity, t.status, t.champions,
+              t.fee_pence feePence, t.date_confirmed dateConfirmed, t.public, t.signup_closes_on signupClosesOn,
+              t.draft_on draftOn, t.draft_time draftTime
+       FROM tournaments t JOIN tournament_types y ON y.id = t.type_id ORDER BY t.held_on`,
+    ),
+    all<{ tournamentId: number; memberId: number }>(
+      db,
+      "SELECT tournament_id tournamentId, member_id memberId FROM tournament_captains ORDER BY tournament_id, pick",
+    ),
+  ]);
+  return rows.map((t) => ({
+    ...t,
+    dateConfirmed: Boolean(t.dateConfirmed),
+    public: Boolean(t.public),
+    captains: captains.filter((c) => c.tournamentId === t.id).map((c) => c.memberId),
+  }));
 }
 
 function tournamentFields(o: Record<string, unknown>) {
+  const heldOn = date(o, "heldOn")!;
+  const signupClosesOn = date(o, "signupClosesOn", { nullable: true });
+  if (signupClosesOn && signupClosesOn > heldOn) throw new HttpError(400, "Sign-up can't close after the day.");
+  const draftOn = date(o, "draftOn", { nullable: true });
+  if (draftOn && draftOn > heldOn) throw new HttpError(400, "The draft has to be before the day.");
   return [
     text(o, "name", { max: 80 }),
-    text(o, "location", { optional: true }),
-    date(o, "heldOn"),
+    // Empty: the type's default location
+    text(o, "location", { optional: true, max: 120 }),
+    heldOn,
     time(o, "startTime"),
     time(o, "endTime"),
     int(o, "capacity", { min: 1, max: 500, nullable: true }),
@@ -388,30 +422,68 @@ function tournamentFields(o: Record<string, unknown>) {
     int(o, "feePence", { max: 100_000 }),
     // Unconfirmed: shown as "Date TBC"; the date only decides where it sorts. Confirmed unless said otherwise.
     o.dateConfirmed === false ? 0 : 1,
+    // Shown on the website unless said otherwise
+    o.public === false ? 0 : 1,
+    signupClosesOn,
+    draftOn,
+    draftOn && o.draftTime ? time(o, "draftTime") : null,
   ] as Param[];
+}
+
+/** Captains, in pick order: members, each once, at most 8. Absent: left as they are. */
+function captainsOf(o: Record<string, unknown>): number[] | null {
+  if (o.captains == null) return null;
+  const list = o.captains;
+  if (!Array.isArray(list) || list.some((m) => !Number.isInteger(m) || m <= 0))
+    throw new HttpError(400, "captains should be a list of members.");
+  if (new Set(list).size !== list.length) throw new HttpError(400, "Someone is a captain twice.");
+  if (list.length > 8) throw new HttpError(400, "Up to 8 captains.");
+  return list as number[];
+}
+
+async function setCaptains(db: D1Database, id: number, captains: number[] | null) {
+  if (!captains) return;
+  await run(db, "DELETE FROM tournament_captains WHERE tournament_id = ?", [id]);
+  for (const [i, memberId] of captains.entries()) {
+    if (!(await first(db, "SELECT 1 FROM members WHERE id = ?", [memberId])))
+      throw new HttpError(400, "No such member.");
+    await run(db, "INSERT INTO tournament_captains (tournament_id, member_id, pick) VALUES (?, ?, ?)", [
+      id,
+      memberId,
+      i + 1,
+    ]);
+  }
 }
 
 export async function createTournament(db: D1Database, o: Record<string, unknown>) {
   const typeId = int(o, "typeId", { min: 1 });
   if (!(await first(db, "SELECT 1 FROM tournament_types WHERE id = ?", [typeId])))
     throw new HttpError(400, "No such tournament type.");
+  const fields = tournamentFields(o);
+  const captains = captainsOf(o);
   const res = await run(
     db,
     `INSERT INTO tournaments (type_id, name, location, held_on, start_time, end_time, capacity, status, fee_pence,
-       date_confirmed) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [typeId, ...tournamentFields(o)],
+       date_confirmed, public, signup_closes_on, draft_on, draft_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [typeId, ...fields],
   );
-  return { id: Number(res.meta.last_row_id) };
+  const id = Number(res.meta.last_row_id);
+  await setCaptains(db, id, captains);
+  return { id };
 }
 
 export async function updateTournament(db: D1Database, id: number, o: Record<string, unknown>) {
+  const fields = tournamentFields(o);
+  const captains = captainsOf(o);
   const res = await run(
     db,
     `UPDATE tournaments SET name = ?, location = ?, held_on = ?, start_time = ?, end_time = ?, capacity = ?,
-       status = ?, fee_pence = ?, date_confirmed = ? WHERE id = ?`,
-    [...tournamentFields(o), id],
+       status = ?, fee_pence = ?, date_confirmed = ?, public = ?, signup_closes_on = ?, draft_on = ?, draft_time = ?
+     WHERE id = ?`,
+    [...fields, id],
   );
   if (!res.meta.changes) throw new HttpError(404, "No such tournament date.");
+  await setCaptains(db, id, captains);
 }
 
 // ─── One-off events ───

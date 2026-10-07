@@ -3,6 +3,7 @@
 // event puts you on the waitlist, and when someone who was in drops out (or is taken off) the first on the
 // waitlist moves up. Admins can put someone in past the limit.
 import { all, first, run } from "../../../shared/d1";
+import { londonToday } from "../src/lib/dates";
 import { HttpError } from "./http";
 import { offTeams } from "./teams";
 
@@ -113,6 +114,15 @@ export async function answer(db: D1Database, kind: EntryKind, id: number, member
     return;
   }
   if (was?.signup === "in" || was?.signup === "waitlist") return;
+  // A tournament's sign-up closes at the end of its last day (London); saying you're out is always fine
+  if (kind === "tournament") {
+    const t = await first<{ closes: string | null }>(
+      db,
+      "SELECT signup_closes_on closes FROM tournaments WHERE id = ?",
+      [id],
+    );
+    if (t?.closes && londonToday(new Date(now)) > t.closes) throw new HttpError(409, "Sign-up has closed.");
+  }
   await put(db, kind, id, memberId, { join: limit }, now);
 }
 

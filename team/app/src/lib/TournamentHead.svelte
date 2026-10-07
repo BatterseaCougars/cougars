@@ -9,7 +9,7 @@
   const STATUS = { planned: "Coming up", open: "Sign-up open", live: "Live", finished: "Finished" } as const;
   const subtitle = $derived(
     tournament
-      ? [tournament.name, whenOf(tournament), tournament.location].filter(Boolean).join(" · ")
+      ? [tournament.name, whenOf(tournament), tournament.venue].filter(Boolean).join(" · ")
       : `No ${type.shortName} scheduled yet. An admin can add one under Settings → Tournaments.`,
   );
 </script>

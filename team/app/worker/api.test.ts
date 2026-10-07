@@ -133,6 +133,50 @@ describe("the schedule", () => {
     expect((await call("PUT", `/api/tournament-types/${kumite.id}`, { ...kumite, awards: tooMany })).status).toBe(400);
   });
 
+  it("a Kumite date is at the sports centre unless it says otherwise, and follows the usual place", async () => {
+    const b = await boot();
+    const [kumite, date] = [b.tournamentTypes[0], b.tournaments[0]];
+    expect(kumite.location).toBe("Battersea Sports Centre");
+    expect(date).toMatchObject({ location: "", venue: "Battersea Sports Centre" });
+    const put = (changes: object) => call("PUT", `/api/tournaments/${date.id}`, { ...date, ...changes });
+    expect((await put({ location: "Latchmere Leisure Centre" })).status).toBe(200);
+    expect((await boot()).tournaments[0].venue).toBe("Latchmere Leisure Centre");
+    await put({ location: "" });
+    await call("PUT", `/api/tournament-types/${kumite.id}`, { ...kumite, location: "Battersea Park courts" });
+    expect((await boot()).tournaments[0].venue).toBe("Battersea Park courts");
+  });
+
+  it("an admin sets a Kumite's sign-up deadline, draft night and captains in pick order", async () => {
+    const b = await boot();
+    const date = b.tournaments[0];
+    const ids = Object.fromEntries(b.members.map((m: { name: string; id: number }) => [m.name, m.id]));
+    const details = {
+      ...date,
+      heldOn: "2027-06-12",
+      dateConfirmed: true,
+      signupClosesOn: "2027-06-05",
+      draftOn: "2027-06-09",
+      draftTime: "19:30",
+      captains: [ids["Reg Player"], ids["Dana Admin"]],
+    };
+    expect((await call("PUT", `/api/tournaments/${date.id}`, details)).status).toBe(200);
+    expect((await boot()).tournaments[0]).toMatchObject({
+      dateConfirmed: true,
+      signupClosesOn: "2027-06-05",
+      draftOn: "2027-06-09",
+      draftTime: "19:30",
+      captains: [ids["Reg Player"], ids["Dana Admin"]],
+    });
+    // Nothing after the day itself, and nobody captains twice
+    const bad = [
+      { draftOn: "2027-06-13" },
+      { signupClosesOn: "2027-06-20" },
+      { captains: [ids["Reg Player"], ids["Reg Player"]] },
+    ];
+    for (const b of bad)
+      expect((await call("PUT", `/api/tournaments/${date.id}`, { ...details, ...b })).status).toBe(400);
+  });
+
   it("a new training gets its own sessions and a slug", async () => {
     const res = await call("POST", "/api/series", {
       name: "Sunday Skills",
@@ -344,6 +388,16 @@ describe("who's in", () => {
     await call("POST", `/api/sessions/${s.id}/register`, { memberId: alt, here: false });
     await call("POST", `/api/sessions/${s.id}/register`, { memberId: reg, here: true });
     expect(await friday()).toMatchObject({ going: [reg], walkIns: [], noShows: [] });
+  });
+
+  it("won't take a Kumite sign-up once it has closed, but saying out is still fine", async () => {
+    const date = (await boot()).tournaments[0];
+    await call("PUT", `/api/tournaments/${date.id}`, { ...date, status: "open", signupClosesOn: "2026-10-05" });
+    expect((await call("POST", `/api/tournaments/${date.id}/answer`, { answer: "in" })).status).toBe(409);
+    expect((await call("POST", `/api/tournaments/${date.id}/answer`, { answer: "out" })).status).toBe(200);
+    // Closing on the day itself still takes it
+    await call("PUT", `/api/tournaments/${date.id}`, { ...date, status: "open", signupClosesOn: "2026-10-06" });
+    expect((await call("POST", `/api/tournaments/${date.id}/answer`, { answer: "in" })).status).toBe(200);
   });
 
   it("won't take sign-ups for a cancelled Friday", async () => {

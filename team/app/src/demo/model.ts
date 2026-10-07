@@ -91,6 +91,8 @@ export interface TournamentType {
   defaultFeePence: number;
   /** What's handed out at each edition (ADR 0044), shown on the website. */
   awards: { name: string; about: string }[];
+  /** Where its dates are, unless a date says otherwise (ADR 0046). */
+  location: string;
 }
 
 export type TournamentStatus = "planned" | "open" | "live" | "finished";
@@ -110,6 +112,17 @@ export interface Tournament extends Entries {
   feePence: number;
   /** False: "Date TBC". The date still decides where it sorts. */
   dateConfirmed: boolean;
+  /** Where it is: its own `location`, or its type's when that's empty. Set by the server. */
+  venue: string;
+  /** Listed on the website. */
+  public: boolean;
+  /** The last day members can say they're in; null: up to the day. */
+  signupClosesOn: string | null;
+  /** The captains' draft, for a drafted type. */
+  draftOn: string | null;
+  draftTime: string | null;
+  /** Member ids, in pick order. */
+  captains: number[];
 }
 
 /** Anything else on the calendar: a social, a kit day. */

@@ -17,6 +17,8 @@
   import { whenOf } from "../demo/schedule.svelte";
   import { collectedFor } from "../demo/dues.svelte";
   import Select from "./Select.svelte";
+  import Sheet from "./Sheet.svelte";
+  import { formatDayDate, londonISO } from "./dates";
 
   const STATUSES: { id: TournamentStatus; label: string }[] = [
     { id: "planned", label: "Coming up" },
@@ -45,6 +47,7 @@
     draft: false,
     active: true,
     defaultFeePence: 1500,
+    location: "",
     awards: [
       { name: "Champions", about: "The team on top of the table at the end of the day." },
       { name: "Top scorer", about: "Most goals across every game." },
@@ -55,7 +58,7 @@
   $effect(() => {
     const t = selected === "new" ? blank() : db.tournamentTypes.find((x) => x.id === selected);
     form = t ? structuredClone($state.snapshot(t)) : null;
-    adding = false;
+    sheetOpen = false;
   });
 
   async function save(e: SubmitEvent) {
@@ -71,49 +74,122 @@
     }
   }
 
-  // ─── Editions ───
+  // ─── Dates ───
+  // Each date opens in a sheet with all its details; + Date opens the same sheet, empty. A date's location is its
+  // type's unless it has its own (ADR 0046).
   const editions = $derived(
     typeof selected === "number"
       ? db.tournaments.filter((t) => t.typeId === selected).sort((a, b) => b.heldOn.localeCompare(a.heldOn))
       : [],
   );
-  let adding = $state(false);
-  let edition = $state({
-    name: "",
-    heldOn: "",
-    startTime: "11:00",
-    endTime: "16:00",
-    location: "",
-    capacity: 24,
-    fee: "",
-  });
-  // A new edition starts at the type's default fee, and can be changed before it's scheduled.
-  function startAdding() {
-    adding = !adding;
-    if (adding && form) edition.fee = String(form.defaultFeePence / 100);
+  const members = $derived(
+    db.members.filter((m) => m.status === "active").sort((a, b) => a.player.name.localeCompare(b.player.name)),
+  );
+  const nameOf = (id: number) => db.members.find((m) => m.player.id === id)?.player.name ?? "Someone";
+  const dayOf = (day: string) => formatDayDate(londonISO(day, "12:00"));
+
+  interface DateForm {
+    id: number;
+    name: string;
+    heldOn: string;
+    dateConfirmed: boolean;
+    startTime: string;
+    endTime: string;
+    location: string;
+    capacity: number | null;
+    fee: string;
+    status: TournamentStatus;
+    public: boolean;
+    signupClosesOn: string;
+    draftOn: string;
+    draftTime: string;
+    captains: number[];
+  }
+  let sheetOpen = $state(false);
+  let date = $state<DateForm | null>(null);
+  /** Already charged: the fee is fixed. */
+  const charged = $derived(date && date.id ? collectedFor("tournament", date.id).people > 0 : false);
+
+  function openDate(t?: Tournament) {
+    if (!form) return;
+    date = t
+      ? {
+          id: t.id,
+          name: t.name,
+          heldOn: t.heldOn,
+          dateConfirmed: t.dateConfirmed,
+          startTime: t.startTime,
+          endTime: t.endTime,
+          location: t.location,
+          capacity: t.capacity,
+          fee: String(t.feePence / 100),
+          status: t.status,
+          public: t.public,
+          signupClosesOn: t.signupClosesOn ?? "",
+          draftOn: t.draftOn ?? "",
+          draftTime: t.draftTime ?? "",
+          captains: [...t.captains],
+        }
+      : {
+          id: 0,
+          name: "",
+          heldOn: "",
+          dateConfirmed: true,
+          startTime: "11:00",
+          endTime: "16:00",
+          location: "",
+          capacity: 24,
+          fee: String(form.defaultFeePence / 100),
+          status: "planned",
+          public: true,
+          signupClosesOn: "",
+          draftOn: "",
+          draftTime: "19:00",
+          captains: [],
+        };
+    sheetOpen = true;
   }
 
-  async function addEdition(e: SubmitEvent) {
+  const toTournament = (d: DateForm, typeId: number): Tournament => ({
+    id: d.id,
+    typeId,
+    name: d.name,
+    location: d.location.trim(),
+    venue: d.location.trim() || (form?.location ?? ""),
+    heldOn: d.heldOn,
+    startTime: d.startTime,
+    endTime: d.endTime,
+    capacity: d.capacity || null,
+    status: d.status,
+    feePence: Math.round(Number(d.fee || 0) * 100),
+    dateConfirmed: d.dateConfirmed,
+    public: d.public,
+    signupClosesOn: d.signupClosesOn || null,
+    draftOn: form?.draft && d.draftOn ? d.draftOn : null,
+    draftTime: form?.draft && d.draftOn && d.draftTime ? d.draftTime : null,
+    captains: form?.draft ? d.captains : [],
+    going: [],
+    waitlist: [],
+  });
+
+  async function saveDate(e: SubmitEvent) {
     e.preventDefault();
-    if (typeof selected !== "number" || !edition.name || !edition.heldOn) return;
-    const t: Tournament = {
-      id: 0,
-      typeId: selected,
-      name: edition.name,
-      location: edition.location,
-      heldOn: edition.heldOn,
-      startTime: edition.startTime,
-      endTime: edition.endTime,
-      capacity: edition.capacity || null,
-      status: "planned",
-      feePence: Math.round(Number(edition.fee || 0) * 100),
-      dateConfirmed: true,
-      going: [],
-      waitlist: [],
-    };
-    if (!(await createTournament(t))) return;
-    adding = false;
-    edition = { name: "", heldOn: "", startTime: "11:00", endTime: "16:00", location: "", capacity: 24, fee: "" };
+    if (typeof selected !== "number" || !date || !date.name || !date.heldOn) return;
+    const t = toTournament(date, selected);
+    const done = date.id ? await updateTournament(t) : await createTournament(t);
+    if (done !== null) sheetOpen = false;
+  }
+
+  // Captains: picked from the active members, in the order they'll pick
+  let captainPick = $state("");
+  function addCaptain(id: string) {
+    if (date && id && !date.captains.includes(Number(id))) date.captains.push(Number(id));
+    captainPick = "";
+  }
+  function moveCaptain(i: number, by: -1 | 1) {
+    if (!date) return;
+    const [c] = date.captains.splice(i, 1);
+    date.captains.splice(i + by, 0, c);
   }
 </script>
 
@@ -163,6 +239,11 @@
           />
           <span class="hint small">Each new date starts at this; change it there if one costs more or less.</span>
         </label>
+        <label class="field">
+          Location
+          <input class="input" bind:value={form.location} placeholder="e.g. Battersea Sports Centre" maxlength="120" />
+          <span class="hint small">Where its dates are, unless a date says otherwise.</span>
+        </label>
 
         <!-- Awards: what's handed out at each date, shown on the website. A fun one is half the point. -->
         <div class="field">
@@ -205,64 +286,30 @@
     {#if typeof selected === "number"}
       <div class="editions-head">
         <h2>Dates</h2>
-        <button class="btn sm" class:primary={!adding} class:ghost={adding} onclick={startAdding}>
-          {#if adding}Cancel{:else}<Icon name="plus" size={16} />Date{/if}
+        <button class="btn sm primary" onclick={() => openDate()} aria-haspopup="dialog">
+          <Icon name="plus" size={16} />Date
         </button>
       </div>
-
-      {#if adding}
-        <form class="form" onsubmit={addEdition}>
-          <label class="field"
-            >Name <input
-              class="input"
-              bind:value={edition.name}
-              placeholder="e.g. Winter {form.shortName}"
-              required
-            /></label
-          >
-          <div class="two">
-            <label class="field">Date <input class="input" type="date" bind:value={edition.heldOn} required /></label>
-            <label class="field"
-              >Location <input class="input" bind:value={edition.location} placeholder="e.g. The rink" /></label
-            >
-          </div>
-          <div class="three">
-            <label class="field">Starts <input class="input" type="time" bind:value={edition.startTime} /></label>
-            <label class="field">Ends <input class="input" type="time" bind:value={edition.endTime} /></label>
-            <label class="field"
-              >Places <input class="input num" type="number" min="0" bind:value={edition.capacity} /></label
-            >
-          </div>
-          <label class="field">Fee (£) <input class="input num" inputmode="decimal" bind:value={edition.fee} /></label>
-          <button class="btn primary">Schedule it</button>
-        </form>
-      {/if}
 
       <div class="list">
         {#each editions as t (t.id)}
           {@const c = collectedFor("tournament", t.id)}
           <div class="row">
-            <span class="grow">
+            <button type="button" class="grow open" onclick={() => openDate(t)} aria-haspopup="dialog">
               <span class="title">{t.name}</span>
-              <span class="sub">{[whenOf(t), t.location].filter(Boolean).join(" · ")}</span>
+              <span class="sub">{[whenOf(t), t.venue].filter(Boolean).join(" · ")}</span>
               <span class="sub num">
-                {pounds(t.feePence)} each{c.people ? ` · collected ${pounds(c.paid)} of ${pounds(c.due)}` : ""}
+                {[
+                  `${pounds(t.feePence)} each`,
+                  c.people ? `collected ${pounds(c.paid)} of ${pounds(c.due)}` : "",
+                  t.signupClosesOn ? `sign-up closes ${dayOf(t.signupClosesOn)}` : "",
+                  t.draftOn ? `draft ${dayOf(t.draftOn)}` : "",
+                  t.captains.length ? `${t.captains.length} captain${t.captains.length === 1 ? "" : "s"}` : "",
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
               </span>
-            </span>
-            <label class="fee">
-              <span class="sr-only">Fee for {t.name} (£)</span>
-              <input
-                class="input num"
-                inputmode="decimal"
-                value={t.feePence / 100}
-                disabled={c.people > 0}
-                title={c.people ? "Already charged: the fee is fixed" : "Fee (£)"}
-                onchange={(e) => {
-                  t.feePence = Math.round(Number(e.currentTarget.value || 0) * 100);
-                  updateTournament(t);
-                }}
-              />
-            </label>
+            </button>
             <Select
               id="status-{t.id}"
               size="sm"
@@ -277,7 +324,138 @@
           <p class="row hint">None scheduled yet.</p>
         {/each}
       </div>
-      <p class="hint">Sign-up open lets members say they're in; it shows on the calendar either way.</p>
+      <p class="hint">
+        Sign-up open lets members say they're in, until sign-up closes; it shows on the calendar either way.
+      </p>
+
+      <Sheet bind:open={sheetOpen} title={date?.id ? `Edit ${date.name}` : "Add a date"}>
+        {#if date}
+          <form class="form" onsubmit={saveDate}>
+            <label class="field"
+              >Name <input
+                class="input"
+                bind:value={date.name}
+                placeholder="e.g. Winter {form.shortName}"
+                required
+              /></label
+            >
+            <div class="two">
+              <label class="field">Date <input class="input" type="date" bind:value={date.heldOn} required /></label>
+              <label class="check tbc"
+                ><input
+                  type="checkbox"
+                  checked={!date.dateConfirmed}
+                  onchange={(e) => date && (date.dateConfirmed = !e.currentTarget.checked)}
+                /> Date TBC</label
+              >
+            </div>
+            <div class="two">
+              <label class="field">Starts <input class="input" type="time" bind:value={date.startTime} /></label>
+              <label class="field">Ends <input class="input" type="time" bind:value={date.endTime} /></label>
+            </div>
+            <label class="field">
+              Location
+              <input class="input" bind:value={date.location} placeholder={form.location || "e.g. The rink"} />
+              <span class="hint small">
+                {form.location ? `Leave empty for ${form.location}, the usual place.` : "Where it's held."}
+              </span>
+            </label>
+            <div class="two">
+              <label class="field"
+                >Places <input class="input num" type="number" min="0" bind:value={date.capacity} /></label
+              >
+              <label class="field"
+                >Fee (£) <input
+                  class="input num"
+                  inputmode="decimal"
+                  bind:value={date.fee}
+                  disabled={charged}
+                  title={charged ? "Already charged: the fee is fixed" : undefined}
+                /></label
+              >
+            </div>
+            <div class="two top">
+              <div class="field">
+                Status
+                <Select
+                  id="date-status"
+                  bind:value={date.status}
+                  options={STATUSES.map((s) => ({ value: s.id, label: s.label }))}
+                  aria-label="Status"
+                />
+              </div>
+              <label class="field">
+                Sign-up closes
+                <input class="input" type="date" bind:value={date.signupClosesOn} max={date.heldOn || undefined} />
+                <span class="hint small">The last day to say you're in. Empty: up to the day.</span>
+              </label>
+            </div>
+            <label class="check"><input type="checkbox" bind:checked={date.public} /> Show on the website</label>
+
+            {#if form.draft}
+              <h3 class="sub-head">The draft</h3>
+              <div class="two">
+                <label class="field"
+                  >Draft day <input
+                    class="input"
+                    type="date"
+                    bind:value={date.draftOn}
+                    max={date.heldOn || undefined}
+                  /></label
+                >
+                <label class="field"
+                  >Time <input class="input" type="time" bind:value={date.draftTime} disabled={!date.draftOn} /></label
+                >
+              </div>
+              <div class="field">
+                <span>Captains <span class="hint">· in pick order</span></span>
+                {#each date.captains as id, i (id)}
+                  <div class="captain">
+                    <span class="pick num">{i + 1}</span>
+                    <span class="grow">{nameOf(id)}</span>
+                    <button
+                      type="button"
+                      class="btn sm ghost icon"
+                      aria-label="Pick {nameOf(id)} earlier"
+                      disabled={i === 0}
+                      onclick={() => moveCaptain(i, -1)}><Icon name="chevronUp" size={16} /></button
+                    >
+                    <button
+                      type="button"
+                      class="btn sm ghost icon"
+                      aria-label="Pick {nameOf(id)} later"
+                      disabled={i === date.captains.length - 1}
+                      onclick={() => moveCaptain(i, 1)}><Icon name="chevronDown" size={16} /></button
+                    >
+                    <button
+                      type="button"
+                      class="btn sm ghost icon"
+                      aria-label="Remove {nameOf(id)}"
+                      onclick={() => date?.captains.splice(i, 1)}><Icon name="x" size={16} /></button
+                    >
+                  </div>
+                {/each}
+                {#if date.captains.length < 8}
+                  <Select
+                    id="captain-pick"
+                    bind:value={captainPick}
+                    onchange={addCaptain}
+                    options={[
+                      { value: "", label: "Add a captain…", disabled: true },
+                      ...members
+                        .filter((m) => !date?.captains.includes(m.player.id))
+                        .map((m) => ({ value: String(m.player.id), label: m.player.name })),
+                    ]}
+                    aria-label="Add a captain"
+                  />
+                {/if}
+              </div>
+            {/if}
+
+            <button class="btn primary">{date.id ? "Save" : "Schedule it"}</button>
+          </form>
+        {/if}
+      </Sheet>
     {/if}
   {/if}
 </div>
@@ -313,11 +491,45 @@
     display: grid;
     gap: var(--s-5);
   }
-  .fee input {
-    width: 4.5rem;
-    height: var(--control-h-sm);
-    padding: 0 var(--s-2);
-    text-align: right;
+  /* A date's row opens its sheet; the status changes in place */
+  .open {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+  .open:hover .title {
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+  }
+  /* Status beside Sign-up closes, whose hint runs longer: both start at the top */
+  .top {
+    align-items: start;
+  }
+  .tbc {
+    align-self: end;
+    min-height: var(--control-h);
+  }
+  .sub-head {
+    color: var(--fg);
+    font-size: var(--text-md);
+    font-weight: 600;
+    margin-top: var(--s-2);
+  }
+  .captain {
+    display: flex;
+    align-items: center;
+    gap: var(--s-2);
+  }
+  .pick {
+    width: 1.5rem;
+    color: var(--fg-muted);
   }
   .value {
     color: var(--fg-body);
@@ -348,7 +560,7 @@
     .row .grow {
       flex-basis: 100%;
     }
-    .fee {
+    .row :global(.status) {
       margin-left: auto;
     }
   }

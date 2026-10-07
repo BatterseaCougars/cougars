@@ -56,14 +56,17 @@ export function tournamentBookable(t: Tournament): Bookable {
     title: t.name,
     startsAt: londonISO(t.heldOn, t.startTime),
     endsAt: londonISO(t.heldOn, t.endTime),
-    venue: t.location,
-    signup: t.status === "open",
+    venue: t.venue,
+    signup: t.status === "open" && !signupClosed(t),
     capacity: t.capacity,
     dateTbc: !t.dateConfirmed,
     href: `/tournaments/${type.slug}`,
     entries: t,
   };
 }
+
+/** Past the last day to say you're in (London), for a tournament with one. */
+export const signupClosed = (t: Tournament, today = londonToday()) => !!t.signupClosesOn && today > t.signupClosesOn;
 
 /** The next session of a series that isn't cancelled (or the next at all, if they all are). */
 export function nextSession(series: TrainingSeries, today = londonToday()): TrainingSession | undefined {

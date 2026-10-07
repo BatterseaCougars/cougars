@@ -70,7 +70,7 @@
         <div class="row">
           <span class="grow">
             <span class="title">{t.name}</span>
-            <span class="sub">{[whenOf(t), t.location].filter(Boolean).join(" · ")}</span>
+            <span class="sub">{[whenOf(t), t.venue].filter(Boolean).join(" · ")}</span>
           </span>
           {#if t.champions}<span class="badge red">Champions · {t.champions}</span>{/if}
         </div>
