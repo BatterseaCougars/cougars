@@ -37,7 +37,16 @@ const credits = [
 ---
 
 <style is:inline set:html={brushFace} />
-<Tag class="poster crt" href={href} style={`--bg:url(${bg})`} data-reveal>
+<!-- One poster on both pages (transition:name): pressing it on the home page carries it up into the Kumite page's
+     header instead of fading into an identical one (global.css). It reveals on scroll only as the home feature: as
+     the page header it has to be there when the transition captures it. -->
+<Tag
+  class="poster crt"
+  href={href}
+  style={`--bg:url(${bg})`}
+  data-reveal={href ? "" : undefined}
+  transition:name="kumite-poster"
+>
   <span class="kanji" lang="ja" aria-hidden="true">
     組手
   </span>
