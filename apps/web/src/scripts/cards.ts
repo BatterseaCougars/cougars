@@ -97,7 +97,12 @@ function pickUp(source: HTMLElement) {
   const from = fromSource(lifted, sourceSlot);
   // The page card is the one being lifted: it isn't left behind while its copy travels
   sourceSlot.style.visibility = "hidden";
-  lifted.animate([{ transform: from }, { transform: "none" }], { duration: DURATION, easing: EASE });
+  // No tilting while it travels; once it's landed it tilts towards the pointer like any card
+  overlay.classList.add("moving");
+  lifted.animate([{ transform: from }, { transform: "none" }], { duration: DURATION, easing: EASE }).onfinish = () => {
+    overlay.classList.remove("moving");
+    card.style.transition = "";
+  };
   requestAnimationFrame(() => turn(card, true, DURATION));
 }
 
@@ -113,6 +118,9 @@ function putDown() {
     source.focus({ preventScroll: true });
   };
   if (reducedMotion() || !sourceSlot.isConnected) return done();
+  // Level it out as it goes back down
+  card.classList.remove("is-tilting");
+  for (const v of ["--rx", "--ry"]) card.style.setProperty(v, "0deg");
   turn(card, false, CLOSE);
   lifted.animate([{ transform: "none" }, { transform: fromSource(lifted, sourceSlot) }], {
     duration: CLOSE,
@@ -165,8 +173,8 @@ async function refresh(...cards: HTMLElement[]) {
 
 document.addEventListener("pointermove", (e) => {
   const card = cardAt(e);
-  // Not the picked-up card: tilting would fight its move and its turn
-  if (!card || !canTilt() || card.closest(".card-zoom")) return;
+  // Not while a picked-up card travels: tilting would fight its move and its turn
+  if (!card || !canTilt() || card.closest(".card-zoom.moving, .card-zoom.closing")) return;
   const r = card.getBoundingClientRect();
   const x = (e.clientX - r.left) / r.width;
   const y = (e.clientY - r.top) / r.height;
