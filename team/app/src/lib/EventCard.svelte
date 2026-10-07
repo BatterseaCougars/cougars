@@ -149,14 +149,22 @@
             : `${formatTime(event.startsAt)}–${formatTime(event.endsAt)}`}
         </span>
         {#if event.venue}<span class="venue"><Icon name="pin" size={13} />{event.venue}</span>{/if}
+        {#if soon}<span class="soon" class:open={event.signup && !full}>{soon}</span>{/if}
       </p>
     </div>
     <!-- How soon, and where you stand: a fixed slot, so answering swaps the badge in place -->
     <div class="side">
-      {#if soon}<span class="soon" class:open={event.signup && !full}>{soon}</span>{/if}
-      <!-- Places: what members check first -->
-      {#if event.signup}<span class="tally num"><strong>{entries.going.length}</strong>{tally}</span>{/if}
-      {#if event.cancelled}<span class="badge">Cancelled</span>{/if}
+      <!-- At a glance, what a member checks first: have I answered, and how many are coming. The badge's slot is
+           always filled, so it never appears from nowhere. -->
+      {#if event.cancelled}
+        <span class="badge">Cancelled</span>
+      {:else if event.signup}
+        {#if inIt}<span class="badge green num">You're in · number {entries.going.indexOf(id) + 1}</span>
+        {:else if waiting}<span class="badge amber num">Waitlist · number {entries.waitlist.indexOf(id) + 1}</span>
+        {:else if out}<span class="badge red">You're out</span>
+        {:else}<span class="badge">Not answered yet</span>{/if}
+        <span class="tally num"><strong>{entries.going.length}</strong>{tally}</span>
+      {/if}
     </div>
   </div>
 
@@ -177,7 +185,6 @@
           {/if}
         </span>
       </div>
-      <!-- Your answer, and where it leaves you, on one row. The status sits to the right, so it never moves the buttons. -->
       <div class="reply">
         {#if canSignUp}
           <div class="answer" role="group" aria-label="Are you in?">
@@ -197,11 +204,6 @@
             </button>
           </div>
         {/if}
-        <span class="status num" class:in={inIt} class:wait={waiting} class:out>
-          {#if inIt}You're number {entries.going.indexOf(id) + 1}{:else if waiting}Waitlist, number {entries.waitlist.indexOf(
-              id,
-            ) + 1}{:else if out}You're out{/if}
-        </span>
       </div>
     </div>
   {/if}
@@ -321,6 +323,7 @@
     justify-items: end;
     gap: var(--s-2);
     flex-shrink: 0;
+    text-align: right;
   }
   .soon {
     display: inline-flex;
@@ -339,26 +342,8 @@
     border-radius: 50%;
     background: var(--green);
   }
-  /* Where your answer leaves you, beside the buttons: green in, amber waiting, red out */
   .reply {
     display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--s-2) var(--s-4);
-  }
-  .status {
-    color: var(--fg-muted);
-    font-size: var(--text-sm);
-    font-weight: 600;
-  }
-  .status.in {
-    color: var(--green);
-  }
-  .status.wait {
-    color: var(--amber);
-  }
-  .status.out {
-    color: var(--red-hot);
   }
 
   /* ─── Who's going, and your answer at the end of the row ─── */
