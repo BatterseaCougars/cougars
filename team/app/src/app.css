@@ -174,12 +174,13 @@ body::after {
   z-index: -1;
   pointer-events: none;
 }
-/* The carbon twill: two fine diagonal weaves crossing, drawn in CSS so it's seamless and crisp at any size, under
-   the red light at the top. A texture you sense, not a pattern you read. */
+/* The mesh at about a fifth of its strength: a texture you sense, not a pattern you read */
 body::before {
   background:
-    var(--ambient), repeating-linear-gradient(45deg, rgb(255 255 255 / 0.028) 0 1px, transparent 1px 4px),
-    repeating-linear-gradient(-45deg, rgb(0 0 0 / 0.35) 0 2px, transparent 2px 8px), var(--bg);
+    var(--ambient),
+    linear-gradient(rgb(13 13 15 / 0.8), rgb(13 13 15 / 0.8)),
+    url("./assets/carbon.webp") center / cover no-repeat,
+    var(--bg);
 }
 body::after {
   opacity: 0.035;
