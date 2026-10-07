@@ -1,4 +1,4 @@
-// The website roster's query (scripts/roster-snapshot.mjs, ADR 0043): active Cougars and their record.
+// The website roster's query (scripts/club-snapshot.mjs, ADR 0043): active Cougars and their record.
 // Stats count what's been played (signed up in, not marked a no-show, not cancelled), as the team app does.
 const PLAYED = `a.signup = 'in' AND COALESCE(a.attended, 1) = 1`;
 export const ROSTER_SQL = `SELECT m.id, m.name, m.web_name, m.position, m.bio,

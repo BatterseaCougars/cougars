@@ -50,7 +50,10 @@ const nextUp = next[0];
             {s.kumite.awards.map((a) => (
               <li>
                 <span class="belt" aria-hidden="true" />
-                {a}
+                <span class="award">
+                  <strong>{a.name}</strong>
+                  {a.about && <span class="about">{a.about}</span>}
+                </span>
               </li>
             ))}
           </ul>
@@ -130,6 +133,22 @@ const nextUp = next[0];
     line-height: 1;
     text-transform: uppercase;
     align-items: center;
+  }
+  /* An award's name in poster capitals, what it's for underneath in the running text */
+  .awards .award {
+    display: grid;
+    gap: 0.35rem;
+  }
+  .awards .about {
+    font-family: var(--sans);
+    font-size: 0.95rem;
+    letter-spacing: 0;
+    line-height: 1.4;
+    text-transform: none;
+    color: var(--text-2);
+  }
+  .awards strong {
+    font-weight: inherit;
   }
   /* Tiny title belt */
   .belt {

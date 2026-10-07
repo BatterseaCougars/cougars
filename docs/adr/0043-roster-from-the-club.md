@@ -12,9 +12,9 @@ in the app shouldn't have to wait for one to see them.
 
 ## Decision
 
-- **Snapshot at build.** `scripts/roster-snapshot.mjs` runs before `astro dev` and `astro build` (apps/web's
+- **Snapshot at build.** `scripts/club-snapshot.mjs` runs before `astro dev` and `astro build` (apps/web's
   `predev`/`prebuild`). It reads the active Cougars (the `cougar` flag) from the environment's D1 (local D1 on a laptop; in CI, the
-  D1 API with `ROSTER_SNAPSHOT_ENV`) into `apps/web/src/data/roster.local.json`, gitignored. If it can't read the
+  D1 API with `CLUB_SNAPSHOT_ENV`) into `apps/web/src/data/roster.local.json` (the club snapshot also takes the Kumite's awards, [ADR 0044](0044-tournament-awards-in-the-app.md)), gitignored. If it can't read the
   database the roster is empty and the site falls back to Sanity players or the samples; a build never fails on it.
 - **Only what the website shows leaves the database:** the member's name as they chose it on their app profile
   (_Name on the website_: first name and initial, the default; full name; first name; or a nickname; stored in

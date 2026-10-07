@@ -222,7 +222,7 @@ const strip: [string, string][] = [
             </li>
           ))}
         </ol>
-        <p class="awards label">Awards: {s.kumite.awards.join(" · ")}</p>
+        <p class="awards label">Awards: {s.kumite.awards.map((a) => a.name).join(" · ")}</p>
         <a class="more" href="/kumite/">
           Enter the Kumite
         </a>

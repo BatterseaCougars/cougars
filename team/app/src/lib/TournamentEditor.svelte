@@ -45,7 +45,12 @@
     draft: false,
     active: true,
     defaultFeePence: 1500,
+    awards: [
+      { name: "Champions", about: "The team on top of the table at the end of the day." },
+      { name: "Top scorer", about: "Most goals across every game." },
+    ],
   });
+  const MAX_AWARDS = 8;
 
   $effect(() => {
     const t = selected === "new" ? blank() : db.tournamentTypes.find((x) => x.id === selected);
@@ -158,6 +163,42 @@
           />
           <span class="hint small">Each new date starts at this; change it there if one costs more or less.</span>
         </label>
+
+        <!-- Awards: what's handed out at each date, shown on the website. A fun one is half the point. -->
+        <div class="field">
+          <span>Awards <span class="hint">· on the website</span></span>
+          {#each form.awards as award, i (i)}
+            <div class="award">
+              <input
+                class="input"
+                aria-label="Award"
+                placeholder="e.g. The Dim Mak"
+                maxlength="40"
+                bind:value={award.name}
+              />
+              <input
+                class="input"
+                aria-label="What it's for"
+                placeholder="e.g. Fastest goal from a faceoff"
+                maxlength="120"
+                bind:value={award.about}
+              />
+              <button
+                type="button"
+                class="btn sm ghost"
+                aria-label="Remove {award.name || 'this award'}"
+                onclick={() => form?.awards.splice(i, 1)}
+              >
+                <Icon name="x" size={16} />
+              </button>
+            </div>
+          {/each}
+          {#if form.awards.length < MAX_AWARDS}
+            <button type="button" class="btn sm add-award" onclick={() => form?.awards.push({ name: "", about: "" })}>
+              <Icon name="plus" size={16} />Award
+            </button>
+          {/if}
+        </div>
       </form>
     {/key}
 
@@ -242,6 +283,24 @@
 </div>
 
 <style>
+  /* An award: its name, then what it's for (wider), and remove */
+  .award {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr) auto;
+    gap: var(--s-2);
+    align-items: center;
+  }
+  .add-award {
+    justify-self: start;
+  }
+  @media (max-width: 34rem) {
+    .award {
+      grid-template-columns: minmax(0, 1fr) auto;
+    }
+    .award > input:nth-child(2) {
+      grid-row: 2;
+    }
+  }
   /* Running and the draft, side by side at the top */
   .checks {
     display: flex;

@@ -3,9 +3,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "predev": "node ../../scripts/roster-snapshot.mjs",
+    "predev": "node ../../scripts/club-snapshot.mjs",
     "dev": "astro dev",
-    "prebuild": "node ../../scripts/roster-snapshot.mjs",
+    "prebuild": "node ../../scripts/club-snapshot.mjs",
     "build": "astro build",
     "preview": "astro preview",
     "check": "astro check"

@@ -89,6 +89,8 @@ export interface TournamentType {
   active: boolean;
   /** Copied onto each new edition, where it can be changed. */
   defaultFeePence: number;
+  /** What's handed out at each edition (ADR 0044), shown on the website. */
+  awards: { name: string; about: string }[];
 }
 
 export type TournamentStatus = "planned" | "open" | "live" | "finished";

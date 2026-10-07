@@ -264,6 +264,36 @@ interface TypeRow {
   draft: number;
   active: number;
   default_fee_pence: number;
+  awards: string;
+}
+
+/** A tournament type's award (ADR 0044): what it's called and a line on what it's for. */
+export interface Award {
+  name: string;
+  about: string;
+}
+
+const parseAwards = (json: string): Award[] => {
+  try {
+    const list = JSON.parse(json);
+    return Array.isArray(list) ? list : [];
+  } catch {
+    return [];
+  }
+};
+
+/** Up to 8 awards, each with a name; empty rows are dropped. */
+function awardsOf(o: Record<string, unknown>): string {
+  const list = o.awards ?? [];
+  if (!Array.isArray(list)) throw new HttpError(400, "awards should be a list.");
+  const awards = list
+    .map((a: Record<string, unknown>) => ({
+      name: text(a, "name", { optional: true, max: 40 }).trim(),
+      about: text(a, "about", { optional: true, max: 120 }).trim(),
+    }))
+    .filter((a) => a.name);
+  if (awards.length > 8) throw new HttpError(400, "Up to 8 awards.");
+  return JSON.stringify(awards);
 }
 
 export async function listTournamentTypes(db: D1Database) {
@@ -282,6 +312,7 @@ export async function listTournamentTypes(db: D1Database) {
     draft: Boolean(t.draft),
     active: Boolean(t.active),
     defaultFeePence: t.default_fee_pence,
+    awards: parseAwards(t.awards),
   }));
 }
 
@@ -298,6 +329,7 @@ function typeFields(o: Record<string, unknown>) {
     bool(o, "draft") ? 1 : 0,
     bool(o, "active") ? 1 : 0,
     int(o, "defaultFeePence", { max: 100_000 }),
+    awardsOf(o),
   ] as Param[];
 }
 
@@ -307,7 +339,7 @@ export async function createTournamentType(db: D1Database, o: Record<string, unk
   const res = await run(
     db,
     `INSERT INTO tournament_types (name, short_name, icon, tone, points_win, points_draw, points_loss, game_minutes,
-       draft, active, default_fee_pence, slug) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       draft, active, default_fee_pence, awards, slug) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [...f, slug],
   );
   return { id: Number(res.meta.last_row_id), slug };
@@ -317,7 +349,7 @@ export async function updateTournamentType(db: D1Database, id: number, o: Record
   const res = await run(
     db,
     `UPDATE tournament_types SET name = ?, short_name = ?, icon = ?, tone = ?, points_win = ?, points_draw = ?,
-       points_loss = ?, game_minutes = ?, draft = ?, active = ?, default_fee_pence = ? WHERE id = ?`,
+       points_loss = ?, game_minutes = ?, draft = ?, active = ?, default_fee_pence = ?, awards = ? WHERE id = ?`,
     [...typeFields(o), id],
   );
   if (!res.meta.changes) throw new HttpError(404, "No such tournament.");

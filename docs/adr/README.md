@@ -52,3 +52,4 @@ rule, a trade-off. Copy [template.md](template.md), take the next number, keep i
 | [0041](0041-caches-in-production-only.md)         | Live reads are cached in production only                                                | Accepted              |
 | [0042](0042-whats-on-from-the-club-calendar.md)   | The home page's What's on reads the club calendar live                                  | Accepted              |
 | [0043](0043-roster-from-the-club.md)              | The website's roster is a build-time snapshot of the club's members, refreshed per card | Accepted              |
+| [0044](0044-tournament-awards-in-the-app.md)      | Tournament awards are set in the team app                                               | Accepted              |

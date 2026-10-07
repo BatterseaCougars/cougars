@@ -176,6 +176,7 @@ const typeBody = (t: TournamentType) => ({
   draft: t.draft,
   active: t.active,
   defaultFeePence: t.defaultFeePence,
+  awards: t.awards,
 });
 export const createTournamentType = (t: TournamentType) =>
   save(() => api<{ id: number; slug: string }>("POST", "/api/tournament-types", typeBody(t)), "Tournament added");

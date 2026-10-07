@@ -59,11 +59,17 @@ export interface Kumite {
   awards: string[];
 }
 
+/** A tournament award: from the team app's tournament editor (ADR 0044), or a Sanity name with no line. */
+export interface Award {
+  name: string;
+  about?: string | null;
+}
+
 /** Every club fact in one object, the shape pages read through getSettings(). */
 export interface SiteSettings extends Club, Fridays {
   pub: Pub;
   team: Team;
-  kumite: Kumite;
+  kumite: Omit<Kumite, "awards"> & { awards: Award[] };
 }
 
 export interface KumiteResult {

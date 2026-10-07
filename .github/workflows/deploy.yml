@@ -90,11 +90,11 @@ jobs:
       - name: Build version
         run: echo "PUBLIC_BUILD_VERSION=$(date -u +%Y.%m.%d)+$(git rev-parse --short HEAD)" >> "$GITHUB_ENV"
 
-      # The roster is a snapshot of this environment's D1 (scripts/roster-snapshot.mjs, apps/web's prebuild, ADR 0043).
+      # The roster is a snapshot of this environment's D1 (scripts/club-snapshot.mjs, apps/web's prebuild, ADR 0043).
       - name: Build
         run: npm run build
         env:
-          ROSTER_SNAPSHOT_ENV: ${{ env.SITE_ENV }}
+          CLUB_SNAPSHOT_ENV: ${{ env.SITE_ENV }}
 
       # Worker name, D1 database and SITE_ENV for this environment (creates the database once)
       - name: Target ${{ env.SITE_ENV }}

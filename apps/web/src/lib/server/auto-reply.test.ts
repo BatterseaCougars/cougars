@@ -8,7 +8,7 @@ const settings: SiteSettings = {
   ...FALLBACK_FRIDAYS,
   pub: FALLBACK_PUB,
   team: FALLBACK_TEAM,
-  kumite: FALLBACK_KUMITE,
+  kumite: { ...FALLBACK_KUMITE, awards: FALLBACK_KUMITE.awards.map((name) => ({ name })) },
 };
 const enquiry = {
   name: "Jo Bloggs",

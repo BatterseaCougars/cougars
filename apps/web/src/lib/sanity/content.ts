@@ -12,7 +12,7 @@ import { demoAlbums, DEMO_EVENTS, DEMO_KUMITE_RESULTS, DEMO_PLAYERS } from "./de
 import { toAlbum } from "../server/photos";
 import { toPlayer, type RosterRow } from "../roster";
 import { listOr, mergeClub, mergeFridays, mergeKumite, mergePub, mergeTeam, newestFirst } from "./merge";
-import type { Album, ClubEvent, KumiteResult, Player, SiteSettings, Sponsor } from "./types";
+import type { Album, ClubEvent, KumiteResult, Player, SiteSettings, Sponsor, Award } from "./types";
 
 // Sample content for dev builds: `DEMO_CONTENT=true npm run dev`, PR previews and
 // scripts/deploy-dev.sh. Real Sanity content still wins wherever it exists. Never set for
@@ -53,7 +53,17 @@ export const getClub = memo(async () => mergeClub(FALLBACK_CLUB, await fetchOr(q
 export const getFridays = memo(async () => mergeFridays(FALLBACK_FRIDAYS, await fetchOr(q.FRIDAYS, null)));
 export const getPub = memo(async () => mergePub(FALLBACK_PUB, await fetchOr(q.PUB, null)));
 export const getTeam = memo(async () => mergeTeam(FALLBACK_TEAM, await fetchOr(q.TEAM, null)));
-export const getKumite = memo(async () => mergeKumite(FALLBACK_KUMITE, await fetchOr(q.KUMITE, null)));
+// The Kumite's awards come from the team app (ADR 0044), through the build's club snapshot; Sanity's list (names
+// only) until the snapshot has them.
+const kumiteSnapshot = import.meta.glob<{ awards: Award[] } | null>("../../data/kumite.local.json", {
+  eager: true,
+  import: "default",
+});
+export const getKumite = memo(async () => {
+  const k = mergeKumite(FALLBACK_KUMITE, await fetchOr(q.KUMITE, null));
+  const fromApp = Object.values(kumiteSnapshot)[0]?.awards;
+  return { ...k, awards: fromApp?.length ? fromApp : k.awards.map((name): Award => ({ name })) };
+});
 
 /** Every club fact in one object. */
 export const getSettings = memo(async (): Promise<SiteSettings> => {
@@ -81,7 +91,7 @@ export const getEventPages = memo(() => fetchList<ClubEvent>(q.EVENT_PAGES, DEMO
 export const getAlbums = memo(async () =>
   (await fetchList<Album>(q.ALBUMS, demoAlbums())).flatMap((a) => toAlbum(a) ?? []),
 );
-// The roster: the active Cougars as of this build (lib/roster.ts, scripts/roster-snapshot.mjs). Without a snapshot
+// The roster: the active Cougars as of this build (lib/roster.ts, scripts/club-snapshot.mjs). Without a snapshot
 // (a fresh checkout, a database that couldn't be read), Sanity's players or the samples.
 const snapshot = import.meta.glob<RosterRow[] | null>("../../data/roster.local.json", {
   eager: true,

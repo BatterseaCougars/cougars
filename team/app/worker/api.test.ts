@@ -113,6 +113,26 @@ describe("the schedule", () => {
     expect(days).not.toContain("2026-10-09");
   });
 
+  it("an admin sets a tournament's awards, a fun one included", async () => {
+    const kumite = (await boot()).tournamentTypes[0];
+    // The Kumite starts with the usual three and The Dim Mak
+    expect(kumite.awards.map((a: { name: string }) => a.name)).toEqual([
+      "Champions",
+      "Top scorer",
+      "Best goalie",
+      "The Dim Mak",
+    ]);
+    const awards = [
+      { name: "Champions", about: "Top of the table." },
+      { name: "The Slapshot Sensei", about: "Fastest shot from a faceoff." },
+      { name: "  ", about: "an empty row is dropped" },
+    ];
+    expect((await call("PUT", `/api/tournament-types/${kumite.id}`, { ...kumite, awards })).status).toBe(200);
+    expect((await boot()).tournamentTypes[0].awards).toEqual(awards.slice(0, 2));
+    const tooMany = Array.from({ length: 9 }, (_, i) => ({ name: `Award ${i}`, about: "" }));
+    expect((await call("PUT", `/api/tournament-types/${kumite.id}`, { ...kumite, awards: tooMany })).status).toBe(400);
+  });
+
   it("a new training gets its own sessions and a slug", async () => {
     const res = await call("POST", "/api/series", {
       name: "Sunday Skills",
