@@ -119,8 +119,9 @@ const askHref = (i: WhatsOnItem) =>
 <script>
   // Fill in the live list. If it fails (offline, blocked), the placeholder's link to all events stays.
   async function refresh() {
+    // Only the home page's placeholder: the events page renders its own, longer list live
     const box = document.querySelector<HTMLElement>("[data-whats-on]");
-    if (!box) return;
+    if (!box?.querySelector(".loading")) return;
     try {
       const res = await fetch("/whats-on/", { headers: { Accept: "text/html" } });
       if (!res.ok) return;

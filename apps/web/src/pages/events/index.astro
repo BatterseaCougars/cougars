@@ -1,9 +1,27 @@
 ---
+// Everything coming up, live from the club calendar the team app keeps, as on the home page (ADR 0045). Past
+// events with their own pages still come from Sanity until they move over.
+import { env } from "cloudflare:workers";
 import Base from "../../layouts/Base.astro";
 import PageHeader from "../../components/PageHeader.astro";
 import EventList from "../../components/EventList.astro";
+import WhatsOn from "../../components/WhatsOn.astro";
 import Empty from "../../components/Empty.astro";
 import { getEvents, getSettings, upcoming } from "../../lib/sanity/content";
+import { ALL_LIMITS, whatsOn, type WhatsOnItem } from "../../lib/server/whats-on";
+import { cacheControl } from "../../lib/server/sanity-env";
+
+export const prerender = false;
+
+let items: WhatsOnItem[] = [];
+let unavailable = false;
+try {
+  items = await whatsOn(env.DB, new Date(), ALL_LIMITS);
+} catch (error) {
+  console.error(JSON.stringify({ event: "events.d1_error", error: String(error) }));
+  unavailable = true;
+}
+Astro.response.headers.set("Cache-Control", cacheControl(unavailable));
 
 const all = await getEvents();
 const next = upcoming(all);
@@ -22,12 +40,12 @@ const day = s.training[0]?.day ?? "Friday";
     lede={`Special events on top of regular ${day} hockey: the quarterly Kumite, tournaments and socials.`}
   />
   <div class="wrap page-body">
-    {next.length ? (
-      <EventList events={next} />
-    ) : (
+    {unavailable ? (
       <Empty>
-        Nothing scheduled right now. We're on court every {day}: <a href="/fridays/">come along</a>.
+        The calendar didn't load. We're on court every {day}: <a href="/fridays/">come along</a>.
       </Empty>
+    ) : (
+      <WhatsOn items={items} day={day} />
     )}
     {past.length > 0 && (
       <section class="past">

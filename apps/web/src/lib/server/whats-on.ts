@@ -19,9 +19,11 @@ export interface WhatsOnItem {
 }
 
 export const LIMITS = { trainings: 3, tournaments: 3, events: 4 };
+/** The events page: a few trainings (they're every week), every tournament and event coming up. */
+export const ALL_LIMITS = { trainings: 4, tournaments: 50, events: 50 };
 
-/** Upcoming public items, soonest first: at most a few of each kind. */
-export async function whatsOn(db: D1Database, now = new Date()): Promise<WhatsOnItem[]> {
+/** Upcoming public items, soonest first: at most `limits` of each kind. */
+export async function whatsOn(db: D1Database, now = new Date(), limits = LIMITS): Promise<WhatsOnItem[]> {
   const today = londonDay(now.toISOString());
   const [trainings, tournaments, events] = await Promise.all([
     all<{
@@ -41,7 +43,7 @@ export async function whatsOn(db: D1Database, now = new Date()): Promise<WhatsOn
               s.cancelled_at cancelledAt
        FROM training_sessions s JOIN training_series r ON r.id = s.series_id
        WHERE r.public = 1 AND s.held_on >= ? ORDER BY s.held_on, s.id LIMIT ?`,
-      [today, LIMITS.trainings],
+      [today, limits.trainings],
     ),
     all<{
       id: number;
@@ -56,7 +58,7 @@ export async function whatsOn(db: D1Database, now = new Date()): Promise<WhatsOn
       `SELECT id, name, location, held_on heldOn, start_time startTime, end_time endTime,
               date_confirmed dateConfirmed
        FROM tournaments WHERE public = 1 AND status != 'finished' AND held_on >= ? ORDER BY held_on LIMIT ?`,
-      [today, LIMITS.tournaments],
+      [today, limits.tournaments],
     ),
     all<{
       id: number;
@@ -70,7 +72,7 @@ export async function whatsOn(db: D1Database, now = new Date()): Promise<WhatsOn
       db,
       `SELECT id, title, starts_at startsAt, ends_at endsAt, venue, description, cancelled_at cancelledAt
        FROM club_events WHERE public = 1 AND ends_at >= ? ORDER BY starts_at LIMIT ?`,
-      [now.toISOString(), LIMITS.events],
+      [now.toISOString(), limits.events],
     ),
   ]);
 
