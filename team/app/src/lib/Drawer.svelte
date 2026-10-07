@@ -78,9 +78,7 @@
     flex-direction: column;
     width: min(26rem, 100vw);
     border-left: 1px solid var(--border-strong);
-    background: color-mix(in srgb, var(--surface-1) 92%, transparent);
-    backdrop-filter: var(--blur);
-    -webkit-backdrop-filter: var(--blur);
+    background: var(--surface-1);
     box-shadow: var(--shadow-pop);
   }
   header {

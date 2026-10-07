@@ -220,7 +220,7 @@
         aria-current={item.on ? "page" : undefined}
         aria-label={item.name}
       >
-        <Icon name={item.icon} size={22} />
+        <Icon name={item.icon} size={20} />
         {#if item.badge}<span class="dock-badge num" aria-hidden="true">{item.badge}</span>{/if}
         <span class="dock-label" aria-hidden="true">{item.name}</span>
       </a>
@@ -407,7 +407,7 @@
     z-index: 7;
     display: flex;
     flex-direction: column;
-    gap: var(--s-2);
+    gap: 0.375rem;
     translate: 0 -50%;
     transition:
       translate var(--t-slow) var(--ease),
@@ -422,8 +422,8 @@
     z-index: 1;
     display: grid;
     place-items: center;
-    width: 3.5rem;
-    height: 3.5rem;
+    width: 3rem;
+    height: 3rem;
     border-radius: var(--r-md);
     border: 1px solid rgb(236 232 225 / 0.07);
     background: color-mix(in srgb, var(--surface-1) 45%, transparent);

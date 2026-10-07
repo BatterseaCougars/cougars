@@ -269,9 +269,7 @@
     padding: var(--s-2);
     border: 1px solid var(--border-strong);
     border-radius: var(--r-lg);
-    background: var(--panel-bg-strong);
-    backdrop-filter: var(--blur);
-    -webkit-backdrop-filter: var(--blur);
+    background: var(--surface-2);
     box-shadow: var(--shadow-pop);
   }
   .who {

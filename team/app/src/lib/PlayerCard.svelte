@@ -168,9 +168,9 @@
     align-items: baseline;
     gap: 2cqw;
     padding: 2.6cqw 0.5cqw 0;
-    font-size: 4.8cqw;
+    font-size: 5.4cqw;
     font-weight: 700;
-    letter-spacing: 0.1em;
+    letter-spacing: 0.08em;
     line-height: 1;
     text-transform: uppercase;
     white-space: nowrap;

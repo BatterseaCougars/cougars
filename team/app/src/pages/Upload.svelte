@@ -51,7 +51,7 @@
     padding: var(--s-10) var(--s-4);
     border: 1px dashed var(--border-strong);
     border-radius: var(--r-lg);
-    background: color-mix(in srgb, var(--surface-1) 40%, transparent);
+    background: var(--surface-1);
     text-align: center;
     cursor: pointer;
     transition:

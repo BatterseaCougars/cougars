@@ -1,8 +1,9 @@
 /*
  * Team app design system (ADR 0022).
  *
- * The club's carbon mesh sits fixed behind everything, knocked back, with a faint red light at the top. Every
- * panel is frosted glass over it, so the texture shows through and nothing reads as a grey box on black.
+ * The club's carbon mesh sits fixed behind everything, well knocked back, with a faint red light at the top.
+ * Panels are solid, so text never sits on texture; only the chrome (bars, the dock, the filters band) is frosted
+ * glass, and the mesh shows through the page around the panels, not through them ("Tape Deck", 2026-10-07).
  * Things are told apart by tinted fills, frost and space, not by outlines: the few hairlines left are the rules
  * between a list's rows and a panel's sections. The main button is cream (the logo's white half); red is the
  * brand, the current nav item and the focus ring. One easing curve, --ease, for everything that moves (motion.ts
@@ -62,7 +63,7 @@
   --surface-1: #17171a;
   --surface-2: #1e1e22;
   --surface-3: #27272c; /* hover, selected */
-  --border: rgb(236 232 225 / 0.08);
+  --border: rgb(236 232 225 / 0.07);
   --border-strong: rgb(236 232 225 / 0.14);
   --fg: #ece8e1; /* titles, the active item */
   --fg-body: #d6d1c9; /* running text */
@@ -71,7 +72,7 @@
 
   /* ─── Colour ─── */
   --red: #e5131f;
-  --red-hot: #ff2a35; /* red text on dark */
+  --red-hot: #f4404a; /* red text on dark: a touch off pure, so it doesn't vibrate against the cream */
   --red-muted: color-mix(in srgb, var(--red-hot) 62%, var(--fg-muted)); /* headings: red, but not shouting */
   --red-hover: color-mix(in srgb, var(--red) 86%, white);
   --red-wash: color-mix(in srgb, var(--red) 16%, transparent);
@@ -84,10 +85,11 @@
   --amber-wash: color-mix(in srgb, var(--amber) 14%, transparent);
   --amber-border: color-mix(in srgb, var(--amber) 35%, transparent);
   --ring: var(--red-hot);
-  /* Main buttons: the logo's white half. Red is the brand (logo, headings, glow), so a red button got lost in it. */
-  --primary: var(--fg);
+  /* Main buttons: the logo's white half, a notch under the brightest ink so a row of them doesn't glare. Red is the
+     brand (logo, headings, glow), so a red button got lost in it. */
+  --primary: #e6e0d4;
   --primary-fg: var(--bg);
-  --primary-hover: #fff;
+  --primary-hover: #f2ede3;
 
   /* Schedule tones: each training and tournament has one (demo/model.ts TONES) */
   --tone-red: #ff3b45;
@@ -97,9 +99,9 @@
   --tone-violet: #a78bfa;
   --tone-teal: #2dd4bf;
 
-  /* ─── Glass ─── */
-  --panel-bg: color-mix(in srgb, var(--surface-1) 72%, transparent);
-  --panel-bg-strong: color-mix(in srgb, var(--surface-1) 86%, transparent);
+  /* ─── Surfaces: panels are solid; --blur is for the chrome ─── */
+  --panel-bg: var(--surface-1);
+  --panel-bg-strong: var(--surface-1);
   /* Inputs, search and selects: a solid fill, so a field never melts into the textured page behind it */
   --field-bg: var(--surface-2);
   --field-bg-focus: var(--surface-3);
@@ -172,10 +174,11 @@ body::after {
   z-index: -1;
   pointer-events: none;
 }
+/* The mesh at about a fifth of its strength: a texture you sense, not a pattern you read */
 body::before {
   background:
     var(--ambient),
-    linear-gradient(rgb(13 13 15 / 0.64), rgb(13 13 15 / 0.64)),
+    linear-gradient(rgb(13 13 15 / 0.8), rgb(13 13 15 / 0.8)),
     url("./assets/carbon.webp") center / cover no-repeat,
     var(--bg);
 }
@@ -445,14 +448,12 @@ h1.poster::after {
 
 /* ─── Surfaces ─── */
 
-/* Frosted panel: the texture shows through. No shadow. */
+/* Solid panel with a faint edge. No shadow: shadows are for overlays. */
 .panel {
   position: relative;
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
   background: var(--panel-bg);
-  backdrop-filter: var(--blur);
-  -webkit-backdrop-filter: var(--blur);
 }
 .panel.pad {
   padding: var(--s-5);
@@ -462,15 +463,9 @@ h1.poster::after {
   border-color: var(--red-border);
   background: color-mix(in srgb, var(--red) 12%, var(--surface-1));
 }
-/* Glass card: lighter and clearer than a panel, with a lit top edge (trial on event cards) */
+/* Card: a panel with a lit top edge, for the things you tap (events, schedule cards) */
 .panel.glass {
-  border-color: rgb(236 232 225 / 0.1);
-  background: color-mix(in srgb, var(--surface-1) 42%, transparent);
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.08),
-    0 12px 32px -16px rgb(0 0 0 / 0.7);
-  backdrop-filter: blur(22px) saturate(1.6);
-  -webkit-backdrop-filter: blur(22px) saturate(1.6);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.05);
 }
 /* Grouped list: rows split by hairlines, never separate boxes */
 .list {
@@ -479,8 +474,6 @@ h1.poster::after {
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
   background: var(--panel-bg);
-  backdrop-filter: var(--blur);
-  -webkit-backdrop-filter: var(--blur);
 }
 .row {
   display: flex;
