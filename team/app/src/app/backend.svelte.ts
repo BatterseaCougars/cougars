@@ -152,8 +152,14 @@ export const setTournamentPlayer = (tournamentId: number, memberId: number, inIt
     inIt ? "Added" : "Taken off",
   );
 /** Publish a session's teams: everyone sees them. */
-export const publishTeams = (sessionId: number, teams: Team[]) =>
-  save(() => api("POST", `/api/sessions/${sessionId}/teams`, { teams }), "Teams published");
+export const publishTeams = (sessionId: number, teams: Team[], done = "Teams saved") =>
+  save(() => api("POST", `/api/sessions/${sessionId}/teams`, { teams }), done);
+/** Take a session's teams down; the sign-ups stay. */
+export const removeTeams = (sessionId: number) =>
+  save(() => api("DELETE", `/api/sessions/${sessionId}/teams`), "Teams taken down");
+/** Start a session again: no sign-ups, no teams. */
+export const resetSession = (sessionId: number) =>
+  save(() => api("POST", `/api/sessions/${sessionId}/reset`), "Session reset");
 /** Your own phone, position and bio. */
 export const saveProfile = (p: { position: Position; phone: string; bio: string; webName: string }) =>
   save(() => api("PUT", "/api/me", p));

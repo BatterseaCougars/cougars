@@ -35,12 +35,12 @@
       <img class="ghost" src={mark} alt="" loading="lazy" />
       {#if n !== undefined}<span class="no">{n}</span>{/if}
       {#if you}<span class="you-tag">You</span>{/if}
+      {#if player.cougar}<span class="cougar-tag">Cougar</span>{/if}
     </span>
     <span class="plate"><strong>{first}</strong></span>
     <span class="foot">
       <span class="pos">{POSITIONS[player.position]}</span>
-      {#if showRating}<span class="num">{player.rating}</span>{:else if player.cougar}<span class="cougar">Cougar</span
-        >{/if}
+      {#if showRating}<span class="num">{player.rating}</span>{/if}
     </span>
   </article>
 {/snippet}
@@ -123,10 +123,12 @@
     background: #1c1c21;
     box-shadow: 0 0 0 0.6cqw #1b1917;
   }
+  /* No photo yet: the club mark, its red turned down, so the name, tags and rating are what you read */
   .ghost {
     width: 62%;
     height: auto;
-    filter: drop-shadow(0 4px 10px rgb(0 0 0 / 0.5));
+    filter: saturate(0.35);
+    opacity: 0.4;
   }
   .no {
     position: absolute;
@@ -205,7 +207,32 @@
     font-weight: 400;
     letter-spacing: 0.03em;
   }
-  .cougar {
-    color: #b3101a;
+  /* On the Cougars team: a red tag in the photo's top right corner; your own "You" tag drops under it */
+  .cougar-tag {
+    position: absolute;
+    top: 3cqw;
+    right: 3cqw;
+    padding: 1.6cqw 3cqw 1.2cqw;
+    border-radius: 1.2cqw;
+    background: #a80f18;
+    color: #fff;
+    font-family: var(--font-display);
+    font-size: 7cqw;
+    line-height: 1;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    box-shadow: 0 1px 3px rgb(0 0 0 / 0.4);
+  }
+  .photo:has(.cougar-tag) .you-tag {
+    top: 15cqw;
+  }
+  /* The rating, big in the display face: the number an admin reads the card for */
+  .foot .num {
+    color: #1b1917;
+    font-family: var(--font-display);
+    font-size: 12cqw;
+    font-weight: 400;
+    line-height: 1;
+    letter-spacing: 0.02em;
   }
 </style>

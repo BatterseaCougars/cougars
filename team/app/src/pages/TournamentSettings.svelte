@@ -34,7 +34,7 @@
       : `${t.teams.length} ${t.teams.length === 1 ? "team" : "teams"}`;
 </script>
 
-<div class="page wide">
+<div class="page full">
   <PageHeader title="Tournaments" subtitle="The schedule. Open one to set its day, sign-up, draft and captains.">
     {#snippet actions()}
       <button class="btn primary sm" onclick={() => editTournament("new")}

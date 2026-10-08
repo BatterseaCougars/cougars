@@ -59,7 +59,7 @@ Copied in shape from Gwenda ops (`gwenda-hackney/ark`, `ops/site/src/app/`), whi
   ([ADR 0029](../adr/0029-view-as-a-member.md)). On desktop the rail lists the same pages, with Settings folding
   open.
 - **Look:** the club's red, white and carbon, and the logo, in a plain readable app font. The video-shop styling
-  stays on the website and in names (Overdue Rentals); working screens stay plain.
+  stays on the website; working screens, and their names, stay plain.
 - **PWA:** a manifest, icons and a service worker that caches the app shell, so it installs to the home screen and
   opens offline. A store app (Capacitor) is T9.
 
@@ -187,7 +187,7 @@ Copied in shape from Gwenda ops (`gwenda-hackney/ark`, `ops/site/src/app/`), whi
       (`payments`, `payment_allocations`).
 - [ ] **Dues**: what I owe, each session and tournament I was charged for and whether it's paid, and the bank
       details with my reference.
-- [ ] **Overdue Rentals**, the club's aged-receivables report (`read:Dues`): the unpaid charges, added up.
+- [ ] **Unpaid fees** (was Overdue Rentals), the club's aged-receivables report (`read:Dues`): the unpaid charges, added up.
   - everyone who owes, with their total split by how long it's been owed: **Due back** (0–30 days), **Late**
     (31–60), **Very late** (61–90), **Lost tape** (over 90)
   - column totals, a drill-down to each member's ledger, CSV export

@@ -8,6 +8,9 @@
    * for the top of More.
    */
   import { tick } from "svelte";
+  import { fade, fly } from "svelte/transition";
+  import { easeOut, fadeMs, prefersReducedMotion } from "../motion";
+  import { phone } from "../../lib/viewport.svelte";
   import { can } from "../../access/actions";
   import { db } from "../../demo/store.svelte";
   import { emailFor } from "../../demo/data";
@@ -41,6 +44,14 @@
   let { card = false }: { card?: boolean } = $props();
 
   // The sheet (phone) and the drawer (desktop) leave the page for <body>: inside it they'd sit under the tabs or bars
+  // In and out like every other drawer (lib/Drawer.svelte): from the right on a desktop, up from the bottom on a phone
+  const slide = (node: Element) =>
+    fly(node, {
+      ...(phone.current ? { y: node.clientHeight || 480 } : { x: node.clientWidth || 420 }),
+      duration: prefersReducedMotion ? 0 : 320,
+      easing: easeOut,
+      opacity: 1,
+    });
   function portal(node: HTMLElement) {
     document.body.append(node);
     return { destroy: () => node.remove() };
@@ -60,8 +71,7 @@
   const members = $derived(
     db.members
       .filter((m) => m.status === "active" && m.player.id !== realMember().id)
-      .filter((m) => !search || m.player.name.toLowerCase().includes(search.toLowerCase()))
-      .slice(0, 8),
+      .filter((m) => !search || m.player.name.toLowerCase().includes(search.toLowerCase())),
   );
 
   async function toggle() {
@@ -146,8 +156,12 @@
 
   {#if open}
     <div class="layer" bind:this={layer} use:portal>
-      <div class="scrim" aria-hidden="true"></div>
-      <div class="menu rise" role="menu" aria-label="Account" bind:this={menu}>
+      <!-- A tap outside the drawer closes it -->
+      <div class="scrim" aria-hidden="true" onclick={() => close(true)} transition:fade={{ duration: fadeMs }}></div>
+      <div class="menu" class:picking role="menu" aria-label="Account" bind:this={menu} transition:slide>
+        <button class="btn ghost icon menu-close" aria-label="Close" onclick={() => close(true)}>
+          <Icon name="x" size={18} />
+        </button>
         {#if picking}
           <div class="pick-head">
             <button class="btn ghost icon" aria-label="Back" onclick={() => (picking = false)}>
@@ -352,6 +366,14 @@
     align-items: center;
     gap: var(--s-3);
     padding: var(--s-2);
+    /* Clear of the close button */
+    padding-right: 2.75rem;
+  }
+  .menu-close {
+    position: absolute;
+    top: max(var(--s-3), env(safe-area-inset-top));
+    right: var(--s-3);
+    z-index: 1;
   }
   .who-text {
     display: grid;
@@ -412,13 +434,25 @@
   }
   .items {
     display: grid;
+    align-content: start;
     max-height: 18rem;
     overflow-y: auto;
+  }
+  /* Choosing who to view as: the list takes all the height the drawer has, the note stays at the bottom */
+  .menu.picking {
+    display: flex;
+    flex-direction: column;
+  }
+  .menu.picking .items {
+    flex: 1;
+    min-height: 0;
+    max-height: none;
   }
   .pick-head {
     display: flex;
     align-items: center;
     gap: var(--s-1);
+    padding-right: 2.75rem;
   }
   .menu .input {
     height: var(--control-h-sm);
@@ -433,7 +467,6 @@
     inset: 0;
     z-index: 59;
     background: color-mix(in srgb, var(--bg) 40%, transparent);
-    animation: fade-in var(--t) var(--ease) both;
   }
 
   /* Phones: the menu is a sheet from the bottom, above the tabs */
@@ -444,7 +477,6 @@
       inset: 0;
       z-index: 59;
       background: color-mix(in srgb, var(--bg) 55%, transparent);
-      animation: fade-in var(--t) var(--ease) both;
     }
     .menu {
       position: fixed;
@@ -457,14 +489,13 @@
       border-bottom: 0;
       border-radius: var(--r-xl) var(--r-xl) 0 0;
     }
+    /* On a phone the sheet rises most of the way for the list */
+    .menu.picking {
+      height: 85dvh;
+    }
     .item {
       min-height: 3rem;
       font-size: var(--text-base);
-    }
-  }
-  @keyframes fade-in {
-    from {
-      opacity: 0;
     }
   }
 </style>

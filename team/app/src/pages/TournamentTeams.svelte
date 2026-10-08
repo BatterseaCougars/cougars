@@ -47,7 +47,7 @@
   const played = $derived((tournament?.games ?? []).some((g) => g.homeGoals !== null));
 </script>
 
-<div class="page wide reading">
+<div class="page">
   {#if tournament}
     <TournamentHead {type} {tournament} title="Teams" />
   {/if}

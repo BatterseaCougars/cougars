@@ -110,10 +110,8 @@ export async function answer(db: D1Database, kind: EntryKind, id: number, member
     // Drafted: off their team while the draft's open; once it's closed (or a captain), through an admin
     if (kind === "tournament") await leaveDraft(db, id, memberId);
     await put(db, kind, id, memberId, "out", now);
-    if (was?.signup === "in") {
-      if (kind === "session") await offTeams(db, id, memberId);
-      await moveUp(db, kind, id, limit, now);
-    }
+    // A session's published teams keep them until a team maker remakes the teams or keeps them as they are (ADR 0076)
+    if (was?.signup === "in") await moveUp(db, kind, id, limit, now);
     return;
   }
   if (was?.signup === "in" || was?.signup === "waitlist") return;

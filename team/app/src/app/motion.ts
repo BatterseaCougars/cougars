@@ -26,15 +26,15 @@ export function zoom(_node: Element, { out = false } = {}) {
 }
 
 /**
- * Desktop settings list: slides out from behind the dock like a tape ejecting, blurred to sharp, and back in when
- * you leave. `delay` staggers its rows.
+ * Desktop settings list: slides out from behind the dock like a tape ejecting, blurred to sharp. `delay` staggers its
+ * rows. Leaving, it's gone at once: the next page is already there, and the list sliding back lay over it.
  */
 export function eject(_node: Element, { delay = 0, out = false, x = 28 } = {}) {
-  if (prefersReducedMotion) return { duration: 0 };
+  if (prefersReducedMotion || out) return { duration: 0 };
   return {
     delay,
-    duration: out ? 200 : 460,
-    easing: out ? (t: number) => t * t * t : (t: number) => 1 - Math.pow(1 - t, 4),
+    duration: 460,
+    easing: (t: number) => 1 - Math.pow(1 - t, 4),
     css: (t: number, u: number) =>
       `transform: translateX(${(-x * u).toFixed(2)}px); filter: blur(${(3 * u).toFixed(2)}px);` +
       ` opacity: ${Math.min(1, t * 1.4).toFixed(3)};`,

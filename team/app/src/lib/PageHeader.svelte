@@ -113,11 +113,14 @@
 
 <header class="page-header" bind:this={header}>
   <div class="titles">
+    <!-- On a desktop the eyebrow's line is kept even when there's none, so every title sits at the same height -->
     {#if eyebrow}
       <p class="eyebrow-line">
         {#if eyebrowIcon}<Icon name={eyebrowIcon} size={14} />{/if}{eyebrow}
         {#if badge && phone.current}{@render badge()}{/if}
       </p>
+    {:else if !phone.current}
+      <p class="eyebrow-line" aria-hidden="true"></p>
     {/if}
     <div class="title-row">
       <h1 class="poster">{title}</h1>

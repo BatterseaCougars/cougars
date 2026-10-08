@@ -1,6 +1,6 @@
 <script lang="ts">
   // The shell. Desktop: the page has the whole screen; a dock of the main sections floats mid-left, the brand
-  // mark top-left, your badge top-right, the wordmark and the London clock in the bottom corners. A section's
+  // mark top-left, your badge top-right, the wordmark in the bottom-left corner. A section's
   // pages (The Kumite, Fight card, Draft) sit in the page header's toolbar row, which pins as the page scrolls
   // (PageHeader). Phones: five tabs at the bottom, and a slim bar along the top with the page's name (or its
   // section's strip of pages), its actions, and its filters: inline when they fit, otherwise a Filters button that
@@ -64,7 +64,9 @@
       if (first) items.push({ id: f.id, name: f.name, icon: f.icon, href: first.path, on: route.fold === f.id });
     }
     for (const r of all.filter((r) => r.group === "Club" && allowed(r))) {
-      items.push({ id: r.id, name: r.name, icon: r.icon, href: r.path, on: route.id === r.id });
+      // Its own pages too: a member's (/more/teammates/12) is Teammates
+      const on = route.id === r.id || route.path.startsWith(r.path + "/");
+      items.push({ id: r.id, name: r.name, icon: r.icon, href: r.path, on });
     }
     // Dues: always there, with what you owe on it until it's paid
     const dues = all.find((r) => r.id === "tab");
@@ -89,7 +91,8 @@
         name: settings ? "Settings" : "More",
         icon: settings ? "settings" : "more",
         href: firstSetting?.path ?? more.path,
-        on: route.tab === "more" && route.id !== "tab",
+        // Only its own pages: Teammates and Upload (More's tab on a phone) have tiles of their own
+        on: route.group === "Settings" || route.id === "more",
       });
     }
     return items;
@@ -136,17 +139,9 @@
     return { destroy: () => node.remove() };
   }
 
-  // London time in the corner, to the minute.
-  let now = $state(Date.now());
-  $effect(() => {
-    const t = setInterval(() => (now = Date.now()), 15_000);
-    return () => clearInterval(t);
-  });
-  const clock = $derived(
-    new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/London" }).format(now),
-  );
-
   let chromeH = $state(0);
+  // The pinned band's height (the View-as banner): the desktop corners sit under it, not behind it
+  let pinnedH = $state(0);
   let content: HTMLElement | undefined = $state();
 
   let filtersOpen = $state(false);
@@ -338,7 +333,7 @@
   <main class="main">
     <header class="chrome" bind:clientHeight={chromeH}>
       <!-- Always there: the notch, and the View-as banner (it must never scroll away) -->
-      <div class="pinned" class:bare={route.focus}>
+      <div class="pinned" class:bare={route.focus} bind:clientHeight={pinnedH}>
         {#if impersonating()}
           <div class="viewing" role="status">
             <Icon name="eye" size={16} />
@@ -387,7 +382,7 @@
         {/if}
       {:else if !route.focus}
         <!-- Desktop: the mark and your badge in the top corners -->
-        <div class="topbar">
+        <div class="topbar" style:top="{pinnedH}px">
           <a class="brand" href="/" aria-label="Home">
             <img src={logo} alt="" width="36" height="36" />
           </a>
@@ -438,12 +433,11 @@
       {/key}
     </div>
 
-    <!-- Desktop corners -->
+    <!-- Desktop corner -->
     {#if !route.focus}
       <a class="corner wordmark-corner display" href="/" aria-hidden="true" tabindex="-1">
         <span>Cougars</span><span class="meat">Fresh Meat</span>
       </a>
-      <p class="corner clock-corner num" aria-hidden="true">Battersea <strong>{clock}</strong></p>
     {/if}
 
     <nav class="tabs" aria-label="Primary" inert={route.focus || undefined}>
@@ -795,7 +789,7 @@
     z-index: 0;
   }
 
-  /* ─── Desktop corners: the wordmark and the London clock ─── */
+  /* ─── Desktop corner: the wordmark ─── */
   .corner {
     position: absolute;
     bottom: var(--s-5);
@@ -811,14 +805,6 @@
     font-style: italic;
     line-height: 0.95;
     color: var(--fg-muted);
-  }
-  .clock-corner {
-    right: var(--s-5);
-    font-size: var(--text-xs);
-  }
-  .clock-corner strong {
-    color: var(--fg-muted);
-    font-weight: 600;
   }
 
   /* ─── Bottom tabs (phones): frosted, content scrolls under them ─── */

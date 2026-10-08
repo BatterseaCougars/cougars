@@ -163,7 +163,8 @@
   const waiting = $derived(next.waitlist.includes(who.id));
   const declined = $derived(next.out?.includes(who.id) ?? false);
   const answered = $derived(isIn || waiting || declined);
-  const myTeam = $derived(db.teams[next.id]?.find((t) => t.players.includes(who.id)));
+  // Out since the teams were made: still on one until a team maker decides (ADR 0076), but not yours to play on
+  const myTeam = $derived(isIn ? db.teams[next.id]?.find((t) => t.players.includes(who.id)) : undefined);
   const owed = $derived(owedBy(who.id));
   // Picked once per visit, from the time of day, a training night, or how often you've looked today. The count
   // is this device's only: a bit of fun, not a record.
@@ -367,6 +368,14 @@
   @media (min-width: 901px) {
     .badge-slot {
       display: none;
+    }
+    /* Your badge is in the corner, so the kicker is just an eyebrow: the title lands where every page's does */
+    .hello {
+      padding-top: 0;
+    }
+    .hello-top {
+      min-height: 1.5rem;
+      margin-bottom: calc(var(--s-2) - var(--s-3));
     }
   }
   .hello h1 {

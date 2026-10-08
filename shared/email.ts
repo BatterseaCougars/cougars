@@ -36,6 +36,8 @@ export interface MailConfig {
   gmail: GmailCredentials | null;
   /** Where every email goes outside production. Defaults to the sending account. */
   safeTo?: string | null;
+  /** Outside production, addresses that get their own email (the team app's Dev tools list). Ignored in production. */
+  allow?: readonly string[];
 }
 
 export type SendResult = { status: "sent"; id: string; to: string[] } | { status: "logged"; to: string[] };
@@ -50,16 +52,25 @@ export const isProduction = (siteEnv: string | undefined) => siteEnv === "produc
  */
 export function safeMail(
   mail: Mail,
-  { siteEnv, safeTo }: { siteEnv: string | undefined; safeTo: string | null | undefined },
+  {
+    siteEnv,
+    safeTo,
+    allow = [],
+  }: { siteEnv: string | undefined; safeTo: string | null | undefined; allow?: readonly string[] },
 ): Mail & { headers?: Record<string, string> } {
   if (isProduction(siteEnv)) return mail;
   const safe = safeTo?.trim().toLowerCase();
   if (!safe) throw new MailRefused(`No safe address outside production (SITE_ENV=${siteEnv ?? "unset"}); not sending.`);
   if (safe === CLUB_ADDRESS) throw new MailRefused(`The club's inbox can't be the safe address outside production.`);
   const shown = mail.to.join(", ");
+  // The dev allow list (set in the team app's Dev tools): when every recipient is on it, they get it themselves. Never
+  // the club's inbox; and if anyone isn't on it, the whole email goes to the safe address.
+  const allowed = new Set(allow.map((a) => a.trim().toLowerCase()).filter((a) => a && a !== CLUB_ADDRESS));
+  const to = mail.to.map((a) => a.trim().toLowerCase());
+  const through = to.length > 0 && to.every((a) => allowed.has(a));
   return {
     ...mail,
-    to: [safe],
+    to: through ? to : [safe],
     subject: `[${siteEnv || "unset"}, for ${shown}] ${mail.subject}`,
     headers: { "X-Cougars-Original-To": shown },
   };
@@ -132,7 +143,11 @@ export async function sendMail(
   { fetch = globalThis.fetch, now = Date.now } = {},
 ): Promise<SendResult> {
   if (!config.gmail) {
-    const safe = safeMail(mail, { siteEnv: config.siteEnv, safeTo: config.safeTo ?? "nobody@example.invalid" });
+    const safe = safeMail(mail, {
+      siteEnv: config.siteEnv,
+      safeTo: config.safeTo ?? "nobody@example.invalid",
+      allow: config.allow,
+    });
     console.log(JSON.stringify({ event: "mail.logged", to: safe.to, subject: safe.subject, text: safe.text }));
     return { status: "logged", to: safe.to };
   }
@@ -141,7 +156,7 @@ export async function sendMail(
   if (!isProduction(config.siteEnv) && account === CLUB_ADDRESS) {
     throw new MailRefused(`Outside production the club's account must never send (it's ${account}).`);
   }
-  const safe = safeMail(mail, { siteEnv: config.siteEnv, safeTo: config.safeTo || account });
+  const safe = safeMail(mail, { siteEnv: config.siteEnv, safeTo: config.safeTo || account, allow: config.allow });
   if (safe.to !== mail.to) {
     console.log(JSON.stringify({ event: "mail.redirected", to: safe.to, originalTo: mail.to }));
   }

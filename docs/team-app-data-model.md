@@ -63,7 +63,7 @@ Where each is held ([ADR 0051](adr/0051-venues-and-map-links.md)): `venue_id` (a
 ## Dues (T4)
 
 [ADR 0026](adr/0026-dues-ledger.md), amended by [ADR 0032](adr/0032-fees-per-session-and-tournament.md): fees belong to
-each session and tournament, payments are marked against charges, and Overdue Rentals is the unpaid charges.
+each session and tournament, payments are marked against charges, and Unpaid fees is the unpaid charges.
 
 | Table                 | Columns                                                                                                                                                      |
 | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |

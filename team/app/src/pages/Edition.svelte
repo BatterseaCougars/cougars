@@ -25,7 +25,7 @@
   );
 </script>
 
-<div class="page wide reading">
+<div class="page">
   <TournamentHead {type} {tournament} title="History" />
   <a class="back" href="/tournaments/{type.slug}/history"><Icon name="chevronLeft" size={16} />All {type.shortName}s</a>
 

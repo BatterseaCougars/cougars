@@ -53,7 +53,7 @@
   let lookOpen = $state(false);
 </script>
 
-<div class="page wide reading">
+<div class="page">
   <TournamentHead {type} {tournament} title={mine || !teamId ? "My team" : "Team"} />
 
   {#if !tournament || !team}

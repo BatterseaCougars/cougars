@@ -112,7 +112,7 @@
   );
 </script>
 
-<div class="page wide reading">
+<div class="page">
   <TournamentHead {type} {tournament} title="The {type.shortName}" manage />
 
   {#if tournament && mode === "after"}

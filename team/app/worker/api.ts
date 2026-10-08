@@ -10,6 +10,7 @@ import { makeFixtures, scoreGame } from "./fixtures";
 import { addGoal, clockGame, holdScoresheet, removeGoal, undoGoal } from "./scoring";
 import { readUsage } from "./usage";
 import { readSettings, saveSettings } from "./settings";
+import { addDevMail, devMailList, devToolsHere, removeDevMail } from "./devtools";
 import { setWinners } from "./awards";
 import { readAgenda } from "../../../shared/agenda";
 import { HttpError, body, json, sameOrigin } from "./http";
@@ -32,7 +33,7 @@ import {
   updateRole,
 } from "./people";
 import { createQuip, deleteQuip, listQuips, updateQuip } from "./quips";
-import { listTeams, publishTeams } from "./teams";
+import { listTeams, publishTeams, removeTeams, resetSession } from "./teams";
 import {
   createClubEvent,
   setClubEventCancelled,
@@ -242,6 +243,8 @@ export const ROUTES: Route[] = [
       const reply = json({
         me: c.memberId,
         actions: [...c.actions],
+        // Dev tools (ADR 0077): outside production, for whoever sets the club's settings
+        devTools: devToolsHere(c.env) && (c.actions.has("manage:all") || c.actions.has("manage:Settings")),
         ...(await slices(c, Object.keys(SLICES) as Slice[])),
       });
       return tagged(reply, tag);
@@ -421,6 +424,29 @@ export const ROUTES: Route[] = [
     // { liveRefreshSeconds }: how often live pages check for updates (ADR 0072)
     handle: async (c) => (await saveSettings(c.env.DB, await body(c.request)), ok()),
   },
+  // Dev tools (ADR 0077): who gets their own email outside production. Not there at all in production.
+  {
+    method: "GET",
+    path: /^\/api\/dev\/mail$/,
+    action: "manage:Settings",
+    handle: async (c) => json({ addresses: await devMailList(c.env) }),
+  },
+  {
+    method: "POST",
+    path: /^\/api\/dev\/mail$/,
+    action: "manage:Settings",
+    // A club setting, read on its own page (GET /api/dev/mail)
+    changes: ["settings"],
+    handle: async (c) => (await addDevMail(c.env, await body(c.request), c.memberId, c.now), ok()),
+  },
+  {
+    method: "DELETE",
+    path: /^\/api\/dev\/mail$/,
+    action: "manage:Settings",
+    // A club setting, read on its own page (GET /api/dev/mail)
+    changes: ["settings"],
+    handle: async (c) => (await removeDevMail(c.env, await body(c.request)), ok()),
+  },
   ...ENTRY_ROUTES,
   {
     method: "POST",
@@ -565,6 +591,22 @@ export const ROUTES: Route[] = [
     action: "publish:Teams",
     changes: ["sessions"],
     handle: async (c) => (await publishTeams(c.env.DB, id(c), await body(c.request), c.memberId, c.now), ok()),
+  },
+  {
+    method: "DELETE",
+    path: /^\/api\/sessions\/(\d+)\/teams$/,
+    action: "publish:Teams",
+    changes: ["sessions"],
+    // Take the teams down; the sign-ups stay
+    handle: async (c) => (await removeTeams(c.env.DB, id(c)), ok()),
+  },
+  {
+    method: "POST",
+    path: /^\/api\/sessions\/(\d+)\/reset$/,
+    action: "update:Event",
+    changes: ["sessions"],
+    // Start the session again: no sign-ups, no teams
+    handle: async (c) => (await resetSession(c.env.DB, id(c)), ok()),
   },
   {
     method: "POST",

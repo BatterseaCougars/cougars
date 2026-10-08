@@ -34,7 +34,7 @@
   );
 </script>
 
-<div class="page wide reading">
+<div class="page">
   <TournamentHead {type} {tournament} title="Fight card" />
 
   {#if tournament && games.length}

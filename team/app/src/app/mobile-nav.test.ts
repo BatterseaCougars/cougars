@@ -142,3 +142,17 @@ describe("a series' history", () => {
     expect(routeFor(buildRoutes(one), "/tournaments/kumite/history")?.page).not.toBe("history");
   });
 });
+
+describe("the members table", () => {
+  it("an admin finds every member as a table under Settings → Club; a member doesn't see it", () => {
+    const routes = buildRoutes(one);
+    expect(routeFor(routes, "/settings/members")).toMatchObject({
+      page: "members",
+      group: "Settings",
+      section: "Club",
+      action: "manage:Member",
+    });
+    expect(tabRoutes(routes, "more", admin).map((r) => r.id)).toContain("members");
+    expect(tabRoutes(routes, "more", member).map((r) => r.id)).not.toContain("members");
+  });
+});

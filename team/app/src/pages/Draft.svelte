@@ -368,7 +368,7 @@
   </section>
 {/snippet}
 
-<div class="page wide draft" bind:clientWidth={pageW}>
+<div class="page full draft" bind:clientWidth={pageW}>
   {#if tournament}
     <TournamentHead {type} {tournament} title="Draft" />
   {/if}
@@ -1074,9 +1074,9 @@
   .prow:hover .pick,
   .pick:focus-visible,
   .pick[aria-pressed="true"] {
-    border-color: transparent;
-    background: var(--primary);
-    color: var(--primary-fg);
+    border-color: var(--primary);
+    background: color-mix(in srgb, var(--primary) 14%, transparent);
+    color: var(--fg);
   }
   .pick:focus-visible {
     outline: 2px solid var(--ring);

@@ -153,8 +153,8 @@
   :root {
     --gutter: 2rem;
     --control-h: 2.5rem;
-    /* Desktop: the page takes about two thirds of the window, between a phone's column and a comfortable max */
-    --page-max: clamp(42rem, 60vw, 62rem);
+    /* Desktop: one frame for every page (see .page) */
+    --page-max: 76rem;
   }
 }
 
@@ -367,18 +367,32 @@ h3 {
   margin: 0 auto;
   padding: var(--s-5) var(--gutter) var(--s-10);
 }
-/* A page with a data grid on show takes the width it needs; so does every tournament page (its home, Fight card,
-   The board, Teams, Draft), all the same width so their header and tabs never move between them */
-.page.wide {
-  max-width: 76rem;
+/* Desktop: every page is the same frame, so its title starts at the same place on every page and nothing moves
+   sideways between them. Its content, and its header with it, keep a readable width from that left edge, and an
+   action at the end of the tabs (Manage) lines up with the cards' right edge. A page that needs the room (the Draft,
+   Teammates' cards, a table of tournaments) is .full and uses the whole frame. (The header's wrapper takes no box of
+   its own, so the rule reaches through it) */
+/* A page that is one big table (Settings → Members): every bit of width it's given, past the frame, and the
+   window's height, so the table scrolls inside itself with its header in view. Flex, not grid, so the table takes
+   what the header leaves. (.view: past PageHeader's "taller than the window", which is for pages that scroll) */
+.view > .page.fill {
+  display: flex;
+  flex-direction: column;
+  max-width: none;
+  height: 100%;
+  min-height: 0;
+  padding-bottom: var(--s-5);
 }
-/* ...but its content, and its header with it, keep a readable width, from the same left edge: the tabs don't move,
-   and an action at the end of the tabs (Manage) lines up with the cards' right edge. Only the Draft uses the whole
-   width. (The header's wrapper takes no box of its own, so the rule reaches through it) */
-.page.wide.reading > :not(.tone),
-.page.wide.reading > .tone > * {
-  width: 100%;
-  max-width: 52rem;
+@media (min-width: 901px) {
+  /* The title keeps its place; the table runs on to the window's edge */
+  .view > .page.fill {
+    padding-right: 0;
+  }
+  .page:not(.full) > :not(.tone),
+  .page:not(.full) > .tone > * {
+    width: 100%;
+    max-width: 52rem;
+  }
 }
 /* Filter chips: a solid fill, no outline. In a row under a title, wrapping in the phone's Filters sheet, and
    stacked in the desktop aside (PageHeader restyles them there). Each sets --tone for its icon and its "on" fill. */
@@ -610,18 +624,21 @@ button.row:hover:not(:disabled) {
   box-shadow: none;
   cursor: not-allowed;
 }
+/* The main button: no light block on the dark page (a cream fill glared, red read as an error). A full cream edge on
+   a faint cream wash, cream text: the strongest thing in its row, still part of the page. */
 .btn.primary {
-  background: var(--primary);
-  color: var(--primary-fg);
+  border: 2px solid var(--primary);
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+  color: var(--fg);
   font-weight: 600;
 }
 .btn.primary:hover:not(:disabled) {
-  background: var(--primary-hover);
+  background: color-mix(in srgb, var(--primary) 20%, transparent);
 }
 /* The secondary button: a clear cream outline on nothing, so it reads as a button on the dark panels (a grey fill on
    a grey panel didn't). Hover warms it a touch */
 .btn.outline {
-  border: 1.5px solid color-mix(in srgb, var(--fg) 60%, transparent);
+  border: 1.5px solid color-mix(in srgb, var(--fg) 45%, transparent);
   background: transparent;
   color: var(--fg);
 }
@@ -676,13 +693,68 @@ button.row:hover:not(:disabled) {
 .bar-actions .btn:hover:not(:disabled) {
   background: color-mix(in srgb, var(--fg) 7%, transparent);
 }
-/* The main one keeps its fill, so the bar has one clear button */
+/* The main one keeps its edge, so the bar has one clear button */
 .bar-actions .btn.primary {
-  background: var(--primary);
-  color: var(--primary-fg);
+  border: 2px solid var(--primary);
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+  color: var(--fg);
 }
 .bar-actions .btn.primary:hover:not(:disabled) {
-  background: var(--primary-hover);
+  background: color-mix(in srgb, var(--primary) 20%, transparent);
+}
+
+/* A switch, for one thing that's on or off (on the Cougars team): a button with role="switch" and aria-checked, its
+   label beside it. The thumb slides; on, the track takes the club's red. */
+.switch {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-3);
+  min-height: var(--control-h);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--fg);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.switch .track {
+  position: relative;
+  flex-shrink: 0;
+  width: 2.9rem;
+  height: 1.7rem;
+  border-radius: 999px;
+  background: var(--surface-3);
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--fg) 30%, transparent);
+  transition:
+    background-color var(--t-fast) var(--ease-in-out),
+    box-shadow var(--t-fast) var(--ease-in-out);
+}
+.switch .track::after {
+  content: "";
+  position: absolute;
+  top: 0.2rem;
+  left: 0.2rem;
+  width: 1.3rem;
+  height: 1.3rem;
+  border-radius: 50%;
+  background: var(--fg);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.4);
+  transition: transform var(--t-fast) var(--ease);
+}
+.switch[aria-checked="true"] .track {
+  background: var(--red);
+  box-shadow: none;
+}
+.switch[aria-checked="true"] .track::after {
+  transform: translateX(1.2rem);
+}
+.switch:focus-visible {
+  outline: none;
+}
+.switch:focus-visible .track {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
 }
 
 /* Segmented control: a sunken track (the same track as the desktop page pills); the selected segment is a lit
@@ -719,12 +791,15 @@ button.row:hover:not(:disabled) {
 .seg > button:hover:not([aria-pressed="true"], [aria-selected="true"]) {
   color: var(--fg);
 }
+/* The chosen one: a raised tile in the track, cream text, not a cream block */
 .seg > button[aria-pressed="true"],
 .seg > button[aria-selected="true"] {
-  background: var(--fg);
-  color: var(--bg);
+  background: var(--surface-3);
+  color: var(--fg);
   font-weight: 600;
-  box-shadow: 0 1px 2px rgb(0 0 0 / 0.35);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--fg) 30%, transparent),
+    0 1px 2px rgb(0 0 0 / 0.35);
 }
 .seg.red > button[aria-pressed="true"] {
   background: var(--red);

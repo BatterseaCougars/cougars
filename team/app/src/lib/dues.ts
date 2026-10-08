@@ -1,5 +1,5 @@
 // Dues (ADR 0032): every charge is one person for one session or tournament. What someone owes, what a session
-// collected and Overdue Rentals are all sums over charges. Pure, so the D1 queries can be checked against it.
+// collected and Unpaid fees are all sums over charges. Pure, so the D1 queries can be checked against it.
 
 export interface Charge {
   id: number;
@@ -27,7 +27,7 @@ export function feeOn(fees: DatedFee[], date: string): number {
   return best?.pence ?? 0;
 }
 
-/** Overdue Rentals' columns, by how long a charge has been owed. */
+/** Unpaid fees' columns, by how long a charge has been owed. */
 export const BUCKETS = ["Due back", "Late", "Very late", "Lost tape"] as const;
 export const BUCKET_HINT = ["0–30 days", "31–60", "61–90", "over 90"] as const;
 
@@ -49,7 +49,7 @@ export interface AgedRow {
   oldest: 0 | 1 | 2 | 3;
 }
 
-/** Overdue Rentals: everyone with unpaid charges, worst first (oldest debt, then most owed). */
+/** Unpaid fees: everyone with unpaid charges, worst first (oldest debt, then most owed). */
 export function aged(charges: Charge[], today: string): AgedRow[] {
   const rows = new Map<number, AgedRow>();
   for (const c of charges) {

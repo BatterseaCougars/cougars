@@ -9,7 +9,7 @@
 // sent all at once can't get past the limits, and a code is spent the same way, so it signs in once.
 import { all, first, run } from "../../../shared/d1";
 import { assignReferenceSql } from "../../../shared/payment-reference";
-import { mailPausedUntil, sendMail, type MailConfig } from "../../../shared/email";
+import { isProduction, mailPausedUntil, sendMail, type MailConfig } from "../../../shared/email";
 import { LIMITS, addressOf, enforce } from "./limits";
 import { londonToday } from "../src/lib/dates";
 import { HttpError, body, json, oneOf, text } from "./http";
@@ -107,6 +107,21 @@ export const mailConfig = (env: AuthEnv): MailConfig => ({
       : null,
   safeTo: env.MAIL_SAFE_TO ?? null,
 });
+
+/** How to send: the secrets, and outside production who gets their own email (Dev tools, ADR 0077). */
+export async function mailSetup(env: AuthEnv): Promise<MailConfig> {
+  const config = mailConfig(env);
+  if (isProduction(env.SITE_ENV)) return config;
+  // The admins always (so they can sign in here and open Dev tools), and whoever Dev tools lists
+  const rows = await all<{ email: string }>(
+    env.DB,
+    `SELECT lower(m.email) AS email FROM members m
+       JOIN member_roles mr ON mr.member_id = m.id JOIN roles r ON r.id = mr.role_id
+      WHERE r.name = 'Admin' AND m.status = 'active' AND m.email IS NOT NULL
+     UNION SELECT email FROM dev_mail_recipients`,
+  );
+  return { ...config, allow: rows.map((r) => r.email) };
+}
 
 // ─── Sessions ───
 
@@ -269,7 +284,7 @@ async function start(request: Request, env: AuthEnv, now: Date, waitUntil?: Wait
         "Battersea Cougars",
       ].join("\n"),
     },
-    mailConfig(env),
+    await mailSetup(env),
   ).catch((e) => console.error(JSON.stringify({ event: "sign_in.email_failed", error: String(e) })));
   if (waitUntil) waitUntil(sending);
   else await sending;

@@ -18,7 +18,7 @@
   const group = $derived((tournament?.games ?? []).filter((g) => g.stage === "group"));
 </script>
 
-<div class="page wide reading">
+<div class="page">
   <TournamentHead {type} {tournament} title="The board" />
 
   {#if tournament}<ChampionCard {type} {tournament} />{/if}

@@ -61,6 +61,26 @@ describe("safeMail", () => {
     }
   });
 
+  it("lets through recipients on the dev allow list, as themselves; the rest still go to the safe address", () => {
+    const allow = ["Dan@Example.com"];
+    const one = safeMail({ ...enquiry, to: ["dan@example.com"] }, { siteEnv: "dev", safeTo: "me@example.com", allow });
+    expect(one.to).toEqual(["dan@example.com"]);
+    expect(one.subject).toBe("[dev, for dan@example.com] New enquiry: Zoë");
+    const other = safeMail({ ...enquiry, to: ["b@example.com"] }, { siteEnv: "dev", safeTo: "me@example.com", allow });
+    expect(other.to).toEqual(["me@example.com"]);
+    // Mixed: the whole email goes to the safe address, so nobody off the list gets it
+    const mixed = safeMail(
+      { ...enquiry, to: ["dan@example.com", "b@example.com"] },
+      { siteEnv: "dev", safeTo: "me@example.com", allow },
+    );
+    expect(mixed.to).toEqual(["me@example.com"]);
+  });
+
+  it("never lets the club's inbox through from the allow list", () => {
+    const safe = safeMail(enquiry, { siteEnv: "dev", safeTo: "me@example.com", allow: [CLUB_ADDRESS] });
+    expect(safe.to).toEqual(["me@example.com"]);
+  });
+
   it("refuses without a safe address, or with the club's inbox as it", () => {
     expect(() => safeMail(enquiry, { siteEnv: "dev", safeTo: "" })).toThrow(MailRefused);
     expect(() => safeMail(enquiry, { siteEnv: "dev", safeTo: CLUB_ADDRESS.toUpperCase() })).toThrow(MailRefused);

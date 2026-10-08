@@ -395,6 +395,14 @@ CREATE TABLE club_settings (
   live_refresh_seconds INTEGER NOT NULL DEFAULT 10 CHECK (live_refresh_seconds BETWEEN 5 AND 120)
 );
 
+-- Dev tools (team/app/worker/devtools.ts, ADR 0077): outside production, who gets their own email instead of the
+-- safe inbox. Never read in production.
+CREATE TABLE dev_mail_recipients (
+  email TEXT PRIMARY KEY,
+  added_by INTEGER REFERENCES members (id) ON DELETE SET NULL,
+  added_at TEXT NOT NULL
+);
+
 -- The usage check's warnings (team/app/worker/usage.ts, ADR 0059): one email per metric per day (UTC)
 CREATE TABLE usage_warnings (
   day TEXT NOT NULL,

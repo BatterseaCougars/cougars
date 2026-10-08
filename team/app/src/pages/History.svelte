@@ -36,7 +36,7 @@
   };
 </script>
 
-<div class="page wide reading">
+<div class="page">
   <TournamentHead {type} title="History" note="Every {type.shortName} so far, and who won it." />
 
   {#if !past.length}

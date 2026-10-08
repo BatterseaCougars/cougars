@@ -81,3 +81,16 @@ export async function offTeams(db: D1Database, sessionId: number, memberId: numb
     [memberId, sessionId],
   );
 }
+
+/** Take a session's teams down: back to before they were made. The sign-ups stay. */
+export async function removeTeams(db: D1Database, sessionId: number) {
+  await run(db, "DELETE FROM session_teams WHERE session_id = ?", [sessionId]);
+}
+
+/** Start a session again: nobody in, waiting or out, and no teams. For a session set up wrong, or a test run. */
+export async function resetSession(db: D1Database, sessionId: number) {
+  const session = await all(db, "SELECT 1 FROM training_sessions WHERE id = ?", [sessionId]);
+  if (!session.length) throw new HttpError(404, "No such session.");
+  await run(db, "DELETE FROM session_teams WHERE session_id = ?", [sessionId]);
+  await run(db, "DELETE FROM attendance WHERE session_id = ?", [sessionId]);
+}

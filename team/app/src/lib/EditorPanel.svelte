@@ -5,9 +5,12 @@
   // its own. It zooms in as it opens and out as it closes. Player cards flip instead (PlayerCardZoom, MemberSheet).
   import { onMount, type Snippet } from "svelte";
   import Icon from "../app/shell/Icon.svelte";
+  import { pageColumnStyle } from "./page-column";
   import type { IconName } from "../app/shell/icons";
   import { EASE_IN, EASE_OUT, prefersReducedMotion } from "../app/motion";
 
+  // Opens in the page's own column (desktop), the same width as the cards under it
+  const colStyle = pageColumnStyle();
   let {
     eyebrow,
     title,
@@ -67,6 +70,7 @@
   <button class="scrim" aria-label="Close" tabindex="-1" onclick={close}></button>
   <div
     class="panel"
+    style={colStyle}
     role="dialog"
     aria-modal="true"
     aria-labelledby="editor-title"
@@ -115,9 +119,10 @@
   .panel {
     position: absolute;
     inset: 4.5rem var(--s-6) var(--s-6) 6.25rem;
-    /* On a wide screen it stops growing and sits in the middle of the space */
-    max-width: 60rem;
-    margin-inline: auto;
+    /* In the page's column when there is one: its left edge and width */
+    left: var(--col-left, 6.25rem);
+    right: auto;
+    width: var(--col-width, calc(100% - 6.25rem - var(--s-6)));
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -131,6 +136,7 @@
   @media (max-width: 900px) {
     .panel {
       inset: 0;
+      width: auto;
       max-width: none;
       border: 0;
       border-radius: 0;

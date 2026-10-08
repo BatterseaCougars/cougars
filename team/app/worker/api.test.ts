@@ -625,7 +625,7 @@ describe("teams, quips, profiles and attendance", () => {
   };
   const friday = async () => ahead(await boot())[0];
 
-  it("an admin publishes Friday's teams; everyone sees them, and someone dropping out comes off theirs", async () => {
+  it("an admin publishes Friday's teams; everyone sees them, and someone dropping out stays on theirs until a team maker decides (ADR 0076)", async () => {
     const { dana, alt, reg } = await ids();
     const s = await friday();
     for (const m of [alt, reg]) await call("POST", `/api/sessions/${s.id}/players`, { memberId: m, in: true });
@@ -637,10 +637,14 @@ describe("teams, quips, profiles and attendance", () => {
     expect((await call("POST", `/api/sessions/${s.id}/teams`, { teams })).status).toBe(200);
     expect((await friday()).teams).toEqual(teams);
     await call("POST", `/api/sessions/${s.id}/answer`, { answer: "out" });
-    expect((await friday()).teams).toEqual([
+    // Out, but still on the team: the app flags the gap, and a team maker remakes the teams or keeps them as they are
+    expect((await friday()).teams).toEqual(teams);
+    const kept = [
       { name: "Cougars", players: [alt] },
       { name: "White", players: [reg] },
-    ]);
+    ];
+    expect((await call("POST", `/api/sessions/${s.id}/teams`, { teams: kept })).status).toBe(200);
+    expect((await friday()).teams).toEqual(kept);
   });
 
   it("won't put someone on two teams", async () => {

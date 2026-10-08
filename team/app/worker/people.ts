@@ -3,7 +3,7 @@
 import { all, first, run } from "../../../shared/d1";
 import { ACTIONS, type Action } from "../src/access/actions";
 import { HttpError, bool, int, oneOf, text } from "./http";
-import { email, giveReference, mailConfig, type AuthEnv } from "./auth";
+import { email, giveReference, mailSetup, type AuthEnv } from "./auth";
 import { sendMail } from "../../../shared/email";
 import { londonToday } from "../src/lib/dates";
 
@@ -191,7 +191,7 @@ export async function addMember(env: AuthEnv, o: Record<string, unknown>, origin
         "Battersea Cougars",
       ].join("\n"),
     },
-    mailConfig(env),
+    await mailSetup(env),
   ).then(
     () => true,
     (e) => (console.error(JSON.stringify({ event: "member.invite_failed", error: String(e) })), false),

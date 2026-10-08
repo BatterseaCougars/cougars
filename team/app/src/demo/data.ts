@@ -27,6 +27,8 @@ export const PLAYERS: Player[] = [];
 
 /** Who you really are (the signed-in member). */
 export let REAL_ID = 0;
+/** Dev tools are here (outside production, for whoever sets the club's settings; ADR 0077). */
+export let DEV_TOOLS = false;
 /** The role you run the app as day to day, if not your full one (ADR 0037). Read once by session.svelte.ts. */
 export let EVERYDAY_ROLE: number | null = null;
 
@@ -76,6 +78,7 @@ export const FEES: { kind: string; amountPence: number; from: string; superseded
 export interface Bootstrap {
   me: number;
   actions: Action[];
+  devTools?: boolean;
   /** The role the app opens as, when it isn't your full one (ADR 0037). */
   everydayRole: number | null;
   members: {
@@ -115,11 +118,12 @@ export const TEAMS: Record<number, Team[]> = {};
 const fill = <T>(list: T[], items: T[]) => list.splice(0, list.length, ...items);
 
 /** The parts of the club's data that a change sends back (worker/api.ts SLICES): all of it but who you are. */
-export type Slices = Partial<Omit<Bootstrap, "me" | "actions">>;
+export type Slices = Partial<Omit<Bootstrap, "me" | "actions" | "devTools">>;
 
 /** Put the club's data in place. Runs before the app mounts, and again whenever the whole club is reloaded. */
 export function hydrate(b: Bootstrap) {
   REAL_ID = b.me;
+  DEV_TOOLS = !!b.devTools;
   applySlices(b);
 }
 

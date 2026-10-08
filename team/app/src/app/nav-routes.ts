@@ -68,9 +68,25 @@ export interface NavConfig {
   }[];
   /** Who's signed in (or being viewed as). */
   me?: number;
-  /** Members, for their profile pages under Settings → Members. */
+  /** Members, for their pages (Teammates with their card up). */
   members?: { id: number; name: string }[];
+  /** Outside production: Settings → Dev tools (ADR 0077). */
+  devTools?: boolean;
 }
+
+// Outside production only (ADR 0077)
+const DEV_TOOLS_ROUTE: Route = {
+  id: "dev-tools",
+  path: "/settings/dev",
+  name: "Dev tools",
+  tab: "more",
+  page: "dev-tools",
+  action: "manage:Settings",
+  icon: "settings",
+  group: "Settings",
+  section: "Security",
+  hint: "Not in production: who gets their own email here",
+};
 
 const STATIC_TAIL: Route[] = [
   { id: "more", path: "/more", name: "More", tab: "more", page: "more", action: "authenticated", icon: "more" },
@@ -169,7 +185,7 @@ const STATIC_TAIL: Route[] = [
   {
     id: "overdue",
     path: "/settings/overdue",
-    name: "Overdue Rentals",
+    name: "Unpaid fees",
     tab: "more",
     page: "overdue",
     action: "read:Dues",
@@ -189,6 +205,18 @@ const STATIC_TAIL: Route[] = [
     group: "Settings",
     section: "Money",
     hint: "The quarterly fee (session fees are on each training)",
+  },
+  {
+    id: "members",
+    path: "/settings/members",
+    name: "Members",
+    tab: "more",
+    page: "members",
+    action: "manage:Member",
+    icon: "teams",
+    group: "Settings",
+    section: "Club",
+    hint: "Everyone as a table: sort, search, who owes, how to reach them",
   },
   {
     id: "quips",
@@ -394,6 +422,7 @@ export function buildRoutes(config: NavConfig): Route[] {
       ];
     }),
     ...STATIC_TAIL,
+    ...(config.devTools ? [DEV_TOOLS_ROUTE] : []),
   ];
 }
 

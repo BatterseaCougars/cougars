@@ -12,7 +12,7 @@ export const ACTIONS = {
   "manage:Venue": "Save venues: name, address, map link",
   "generate:Teams": "Generate and adjust teams",
   "publish:Teams": "Publish teams",
-  "read:Dues": "See Overdue Rentals (who owes what)",
+  "read:Dues": "See Unpaid fees (who owes what)",
   "manage:Fees": "Set fees",
   "record:Payment": "Record payments",
   "score:Match": "Score Kumite games",

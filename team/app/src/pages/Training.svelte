@@ -1,13 +1,7 @@
-<script lang="ts" module>
-  import type { Team } from "../lib/snake";
-  // Teams made but not published yet, by session: kept if an admin leaves the page and comes back
-  const proposals = $state<Record<number, Team[] | undefined>>({});
-</script>
-
 <script lang="ts">
   // A training series' next session. Before the teams: who's in, in order, and your answer. Once there are teams,
   // they're the page: anyone who signed up after them first (an admin slots them in or remakes them), then the
-  // teams, then sign-up. Ratings drive the teams but only admins see them (read:Rating), as in the old app.
+  // teams, then sign-up. A team maker's changes to the teams are saved as they're made (ADR 0079). Ratings drive the teams but only admins see them (read:Rating), as in the old app.
   import PageHeader from "../lib/PageHeader.svelte";
   import { can } from "../access/actions";
   import { PLAYERS, TEAM_NAMES, TEAM_ORDER, type Player } from "../demo/data";
@@ -19,10 +13,17 @@
   import PlayerCard from "../lib/PlayerCard.svelte";
   import PlayerCardZoom from "../lib/PlayerCardZoom.svelte";
   import RegisterDrawer from "../lib/RegisterDrawer.svelte";
-  import { publishTeams, setPlayer } from "../app/backend.svelte";
+  import { publishTeams, removeTeams, resetSession, setPlayer } from "../app/backend.svelte";
+  import Sheet from "../lib/Sheet.svelte";
+  import Drawer from "../lib/Drawer.svelte";
+  import { phone } from "../lib/viewport.svelte";
+  import { prefersReducedMotion } from "../app/motion";
   import { formatDayDate } from "../lib/dates";
   import { describeRule } from "../lib/recurrence";
-  import { slotIn, snakeTeams } from "../lib/snake";
+  import { slotIn, snakeTeams, type Team } from "../lib/snake";
+  import { shuffleAndDeal, type Show } from "../lib/shuffle";
+  import { onDestroy, tick } from "svelte";
+  import { SvelteSet } from "svelte/reactivity";
   import EmptyState from "../lib/EmptyState.svelte";
   import { nextSession, resolve, seriesById, seriesPlace, sessionBookable } from "../demo/schedule.svelte";
 
@@ -59,9 +60,10 @@
       s.waitlist = s.waitlist.slice(1);
     }
     const out = db.teams[s.id];
-    if (out) for (const t of out) t.players = t.players.filter((x) => x !== id);
-    if (proposal) for (const t of proposal) t.players = t.players.filter((x) => x !== id);
-    else if (out) void publishTeams(s.id, out);
+    if (out) {
+      for (const t of out) t.players = t.players.filter((x) => x !== id);
+      void publishTeams(s.id, out);
+    }
   }
 
   // Trial: players as trading cards, or the plain list. Remembered per device.
@@ -82,9 +84,7 @@
       // Private mode: the choice just isn't remembered.
     }
   }
-  const proposal = $derived(proposals[next.id] ?? null);
-  const published = $derived(db.teams[next.id] ?? null);
-  const teams = $derived(proposal ?? published);
+  const teams = $derived(db.teams[next.id] ?? null);
   // Your team first, then the old app's order: Cougars, Black, White, then the rest.
   const ordered = $derived(
     teams
@@ -98,25 +98,152 @@
   const onTeam = $derived(new Set(teams?.flatMap((t) => t.players) ?? []));
   // Signed up after the teams were made: still in, waiting to be slotted onto a team.
   const unplaced = $derived(teams ? next.going.filter((id) => !onTeam.has(id)) : []);
+  // Said they're out since the teams were made: still on a published team until a team maker remakes the teams or
+  // keeps them as they are (ADR 0076)
+  const left = $derived(teams ? [...onTeam].filter((id) => !next.going.includes(id)) : []);
+  const hasLeft = (id: number) => left.includes(id);
+  // The teams without them: where keeping, slotting in and moving start from
+  const withoutLeavers = () =>
+    (teams ?? []).map((t) => ({ name: t.name, players: t.players.filter((id) => next.going.includes(id)) }));
   const spaces = $derived(info?.capacity ? Math.max(0, info.capacity - next.going.length) : null);
 
-  function generate() {
-    proposals[next.id] = snakeTeams(next.going.map(byId), TEAM_NAMES);
+  // Every change to the teams is saved as it's made, and everyone sees it (ADR 0079): no draft to publish, so
+  // nothing waits on a button scrolled out of sight
+  function commit(list: Team[], done?: string) {
+    db.teams[next.id] = list;
+    void publishTeams(next.id, list, done);
   }
-  function move(id: number, from: Team, to: Team) {
+  // Make or remake the teams, with a show for whoever pressed it (lib/shuffle.ts): everyone's card into one deck, a
+  // riffle, then dealt out onto the new teams. The teams are saved as the deal starts; a tap skips to the end.
+  let deck = $state<number[] | null>(null);
+  let deckCards: HTMLElement[] = $state([]);
+  const undealt = new SvelteSet<number>();
+  let show: Show | null = null;
+  let pending: Team[] | null = null;
+  let gathering = $state(false);
+  async function generate() {
+    const made = snakeTeams(next.going.map(byId), TEAM_NAMES);
+    if (show) return;
+    if (prefersReducedMotion) return commit(made);
+    // Bring the players into view first, so their cards start from where you can see them
+    document.querySelector(teams ? ".teams-head" : ".list-head")?.scrollIntoView({ block: "start" });
+    await tick();
+    const ids = made.flatMap((t) => t.players);
+    const from = ids.map((id) => playerRect(id));
+    pending = made;
+    deck = ids;
+    // Picked up: the players leave the page as their cards fly into the deck (their places kept)
+    for (const t of teams ?? []) for (const id of t.players) undealt.add(id);
+    gathering = true;
+    await tick();
+    // Dealt as they were made: round by round, the order turning each round
+    const order: number[] = [];
+    const rounds = Math.max(...made.map((t) => t.players.length));
+    for (let r = 0; r < rounds; r++)
+      for (const t of r % 2 ? [...made].reverse() : made)
+        if (t.players[r] !== undefined) order.push(ids.indexOf(t.players[r]));
+    show = shuffleAndDeal({
+      cards: deckCards,
+      from,
+      deck: deckPoint(),
+      order,
+      reveal: async () => {
+        for (const id of ids) undealt.add(id);
+        if (pending) commit(pending);
+        pending = null;
+        await tick();
+        document.querySelector(".teams-head")?.scrollIntoView({ block: "start" });
+      },
+      target: (i) => document.querySelector(`.team [data-player="${ids[i]}"]`),
+      landed: (i) => undealt.delete(ids[i]),
+    });
+    await show.finished;
+    show = null;
+    deck = null;
+    gathering = false;
+    undealt.clear();
+  }
+  // The pile: over the middle of the teams (or of Who's in) where that's on screen, else the window's middle
+  function deckPoint() {
+    const r = document.querySelector(".teams-grid, .whos-in")?.getBoundingClientRect();
+    if (!r) return undefined;
+    const top = Math.max(r.top, 0);
+    const bottom = Math.min(r.bottom, window.innerHeight);
+    return bottom - top > 160 ? { x: r.left + r.width / 2, y: (top + bottom) / 2 } : undefined;
+  }
+  // Where a player is on the page now: their row on a team, or their card or row under Who's in (in sign-up order)
+  function playerRect(id: number): DOMRect | null {
+    const el =
+      document.querySelector(`.team [data-player="${id}"]`) ??
+      document.querySelector(`.whos-in > :is(.cards, .list) > :nth-child(${next.going.indexOf(id) + 1})`);
+    const r = el?.getBoundingClientRect();
+    return r && r.bottom > 0 && r.top < window.innerHeight ? r : null;
+  }
+  // Leaving mid-show: the teams still get saved
+  onDestroy(() => {
+    show?.skip();
+    if (pending) commit(pending);
+  });
+  function portal(node: HTMLElement) {
+    document.body.append(node);
+    return { destroy: () => node.remove() };
+  }
+  // A team maker moves a player between teams; it's saved there and then
+  const arranging = $derived(can(perms, "generate:Teams") && can(perms, "publish:Teams"));
+  function move(id: number, fromName: string, toName: string) {
+    if (fromName === toName) return;
+    const list = withoutLeavers();
+    const from = list.find((t) => t.name === fromName);
+    const to = list.find((t) => t.name === toName);
+    if (!from || !to) return;
     from.players = from.players.filter((p) => p !== id);
     to.players = [...to.players, id];
+    commit(list, `${byId(id).name.split(" ")[0]} to ${to.name}`);
   }
-  function publish() {
-    if (!proposal) return;
-    db.teams[next.id] = proposal;
-    void publishTeams(next.id, proposal);
-    proposals[next.id] = undefined;
+  const nextTeam = (name: string) => {
+    const i = ordered?.findIndex((t) => t.name === name) ?? -1;
+    return ordered && i >= 0 ? ordered[(i + 1) % ordered.length].name : name;
+  };
+
+  // Dragging a player by their grip: pointer events, so it works with a finger as well as a mouse. The row follows
+  // the pointer; the team under it lights up; letting go there moves them.
+  let drag = $state<{ id: number; from: string; x: number; y: number; dx: number; dy: number; w: number } | null>(null);
+  let over = $state<string | null>(null);
+  let dragged = $state(false);
+  function grab(e: PointerEvent, id: number, from: string) {
+    if (e.button !== 0) return;
+    const row = (e.currentTarget as HTMLElement).closest(".row") as HTMLElement;
+    const r = row.getBoundingClientRect();
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    drag = { id, from, x: e.clientX, y: e.clientY, dx: e.clientX - r.left, dy: e.clientY - r.top, w: r.width };
+    dragged = false;
   }
-  // Signed up after the teams were made: onto the teams as they are (each to the weaker side), as draft teams to
-  // check and publish
+  function follow(e: PointerEvent) {
+    if (!drag) return;
+    if (Math.hypot(e.clientX - drag.x, e.clientY - drag.y) > 4) dragged = true;
+    drag.x = e.clientX;
+    drag.y = e.clientY;
+    const el = document.elementFromPoint(e.clientX, e.clientY)?.closest<HTMLElement>("[data-team]");
+    over = el?.dataset.team ?? null;
+  }
+  function drop() {
+    if (drag && dragged && over) move(drag.id, drag.from, over);
+    drag = null;
+    over = null;
+  }
+  // Enter or Space on the grip: on to the next team, for keyboards and screen readers. A click or a tap does
+  // nothing (detail is 0 only for a keyboard's click): a finger resting on the grip mustn't send someone away.
+  function nudge(e: MouseEvent, id: number, from: string) {
+    if (dragged) return void (dragged = false);
+    if (e.detail === 0) move(id, from, nextTeam(from));
+  }
+  // Signed up after the teams were made: onto the teams as they are, each to the weaker side
   function slot() {
-    if (published) proposals[next.id] = slotIn(published, unplaced.map(byId), (id) => byId(id));
+    if (teams) commit(slotIn(withoutLeavers(), unplaced.map(byId), (id) => byId(id)));
+  }
+  // The teams as they are, without whoever's out: nobody new to place
+  function keep() {
+    commit(withoutLeavers());
   }
   const firstNames = (ids: number[]) => {
     const names = ids.map((id) => (id === who.id ? "you" : byId(id).name.split(" ")[0]));
@@ -124,14 +251,72 @@
     return list.charAt(0).toUpperCase() + list.slice(1);
   };
   const rating = (ids: number[]) => ids.reduce((s, id) => s + byId(id).rating, 0);
+
+  // Manage: an admin's tools for this session, in one place (a sheet on a phone, a side drawer on a desktop). The
+  // ones that can't be undone take a second tap, which lapses after a few seconds.
+  let manageOpen = $state(false);
+  let confirming = $state<"teams" | "remake" | "reset" | null>(null);
+  let lapse: ReturnType<typeof setTimeout> | undefined;
+  // Making teams from who's in, once someone's in: the one button always on show for a team maker
+  const canGenerate = $derived(arranging && next.going.length > 0);
+  const canManage = $derived(
+    can(perms, "update:Event") || can(perms, "record:Attendance") || (!!teams && can(perms, "publish:Teams")),
+  );
+  // A tool that opens something else, or runs at once: the sheet gets out of the way first
+  function go(run: () => void) {
+    manageOpen = false;
+    run();
+  }
+  function twice(which: "teams" | "remake" | "reset", run: () => void) {
+    clearTimeout(lapse);
+    if (confirming !== which) {
+      confirming = which;
+      lapse = setTimeout(() => (confirming = null), 4000);
+      return;
+    }
+    confirming = null;
+    manageOpen = false;
+    run();
+  }
+  // Taking the teams away: each team falls away in turn before Who's in rises in their place; then it's saved
+  let clearing = $state(false);
+  async function clearTeams() {
+    if (!teams || prefersReducedMotion) return;
+    clearing = true;
+    await new Promise((r) => setTimeout(r, 420 + 70 * (teams?.length ?? 0)));
+    clearing = false;
+  }
+  async function takeDown() {
+    await clearTeams();
+    delete db.teams[next.id];
+    void removeTeams(next.id);
+  }
+  async function reset() {
+    const s = session;
+    if (!s) return;
+    await clearTeams();
+    delete db.teams[s.id];
+    s.going = [];
+    s.waitlist = [];
+    s.walkIns = [];
+    s.noShows = [];
+    void resetSession(s.id);
+  }
 </script>
 
 {#snippet player(id: number, n?: number)}
   {@const p = byId(id)}
-  <div class="row" class:you={id === who.id}>
+  <div
+    class="row"
+    class:you={id === who.id && !hasLeft(id)}
+    class:gone={hasLeft(id)}
+    class:undealt={undealt.has(id)}
+    data-player={id}
+  >
     {#if n !== undefined}<span class="n num">{n}</span>{/if}
     <Person player={p} showRating={ratings} />
-    {#if id === who.id}<span class="badge green">You</span>{/if}
+    {#if hasLeft(id)}<span class="badge">Out</span>
+    {:else if id === who.id}<span class="badge green">You</span>{/if}
     {#if p.cougar}<span class="badge red">Cougar</span>{/if}
   </div>
 {/snippet}
@@ -157,35 +342,75 @@
   {/if}
 {/snippet}
 
-<div class="page wide reading">
+<div class="page">
   <PageHeader
     title={series.name}
     subtitle="{describeRule(series)} · {series.startTime}–{series.endTime}{usual ? ` · ${usual.name}` : ''}"
   >
     {#snippet actions()}
-      {#if session && can(perms, "record:Attendance")}
-        <button class="btn sm outline" onclick={() => (registering = true)}>
-          <Icon name="userPlus" size={16} /> Add player
-        </button>
+      <!-- Make teams is the one job on show: it's the night's job for whoever makes the teams, not only an admin.
+           Everything else is behind one quiet button (ADR 0065): a sheet on a phone, a side drawer on a desktop -->
+      <!-- Remaking replaces teams everyone can see, so it takes a second tap; the label swaps in place, the width
+           held so nothing in the bar moves -->
+      {#if session && canGenerate}
+        <button class="btn sm primary make" onclick={() => (teams ? twice("remake", generate) : generate())}
+          ><Icon name="teams" size={16} />
+          {!teams ? "Make teams" : confirming === "remake" ? "Tap again" : "Remake teams"}</button
+        >
       {/if}
-      {#if session && can(perms, "generate:Teams") && next.going.length && !unplaced.length}
-        <button class="btn sm" class:primary={!teams} class:outline={!!teams} onclick={generate}>
-          {teams ? "Remake teams" : "Make teams"}
-        </button>
+      {#if session && canManage}
+        <button class="btn sm ghost" aria-haspopup="dialog" onclick={() => (manageOpen = true)}
+          ><Icon name="settings" size={16} /> Manage</button
+        >
       {/if}
     {/snippet}
   </PageHeader>
 
-  {#snippet signUp()}
-    <!-- This week's session and your answer, with the numbers -->
-    <div class="stats num">
-      <div class="stat"><span class="eyebrow">In</span><span class="value">{next.going.length}</span></div>
-      <div class="stat"><span class="eyebrow">Waiting</span><span class="value">{next.waitlist.length}</span></div>
-      <div class="stat">
-        <span class="eyebrow">Spaces</span><span class="value">{spaces ?? "–"}</span>
+  {#snippet signUp(warn = false)}
+    <!-- This week's session and your answer, with the numbers. When the teams no longer match who's in, the warning
+         takes the numbers' place: the same slot, the same height, so nothing below moves -->
+    <div class="slot">
+      <div class="stats num" class:covered={warn} aria-hidden={warn}>
+        <div class="stat"><span class="eyebrow">In</span><span class="value">{next.going.length}</span></div>
+        <div class="stat"><span class="eyebrow">Waiting</span><span class="value">{next.waitlist.length}</span></div>
+        <div class="stat">
+          <span class="eyebrow">Spaces</span><span class="value">{spaces ?? "–"}</span>
+        </div>
       </div>
+      {#if warn}{@render lateWarning()}{/if}
     </div>
     <EventCard event={sessionBookable(session!)} canSignUp={can(perms, "signup:Event")} beckon roster={false} />
+  {/snippet}
+
+  {#snippet lateWarning()}
+    <!-- The teams no longer match who's in: someone came in after them, or said they're out since -->
+    <div class="late">
+      <span class="late-icon"><Icon name="alert" size={22} /></span>
+      <p class="late-text">
+        <span class="eyebrow"
+          >{[unplaced.length ? `${unplaced.length} not on a team` : "", left.length ? `${left.length} dropped out` : ""]
+            .filter(Boolean)
+            .join(" · ")}</span
+        >
+        <span>
+          {#if unplaced.length}<strong>{firstNames(unplaced)}</strong>
+            {unplaced.length === 1 && unplaced[0] !== who.id ? "is" : "are"} in, but signed up after the teams were made.{/if}
+          {#if left.length}<strong>{firstNames(left)}</strong>
+            {left.length === 1 && left[0] !== who.id ? "has" : "have"} said they're out since.{/if}
+          {#if !can(perms, "generate:Teams")}The teams may change.{/if}
+        </span>
+      </p>
+      {#if can(perms, "generate:Teams")}
+        <div class="late-acts">
+          <button class="btn sm outline" onclick={generate}>Remake teams</button>
+          {#if unplaced.length}
+            <button class="btn sm primary" onclick={slot}>Slot them in</button>
+          {:else}
+            <button class="btn sm primary" onclick={keep}>Keep the teams</button>
+          {/if}
+        </div>
+      {/if}
+    </div>
   {/snippet}
 
   {#snippet waitlist()}
@@ -220,7 +445,7 @@
         {/if}
       </div>
       {#if next.going.length}
-        {@render players(next.going, true)}
+        <div class="whos-in rise" class:gathered={gathering}>{@render players(next.going, true)}</div>
       {:else}
         <p class="hint">Nobody yet. If you ain't first, you last.</p>
       {/if}
@@ -228,46 +453,26 @@
       {@render waitlist()}
     {:else}
       <!-- Once there are teams: anyone missing from them first, then sign-up and your answer, then the teams -->
-      {#if unplaced.length}
-        <div class="late rise">
-          <span class="late-icon"><Icon name="alert" size={22} /></span>
-          <p class="late-text">
-            <span class="eyebrow">{unplaced.length} not on a team</span>
-            <span
-              ><strong>{firstNames(unplaced)}</strong>
-              {unplaced.length === 1 && unplaced[0] !== who.id ? "is" : "are"} in, but signed up after the teams were made.{#if !can(perms, "generate:Teams")}
-                The teams may change.{/if}</span
-            >
-          </p>
-          {#if can(perms, "generate:Teams")}
-            <div class="late-acts">
-              <button class="btn primary sm" onclick={slot}>Slot them in</button>
-              <button class="btn outline sm" onclick={generate}>Remake teams</button>
-            </div>
-          {/if}
-        </div>
-      {/if}
+      {@render signUp(unplaced.length > 0 || left.length > 0)}
 
-      {@render signUp()}
+      <!-- The teams' own heading, and for a team maker how to move someone -->
+      <div class="teams-head" class:clearing>
+        <h2 class="section-title">The teams</h2>
+        {#if arranging}
+          <p class="hint move-hint">Drag a player to another team to move them. Everyone sees it straight away.</p>
+        {/if}
+      </div>
 
-      {#if proposal}
-        <div class="draft-bar rise">
-          <p><strong>Not published yet.</strong> Only admins see these. Move a player with the arrow.</p>
-          <div class="late-acts">
-            {#if published}
-              <button class="btn ghost" onclick={() => (proposals[next.id] = undefined)}>Discard</button>
-            {/if}
-            {#if can(perms, "publish:Teams")}
-              <button class="btn primary" onclick={publish}>Publish teams</button>
-            {/if}
-          </div>
-        </div>
-      {/if}
-
-      <div class="teams-grid">
-        {#each ordered as team (team.name)}
-          {@const mine = !proposal && team.players.includes(who.id)}
-          <section class="team rise" class:mine>
+      <div class="teams-grid" class:clearing>
+        {#each ordered as team, t (team.name)}
+          {@const mine = team.players.includes(who.id)}
+          <section
+            style:--t={t}
+            class="team rise"
+            class:mine
+            class:over={over === team.name && drag?.from !== team.name}
+            data-team={team.name}
+          >
             <header>
               <h2 class="display">{team.name}</h2>
               {#if mine}<span class="badge green">Your team</span>{/if}
@@ -278,17 +483,29 @@
             </header>
             <div class="list">
               {#each team.players as id (id)}
-                {#if proposal}
-                  <div class="row">
-                    <Person player={byId(id)} showRating={ratings} />
-                    {#if byId(id).cougar}<span class="badge red">Cougar</span>{/if}
+                {#if arranging}
+                  <div
+                    class="row arrange"
+                    class:lifting={drag?.id === id && dragged}
+                    class:gone={hasLeft(id)}
+                    class:undealt={undealt.has(id)}
+                    data-player={id}
+                  >
                     <button
-                      class="btn ghost icon"
-                      aria-label="Move to the next team"
-                      onclick={() => move(id, team, ordered[(ordered.indexOf(team) + 1) % ordered.length])}
+                      class="grip"
+                      aria-label="Move {byId(id).name}: drag to a team, or press Enter for the next team"
+                      onpointerdown={(e) => grab(e, id, team.name)}
+                      onpointermove={follow}
+                      onpointerup={drop}
+                      onpointercancel={() => ((drag = null), (over = null))}
+                      onclick={(e) => nudge(e, id, team.name)}
                     >
-                      <Icon name="chevronRight" size={18} />
+                      <Icon name="grip" size={20} />
                     </button>
+                    <Person player={byId(id)} showRating={ratings} />
+                    {#if hasLeft(id)}<span class="badge">Out</span>
+                    {:else if id === who.id}<span class="badge green">You</span>{/if}
+                    {#if byId(id).cougar}<span class="badge red">Cougar</span>{/if}
                   </div>
                 {:else}
                   {@render player(id)}
@@ -299,10 +516,82 @@
         {/each}
       </div>
 
+      {#if drag && dragged}
+        <!-- The row being dragged, following the pointer -->
+        <div
+          class="row ghost-row"
+          style:left="{drag.x - drag.dx}px"
+          style:top="{drag.y - drag.dy}px"
+          style:width="{drag.w}px"
+          aria-hidden="true"
+        >
+          <Icon name="grip" size={20} />
+          <Person player={byId(drag.id)} showRating={ratings} />
+        </div>
+      {/if}
+
       {@render waitlist()}
     {/if}
   {/if}
 </div>
+
+{#snippet manageTools()}
+  <div class="tools">
+    {#if can(perms, "record:Attendance")}
+      <button class="tool" onclick={() => go(() => (registering = true))}>
+        <Icon name="userPlus" size={22} />
+        <span class="tool-text"
+          ><strong>Add player</strong><span>Someone who turned up, or signing up for someone.</span></span
+        >
+        <Icon name="chevronRight" size={18} />
+      </button>
+    {/if}
+    {#if teams && can(perms, "publish:Teams")}
+      <button class="tool" class:armed={confirming === "teams"} onclick={() => twice("teams", takeDown)}>
+        <Icon name="x" size={22} />
+        <span class="tool-text"
+          ><strong>{confirming === "teams" ? "Tap again to take them down" : "Remove the teams"}</strong><span
+            >Back to before they were made. Who's in stays.</span
+          ></span
+        >
+      </button>
+    {/if}
+    {#if can(perms, "update:Event")}
+      <button class="tool" class:armed={confirming === "reset"} onclick={() => twice("reset", reset)}>
+        <Icon name="undo" size={22} />
+        <span class="tool-text"
+          ><strong>{confirming === "reset" ? "Tap again to reset" : "Reset this session"}</strong><span
+            >Nobody in, nobody waiting, no teams. Can't be undone.</span
+          ></span
+        >
+      </button>
+    {/if}
+  </div>
+{/snippet}
+
+{#if session && canManage}
+  {#if phone.current}
+    <Sheet bind:open={manageOpen} title="Manage {series.shortName}">{@render manageTools()}</Sheet>
+  {:else}
+    <Drawer
+      bind:open={manageOpen}
+      title="Manage {series.shortName}"
+      sub={formatDayDate(sessionBookable(session).startsAt)}>{@render manageTools()}</Drawer
+    >
+  {/if}
+{/if}
+
+{#if deck}
+  <!-- The show: the cards over the page, centred on the window; a tap or Escape skips it -->
+  <div class="deck-layer" use:portal role="presentation" onpointerdown={() => show?.skip()}>
+    {#each deck as id, i (id)}
+      <div class="deck-card" bind:this={deckCards[i]}>
+        <div class="deck-card-in"><PlayerCard player={byId(id)} you={id === who.id} showRating={ratings} /></div>
+      </div>
+    {/each}
+  </div>
+{/if}
+<svelte:window onkeydown={(e) => e.key === "Escape" && show?.skip()} />
 
 {#if session && can(perms, "record:Attendance")}
   <RegisterDrawer {seriesId} bind:open={registering} />
@@ -334,6 +623,139 @@
   }
   .list-head .section-title {
     margin: 0;
+  }
+  .make {
+    min-width: 9.5rem;
+  }
+  /* The make-teams show (lib/shuffle.ts): cards over everything, each placed by its centre on the window's */
+  .deck-layer {
+    position: fixed;
+    inset: 0;
+    z-index: 95;
+    overflow: hidden;
+  }
+  .deck-card {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 5.5rem;
+    opacity: 0;
+  }
+  .deck-card-in {
+    translate: -50% -50%;
+  }
+  /* The teams taken away: each falls a little and fades, one after the other */
+  .teams-grid.clearing .team {
+    animation: team-leave 360ms cubic-bezier(0.7, 0, 0.84, 0) both;
+    animation-delay: calc(var(--t) * 70ms);
+  }
+  .teams-head.clearing {
+    animation: team-leave 360ms cubic-bezier(0.7, 0, 0.84, 0) both;
+  }
+  @keyframes team-leave {
+    to {
+      opacity: 0;
+      transform: translateY(1.5rem) scale(0.98);
+    }
+  }
+  .whos-in.gathered {
+    visibility: hidden;
+  }
+  /* A new row waits, its space kept, until its card lands on it */
+  .row.undealt {
+    opacity: 0;
+  }
+  .row {
+    transition: opacity var(--t) var(--ease);
+  }
+  .teams-head {
+    scroll-margin-top: calc(var(--chrome-h, 0px) + var(--s-4));
+  }
+  .list-head {
+    scroll-margin-top: calc(var(--chrome-h, 0px) + var(--s-4));
+  }
+  .tools {
+    display: grid;
+    gap: var(--s-2);
+  }
+  .tool {
+    display: flex;
+    align-items: center;
+    gap: var(--s-4);
+    min-height: 4.25rem;
+    padding: var(--s-3) var(--s-4);
+    border: 0;
+    border-radius: var(--r-lg);
+    background: var(--surface-2);
+    color: var(--fg-muted);
+    font: inherit;
+    text-align: left;
+  }
+  .tool:active {
+    background: var(--surface-3);
+  }
+  /* The second tap's the real one: said in red, the only red here */
+  .tool.armed {
+    box-shadow: inset 0 0 0 1.5px var(--red-hot);
+  }
+  .tool.armed strong {
+    color: var(--red-hot);
+  }
+  .tool-text {
+    display: grid;
+    flex: 1;
+    gap: 0.15rem;
+    min-width: 0;
+  }
+  .tool-text strong {
+    color: var(--fg);
+    font-size: var(--text-md);
+    font-weight: 600;
+  }
+  .tool-text span {
+    font-size: var(--text-sm);
+  }
+  /* Moving players: a grip to drag by, the team you're over lit, the row following the pointer */
+  .grip {
+    display: grid;
+    place-items: center;
+    width: 2.25rem;
+    height: 2.75rem;
+    margin: calc(-1 * var(--s-2)) 0 calc(-1 * var(--s-2)) calc(-1 * var(--s-2));
+    padding: 0;
+    border: 0;
+    border-radius: var(--r-sm);
+    background: none;
+    color: var(--fg-subtle);
+    cursor: grab;
+    touch-action: none;
+  }
+  .grip:hover {
+    color: var(--fg);
+  }
+  /* Out since the teams were made: still there, faded, until a team maker decides */
+  .gone > :global(.avatar),
+  .gone > :global(.grow) {
+    opacity: 0.45;
+  }
+  .gone > :global(.grow) {
+    text-decoration: line-through;
+  }
+  .lifting {
+    opacity: 0.35;
+  }
+  .team.over .list {
+    outline: 2px solid var(--green);
+    outline-offset: 2px;
+  }
+  .ghost-row {
+    position: fixed;
+    z-index: 100;
+    border-radius: var(--r-md);
+    background: var(--surface-3);
+    box-shadow: var(--shadow-pop);
+    cursor: grabbing;
+    pointer-events: none;
   }
   /* The teams side by side where there's room, each a column of rows */
   .teams-grid {
@@ -376,28 +798,40 @@
     }
   }
   /* The teams are out: a line on Who's in that goes to them */
-  /* Draft teams: what they are and the one thing to do, together */
-  .draft-bar {
+  .teams-head {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
+    gap: var(--s-2) var(--s-3);
+  }
+  .teams-head .section-title {
+    display: flex;
+    align-items: center;
     gap: var(--s-3);
-  }
-  .draft-bar p {
     margin: 0;
-    color: var(--fg-muted);
   }
-  .draft-bar strong {
-    color: var(--fg);
+  .move-hint {
+    flex-basis: 100%;
+    margin: 0;
   }
   /* Someone's missing from the teams: the first thing on the page, in amber */
+  /* The numbers set the slot's height; the warning lies over them, unseen numbers underneath, so the slot is the
+     same height either way */
+  .slot {
+    position: relative;
+  }
+  .stats.covered {
+    visibility: hidden;
+  }
   .late {
+    position: absolute;
+    inset: 0;
     display: flex;
-    flex-wrap: wrap;
     align-items: center;
     gap: var(--s-4);
-    padding: var(--s-4) var(--s-5);
+    overflow: hidden;
+    padding: var(--s-3) var(--s-5);
     border-radius: var(--r-lg);
     background: color-mix(in srgb, var(--amber) 10%, var(--surface-1));
     color: var(--fg-muted);
@@ -416,18 +850,44 @@
     display: grid;
     flex: 1;
     gap: 0.15rem;
-    min-width: 14rem;
+    min-width: 0;
     margin: 0;
   }
+  /* The sentence: two lines at most, so the warning never outgrows the numbers' slot */
+  .late-text > span:last-child {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+  }
   .late-text .eyebrow {
+    overflow: hidden;
     color: var(--amber-ink);
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .late strong {
     color: var(--fg);
   }
   .late-acts {
     display: flex;
+    flex-shrink: 0;
     gap: var(--s-2);
+  }
+  /* A phone: no icon, the words cut to one line, the two buttons beside them */
+  @media (max-width: 900px) {
+    .late {
+      gap: var(--s-3);
+      padding: var(--s-3) var(--s-4);
+    }
+    .late-icon {
+      display: none;
+    }
+    .late-text > span:last-child {
+      -webkit-line-clamp: 1;
+      line-clamp: 1;
+    }
   }
   .n {
     width: 1.25rem;

@@ -33,6 +33,8 @@ export const ICONS = {
   pause: "M7 4h3v16H7zM14 4h3v16h-3z",
   search: "M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM20 20l-4-4",
   x: "M6 6l12 12M18 6 6 18",
+  // Drag handle: two columns of dots
+  grip: "M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01",
   filter: "M4 6h16M7 12h10M10 18h4",
   pin: "M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11Zm0-8.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z",
   // Schedule icons, picked per training and tournament

@@ -231,6 +231,8 @@
   .event {
     container-type: inline-size;
     display: grid;
+    /* The column is the card's width, never its content's: nothing inside can push past the edge */
+    grid-template-columns: minmax(0, 1fr);
     gap: var(--s-5);
     padding: var(--s-5) var(--s-6);
   }
@@ -514,8 +516,23 @@
     border-top: 1px solid var(--border);
   }
 
-  /* ─── Narrow (a phone, a calendar row on a phone): the names drop under the faces, the buttons fill the row ─── */
+  /* ─── Narrow (a phone, a calendar row on a phone): your answer and the count drop to a row of their own under the
+     title, so the title keeps the width; the names drop under the faces, the buttons fill the row ─── */
   @container (max-width: 34rem) {
+    .top {
+      flex-wrap: wrap;
+      row-gap: var(--s-4);
+    }
+    .side {
+      display: flex;
+      flex-basis: 100%;
+      align-items: center;
+      justify-content: space-between;
+      text-align: left;
+    }
+    .side:not(:has(*)) {
+      display: none;
+    }
     .soon {
       display: none;
     }
@@ -525,14 +542,18 @@
     .answer {
       width: 100%;
     }
+    .answer > button {
+      min-width: 0;
+    }
+  }
+  /* The card's own padding can't follow its container (a container query only reaches what's inside), so a phone
+     sets it */
+  @media (max-width: 600px) {
     .event {
       padding: var(--s-4) var(--s-4) var(--s-5);
     }
     .foot {
       margin: 0 calc(-1 * var(--s-4)) calc(-1 * var(--s-5));
-    }
-    .answer > button {
-      min-width: 0;
     }
   }
 </style>

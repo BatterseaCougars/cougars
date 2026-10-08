@@ -6,7 +6,7 @@
 // Read with a read-only token (Account Analytics: Read), CLOUDFLARE_ANALYTICS_TOKEN, never the deploy token.
 import { all, run } from "../../../shared/d1";
 import { sendMail, type Mail } from "../../../shared/email";
-import { mailConfig } from "./auth";
+import { mailSetup } from "./auth";
 import type { Env } from "./api";
 
 export interface Metric {
@@ -130,7 +130,12 @@ export async function readUsage(env: Env, now: Date): Promise<Usage> {
 export async function checkUsage(
   env: Env,
   now: Date,
-  { send = (m: Mail) => sendMail(m, mailConfig(env)).then(() => {}) }: { send?: (m: Mail) => Promise<void> } = {},
+  {
+    send = (m: Mail) =>
+      mailSetup(env)
+        .then((config) => sendMail(m, config))
+        .then(() => {}),
+  }: { send?: (m: Mail) => Promise<void> } = {},
 ) {
   const usage = await readUsage(env, now);
   const over = usage.metrics.filter((m) => m.used >= m.limit * WARN_AT);

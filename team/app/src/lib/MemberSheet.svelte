@@ -3,9 +3,12 @@
   // fills the space the page has, beside the dock and under the top bar (on a phone, the whole screen), the way
   // Gwenda's editors do: a header with who they are and a close button top right, then a body that scrolls on its
   // own. Details and attendance on the left, money on the right; one column when it's narrow. The card they were
-  // tapped on turns away as it opens, and back as it closes. Every change saves as it's made.
+  // tapped on turns away as it opens, and back as it closes. Their details are a draft until Save, in a footer that
+  // stays at the bottom (as Gwenda's editors have); closing with changes asks first. Attendance and fees are records
+  // kept as you tap them, not details, so they save at once.
   import { onMount, tick } from "svelte";
   import Icon from "../app/shell/Icon.svelte";
+  import { pageColumnStyle } from "./page-column";
   import { EASE_IN, EASE_OUT, prefersReducedMotion } from "../app/motion";
   import PlayerCard from "./PlayerCard.svelte";
   import {
@@ -24,6 +27,8 @@
   import { initials } from "./initials";
   import Select from "./Select.svelte";
 
+  // Opens in the page's own column (desktop), the same width as the cards under it
+  const colStyle = pageColumnStyle();
   let {
     memberId,
     source,
@@ -37,37 +42,69 @@
 
   const member = $derived(db.members.find((m) => m.player.id === memberId)!);
 
-  // Each change is saved as it's made (app/backend.svelte.ts). A member has one role of their own, plus Member.
-  function setRole(role: string) {
-    member.roles = role === "Member" ? ["Member"] : [role, "Member"];
-    saveMember(member);
-  }
-  function setPosition(position: Position) {
-    if (member.player.position === position) return;
-    member.player.position = position;
-    saveMember(member);
-  }
-  function setRating(rating: number) {
-    if (!Number.isInteger(rating) || rating < 0 || rating > 100) return;
-    member.player.rating = rating;
-    saveMember(member);
-  }
-  function setCougar(cougar: boolean) {
-    member.player.cougar = cougar;
-    saveMember(member);
-  }
-  // How to reach them; the email is what they sign in with. Saved when a field is left. The sheet is made afresh
-  // for each member (Teammates keys it), so their stored values are read once, as it opens.
-  const stored = () => ({
+  // Their details as they were when it opened, and as edited here. The sheet is made afresh for each member
+  // (Teammates and Members key it), so they're read once, as it opens, and again after a save.
+  const current = () => ({
+    name: member.player.name,
+    role: member.roles[0] ?? "Member",
+    plan: member.plan,
+    position: member.player.position,
+    rating: member.player.rating,
+    cougar: member.player.cougar,
     email: emailFor(member.player) === "No email yet" ? "" : emailFor(member.player),
     phone: phoneFor(memberId) ?? "",
   });
-  let email = $state(stored().email);
-  let phone = $state(stored().phone);
-  const saveContactNow = () => saveContact(memberId, email.trim(), phone.trim());
-  function setPlan(plan: string) {
-    member.plan = plan as typeof member.plan;
-    setQuarterly(memberId, plan === "Subscription");
+  let saved = $state(current());
+  let draft = $state(current());
+  const tidyName = (n: string) => n.trim().replace(/\s+/g, " ");
+  const ratingOk = $derived(Number.isInteger(draft.rating) && draft.rating >= 0 && draft.rating <= 100);
+  const changed = $derived(
+    tidyName(draft.name) !== saved.name ||
+      (Object.keys(saved) as (keyof typeof saved)[]).some(
+        (k) => k !== "name" && String(draft[k]).trim() !== String(saved[k]),
+      ),
+  );
+  let busy = $state(false);
+  const canSave = $derived(changed && ratingOk && !!tidyName(draft.name) && !busy);
+  // Closing with changes: the footer asks, Save or Discard
+  let asking = $state(false);
+
+  // Only what changed goes to the server (app/backend.svelte.ts). A member has one role of their own, plus Member.
+  async function saveDetails(): Promise<boolean> {
+    if (!canSave) return false;
+    busy = true;
+    try {
+      const d = { ...draft, name: tidyName(draft.name), email: draft.email.trim(), phone: draft.phone.trim() };
+      const results: unknown[] = [];
+      if (
+        d.name !== saved.name ||
+        d.role !== saved.role ||
+        d.position !== saved.position ||
+        d.rating !== saved.rating ||
+        d.cougar !== saved.cougar
+      ) {
+        Object.assign(member.player, { name: d.name, position: d.position, rating: d.rating, cougar: d.cougar });
+        member.roles = d.role === "Member" ? ["Member"] : [d.role, "Member"];
+        results.push(await saveMember(member));
+      }
+      if (d.plan !== saved.plan) {
+        member.plan = d.plan;
+        results.push(await setQuarterly(memberId, d.plan === "Subscription"));
+      }
+      if (d.email !== saved.email || d.phone !== saved.phone)
+        results.push(await saveContact(memberId, d.email, d.phone));
+      // A failed save says so (the shell's note) and reloads the club; the draft stays, to try again
+      if (results.includes(null)) return false;
+      saved = current();
+      draft = current();
+      return true;
+    } finally {
+      busy = false;
+    }
+  }
+  function discard() {
+    draft = { ...saved };
+    asking = false;
   }
 
   // Their attendance, a quarter at a time (Jan–Mar, Apr–Jun…), from the first quarter any training ran to this one.
@@ -221,7 +258,20 @@
     grow.onfinish = () => (ready = true);
   });
 
-  async function close() {
+  // Closing with changes asks first (the footer); Discard or Save goes on to close
+  function close() {
+    if (changed) return void (asking = true);
+    shut();
+  }
+  async function saveAndClose() {
+    if (await saveDetails()) shut();
+  }
+  function discardAndClose() {
+    discard();
+    shut();
+  }
+
+  async function shut() {
     if (closing) return;
     closing = true;
     if (prefersReducedMotion || !panel) return onclose();
@@ -266,17 +316,34 @@
       <PlayerCard player={member.player} />
     </div>
   {/if}
-  <div class="panel" role="dialog" aria-modal="true" aria-labelledby="member-name" tabindex="-1" bind:this={panel}>
+  <div
+    class="panel"
+    style={colStyle}
+    role="dialog"
+    aria-modal="true"
+    aria-label={member.player.name}
+    tabindex="-1"
+    bind:this={panel}
+  >
     <!-- The header is the player: who they are, then their details in one row -->
     <header class="panel-head">
       <div class="who">
         <span class="avatar big">{initials(member.player.name)}</span>
         <div class="titles">
           <p class="eyebrow">
-            Member · {POSITIONS[member.player.position]}{member.plan === "Subscription" ? " · Quarterly" : ""}
-            {#if member.player.cougar}<span class="badge red">Cougar</span>{/if}
+            Member · {POSITIONS[draft.position]}{draft.plan === "Subscription" ? " · Quarterly" : ""}
+            {#if draft.cougar}<span class="badge red">Cougar</span>{/if}
           </p>
-          <h1 id="member-name">{member.player.name}</h1>
+          <!-- Their name, editable in place -->
+          <div class="name-line">
+            <input
+              class="name-edit"
+              aria-label="Name"
+              bind:value={draft.name}
+              maxlength="80"
+              onkeydown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+            />
+          </div>
           <p class="sub">{emailFor(member.player)} · <span class="num">{referenceFor(memberId)}</span></p>
         </div>
         <button class="btn ghost icon close" aria-label="Close" onclick={close}>
@@ -297,8 +364,8 @@
               Role
               <Select
                 id="member-role"
-                value={member.roles[0] ?? "Member"}
-                onchange={setRole}
+                value={draft.role}
+                onchange={(v) => (draft.role = v)}
                 options={db.roles.map((r) => ({ value: r.name, label: r.name }))}
               />
             </label>
@@ -306,8 +373,8 @@
               Plan
               <Select
                 id="member-plan"
-                value={member.plan}
-                onchange={setPlan}
+                value={draft.plan}
+                onchange={(v) => (draft.plan = v as typeof draft.plan)}
                 options={[
                   { value: "Pay as you go", label: "Pay as you go" },
                   { value: "Subscription", label: "Quarterly Member" },
@@ -320,8 +387,8 @@
                 {#each Object.entries(POSITIONS) as [v, label] (v)}
                   <button
                     type="button"
-                    aria-pressed={member.player.position === v}
-                    onclick={() => setPosition(v as Position)}
+                    aria-pressed={draft.position === v}
+                    onclick={() => (draft.position = v as Position)}
                   >
                     {label}
                   </button>
@@ -335,31 +402,33 @@
                 type="number"
                 min="0"
                 max="100"
-                value={member.player.rating}
-                onchange={(e) => setRating(Number(e.currentTarget.value))}
+                step="1"
+                aria-invalid={!ratingOk}
+                bind:value={draft.rating}
               />
             </label>
             <div class="field team">
               <span id="member-team">Cougars team</span>
-              <div class="seg" role="group" aria-labelledby="member-team">
-                <button type="button" aria-pressed={member.player.cougar} onclick={() => setCougar(true)}>On it</button>
-                <button type="button" aria-pressed={!member.player.cougar} onclick={() => setCougar(false)}>Not</button>
-              </div>
+              <!-- On or off: a switch, with what it means beside it -->
+              <button
+                type="button"
+                class="switch"
+                role="switch"
+                aria-checked={draft.cougar}
+                aria-labelledby="member-team"
+                onclick={() => (draft.cougar = !draft.cougar)}
+              >
+                <span class="track" aria-hidden="true"></span>
+                <span>{draft.cougar ? "On the Cougars" : "Not on it"}</span>
+              </button>
             </div>
             <label class="field email">
               Email (they sign in with it)
-              <input
-                class="input"
-                type="email"
-                autocomplete="off"
-                placeholder="None yet"
-                bind:value={email}
-                onchange={saveContactNow}
-              />
+              <input class="input" type="email" autocomplete="off" placeholder="None yet" bind:value={draft.email} />
             </label>
             <label class="field phone">
               Phone
-              <input class="input" type="tel" autocomplete="off" bind:value={phone} onchange={saveContactNow} />
+              <input class="input" type="tel" autocomplete="off" bind:value={draft.phone} />
             </label>
           </div>
         {/if}
@@ -467,6 +536,22 @@
         </div>
       {/if}
     </div>
+
+    <!-- Always at the bottom: Save and Discard for their details; closing with changes asks here -->
+    <footer class="panel-foot" class:asking>
+      <p class="foot-note hint" role="status">
+        {#if asking}Save your changes to {saved.name.split(" ")[0]}?{:else if !ratingOk}A rating is a whole number, 0 to
+          100{:else if changed}Unsaved changes{/if}
+      </p>
+      {#if asking}
+        <button class="btn ghost" onclick={() => (asking = false)}>Keep editing</button>
+        <button class="btn" onclick={discardAndClose}>Discard</button>
+        <button class="btn primary" disabled={!canSave} onclick={saveAndClose}>Save</button>
+      {:else}
+        <button class="btn ghost" disabled={!changed || busy} onclick={discard}>Discard</button>
+        <button class="btn primary" disabled={!canSave} onclick={saveDetails}>Save</button>
+      {/if}
+    </footer>
   </div>
 </div>
 
@@ -511,6 +596,10 @@
   .panel {
     position: absolute;
     inset: 4.5rem var(--s-6) var(--s-6) 6.25rem;
+    /* In the page's column when there is one: its left edge and width */
+    left: var(--col-left, 6.25rem);
+    right: auto;
+    width: var(--col-width, calc(100% - 6.25rem - var(--s-6)));
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -524,6 +613,7 @@
   @media (max-width: 900px) {
     .panel {
       inset: 0;
+      width: auto;
       border: 0;
       border-radius: 0;
     }
@@ -554,7 +644,7 @@
     letter-spacing: normal;
     text-transform: none;
   }
-  h1 {
+  .name-line {
     margin: var(--s-1) 0 0;
     color: var(--fg);
     font-family: var(--font-display);
@@ -573,6 +663,27 @@
     white-space: nowrap;
   }
   /* Every field the same height, labels on one line: one row when there's room, two when not, one on a phone */
+  /* The name as a heading until you go to change it */
+  .name-edit {
+    width: 100%;
+    margin: 0 0 0 -0.35rem;
+    padding: 0 0.35rem;
+    border: 0;
+    border-radius: var(--r-sm);
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    letter-spacing: inherit;
+    text-transform: inherit;
+  }
+  .name-edit:hover {
+    background: color-mix(in srgb, var(--fg) 6%, transparent);
+  }
+  .name-edit:focus {
+    outline: none;
+    background: var(--field-bg);
+    box-shadow: var(--field-edge);
+  }
   .details {
     display: grid;
     grid-template-columns:
@@ -642,6 +753,26 @@
     padding: 0 var(--s-6) var(--s-6);
     overflow-y: auto;
     overscroll-behavior: contain;
+  }
+  /* Save and Discard, along the bottom; on a phone, where the whole card scrolls, it stays there */
+  .panel-foot {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--s-2);
+    padding: var(--s-3) var(--s-5);
+    padding-bottom: max(var(--s-3), env(safe-area-inset-bottom));
+    border-top: 1px solid var(--border);
+    background: var(--surface-1);
+  }
+  .foot-note {
+    margin: 0 auto 0 0;
+  }
+  .asking .foot-note {
+    color: var(--fg);
   }
   /* A phone: the header's fields would leave no room, so the whole card scrolls */
   @media (max-width: 600px) {
