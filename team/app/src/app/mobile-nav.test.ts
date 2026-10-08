@@ -51,7 +51,12 @@ describe("buildRoutes", () => {
       "/training/friday",
       "/training/sunday",
     ]);
-    expect(routes.filter((r) => r.fold === "type:2").map((r) => r.name)).toEqual(["Games", "Standings", "Game clock"]);
+    expect(routes.filter((r) => r.fold === "type:2").map((r) => r.name)).toEqual([
+      "The Cup",
+      "Fight card",
+      "The board",
+      "Teams",
+    ]);
   });
 
   it("leaves paused trainings out", () => {
@@ -97,11 +102,19 @@ describe("stripRoutes", () => {
     ]);
   });
 
+  it("gives someone on one of a tournament's teams a My team page, and nobody else", () => {
+    const on = buildRoutes({ ...many, types: [kumite, { ...cup, onTeam: true }] });
+    expect(on.filter((r) => r.fold === "type:2").map((r) => r.name)).toContain("My team");
+    expect(buildRoutes(many).some((r) => r.name === "My team")).toBe(false);
+  });
+
   it("keeps a tournament's strip to its own pages", () => {
     const routes = buildRoutes(many);
     expect(stripRoutes(routes, routeFor(routes, "/tournaments/cup")!, member).map((r) => r.name)).toEqual([
-      "Games",
-      "Standings",
+      "The Cup",
+      "Fight card",
+      "The board",
+      "Teams",
     ]);
   });
 });
@@ -113,5 +126,19 @@ describe("tabHref", () => {
       "/tournaments/kumite/standings",
     );
     expect(tabHref(routes, "training", member, { training: "/training/sunday" })).toBe("/training/friday");
+  });
+});
+
+describe("a series' history", () => {
+  it("a History page once one's been played, and a page for each past one under it", () => {
+    const routes = buildRoutes({ series: [friday], types: [{ ...kumite, past: [7, 5] }] });
+    expect(routeFor(routes, "/tournaments/kumite/history")?.page).toBe("history");
+    const past = routeFor(routes, "/tournaments/kumite/history/5");
+    expect(past).toMatchObject({ page: "edition", params: { typeId: 1, tournamentId: 5 }, under: "history:1" });
+    expect(past?.hidden).toBe(true);
+  });
+
+  it("no History before the first one's played", () => {
+    expect(routeFor(buildRoutes(one), "/tournaments/kumite/history")?.page).not.toBe("history");
   });
 });

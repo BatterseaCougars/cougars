@@ -1,7 +1,8 @@
 <script lang="ts">
-  // A player as a physical trading card: printed card stock with a border round the photo, a red name plate and
-  // the position printed under it, and a shadow as if it's lying on the table. Flat colour, no sheen.
-  // The photo slot shows the club mark until members add photos. The corner number is the sign-up order. Ratings
+  // A player as a physical trading card: printed card stock with a border round the photo, a deep red name plate and
+  // the position printed large under it, and a shadow as if it's lying on the table. Flat colour, no sheen.
+  // The photo slot shows the club mark until members add photos. The corner number is the sign-up order; your own
+  // card carries a "You" sticker in the other corner and a ring round it. Ratings
   // only show for admins (read:Rating). With `onopen` it's a button: the page flips it over (PlayerCardZoom), and
   // hides this one meanwhile, as if it's been picked up.
   import { POSITIONS, type Player } from "../demo/data";
@@ -33,12 +34,13 @@
     <span class="photo">
       <img class="ghost" src={mark} alt="" loading="lazy" />
       {#if n !== undefined}<span class="no">{n}</span>{/if}
+      {#if you}<span class="you-tag">You</span>{/if}
     </span>
     <span class="plate"><strong>{first}</strong></span>
     <span class="foot">
       <span class="pos">{POSITIONS[player.position]}</span>
-      {#if you}<span class="tag">You</span>{:else if showRating}<span class="num">{player.rating}</span
-        >{:else if player.cougar}<span class="cougar">Cougar</span>{/if}
+      {#if showRating}<span class="num">{player.rating}</span>{:else if player.cougar}<span class="cougar">Cougar</span
+        >{/if}
     </span>
   </article>
 {/snippet}
@@ -101,10 +103,13 @@
       0 2px 2px rgb(0 0 0 / 0.3),
       0 16px 28px -8px rgb(0 0 0 / 0.65);
   }
-  .pc.you {
+  /* Yours: a ring with a gap, so it reads as "this one" against the table, not as a coloured edge */
+  .pc.you,
+  .pc.you:hover {
     box-shadow:
       inset 0 0 0 1px rgb(0 0 0 / 0.12),
-      0 0 0 2px var(--green),
+      0 0 0 3px var(--bg),
+      0 0 0 5px var(--green),
       0 8px 18px -6px rgb(0 0 0 / 0.6);
   }
   /* The photo, inset in the stock with a thin printed keyline */
@@ -139,7 +144,22 @@
     line-height: 1;
     box-shadow: 0 1px 3px rgb(0 0 0 / 0.4);
   }
-  /* The red plate overlaps the bottom of the photo, as printed */
+  .you-tag {
+    position: absolute;
+    top: 3cqw;
+    right: 3cqw;
+    padding: 1.6cqw 3cqw 1.2cqw;
+    border-radius: 1.2cqw;
+    background: var(--green);
+    color: #0d1a12;
+    font-family: var(--font-display);
+    font-size: 7cqw;
+    line-height: 1;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    box-shadow: 0 1px 3px rgb(0 0 0 / 0.4);
+  }
+  /* The plate overlaps the bottom of the photo, as printed */
   .plate {
     position: relative;
     z-index: 1;
@@ -147,7 +167,8 @@
     max-width: 100%;
     margin: -5.5cqw 0 0 -5cqw;
     padding: 2.2cqw 7cqw 1.8cqw 5cqw;
-    background: var(--red);
+    /* A deep red, not the logo's bright one: white on it reads at about 7:1 where the bright red managed 4.5 */
+    background: #a80f18;
     color: #fff;
     clip-path: polygon(0 0, 100% 0, calc(100% - 4cqw) 100%, 0 100%);
   }
@@ -158,16 +179,17 @@
     font-weight: 400;
     font-style: italic;
     line-height: 1;
-    letter-spacing: 0.01em;
+    letter-spacing: 0.02em;
     text-transform: uppercase;
     white-space: nowrap;
+    text-shadow: 0 1px 0 rgb(0 0 0 / 0.35);
   }
   .foot {
     display: flex;
     justify-content: space-between;
     align-items: baseline;
     gap: 2cqw;
-    padding: 2.6cqw 0.5cqw 0;
+    padding: 3cqw 0.5cqw 0;
     font-size: 5.4cqw;
     font-weight: 700;
     letter-spacing: 0.08em;
@@ -175,13 +197,15 @@
     text-transform: uppercase;
     white-space: nowrap;
   }
+  /* The position is the first thing a captain looks for, so it's printed big, in ink */
   .pos {
-    color: #5e5850;
+    color: #1b1917;
+    font-family: var(--font-display);
+    font-size: 9cqw;
+    font-weight: 400;
+    letter-spacing: 0.03em;
   }
   .cougar {
     color: #b3101a;
-  }
-  .tag {
-    color: #1e7a45;
   }
 </style>

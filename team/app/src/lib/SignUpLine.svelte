@@ -1,0 +1,86 @@
+<script lang="ts">
+  // Saying you're in for a tournament, on its own page: one line, not a card (the date's in the header). How many are
+  // in, whether you are, and In / Out. The card itself is for the app's Home feed.
+  import type { Tournament } from "../demo/model";
+  import { impersonating, me } from "../demo/session.svelte";
+  import { answerFor } from "../app/backend.svelte";
+  import { signupClosed } from "../demo/schedule.svelte";
+
+  let { tournament: t, canSignUp }: { tournament: Tournament; canSignUp: boolean } = $props();
+
+  const id = $derived(me().id);
+  const inIt = $derived(t.going.includes(id));
+  const waiting = $derived(t.waitlist.includes(id));
+  const out = $derived(t.out?.includes(id) ?? false);
+  const open = $derived(t.status === "open" && !signupClosed(t));
+  const full = $derived(t.capacity != null && t.going.length >= t.capacity);
+  const count = $derived(`${t.going.length}${t.capacity ? ` of ${t.capacity}` : ""} in`);
+  const where = $derived(inIt ? "You're in" : waiting ? "You're on the waitlist" : out ? "You're out" : "Are you in?");
+  let busy = $state(false);
+  async function answer(going: boolean) {
+    if (busy || impersonating() || (going ? inIt || waiting : out)) return;
+    busy = true;
+    try {
+      await answerFor(`tournament:${t.id}`, going ? "in" : "out");
+    } finally {
+      busy = false;
+    }
+  }
+</script>
+
+{#if open || t.going.length}
+  <div class="signup">
+    <span class="words">
+      <strong>{open ? where : "Sign-up's closed"}</strong>
+      <span class="hint"
+        >{count}{#if t.waitlist.length}
+          · {t.waitlist.length} waiting{/if}{#if open && t.signupClosesOn}
+          · until
+          {t.signupClosesOn}{/if}{#if full}
+          · full{/if}</span
+      >
+    </span>
+    {#if open && canSignUp}
+      <span class="answers">
+        <button
+          class="btn sm"
+          class:primary={inIt || waiting}
+          class:outline={!(inIt || waiting)}
+          disabled={busy}
+          onclick={() => answer(true)}>{full && !inIt ? "Waitlist" : "In"}</button
+        >
+        <button class="btn sm" class:primary={out} class:outline={!out} disabled={busy} onclick={() => answer(false)}
+          >Out</button
+        >
+      </span>
+    {/if}
+  </div>
+{/if}
+
+<style>
+  .signup {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s-3);
+    padding-block: var(--s-3);
+    border-block: 1px solid var(--border);
+  }
+  .words {
+    display: grid;
+    gap: 0.15rem;
+  }
+  .words strong {
+    color: var(--fg);
+    font-size: var(--text-md);
+    font-weight: 600;
+  }
+  .answers {
+    display: flex;
+    gap: var(--s-2);
+  }
+  .answers .btn {
+    min-width: 5rem;
+  }
+</style>

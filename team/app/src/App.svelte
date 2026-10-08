@@ -24,7 +24,12 @@
   import Teammates from "./pages/Teammates.svelte";
   import TournamentSeries from "./pages/TournamentSeries.svelte";
   import TournamentSettings from "./pages/TournamentSettings.svelte";
+  import TournamentTeams from "./pages/TournamentTeams.svelte";
+  import Schedule from "./pages/Schedule.svelte";
+  import TournamentTeam from "./pages/TournamentTeam.svelte";
   import Training from "./pages/Training.svelte";
+  import History from "./pages/History.svelte";
+  import Edition from "./pages/Edition.svelte";
   import TrainingSettings from "./pages/TrainingSettings.svelte";
   import Upload from "./pages/Upload.svelte";
   import Venues from "./pages/Venues.svelte";
@@ -37,8 +42,13 @@
     calendar: Calendar,
     training: Training,
     games: Games,
+    schedule: Schedule,
     standings: Standings,
+    "tournament-teams": TournamentTeams,
+    "tournament-team": TournamentTeam,
     draft: Draft,
+    history: History,
+    edition: Edition,
     game: Game,
     teammates: Teammates,
     upload: Upload,

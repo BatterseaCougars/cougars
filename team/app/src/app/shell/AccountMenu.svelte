@@ -2,7 +2,8 @@
   /**
    * Who's signed in, top right (the Gwenda ops account badge). Opens your account: profile, your tab, sign out,
    * and for admins "View as", which shows the app exactly as a member sees it (ADR 0029). Escape or a click
-   * outside closes it. On a phone the menu is a sheet from the bottom, moved to the end of the page so it sits
+   * outside closes it. No drop-down: on a desktop it's a side drawer from the right, on a phone a sheet from the
+   * bottom, both moved to the end of the page so they sit
    * above the tabs wherever the badge is placed. `card` draws the trigger as a big row with your email and roles,
    * for the top of More.
    */
@@ -14,7 +15,6 @@
     elevated,
     everydayName,
     fullRole,
-    granted,
     hasEveryday,
     impersonating,
     me,
@@ -24,11 +24,10 @@
     shownRoles,
     viewAs,
   } from "../../demo/session.svelte";
-  import { routeFor } from "../nav-routes";
-  import { routes } from "../routes.svelte";
+  import { stayIfAllowed } from "../routes.svelte";
   import { initials } from "../../lib/initials";
   import { api } from "../api";
-  import { navigate, router } from "../router.svelte";
+  import { navigate } from "../router.svelte";
   import Icon from "./Icon.svelte";
 
   let open = $state(false);
@@ -41,9 +40,9 @@
 
   let { card = false }: { card?: boolean } = $props();
 
-  // The phone sheet leaves the page for <body>: inside a page it would sit under the tabs.
+  // The sheet (phone) and the drawer (desktop) leave the page for <body>: inside it they'd sit under the tabs or bars
   function portal(node: HTMLElement) {
-    if (matchMedia("(max-width: 900px)").matches) document.body.append(node);
+    document.body.append(node);
     return { destroy: () => node.remove() };
   }
 
@@ -56,9 +55,7 @@
   function toggleMode() {
     const up = !elevated();
     setElevated(up);
-    if (up) return;
-    const here = routeFor(routes(), router.path);
-    if (here && !can(granted(), here.action)) navigate("/");
+    if (!up) stayIfAllowed();
   }
   const members = $derived(
     db.members
@@ -88,7 +85,7 @@
   function become(id: number | null) {
     viewAs(id);
     close();
-    navigate("/");
+    stayIfAllowed();
   }
   // Off this device only; the app reloads to the sign-in screen
   async function signOut() {
@@ -140,11 +137,10 @@
         <span class="card-name">{shown.name}</span>
         <span class="hint">{emailFor(shown)} · {roles.join(", ")}</span>
       </span>
-      <Icon name="chevronDown" size={18} />
+      <Icon name="chevronRight" size={18} />
     {:else}
       <span class="avatar sm" aria-hidden="true">{initials(shown.name)}</span>
       <span class="name">{shown.name.split(" ")[0]}</span>
-      <Icon name="chevronDown" size={14} />
     {/if}
   </button>
 
@@ -334,18 +330,21 @@
     height: 2.75rem;
     font-size: 1.1rem;
   }
+  /* A side drawer from the right on a desktop, over a dimmed page */
   .menu {
-    position: absolute;
+    position: fixed;
     z-index: 60;
-    top: calc(100% + 8px);
+    top: 0;
     right: 0;
+    bottom: 0;
     display: grid;
+    align-content: start;
     gap: var(--s-1);
-    width: 18.5rem;
-    padding: var(--s-2);
-    border: 1px solid var(--border-strong);
-    border-radius: var(--r-lg);
-    background: var(--surface-2);
+    width: min(24rem, 100vw);
+    overflow-y: auto;
+    padding: max(var(--s-4), env(safe-area-inset-top)) var(--s-3) var(--s-4);
+    border-left: 1px solid var(--border-strong);
+    background: var(--surface-1);
     box-shadow: var(--shadow-pop);
   }
   .who {
@@ -430,7 +429,11 @@
   }
 
   .scrim {
-    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 59;
+    background: color-mix(in srgb, var(--bg) 40%, transparent);
+    animation: fade-in var(--t) var(--ease) both;
   }
 
   /* Phones: the menu is a sheet from the bottom, above the tabs */

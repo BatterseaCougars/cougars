@@ -128,8 +128,11 @@ export interface TournamentTeam {
   captainMemberId: number | null;
   captainName: string;
   contact: string;
-  /** Members, or players from outside the club by name, in order (a draft's in the order they were picked). */
-  players: { memberId: number | null; name: string }[];
+  /**
+   * Members, or players from outside the club by name, in order (a draft's in the order they were picked). `pick`:
+   * the draft pick that brought them (its order across the whole draft); null when an admin put them on directly.
+   */
+  players: { memberId: number | null; name: string; pick?: number | null }[];
 }
 
 /** One edition, scheduled on its own: a name, a location, a date. */
@@ -173,6 +176,8 @@ export interface Tournament extends Entries {
   /** Its playoffs (copied from its series, ADR 0061), and its games once the fixtures are made. */
   playoffs: Playoff[];
   games?: TournamentGame[];
+  /** Who won its awards (ADR 0073): a team or a player on one, by award name. */
+  winners?: { award: string; teamId: number | null; memberId: number | null }[];
   /** Its teams: in pick order for a draft, else in the order they entered. */
   teams: TournamentTeam[];
 }
@@ -250,6 +255,15 @@ export interface TournamentGame {
   homeGoals: number | null;
   awayGoals: number | null;
   status: "next" | "live" | "done";
+  /** The team suggested to keep score: one sitting it out (ADR 0071); null until its teams are known. */
+  scoringTeamId?: number | null;
+  /** Who holds the scoresheet: whoever pressed Start scoring. Only they score it. */
+  keeperId?: number | null;
+  /** The game clock: time left when it last stopped, and when it was started again (null: stopped). */
+  clockLeftMs?: number | null;
+  clockStartedAt?: string | null;
+  /** Each goal as it went in, in order. */
+  goals?: { id: number; teamId: number; scorerId: number | null; assistId: number | null; atMs: number }[];
 }
 
 /** A row of the club's agenda (ADR 0062, shared/agenda.ts): what's on and when, from today. */

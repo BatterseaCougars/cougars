@@ -1,0 +1,128 @@
+<script lang="ts">
+  // A tournament's table (ADR 0061): its group games with a result, points, then goal difference, then goals for, with
+  // its own points for a win, draw and loss; the champions marked once it's decided. On the board, and on a past
+  // one's page (History).
+  import { PLAYERS } from "../demo/data";
+  import type { Tournament, TournamentType } from "../demo/model";
+  import { teamHref, teamTone } from "./team-tones";
+  import TeamCrest from "./TeamCrest.svelte";
+  import Icon from "../app/shell/Icon.svelte";
+  import { champion, table } from "./fixtures";
+
+  let { type, tournament }: { type: TournamentType; tournament: Tournament } = $props();
+
+  // This tournament's own points (ADR 0049)
+  const points = $derived({ win: tournament.pointsWin, draw: tournament.pointsDraw, loss: tournament.pointsLoss });
+  const teams = $derived(tournament.teams);
+  const group = $derived((tournament.games ?? []).filter((g) => g.stage === "group"));
+  const rows = $derived(
+    table(
+      teams.flatMap((t) => (t.id ? [t.id] : [])),
+      group,
+      points,
+    ),
+  );
+  // Who won, once it's decided: the final's winner, else the top of the table (lib/fixtures.ts)
+  const champ = $derived(
+    champion(
+      teams.flatMap((t) => (t.id ? [t.id] : [])),
+      tournament.games ?? [],
+      points,
+    ),
+  );
+  const firstName = (id: number | null) => PLAYERS.find((p) => p.id === id)?.name.split(" ")[0] ?? "";
+  const teamName = (id: number) => {
+    const t = teams.find((x) => x.id === id);
+    return t ? t.name || `Team ${firstName(t.captainMemberId)}` : "";
+  };
+</script>
+
+<div class="list">
+  <table class="num">
+    <thead><tr><th class="l">Team</th><th>P</th><th>W</th><th>D</th><th>L</th><th>GD</th><th>Pts</th></tr></thead>
+    <tbody>
+      {#each rows as r, i (r.teamId)}
+        <tr class:top={i === 0 && r.p > 0} class:champ={r.teamId === champ}>
+          <td class="l"
+            ><span class="pos">{i + 1}</span><TeamCrest
+              name={teamName(r.teamId)}
+              logo={teams.find((t) => t.id === r.teamId)?.logo ?? null}
+              tone={teamTone(teams.findIndex((t) => t.id === r.teamId))}
+              size="2.75rem"
+            /><a class="team-link" href={teamHref(type.slug, r.teamId)}>{teamName(r.teamId)}</a
+            >{#if r.teamId === champ}<span class="badge red champ-badge"><Icon name="trophy" size={13} />Champions</span
+              >{/if}</td
+          >
+          <td>{r.p}</td><td>{r.w}</td><td>{r.d}</td><td>{r.l}</td>
+          <td>{r.gf - r.ga > 0 ? "+" : ""}{r.gf - r.ga}</td>
+          <td class="pts">{r.pts}</td>
+        </tr>
+      {/each}
+    </tbody>
+  </table>
+</div>
+
+<style>
+  .champ-badge {
+    gap: 0.3rem;
+    margin-left: var(--s-3);
+    vertical-align: middle;
+  }
+  .team-link {
+    color: inherit;
+  }
+  .team-link:hover {
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  th,
+  td {
+    padding: var(--s-4) var(--s-3);
+    text-align: right;
+    white-space: nowrap;
+  }
+  td {
+    border-top: 1px solid var(--border);
+    color: var(--fg-body);
+  }
+  thead th {
+    padding-top: var(--s-3);
+    padding-bottom: var(--s-2);
+    font-size: var(--text-2xs);
+    font-weight: 600;
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--fg-muted);
+  }
+  .l {
+    text-align: left;
+    padding-left: var(--s-4);
+    color: var(--fg);
+    font-weight: 500;
+  }
+  /* The team: its place, its crest, its name, on one line */
+  .l :global(.crest) {
+    margin-right: var(--s-3);
+    vertical-align: middle;
+  }
+  .pos {
+    display: inline-block;
+    vertical-align: middle;
+    width: 1.5rem;
+    color: var(--fg-subtle);
+    font-weight: 400;
+  }
+  .top .pos {
+    color: var(--red-hot);
+    font-weight: 700;
+  }
+  .pts {
+    padding-right: var(--s-4);
+    color: var(--fg);
+    font-weight: 700;
+  }
+</style>

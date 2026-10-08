@@ -7,3 +7,27 @@ export function onTheClock(teams: number, made: number): number {
   const slot = made % teams;
   return round % 2 ? teams - 1 - slot : slot;
 }
+
+/** Enough of a tournament to say where its draft stands. */
+interface Drafting {
+  teams: { captainMemberId: number | null; players: { memberId: number | null; pick?: number | null }[] }[];
+  going: number[];
+}
+
+/**
+ * Where a draft stands: the picks made (as the server counts them: a player an admin put on by hand isn't one), how
+ * many are left to pick, and, for a team, how many picks until its turn (0: now; Infinity: the pool runs out first).
+ */
+export function draftTurn(t: Drafting, team = -1) {
+  const picks = t.teams.reduce((n, x) => n + x.players.filter((p) => typeof p.pick === "number").length, 0);
+  const onTeams = new Set(t.teams.flatMap((x) => [x.captainMemberId, ...x.players.map((p) => p.memberId)]));
+  const left = t.going.filter((id) => !onTeams.has(id)).length;
+  let until = Infinity;
+  if (team >= 0)
+    for (let k = 0; k < left; k++)
+      if (onTheClock(t.teams.length, picks + k) === team) {
+        until = k;
+        break;
+      }
+  return { picks, left, until };
+}

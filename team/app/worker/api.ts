@@ -7,13 +7,17 @@ import { handleAuth, sessionOf, type AuthEnv } from "./auth";
 import { answer, listEntries, mark, setPlayer, type EntryKind } from "./entries";
 import { closeDraft, openDraft, pick, putOnTeam, resetDraft, takeOffTeam, undoPick } from "./draft";
 import { makeFixtures, scoreGame } from "./fixtures";
+import { addGoal, clockGame, holdScoresheet, removeGoal, undoGoal } from "./scoring";
 import { readUsage } from "./usage";
+import { readSettings, saveSettings } from "./settings";
+import { setWinners } from "./awards";
 import { readAgenda } from "../../../shared/agenda";
 import { HttpError, body, json, sameOrigin } from "./http";
 import { LIMITS, addressOf, enforce } from "./limits";
 import { bootstrapTag, buildOf, bumpDataVersion, dataVersion, notModified, tagged } from "./version";
 import {
   actionsOf,
+  addMember,
   attendanceOf,
   createRole,
   firstAdmin,
@@ -114,9 +118,12 @@ const SLICES = {
       ),
     ),
   tournamentTypes: (c: Ctx) => listTournamentTypes(c.env.DB),
-  tournaments: async (c: Ctx) => withEntries(c.env.DB, "tournament", await listTournaments(c.env.DB)),
+  tournaments: async (c: Ctx) =>
+    draftSeenBy(c, await withEntries(c.env.DB, "tournament", await listTournaments(c.env.DB))),
   clubEvents: async (c: Ctx) => withEntries(c.env.DB, "event", await listClubEvents(c.env.DB, c.now)),
   quips: (c: Ctx) => listQuips(c.env.DB),
+  // How often live pages check for updates (ADR 0072)
+  settings: (c: Ctx) => readSettings(c.env.DB),
   // What's on from today (ADR 0062). A tournament's draft night is for its captains and whoever runs the draft.
   agenda: async (c: Ctx) => {
     const rows = await readAgenda(c.env.DB, c.today);
@@ -135,6 +142,33 @@ const SLICES = {
   },
 };
 export type Slice = keyof typeof SLICES;
+
+/**
+ * A draft is for its captains and whoever runs it (ADR 0070): who went when is nobody else's business. Anyone else
+ * sees the captains and no players while it's on; once it's closed, the teams, with no pick numbers and in an order
+ * that says nothing about them (a hash of the team and player, so it's the same every time they look).
+ */
+function draftSeenBy<T extends Awaited<ReturnType<typeof listTournaments>>[number]>(c: Ctx, tournaments: T[]): T[] {
+  // Whoever runs the draft, and admins who edit the teams, see it all
+  if (can(c.actions, "run:Draft") || can(c.actions, "manage:Tournament")) return tournaments;
+  const jumble = (teamId: number, memberId: number | null, name: string) =>
+    Math.imul(teamId * 31 + (memberId ?? name.length), 2654435761) >>> 0;
+  return tournaments.map((t) => {
+    if (t.kind !== "draft" || t.teams.some((team) => team.captainMemberId === c.memberId)) return t;
+    const closed = t.draftState === "closed";
+    return {
+      ...t,
+      teams: t.teams.map((team) => ({
+        ...team,
+        players: closed
+          ? team.players
+              .map((p) => ({ ...p, pick: null }))
+              .sort((a, b) => jumble(team.id, a.memberId, a.name) - jumble(team.id, b.memberId, b.name))
+          : [],
+      })),
+    };
+  });
+}
 
 /** Anything on the calendar changed: the agenda comes back with it (ADR 0062). */
 const SCHEDULE: readonly Slice[] = ["series", "sessions", "venues", "tournamentTypes", "tournaments", "clubEvents"];
@@ -260,6 +294,15 @@ export const ROUTES: Route[] = [
     handle: async (c) => (await setContact(c.env.DB, id(c), await body(c.request), c.actions), ok()),
   },
   {
+    method: "POST",
+    path: /^\/api\/members$/,
+    action: "manage:Member",
+    changes: ["members"],
+    // { name, email, position }: in the club now, and emailed a link to the app (ADR 0069)
+    handle: async (c) =>
+      json(await addMember(c.env, await body(c.request), new URL(c.request.url).origin, new Date(c.now)), 201),
+  },
+  {
     method: "PUT",
     path: /^\/api\/members\/(\d+)$/,
     action: "manage:Member",
@@ -362,6 +405,22 @@ export const ROUTES: Route[] = [
     // Today's use of the club's free Cloudflare allowance (ADR 0059)
     handle: async (c) => json(await readUsage(c.env, new Date(c.now))),
   },
+  {
+    method: "PUT",
+    path: /^\/api\/tournaments\/(\d+)\/winners$/,
+    action: "manage:Tournament",
+    changes: ["tournaments"],
+    // { winners: [{ award, teamId | memberId }] }: who won the tournament's awards (ADR 0073)
+    handle: async (c) => (await setWinners(c.env.DB, id(c), await body(c.request)), ok()),
+  },
+  {
+    method: "PUT",
+    path: /^\/api\/settings$/,
+    action: "manage:Settings",
+    changes: ["settings"],
+    // { liveRefreshSeconds }: how often live pages check for updates (ADR 0072)
+    handle: async (c) => (await saveSettings(c.env.DB, await body(c.request)), ok()),
+  },
   ...ENTRY_ROUTES,
   {
     method: "POST",
@@ -397,6 +456,52 @@ export const ROUTES: Route[] = [
     changes: ["tournaments"],
     // A game's final score; the last group result fills the playoffs
     handle: async (c) => (await scoreGame(c.env.DB, id(c), Number(c.params[1]), await body(c.request)), ok()),
+  },
+  // Scoring a game as it's played (ADR 0071): whoever holds the scoresheet
+  {
+    method: "POST",
+    path: /^\/api\/tournaments\/(\d+)\/games\/(\d+)\/scorer$/,
+    action: "authenticated",
+    changes: ["tournaments"],
+    // { action: "claim" | "release" }: Start scoring, or let it go
+    handle: async (c) => (await holdScoresheet(c.env.DB, id(c), Number(c.params[1]), await body(c.request), c), ok()),
+  },
+  {
+    method: "POST",
+    path: /^\/api\/tournaments\/(\d+)\/games\/(\d+)\/clock$/,
+    action: "authenticated",
+    changes: ["tournaments"],
+    // { action: "start" | "pause" | "end" }
+    handle: async (c) => (
+      await clockGame(c.env.DB, id(c), Number(c.params[1]), await body(c.request), c, new Date(c.now)),
+      ok()
+    ),
+  },
+  {
+    method: "POST",
+    path: /^\/api\/tournaments\/(\d+)\/games\/(\d+)\/goals$/,
+    action: "authenticated",
+    changes: ["tournaments"],
+    // { teamId, scorerId?, assistId? }
+    handle: async (c) => (
+      await addGoal(c.env.DB, id(c), Number(c.params[1]), await body(c.request), c, new Date(c.now)),
+      ok()
+    ),
+  },
+  {
+    method: "DELETE",
+    path: /^\/api\/tournaments\/(\d+)\/games\/(\d+)\/goals\/last$/,
+    action: "authenticated",
+    changes: ["tournaments"],
+    handle: async (c) => (await undoGoal(c.env.DB, id(c), Number(c.params[1]), c), ok()),
+  },
+  {
+    method: "DELETE",
+    path: /^\/api\/tournaments\/(\d+)\/games\/(\d+)\/goals\/(\d+)$/,
+    action: "authenticated",
+    changes: ["tournaments"],
+    // An admin takes any goal off a finished game (scoring.ts decides who)
+    handle: async (c) => (await removeGoal(c.env.DB, id(c), Number(c.params[1]), Number(c.params[2]), c), ok()),
   },
   {
     method: "POST",

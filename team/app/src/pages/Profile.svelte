@@ -4,7 +4,7 @@
   import { POSITIONS, emailFor, phoneFor, type Position } from "../demo/data";
   import { fullRole, impersonating, me, realGranted, session, setElevated, shownRoles } from "../demo/session.svelte";
   import { db } from "../demo/store.svelte";
-  import Select from "../lib/Select.svelte";
+  import Choice from "../lib/Choice.svelte";
   import { initials } from "../lib/initials";
   import { saveEverydayRole, saveProfile } from "../app/backend.svelte";
 
@@ -124,7 +124,7 @@
       <h2 class="section-title">Everyday role</h2>
       <label class="field">
         The app opens as
-        <Select
+        <Choice
           id="everyday-role"
           value={session.everyday === null ? "full" : String(session.everyday)}
           options={everydayOptions}

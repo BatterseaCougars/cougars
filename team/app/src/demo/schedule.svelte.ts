@@ -1,5 +1,6 @@
 // Reading the schedule: sessions resolved against their series, the next session or tournament, and the
 // calendar as one list. Everything here reads `db`, so pages that use it update when an admin edits a series.
+import { editionState, latestOf, previousOf } from "../lib/edition";
 import { formatDayDate, formatTime, londonISO, londonToday } from "../lib/dates";
 import type { AgendaRow, Bookable, OneOff, Tournament, TournamentType, TrainingSeries, TrainingSession } from "./model";
 import { db } from "./store.svelte";
@@ -102,10 +103,30 @@ export function nextSession(series: TrainingSeries, today = londonToday()): Trai
 }
 
 /** The tournament to show for a type: the live one, else the next, else the most recent. */
-export function currentTournament(typeId: number, today = londonToday()): Tournament | undefined {
-  const mine = db.tournaments.filter((t) => t.typeId === typeId).sort((a, b) => a.heldOn.localeCompare(b.heldOn));
-  return mine.find((t) => t.status === "live") ?? mine.find((t) => t.heldOn >= today) ?? mine.at(-1);
-}
+/** A series' latest (lib/edition.ts latestOf): what its pages open on, and what the app's Home teases. */
+export const latestTournament = (typeId: number, today = londonToday()) =>
+  latestOf(
+    db.tournaments.filter((t) => t.typeId === typeId),
+    today,
+  );
+
+/** What a series' pages show: its latest (History has the rest, each on a page of its own). */
+export const currentTournament = (typeId: number, today = londonToday()) => latestTournament(typeId, today);
+
+/** Its past ones, played, other than the one its pages show: newest first (History). */
+export const pastTournaments = (typeId: number) => {
+  const now = latestTournament(typeId);
+  return db.tournaments
+    .filter((t) => t.typeId === typeId && t.id !== now?.id && editionState(t) === "done")
+    .sort((a, b) => b.heldOn.localeCompare(a.heldOn));
+};
+
+/** The last one played before this (lib/edition.ts previousOf). */
+export const previousTournament = (t: Tournament) =>
+  previousOf(
+    db.tournaments.filter((x) => x.typeId === t.typeId),
+    t,
+  );
 
 const oneOffBookable = (o: OneOff): Bookable => ({
   key: `oneoff:${o.id}`,

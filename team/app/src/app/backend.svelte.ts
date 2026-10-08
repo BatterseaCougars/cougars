@@ -18,6 +18,7 @@ import {
   TOURNAMENT_TYPES,
   VENUES,
   AGENDA,
+  SETTINGS,
 } from "../demo/data";
 import type { Position, Slices } from "../demo/data";
 import type { Quip, QuipKind } from "../lib/quips";
@@ -62,6 +63,10 @@ const COPY: Record<keyof Slices, () => void> = {
   },
   agenda: () => {
     db.agenda = structuredClone(AGENDA);
+  },
+  // Only when it's changed: live pages' checks follow it, and would otherwise start again after every refresh
+  settings: () => {
+    if (db.settings.liveRefreshSeconds !== SETTINGS.liveRefreshSeconds) db.settings = structuredClone(SETTINGS);
   },
 };
 const copyAll = () => Object.values(COPY).forEach((copy) => copy());
@@ -169,6 +174,10 @@ export interface AttendanceRow {
 }
 export const attendanceOf = (memberId: number, year?: string) =>
   api<AttendanceRow[]>("GET", `/api/members/${memberId}/attendance${year ? `?year=${year}` : ""}`);
+/** How often live pages check for updates, for everyone (ADR 0072). */
+export const saveSettings = (settings: { liveRefreshSeconds: number }) =>
+  save(() => api("PUT", "/api/settings", settings));
+
 /** Home's quips. */
 export const addQuip = (kind: QuipKind, text: string) =>
   save(() => api<{ id: number }>("POST", "/api/quips", { kind, text }), "Added");
@@ -178,6 +187,22 @@ export const deleteQuip = (id: number) => save(() => api("DELETE", `/api/quips/$
 /** The register: here or not. */
 export const markHere = (sessionId: number, memberId: number, here: boolean) =>
   save(() => api("POST", `/api/sessions/${sessionId}/register`, { memberId, here }), "");
+
+/** An admin adds someone to the club; the app emails them a link to itself (ADR 0069). */
+export const addMember = async (name: string, email: string, position: string) => {
+  const r = await save(
+    () => api<{ id: number; emailed: boolean }>("POST", "/api/members", { name, email, position }),
+    "",
+  );
+  if (r)
+    say(
+      r.emailed
+        ? `${name.split(" ")[0]}'s in. We've emailed them a link.`
+        : `${name.split(" ")[0]}'s in, but the email didn't go: send them the link yourself.`,
+      !r.emailed,
+    );
+  return r;
+};
 
 export const saveMember = (m: MemberRow) =>
   save(() =>
@@ -295,7 +320,7 @@ export const draftPick = (tournamentId: number, memberId: number) =>
 /** Whoever's running the draft takes back the last pick. */
 export const undoDraftPick = (tournamentId: number) =>
   save(() => api("DELETE", `/api/tournaments/${tournamentId}/draft/picks/last`), "Pick undone");
-/** Whoever runs the draft starts it again: the picks (and any fixtures) go; sign-ups and captains stay. */
+/** Whoever runs the draft starts it again: the picks go; sign-ups, captains and fixtures stay (ADR 0066). */
 export const resetDraft = (tournamentId: number) =>
   save(() => api("POST", `/api/tournaments/${tournamentId}/draft/reset`, {}), "The draft is reset");
 /** An admin puts a member on a team directly (a replacement): moved from another, or put in the tournament. */
@@ -319,6 +344,38 @@ export const makeFixtures = (tournamentId: number) =>
 /** A game's final score; the last group result fills the playoffs. */
 export const scoreGame = (tournamentId: number, gameId: number, homeGoals: number, awayGoals: number) =>
   save(() => api("PUT", `/api/tournaments/${tournamentId}/games/${gameId}`, { homeGoals, awayGoals }), "Result saved");
+// Scoring a game as it's played (ADR 0071): whoever holds the scoresheet
+const gamePath = (tournamentId: number, gameId: number) => `/api/tournaments/${tournamentId}/games/${gameId}`;
+/** Start scoring (take the scoresheet), or let it go (whoever holds it, or an admin). */
+export const holdScoresheet = (tournamentId: number, gameId: number, action: "claim" | "release") =>
+  save(
+    () => api("POST", `${gamePath(tournamentId, gameId)}/scorer`, { action }),
+    action === "claim" ? "You're keeping score" : "Scoresheet's free",
+  );
+/** The clock: start (or start again), pause, or full time (the score's the result). */
+export const clockGame = (tournamentId: number, gameId: number, action: "start" | "pause" | "end") =>
+  save(() => api("POST", `${gamePath(tournamentId, gameId)}/clock`, { action }), action === "end" ? "Full time" : "");
+/** Who won a tournament's awards, the whole list (ADR 0073). */
+export const setWinners = (
+  tournamentId: number,
+  winners: { award: string; teamId: number | null; memberId: number | null }[],
+) => save(() => api("PUT", `/api/tournaments/${tournamentId}/winners`, { winners }), "Awards saved");
+/** The time left on the clock, by the scorekeeper's watch: paused, or running on from there. */
+export const setGameClock = (tournamentId: number, gameId: number, leftMs: number) =>
+  save(() => api("POST", `${gamePath(tournamentId, gameId)}/clock`, { action: "set", leftMs }), "Clock set");
+/** A goal as it goes in: its team, who scored, who assisted. */
+export const addGoal = (
+  tournamentId: number,
+  gameId: number,
+  goal: { teamId: number; scorerId: number | null; assistId: number | null; atMs?: number | null },
+) => save(() => api("POST", `${gamePath(tournamentId, gameId)}/goals`, goal), "Goal");
+/** Any goal off a finished game: an admin putting the result right. */
+export const removeGoal = (tournamentId: number, gameId: number, goalId: number) =>
+  save(() => api("DELETE", `${gamePath(tournamentId, gameId)}/goals/${goalId}`), "Goal taken off");
+/** The last goal comes off. */
+export const undoGoal = (tournamentId: number, gameId: number) =>
+  save(() => api("DELETE", `${gamePath(tournamentId, gameId)}/goals/last`), "Goal taken back");
+
 export const createTournament = (t: Tournament) =>
   save(() => api<{ id: number }>("POST", "/api/tournaments", tournamentBody(t)), "Date added");
 export const updateTournament = (t: Tournament) =>

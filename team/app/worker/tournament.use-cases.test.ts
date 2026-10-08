@@ -355,6 +355,41 @@ describe("a tournament, from setting it up to the draft", () => {
       expect((await dana.call("PUT", `/api/tournaments/${t.id}`, t, { now: DRAFT_DAY })).status).toBe(409);
     });
 
+    it("members don't see the picks while the draft is on; once it closes they see the teams, in no particular order", async () => {
+      const { id, dana, cara, cole, draft, pick, ids } = await draftOpen();
+      for (const [who, m] of [
+        [cara, ids.Reg],
+        [cole, ids.Mo],
+        [cole, ids.Ash],
+        [cara, ids.Bo],
+      ] as const)
+        expect((await pick(who, m)).status).toBe(200);
+      const gil = await member("gil@example.com");
+      const seen = async (as: { sees: (now?: Date) => Promise<Json> }) =>
+        ((await as.sees(DRAFT_DAY)).tournaments.find((x: Json) => x.id === id).teams as Json[]).map((t) => ({
+          captain: t.captainMemberId,
+          players: t.players,
+        }));
+      // On: a member sees the captains, nobody on their teams yet
+      expect(await seen(gil)).toEqual([
+        { captain: ids.Cara, players: [] },
+        { captain: ids.Cole, players: [] },
+      ]);
+      // The captains and whoever runs the draft see every pick, in order
+      expect((await seen(cara))[0].players.map((p: Json) => p.pick)).toEqual([1, 4]);
+      expect((await seen(dana))[1].players.map((p: Json) => p.memberId)).toEqual([ids.Mo, ids.Ash]);
+
+      expect((await draft(dana, "close")).status).toBe(200);
+      const teams = await seen(gil);
+      // Closed: the teams, with no pick numbers to say who went first; the same order every time they look
+      expect(teams.map((t) => t.players.map((p: Json) => p.memberId).sort())).toEqual([
+        [ids.Reg, ids.Bo].sort(),
+        [ids.Mo, ids.Ash].sort(),
+      ]);
+      expect(teams.flatMap((t) => t.players).every((p: Json) => p.pick === null)).toBe(true);
+      expect(await seen(gil)).toEqual(teams);
+    });
+
     it("an admin reopens a closed draft: the picks stay, and the captains carry on where they left off", async () => {
       const { dana, id, cara, cole, draft, pick, tournament, teams, ids } = await draftOpen();
       expect((await pick(cara, ids.Reg)).status).toBe(200);
@@ -427,6 +462,24 @@ describe("a tournament, from setting it up to the draft", () => {
         expect((await onTeam(dana, id, teamIds[0], ids.Dana)).status).toBe(200);
         expect((await tournament()).going).toContain(ids.Dana);
         expect((await teams())[0]).toEqual([ids.Dana]);
+      });
+
+      it("each player carries the pick that brought them; one an admin puts on mid-draft has none and takes no turn", async () => {
+        const s = await draftOpen();
+        const teamIds = (await s.tournament()).teams.map((t: Json) => t.id) as number[];
+        expect((await s.pick(s.cara, s.ids.Reg)).status).toBe(200);
+        expect((await onTeam(s.dana, s.id, teamIds[0], s.ids.Ash)).status).toBe(200);
+        // Still Cole's turn: Ash went on by hand, not as a pick
+        expect((await s.pick(s.cara, s.ids.Mo)).status).toBe(409);
+        expect((await s.pick(s.cole, s.ids.Mo)).status).toBe(200);
+        // Moved to Cole's team, Reg keeps pick 1
+        expect((await onTeam(s.dana, s.id, teamIds[1], s.ids.Reg)).status).toBe(200);
+        const [cara, cole] = (await s.tournament()).teams as { players: Json[] }[];
+        expect(cara.players).toEqual([{ memberId: s.ids.Ash, name: "", pick: null }]);
+        expect(cole.players).toEqual([
+          { memberId: s.ids.Reg, name: "", pick: 1 },
+          { memberId: s.ids.Mo, name: "", pick: 2 },
+        ]);
       });
 
       it("a captain stays on their own team, and only an admin edits teams", async () => {

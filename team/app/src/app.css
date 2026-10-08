@@ -21,11 +21,21 @@
   src: url("./assets/fonts/Anton.woff2") format("woff2");
   font-display: swap;
 }
+/* The Kumite's kanji (Bloodsport): Noto Serif JP Black, cut to the dozen characters the motif uses (lib/motif.ts),
+   under 5 KB. Add a character there, cut the font again with it (Google Fonts' text= subset) */
+@font-face {
+  font-family: "Kumite Kanji";
+  src: url("./assets/fonts/KumiteKanji.woff2") format("woff2");
+  font-weight: 900;
+  font-display: swap;
+  unicode-range: U+512a, U+52dd, U+5408, U+624b, U+62f3, U+6b66, U+6c7a, U+7d44, U+8840, U+8a66, U+8cde, U+95d8;
+}
 
 :root {
   /* ─── Type ─── */
   --font: "Inter Tight", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-display: "Anton", Impact, sans-serif;
+  --font-kanji: "Kumite Kanji", "Noto Serif JP", "Hiragino Mincho ProN", "Yu Mincho", serif;
   --num: "tnum", "ss01";
 
   --text-2xs: 0.6875rem; /* eyebrows, tab labels */
@@ -155,6 +165,8 @@
 }
 
 html {
+  /* The display face comes in one weight: never let the browser fake a bolder one (it smears the numbers) */
+  font-synthesis-weight: none;
   background: var(--bg);
   -webkit-text-size-adjust: 100%;
 }
@@ -355,9 +367,18 @@ h3 {
   margin: 0 auto;
   padding: var(--s-5) var(--gutter) var(--s-10);
 }
-/* A page with a data grid on show takes the width it needs */
+/* A page with a data grid on show takes the width it needs; so does every tournament page (its home, Fight card,
+   The board, Teams, Draft), all the same width so their header and tabs never move between them */
 .page.wide {
   max-width: 76rem;
+}
+/* ...but its content, and its header with it, keep a readable width, from the same left edge: the tabs don't move,
+   and an action at the end of the tabs (Manage) lines up with the cards' right edge. Only the Draft uses the whole
+   width. (The header's wrapper takes no box of its own, so the rule reaches through it) */
+.page.wide.reading > :not(.tone),
+.page.wide.reading > .tone > * {
+  width: 100%;
+  max-width: 52rem;
 }
 /* Filter chips: a solid fill, no outline. In a row under a title, wrapping in the phone's Filters sheet, and
    stacked in the desktop aside (PageHeader restyles them there). Each sets --tone for its icon and its "on" fill. */
@@ -597,12 +618,20 @@ button.row:hover:not(:disabled) {
 .btn.primary:hover:not(:disabled) {
   background: var(--primary-hover);
 }
+/* The secondary button: a clear cream outline on nothing, so it reads as a button on the dark panels (a grey fill on
+   a grey panel didn't). Hover warms it a touch */
 .btn.outline {
-  border-color: var(--border-strong);
-  background: color-mix(in srgb, var(--surface-2) 60%, transparent);
+  border: 1.5px solid color-mix(in srgb, var(--fg) 60%, transparent);
+  background: transparent;
+  color: var(--fg);
 }
 .btn.outline:hover:not(:disabled) {
-  background: var(--surface-3);
+  border-color: var(--fg);
+  background: color-mix(in srgb, var(--fg) 7%, transparent);
+}
+.btn.outline:disabled {
+  border-color: var(--border-strong);
+  background: transparent;
 }
 .btn.ghost {
   color: var(--fg-muted);
@@ -843,10 +872,9 @@ input[type="checkbox"] {
 }
 
 /* Demo scaffolding note: dashed, quiet */
+/* A quiet line on the page: no box (a whole page with nothing in it uses lib/EmptyState) */
 .note {
-  padding: var(--s-3) var(--s-4);
-  border: 1px dashed var(--border-strong);
-  border-radius: var(--r-md);
+  margin: 0;
   color: var(--fg-muted);
   font-size: var(--text-sm);
   line-height: 1.4;

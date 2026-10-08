@@ -19,6 +19,7 @@ export const ACTIONS = {
   "run:Draft": "Run a Kumite draft",
   "pick:Draft": "Pick in a draft (captains only)",
   "read:Usage": "See the club's free Cloudflare allowance",
+  "manage:Settings": "Set how often live pages check for updates",
   "upload:Photo": "Upload photos",
   "upload:Video": "Upload videos (on YouTube)",
   "publish:Media": "Publish photos and videos",

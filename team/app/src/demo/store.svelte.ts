@@ -13,6 +13,7 @@ import {
   ROLES,
   SERIES,
   SESSIONS,
+  SETTINGS,
   TEAMS,
   TOURNAMENTS,
   TOURNAMENT_TYPES,
@@ -32,6 +33,8 @@ export const db = $state({
   members: structuredClone(MEMBERS),
   fees: structuredClone(FEES),
   quips: structuredClone(QUIPS),
+  /** How often live pages check for updates (ADR 0072). */
+  settings: structuredClone(SETTINGS),
   /** Published teams, by session id. */
   teams: structuredClone(TEAMS) as Record<number, Team[]>,
   /** One person for one session or tournament, paid or not (ADR 0032). */

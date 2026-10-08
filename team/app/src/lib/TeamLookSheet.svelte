@@ -1,5 +1,6 @@
 <script lang="ts">
-  // A team's name and logo, in a sheet over the page (its captain or an admin, ADR 0065). No logo: its initials.
+  // A team's name and logo, in a sheet over the page (its captain or an admin, ADR 0065). No name: "Team Dan", after
+  // its captain. No logo: its initials.
   import Sheet from "./Sheet.svelte";
   import TeamCrest from "./TeamCrest.svelte";
   import { shrinkLogo } from "./logo";
@@ -11,6 +12,7 @@
     name,
     logo,
     fallback,
+    focus = "logo",
     open = $bindable(false),
   }: {
     tournamentId: number;
@@ -19,6 +21,8 @@
     logo: string | null;
     /** What it's called with no name of its own: "Team Dan". */
     fallback: string;
+    /** What it opened for: renaming puts you in the name. */
+    focus?: "name" | "logo";
     open?: boolean;
   } = $props();
 
@@ -42,10 +46,16 @@
   }
 </script>
 
-<Sheet bind:open title="The team's look">
+<Sheet bind:open title="Name and logo">
   <form id="team-look" class="form" onsubmit={save}>
+    <label class="field">
+      <span>Team name</span>
+      <!-- svelte-ignore a11y_autofocus -->
+      <input class="input" maxlength="40" placeholder={fallback} autofocus={focus === "name"} bind:value={form.name} />
+      <span class="hint">Leave it empty and you're {fallback}.</span>
+    </label>
     <div class="look">
-      <TeamCrest name={form.name.trim() || fallback} logo={form.logo} size="4.5rem" onclick={() => file?.click()} />
+      <TeamCrest name={form.name.trim() || fallback} logo={form.logo} size="6rem" onclick={() => file?.click()} />
       <div class="run">
         <button type="button" class="btn sm outline" onclick={() => file?.click()}
           >{form.logo ? "Change the logo" : "Add a logo"}</button
@@ -63,10 +73,6 @@
       />
     </div>
     {#if error}<p class="error small">{error}</p>{/if}
-    <label class="field">
-      <span>Name <span class="hint">· optional</span></span>
-      <input class="input" maxlength="40" placeholder={fallback} bind:value={form.name} />
-    </label>
   </form>
   {#snippet footer()}
     <button class="btn primary" type="submit" form="team-look">Save</button>

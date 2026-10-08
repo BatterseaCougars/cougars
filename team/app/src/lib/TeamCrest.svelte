@@ -1,19 +1,19 @@
 <script lang="ts">
-  // A team's crest: its logo, or its initials on a tile in the team's colour. With `onclick` it's a button (its captain or an admin
+  // A team's crest: its logo, or its initials on a grey tile in the team's colour. With `onclick` it's a button (its captain or an admin
   // changes the look).
   import { teamInitials } from "./logo";
 
   let {
     name,
     logo,
-    size = "2.25rem",
+    size = "2.75rem",
     tone,
     onclick,
   }: {
     name: string;
     logo: string | null;
     size?: string;
-    /** The team's colour (team-tones.ts): its initials' tile is tinted with it. */
+    /** The team's colour (team-tones.ts): its initials are in it; the tile stays grey. */
     tone?: string;
     onclick?: () => void;
   } = $props();
@@ -46,7 +46,7 @@
     overflow: hidden;
     border: 0;
     border-radius: var(--r-md);
-    background: color-mix(in srgb, var(--crest, var(--fg-subtle)) 26%, var(--surface-2));
+    background: var(--surface-3);
     color: var(--crest, var(--fg));
     font-size: calc(var(--size) * 0.42);
     line-height: 1;

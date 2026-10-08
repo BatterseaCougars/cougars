@@ -1,7 +1,7 @@
 // The route tree, built from the schedule (ADR 0030): one page per training series, and a section per tournament
-// type with its Games, Standings and Draft. Admins add a training or a tournament type in Settings and it appears
-// here. Phone tabs are derived from the same tree (mobile-nav.ts), so the two can't drift apart. Each route
-// declares the action it needs (ADR 0024).
+// type with its home (named for it: The Kumite), Fight card, The board, Teams and Draft. Admins add a training or a
+// tournament type in Settings and it appears here. Phone tabs are derived from the same tree (mobile-nav.ts), so the
+// two can't drift apart. Each route declares the action it needs (ADR 0024).
 import type { Requirement } from "../access/actions";
 import type { IconName } from "./shell/icons";
 
@@ -31,6 +31,8 @@ export interface Route {
   fold?: string;
   /** Reached from a page, not from any menu (the register). */
   hidden?: boolean;
+  /** A hidden page that belongs to one of its section's pages: that one's lit in the strip (a team, under Teams). */
+  under?: string;
   /** Full-screen: hides the tabs and shows its own back bar (the game clock). */
   focus?: boolean;
 }
@@ -55,6 +57,14 @@ export interface NavConfig {
     active: boolean;
     /** The captains of its next tournament: they see its Draft page, as do those running the draft. */
     captains?: number[];
+    /** You're on one of its next tournament's teams (as far as you can see: a draft's only once it's closed). */
+    onTeam?: boolean;
+    /** Its tournaments' games, the past ones' too, each with a page of its own (the live score, the scoresheet). */
+    games?: number[];
+    /** Its tournaments' teams, the past ones' too, each with a page of its own; `mine`: you're on it. */
+    teams?: { id: number; mine: boolean }[];
+    /** Its past tournaments (played, not the one its pages show), newest first: History, and a page each. */
+    past?: number[];
   }[];
   /** Who's signed in (or being viewed as). */
   me?: number;
@@ -265,20 +275,68 @@ export function buildRoutes(config: NavConfig): Route[] {
           ...base,
           id: `games:${t.id}`,
           path: `/tournaments/${t.slug}`,
-          name: "Games",
+          // Named for the tournament itself: "The Kumite"
+          name: `The ${t.shortName}`,
           page: "games",
           action: "read:Event",
           icon: "trophy",
         },
         {
           ...base,
+          id: `schedule:${t.id}`,
+          path: `/tournaments/${t.slug}/schedule`,
+          name: "Fight card",
+          page: "schedule",
+          action: "read:Event",
+          // The Kumite's gong starts every fight (lib/motif.ts)
+          icon: t.slug === "kumite" ? "gong" : "calendar",
+        },
+        {
+          ...base,
           id: `standings:${t.id}`,
           path: `/tournaments/${t.slug}/standings`,
-          name: "Standings",
+          name: "The board",
           page: "standings",
           action: "read:Event",
           icon: "list",
         },
+        {
+          ...base,
+          id: `teams:${t.id}`,
+          path: `/tournaments/${t.slug}/teams`,
+          name: "Teams",
+          page: "tournament-teams",
+          // Everyone's: a draft's teams once it closes (ADR 0070); where an admin edits a team (ADR 0066, 0068)
+          action: "read:Event",
+          icon: "teams",
+        },
+        // Each team's page, reached from wherever the team's shown; yours is lit as My team
+        ...(t.teams ?? []).map((team): Route => ({
+          ...base,
+          id: `team:${t.id}:${team.id}`,
+          path: `/tournaments/${t.slug}/teams/${team.id}`,
+          name: "Team",
+          page: "tournament-team",
+          params: { typeId: t.id, teamId: team.id },
+          action: "read:Event",
+          icon: "teams",
+          hidden: true,
+          under: team.mine ? `my-team:${t.id}` : `teams:${t.id}`,
+        })),
+        // Your team: whoever's on one, captains included; where the captain makes it theirs
+        ...(t.onTeam
+          ? [
+              {
+                ...base,
+                id: `my-team:${t.id}`,
+                path: `/tournaments/${t.slug}/my-team`,
+                name: "My team",
+                page: "tournament-team",
+                action: "read:Event" as const,
+                icon: "user" as const,
+              },
+            ]
+          : []),
         ...(t.kind === "draft"
           ? [
               {
@@ -293,16 +351,46 @@ export function buildRoutes(config: NavConfig): Route[] {
               },
             ]
           : []),
-        {
+        // History: every past one with its result, and each one's page (the champions, every fight, the board, the
+        // awards), back to the list (ADR 0074)
+        ...(t.past?.length
+          ? [
+              {
+                ...base,
+                id: `history:${t.id}`,
+                path: `/tournaments/${t.slug}/history`,
+                name: "History",
+                page: "history",
+                action: "read:Event" as const,
+                icon: "medal" as const,
+              },
+              ...t.past.map((tournamentId): Route => ({
+                ...base,
+                id: `edition:${t.id}:${tournamentId}`,
+                path: `/tournaments/${t.slug}/history/${tournamentId}`,
+                name: "History",
+                page: "edition",
+                params: { typeId: t.id, tournamentId },
+                action: "read:Event",
+                icon: "medal",
+                hidden: true,
+                under: `history:${t.id}`,
+              })),
+            ]
+          : []),
+        // Each game full screen: its live score for anyone, its scoresheet for the team keeping score (ADR 0071)
+        ...(t.games ?? []).map((gameId): Route => ({
           ...base,
-          id: `game:${t.id}`,
-          path: `/tournaments/${t.slug}/game`,
-          name: "Game clock",
+          id: `game:${t.id}:${gameId}`,
+          path: `/tournaments/${t.slug}/games/${gameId}`,
+          name: "Game",
           page: "game",
-          action: "score:Match",
+          params: { typeId: t.id, gameId },
+          action: "read:Event",
           icon: "clock",
           focus: true,
-        },
+          hidden: true,
+        })),
       ];
     }),
     ...STATIC_TAIL,

@@ -135,7 +135,7 @@ export async function sessionOf(
 }
 
 /** A member's bank reference (ADR 0038), unless they have one. */
-async function giveReference(db: D1Database, memberId: number, name: string) {
+export async function giveReference(db: D1Database, memberId: number, name: string) {
   const { sql, candidates } = assignReferenceSql(name, "id = ?");
   await run(db, sql, [...candidates, memberId]);
 }
@@ -193,7 +193,8 @@ export async function handleAuth(
 }
 
 const EMAIL = /^[^\s@,<>]+@[^\s@,<>]+\.[^\s@,<>]+$/;
-function email(o: Record<string, unknown>): string {
+/** An email address from a request body: trimmed, lower case, and shaped like one. */
+export function email(o: Record<string, unknown>): string {
   const e = text(o, "email", { max: 254 }).toLowerCase();
   if (!EMAIL.test(e)) throw new HttpError(400, "That doesn't look like an email address.");
   return e;

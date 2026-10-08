@@ -1,7 +1,7 @@
 <script lang="ts">
   // The shell. Desktop: the page has the whole screen; a dock of the main sections floats mid-left, the brand
   // mark top-left, your badge top-right, the wordmark and the London clock in the bottom corners. A section's
-  // pages (Games, Standings, Draft) sit in the page header's toolbar row, which pins as the page scrolls
+  // pages (The Kumite, Fight card, Draft) sit in the page header's toolbar row, which pins as the page scrolls
   // (PageHeader). Phones: five tabs at the bottom, and a slim bar along the top with the page's name (or its
   // section's strip of pages), its actions, and its filters: inline when they fit, otherwise a Filters button that
   // opens them in a sheet. Home has neither: it starts with the greeting.
@@ -10,7 +10,7 @@
   import { granted, impersonating, me, realMember, rolesOf, viewAs } from "../../demo/session.svelte";
   import { stripRoutes, tabHref, tabRoutes } from "../mobile-nav";
   import { type Route, type TabId } from "../nav-routes";
-  import { folds, routes, tabs } from "../routes.svelte";
+  import { folds, routes, stayIfAllowed, tabs } from "../routes.svelte";
   import { navigate, router } from "../router.svelte";
   import { fly } from "svelte/transition";
   import { easeOut, eject, fadeMs, flyMs, prefersReducedMotion, zoom } from "../motion";
@@ -153,7 +153,7 @@
   // The desktop header shows the section's pages as pills in its toolbar row
   $effect(() => {
     pageBar.strip = strip.map((r) => ({ id: r.id, path: r.path, label: r.short ?? r.name }));
-    pageBar.current = route.id;
+    pageBar.current = route.under ?? route.id;
   });
   const showBar = $derived(!route.focus && route.id !== "home");
 
@@ -208,15 +208,53 @@
   // Pages slide in from the way you went: down the dock (or along the phone's tabs, or across a section's strip)
   // they come from below (or the right); back up, from above (or the left). Transform only: a parent below full
   // opacity stops the browser blurring behind the glass cards inside it.
-  let prevIndex = -1;
-  let prevTab: string | undefined;
+  //
+  // Desktop, between the pages of one section (a tournament's home, Fight card, The board, Teams, Draft): the header and the
+  // strip stay exactly where they were, as tabs do. The new page goes in at once, at the same scroll (so a docked
+  // strip stays docked), and only what's under the strip slides across.
+  // Where you start counts as where you came from: the first page shows without a transition (no intro), so it never
+  // goes through enter, and the first move from it would otherwise look like arriving from somewhere else
+  // svelte-ignore state_referenced_locally
+  let prevIndex = all.findIndex((r) => r.id === route.id);
+  // svelte-ignore state_referenced_locally
+  let prevTab: string | undefined = route.tab;
+  // svelte-ignore state_referenced_locally
+  let prevFold: string | undefined = route.fold;
+  let lastScroll = 0;
+  $effect(() => {
+    if (!content) return;
+    const track = (e: Event) => {
+      const el = e.target as HTMLElement;
+      if (el.classList?.contains("view")) lastScroll = el.scrollTop;
+    };
+    content.addEventListener("scroll", track, true);
+    return () => content?.removeEventListener("scroll", track, true);
+  });
   function enter(node: Element, { focus }: { focus?: boolean }) {
     const index = all.findIndex((r) => r.id === route.id);
     const sideways = phone.current || (prevTab === route.tab && strip.length > 1);
+    const within = !phone.current && !!route.fold && prevFold === route.fold && strip.length > 1;
     const dir = prevIndex < 0 ? 1 : Math.sign(index - prevIndex) || 1;
     prevIndex = index;
     prevTab = route.tab;
+    prevFold = route.fold;
     if (focus) return zoom(node);
+    if (within) {
+      const view = node as HTMLElement;
+      const header = view.querySelector(".page-header");
+      // As far down as you were, but no further than where the strip docks
+      const dock = header ? header.getBoundingClientRect().bottom - view.getBoundingClientRect().top : 0;
+      view.scrollTop = Math.min(lastScroll, dock);
+      lastScroll = view.scrollTop;
+      if (!prefersReducedMotion) {
+        view.style.setProperty("--swap", `${dir * 32}px`);
+        view.classList.add("swap");
+        // Only this once: anything the page adds later (a confirm panel) just appears
+        setTimeout(() => view.classList.remove("swap"), 450);
+      }
+      return { duration: 0 };
+    }
+    lastScroll = 0;
     if (prefersReducedMotion) return { duration: 0 };
     const axis = sideways ? "X" : "Y";
     const distance = sideways ? 56 : 44;
@@ -308,7 +346,7 @@
               Viewing as <strong>{me().name}</strong>
               <span class="viewing-role">· {rolesOf(me().id).join(", ")} · read-only</span>
             </span>
-            <button class="btn sm viewing-back" onclick={() => (viewAs(null), navigate("/"))}>
+            <button class="btn sm viewing-back" onclick={() => (viewAs(null), stayIfAllowed())}>
               Back to {realMember().name.split(" ")[0]}
             </button>
           </div>
@@ -472,6 +510,9 @@
     padding-top: var(--chrome-h, 0px);
     overflow-x: clip;
     overflow-y: auto;
+    /* Room for the scrollbar whether the page is long enough to need it or not: a short page and a long one put
+       their content in the same place, so moving between them nothing shifts sideways */
+    scrollbar-gutter: stable;
     /* No scroll anchoring: when a filter shortens the page, the scroll clamps rather than jumping to the top, so
        the toolbar row stays docked */
     overflow-anchor: none;
@@ -615,6 +656,16 @@
     border-top-color: var(--fg);
     border-radius: 50%;
     animation: spin 0.7s linear infinite;
+  }
+  /* Between a section's pages: everything under the header and its strip slides in from the way you went (transform
+     only, so the glass behind cards still blurs) */
+  .view.swap :global(.page > :not(.page-header, .page-toolbar, .tone)) {
+    animation: swap-in 420ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  @keyframes swap-in {
+    from {
+      transform: translateX(var(--swap, 32px));
+    }
   }
   @keyframes spin {
     to {

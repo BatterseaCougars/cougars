@@ -1,290 +1,388 @@
 <script lang="ts">
-  // A tournament series' landing page: the next one coming up (its date, place and sign-up, its captains and draft
-  // night), then its games once the fixtures are made (ADR 0061): the round robin by round, then the playoffs, which
-  // show their places (1st v 2nd) until the table fills them in. Admins make the fixtures and enter final scores.
-  // Goal by goal, with the clock, is live scoring (T5).
+  // A tournament series' landing page, for the edition the header shows (the latest, or one picked from the past). The
+  // date is the header's; the page follows the day in three acts, from what's happened (lib/edition.ts):
+  //   Before: saying you're in, the draft and its date, the teams so far (not final till the day).
+  //   During: your turn to keep score, the game on now and the next, the latest results.
+  //   After: the champions, the final, every result, and the awards.
   import { can } from "../access/actions";
   import { granted, me } from "../demo/session.svelte";
   import { PLAYERS } from "../demo/data";
-  import type { TournamentGame } from "../demo/model";
-  import { currentTournament, tournamentBookable, tournamentPlace, typeById, whenOf } from "../demo/schedule.svelte";
-  import { db } from "../demo/store.svelte";
-  import { makeFixtures, scoreGame } from "../app/backend.svelte";
-  import { BREAK_MINUTES, kickOff } from "../lib/fixtures";
-  import { formatDayDate, londonISO } from "../lib/dates";
-  import EventCard from "../lib/EventCard.svelte";
+  import { currentTournament, previousTournament, typeById } from "../demo/schedule.svelte";
+  import SignUpLine from "../lib/SignUpLine.svelte";
+  import { championOf, editionState, editionWhen } from "../lib/edition";
+  import Kanji from "../lib/Kanji.svelte";
+  import { kanjiFor } from "../lib/motif";
+  import FixtureRow from "../lib/FixtureRow.svelte";
   import TournamentHead from "../lib/TournamentHead.svelte";
   import TeamCrest from "../lib/TeamCrest.svelte";
-  import { teamTone } from "../lib/team-tones";
-  import { editTournament } from "../lib/TournamentEditorPanel.svelte";
+  import { teamHref, teamTone } from "../lib/team-tones";
+  import DraftStatus from "../lib/DraftStatus.svelte";
+  import ChampionCard from "../lib/ChampionCard.svelte";
+  import Awards from "../lib/Awards.svelte";
+  import Icon from "../app/shell/Icon.svelte";
+  import { checkForUpdates, everyHowOften } from "../lib/live-updates.svelte";
+  import { londonToday } from "../lib/dates";
+  import { kickOff } from "../lib/fixtures";
 
   let { typeId }: { typeId: number } = $props();
 
   const perms = $derived(granted());
   const type = $derived(typeById(typeId)!);
   const tournament = $derived(currentTournament(typeId));
-  const past = $derived(
-    db.tournaments
-      .filter((t) => t.typeId === typeId && t.status === "finished" && t.id !== tournament?.id)
-      .sort((a, b) => b.heldOn.localeCompare(a.heldOn)),
-  );
   const firstName = (id: number | null) => PLAYERS.find((p) => p.id === id)?.name.split(" ")[0] ?? "";
   const teams = $derived(tournament?.teams ?? []);
-  const teamName = (id: number | null) => {
-    const t = teams.find((x) => x.id === id);
-    return t ? t.name || `Team ${firstName(t.captainMemberId)}` : "";
-  };
-  const logoOf = (id: number) => teams.find((x) => x.id === id)?.logo ?? null;
-  // Each team's colour, as on the Draft page
-  const toneOf = (id: number) => teamTone(teams.findIndex((x) => x.id === id));
-  const games = $derived(tournament?.games ?? []);
-  const rounds = $derived(
-    [...new Set(games.filter((g) => g.stage === "group").map((g) => g.round))].map((r) => ({
-      round: r,
-      games: games.filter((g) => g.stage === "group" && g.round === r),
-    })),
-  );
-  const playoffs = $derived(games.filter((g) => g.stage === "playoff"));
-  const nth = (n: number | null) => (n === 1 ? "1st" : n === 2 ? "2nd" : n === 3 ? "3rd" : `${n}th`);
-
-  // Two teams are enough to make the fixtures: a draft's captains are its teams before anyone's picked (ADR 0066)
-  const teamsSet = $derived(!!tournament && teams.length >= 2);
-  const hasResult = $derived(games.some((g) => g.homeGoals !== null));
+  const teamName = (i: number) => teams[i].name || `Team ${firstName(teams[i].captainMemberId)}`;
   const manage = $derived(can(perms, "manage:Tournament"));
-  const scorer = $derived(can(perms, "score:Match"));
-  const iCaptain = $derived(teams.some((t) => t.captainMemberId === me().id));
-  const draftWhen = $derived(
-    tournament?.draftOn
-      ? `${formatDayDate(londonISO(tournament.draftOn, tournament.draftTime ?? "12:00"))}${tournament.draftTime ? `, ${tournament.draftTime}` : ""}`
-      : "",
-  );
 
-  // Entering a game's final score: one game at a time
-  let editing = $state<number | null>(null);
-  let home = $state(0);
-  let away = $state(0);
-  function edit(g: TournamentGame) {
-    editing = g.id;
-    home = g.homeGoals ?? 0;
-    away = g.awayGoals ?? 0;
-  }
-  async function saveScore(g: TournamentGame) {
-    if (tournament && (await scoreGame(tournament.id, g.id, home, away))) editing = null;
-  }
+  // The games, in brief: what's on now, and the last result; before any, the first game
+  const games = $derived(tournament?.games ?? []);
+  // The game on now, with its score, then the next game. Between games: the next game, then the one after that.
+  // Each start moves them all along
+  const live = $derived(games.find((g) => g.status === "live"));
+  const ahead = $derived(games.filter((g) => g.status !== "done" && g.status !== "live"));
+  const now = $derived(
+    live
+      ? { game: live, label: "Now playing", live: true }
+      : ahead[0]
+        ? { game: ahead[0], label: "Next game", live: false }
+        : undefined,
+  );
+  const after = $derived(live ? ahead[0] : ahead[1]);
+  const afterLabel = $derived(live ? "Next game" : "After that");
+
+  // Everyone sees the score as it happens: on the day, until the last game's over, a check for changes on the
+  // admins' beat (ADR 0071, 0072)
+  const following = $derived(
+    !!live || (tournament?.heldOn === londonToday() && games.some((g) => g.status !== "done")),
+  );
+  $effect(() => {
+    if (following) return checkForUpdates();
+  });
+
+  // The teams: a draft's only once it's closed, unless you're in it (the server holds back the rest, ADR 0070)
+  const mine = $derived(
+    teams.findIndex((t) => t.captainMemberId === me().id || t.players.some((p) => p.memberId === me().id)),
+  );
+  const teamsHidden = $derived(
+    tournament?.kind === "draft" &&
+      tournament.draftState !== "closed" &&
+      !teams.some((t) => t.captainMemberId === me().id) &&
+      !can(perms, "run:Draft") &&
+      !manage,
+  );
+  // Keeping score (ADR 0071): a game whose scoresheet you hold, else the game up next when it's your team's turn and
+  // nobody's taken it yet
+  const myTeamId = $derived(mine >= 0 ? teams[mine].id : undefined);
+  // Only the game up next (or on now) is taken on: the first in the day's order that isn't over
+  const upNext = $derived(games.find((g) => g.status !== "done"));
+  const duty = $derived(
+    games.find((g) => g.status !== "done" && g.keeperId === me().id) ??
+      (myTeamId && upNext && upNext.scoringTeamId === myTeamId && !upNext.keeperId ? upNext : undefined),
+  );
+  const holding = $derived(duty?.keeperId === me().id);
+  const vs = (g: { homeTeamId: number | null; awayTeamId: number | null }) =>
+    [g.homeTeamId, g.awayTeamId].map((id) => teamName(teams.findIndex((t) => t.id === id))).join(" v ");
+  const schedule = $derived(`/tournaments/${type.slug}/schedule`);
+  const board = $derived(`/tournaments/${type.slug}/standings`);
+
+  // Which act, by the games (lib/edition.ts): after (every game played), during (one being scored or in), before
+  const mode = $derived.by(() => {
+    const state = tournament ? editionState(tournament) : "planned";
+    return state === "done" ? "after" : state === "live" ? "during" : "before";
+  });
+  // Last time: the one before, played, with its champions (on the next one's page, so you see both)
+  const last = $derived(tournament && mode === "before" ? previousTournament(tournament) : undefined);
+  const lastChamp = $derived.by(() => {
+    if (!last) return undefined;
+    const id = championOf(last);
+    const i = last.teams.findIndex((t) => t.id === id);
+    if (i < 0) return undefined;
+    const t = last.teams[i];
+    const captain = PLAYERS.find((p) => p.id === t.captainMemberId)?.name.split(" ")[0] ?? "";
+    return { index: i, team: t, name: t.name || `Team ${captain}` };
+  });
+  const lastWhen = $derived(last ? editionWhen(last) : undefined);
+
+  // The latest results, newest first; the final, last of the playoffs
+  const results = $derived(games.filter((g) => g.status === "done").sort((a, b) => b.position - a.position));
+  const final = $derived(
+    games
+      .filter((g) => g.stage === "playoff")
+      .reduce<(typeof games)[number] | undefined>((a, b) => (!a || b.position > a.position ? b : a), undefined),
+  );
 </script>
 
-{#snippet game(g: TournamentGame)}
-  <div class="row fixture" class:done={g.status === "done"}>
-    <span class="n hint num" title="Game {g.position}"
-      >{tournament ? kickOff(tournament.startTime, tournament.gameMinutes, g.position) : g.position}</span
-    >
-    <span class="team">
-      {#if g.homeTeamId}<TeamCrest
-          name={teamName(g.homeTeamId)}
-          logo={logoOf(g.homeTeamId)}
-          tone={toneOf(g.homeTeamId)}
-          size="1.5rem"
-        />{/if}
-      {g.homeTeamId ? teamName(g.homeTeamId) : nth(g.homeSeed)}
-    </span>
-    <span class="mid num">
-      {#if editing === g.id}
-        <input
-          class="input num goals"
-          type="number"
-          min="0"
-          max="99"
-          bind:value={home}
-          aria-label="Home goals"
-        />–<input class="input num goals" type="number" min="0" max="99" bind:value={away} aria-label="Away goals" />
-      {:else if g.homeGoals !== null}<strong>{g.homeGoals}</strong>–<strong>{g.awayGoals}</strong>{:else}<span
-          class="vs">vs</span
-        >{/if}
-    </span>
-    <span class="team right">
-      {g.awayTeamId ? teamName(g.awayTeamId) : nth(g.awaySeed)}
-      {#if g.awayTeamId}<TeamCrest
-          name={teamName(g.awayTeamId)}
-          logo={logoOf(g.awayTeamId)}
-          tone={toneOf(g.awayTeamId)}
-          size="1.5rem"
-        />{/if}
-    </span>
-    {#if scorer && g.homeTeamId && g.awayTeamId}
-      {#if editing === g.id}
-        <button class="btn primary sm" onclick={() => saveScore(g)}>Save</button>
-      {:else}
-        <button class="btn ghost sm" onclick={() => edit(g)}>{g.homeGoals === null ? "Result" : "Change"}</button>
-      {/if}
+<div class="page wide reading">
+  <TournamentHead {type} {tournament} title="The {type.shortName}" manage />
+
+  {#if tournament && mode === "after"}
+    <!-- After: who won, how, every result, the awards -->
+    <ChampionCard {type} {tournament} />
+    {#if final && final.status === "done"}
+      <section class="part">
+        <h2 class="section-title">The final<Kanji text={kanjiFor(type, "final")} /></h2>
+        <div class="list"><FixtureRow big {tournament} game={final} /></div>
+      </section>
     {/if}
-  </div>
-{/snippet}
-
-<div class="page">
-  <TournamentHead {type} {tournament} title="Games" manage />
-
-  {#if tournament && tournament.status !== "finished" && !games.length}
-    <!-- What's coming up: when, where, and saying you're in -->
-    <EventCard event={tournamentBookable(tournament)} canSignUp={can(perms, "signup:Event")} feature />
-    {#if tournament.kind === "draft" && teams.length}
-      <p class="hint captains">
-        Captains: {teams.map((t) => firstName(t.captainMemberId)).join(", ")}
-        {#if draftWhen && (iCaptain || can(perms, "run:Draft"))}
-          · <a href="/tournaments/{type.slug}/draft">Draft {draftWhen}</a>
-        {/if}
-        {#if manage}
-          · <button class="link" onclick={() => editTournament(tournament.id, { tab: "teams" })}>Change</button>
-        {/if}
-      </p>
-    {:else if tournament.kind === "draft" && manage}
-      <p class="hint captains">
-        No captains yet ·
-        <button class="link" onclick={() => editTournament(tournament.id, { tab: "teams" })}>Add the captains</button>
-      </p>
-    {/if}
-  {/if}
-
-  {#if games.length}
-    <div class="fixtures-head">
-      <h2 class="section-title">
-        Fixtures
-        {#if tournament}<span class="hint num"
-            >· {tournament.gameMinutes}-minute games, {BREAK_MINUTES} between, from {tournament.startTime}</span
-          >{/if}
-      </h2>
-      {#if manage && !hasResult}
-        <button class="btn ghost sm" onclick={() => tournament && makeFixtures(tournament.id)}>Make them again</button>
-      {/if}
-    </div>
-    {#each rounds as r (r.round)}
-      <h3 class="round hint">Round {r.round}</h3>
-      <div class="list">
-        {#each r.games as g (g.id)}{@render game(g)}{/each}
+    <section class="part">
+      <div class="part-head">
+        <h2 class="section-title">Every fight<Kanji text={kanjiFor(type, "fights")} /></h2>
+        <a class="btn ghost sm" href={board}>The board<Icon name="chevronRight" size={16} /></a>
       </div>
-    {/each}
-    {#if playoffs.length}
-      <h3 class="round hint">Playoffs</h3>
       <div class="list">
-        {#each playoffs as g (g.id)}
-          <p class="playoff-name small">{g.name}</p>
-          {@render game(g)}
+        {#each [...games].sort((a, b) => a.position - b.position) as g (g.id)}
+          <FixtureRow {tournament} game={g} />
         {/each}
       </div>
+    </section>
+    <Awards {tournament} />
+  {:else if tournament && mode === "during"}
+    <!-- During: your turn to keep score, what's on and next, what's just happened -->
+    {#if duty}
+      <div class="duty">
+        <Icon name="whistle" size={20} />
+        <span class="grow">
+          <span class="duty-title"
+            >{holding
+              ? `You're keeping score${duty.status === "live" ? " now" : ""}`
+              : "Your team's turn to keep score"}</span
+          >
+          <span class="duty-sub"
+            >Game {duty.position} · {vs(duty)}{duty.status === "next"
+              ? ` · ${kickOff(tournament.startTime, tournament.gameMinutes, duty.position)}`
+              : ""}</span
+          >
+        </span>
+        <a class="btn sm outline" href="/tournaments/{type.slug}/games/{duty.id}"
+          >{holding ? "Open the scoresheet" : "Keep score"}</a
+        >
+      </div>
     {/if}
-  {:else if teamsSet && manage}
-    <div class="panel pad make">
-      <p>
-        {teams.length} teams. Make the fixtures: every team plays every other once{tournament?.playoffs.length
-          ? `, then ${tournament.playoffs.map((p) => p.name).join(" and ")}`
+    <section class="part">
+      <div class="part-head">
+        <h2 class="section-title">On the mat<Kanji text={kanjiFor(type, "onTheMat")} /></h2>
+        <a class="btn ghost sm" href={schedule}>Full fight card<Icon name="chevronRight" size={16} /></a>
+      </div>
+      {#if following}
+        <!-- The club's on a free plan: the scores follow along on the admins' beat (ADR 0072) -->
+        <p class="updates hint">
+          <Icon name="clock" size={14} />Scores update {everyHowOften()}, to keep the club on the free plan
+        </p>
+      {/if}
+      {#if now}
+        <div class="list">
+          <p class="label eyebrow">{now.label}</p>
+          <FixtureRow big {tournament} game={now.game} live={now.live} chant="{type.shortName}!" />
+          {#if after}
+            <p class="label eyebrow">{afterLabel}</p>
+            <FixtureRow big {tournament} game={after} />
+          {/if}
+        </div>
+      {:else}
+        <p class="note">Every fight's been fought. The final word's on <a href={board}>the board</a>.</p>
+      {/if}
+    </section>
+    {#if results.length}
+      <section class="part">
+        <div class="part-head">
+          <h2 class="section-title">Latest results<Kanji text={kanjiFor(type, "results")} /></h2>
+          <a class="btn ghost sm" href={board}>The board<Icon name="chevronRight" size={16} /></a>
+        </div>
+        <div class="list">
+          {#each results.slice(0, 3) as g (g.id)}
+            <FixtureRow {tournament} game={g} />
+          {/each}
+        </div>
+      </section>
+    {/if}
+  {:else if tournament}
+    <!-- Before: saying you're in, the draft, the teams so far, and how the last one ended -->
+    {#if tournament.status === "planned"}
+      <p class="lede">
+        {editionWhen(tournament).tbc ? "The date's being set." : "It's on."} Sign-up opens nearer the day{tournament.kind ===
+        "draft"
+          ? ", then the captains draft the teams"
           : ""}.
       </p>
-      <button class="btn primary sm" onclick={() => tournament && makeFixtures(tournament.id)}>Make the fixtures</button
-      >
-    </div>
-  {:else}
-    <p class="note">
-      Fixtures are made once the captains are in: a round robin, {(tournament ?? type).gameMinutes}-minute games{tournament
-        ?.playoffs.length
-        ? `, then ${tournament.playoffs.map((p) => p.name).join(" and ")}`
-        : ""}.
-    </p>
-  {/if}
-
-  {#if past.length}
-    <h2 class="section-title">Past {type.shortName}s</h2>
-    <div class="list">
-      {#each past as t (t.id)}
-        <div class="row">
-          <span class="grow">
-            <span class="title">{t.name}</span>
-            <span class="sub">{[whenOf(t), tournamentPlace(t)?.name].filter(Boolean).join(" · ")}</span>
-          </span>
-          {#if t.champions}<span class="badge red">Champions · {t.champions}</span>{/if}
+    {/if}
+    <SignUpLine {tournament} canSignUp={can(perms, "signup:Event")} />
+    {#if tournament.kind === "draft"}
+      <section class="part">
+        <h2 class="section-title">Draft</h2>
+        <DraftStatus {type} {tournament} />
+      </section>
+    {/if}
+    {#if teams.length}
+      <section class="part">
+        <div class="part-head">
+          <h2 class="section-title">The teams so far</h2>
+          {#if !teamsHidden}<a class="btn ghost sm" href="/tournaments/{type.slug}/teams"
+              >See them all<Icon name="chevronRight" size={16} /></a
+            >{/if}
         </div>
-      {/each}
-    </div>
+        {#if teamsHidden}
+          <p class="note">The captains pick the teams in the draft. They're out once it's done.</p>
+        {:else}
+          <p class="hint">Not final till the day: names, logos and squads can still change.</p>
+          <!-- Each team: its crest and name, yours marked; each opens the team -->
+          <div class="teams-grid">
+            {#each teams as t, i (t.id ?? i)}
+              <a class="chip-team" href={t.id ? teamHref(type.slug, t.id) : undefined}>
+                <TeamCrest name={teamName(i)} logo={t.logo} tone={teamTone(i)} size="3.5rem" />
+                <span class="chip-text">
+                  <span class="chip-name">{teamName(i)}</span>
+                  <span class="chip-sub">{i === mine ? "Your team" : `Captain ${firstName(t.captainMemberId)}`}</span>
+                </span>
+              </a>
+            {/each}
+          </div>
+        {/if}
+      </section>
+    {/if}
+    {#if games.length}
+      <section class="part">
+        <div class="part-head">
+          <h2 class="section-title">First up</h2>
+          <a class="btn ghost sm" href={schedule}>Full fight card<Icon name="chevronRight" size={16} /></a>
+        </div>
+        <div class="list"><FixtureRow big {tournament} game={games[0]} /></div>
+      </section>
+    {:else if manage && teams.length >= 2}
+      <p class="note">The fight card isn't out yet. <a href={schedule}>Make it</a></p>
+    {/if}
+    {#if last && lastWhen}
+      <section class="part">
+        <div class="part-head">
+          <h2 class="section-title">Last time<Kanji text={kanjiFor(type, "blood")} /></h2>
+          <a class="btn ghost sm" href="/tournaments/{type.slug}/history"
+            >History<Icon name="chevronRight" size={16} /></a
+          >
+        </div>
+        <a class="last" href="/tournaments/{type.slug}/history/{last.id}">
+          {#if lastChamp}
+            <TeamCrest
+              name={lastChamp.name}
+              logo={lastChamp.team.logo}
+              tone={teamTone(lastChamp.index)}
+              size="3.5rem"
+            />
+          {/if}
+          <span class="last-text">
+            <span class="eyebrow">{lastWhen.day ?? lastWhen.season}</span>
+            <span class="last-name display">{lastChamp ? `${lastChamp.name} won it` : last.name}</span>
+          </span>
+        </a>
+      </section>
+    {/if}
   {/if}
 </div>
 
 <style>
-  .fixture {
-    display: grid;
-    grid-template-columns: 2.75rem 1fr auto 1fr;
-    gap: var(--s-3);
-    min-height: 3.25rem;
+  .lede {
+    margin: 0;
+    color: var(--fg-body);
+    font-size: var(--text-md);
   }
-  .fixture .team {
+  /* Last time: the champions and the day, on the page, opening that edition */
+  .last {
+    display: flex;
+    align-items: center;
+    gap: var(--s-4);
+    padding: var(--s-2) 0;
+    color: var(--fg);
+  }
+  .last-text {
+    display: grid;
+    gap: 0.2rem;
+  }
+  .last-name {
+    font-size: 1.6rem;
+    line-height: 1;
+  }
+  .updates {
     display: flex;
     align-items: center;
     gap: var(--s-2);
-    min-width: 0;
-    color: var(--fg);
-    font-weight: 500;
+    margin: 0;
+    font-size: var(--text-sm);
   }
-  .fixture.done .team {
-    color: var(--fg-body);
+  .part {
+    display: grid;
+    gap: var(--s-3);
   }
-  .right {
-    justify-content: flex-end;
-    text-align: right;
+  .part .section-title {
+    margin: 0;
   }
-  .mid {
-    min-width: 3.5rem;
-    text-align: center;
-    color: var(--fg);
-    font-family: var(--font-display);
-    font-size: 1.2rem;
-  }
-  .vs {
-    color: var(--fg-subtle);
-    font-family: var(--font);
-    font-size: var(--text-xs);
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
-  .captains {
-    margin: var(--s-3) 0 var(--s-5);
-  }
-  .link {
-    padding: 0;
-    border: 0;
-    background: none;
-    color: var(--fg);
-    font: inherit;
-    text-decoration: underline;
-    text-underline-offset: 0.2em;
-    cursor: pointer;
-  }
-  .fixtures-head {
+  .part-head {
     display: flex;
     align-items: center;
     justify-content: space-between;
   }
-  .round {
-    margin: var(--s-4) 0 var(--s-2);
-    font-size: var(--text-xs);
-    font-weight: 600;
-    letter-spacing: var(--tracking-label);
-    text-transform: uppercase;
+  .part-head .btn {
+    gap: var(--s-1);
   }
-  .playoff-name {
-    margin: var(--s-2) 0 0;
-    color: var(--fg-muted);
-    font-weight: 600;
-  }
-  .goals {
-    width: 3.5rem;
-    text-align: center;
-  }
-  .make {
+  /* Your turn to keep score: a line between rules, not a card */
+  .duty {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    justify-content: space-between;
-    gap: var(--s-3);
+    gap: var(--s-3) var(--s-4);
+    padding-block: var(--s-3);
+    border-block: 1px solid var(--border);
+    color: var(--fg-muted);
   }
-  .make p {
+  .duty .grow {
+    display: grid;
+    gap: 0.15rem;
+  }
+  .duty-title {
+    color: var(--fg);
+    font-weight: 600;
+  }
+  .duty-sub {
+    font-size: var(--text-sm);
+  }
+  .label {
     margin: 0;
+    padding: var(--s-3) var(--s-4) 0;
+  }
+  .note a {
+    color: var(--fg);
+  }
+  /* The teams, on the page: a crest and a name each, as many to a row as fit */
+  .teams-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+    gap: var(--s-2);
+  }
+  .chip-team {
+    display: flex;
+    align-items: center;
+    gap: var(--s-3);
+    min-width: 0;
+    padding: var(--s-2) var(--s-3) var(--s-2) var(--s-2);
+    border-radius: var(--r-lg);
+    color: var(--fg);
+    transition: background-color var(--t-fast) var(--ease);
+  }
+  .chip-team:hover {
+    background: var(--surface-2);
+  }
+  .chip-text {
+    display: grid;
+    gap: 0.1rem;
+    min-width: 0;
+  }
+  .chip-name {
+    overflow: hidden;
+    font-family: var(--font-display);
+    font-size: 1.2rem;
+    text-transform: uppercase;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  .chip-sub {
+    color: var(--fg-muted);
+    font-size: var(--text-xs);
   }
 </style>

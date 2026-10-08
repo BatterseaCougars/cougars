@@ -3,7 +3,8 @@
 </script>
 
 <script lang="ts" generics="T extends string">
-  // Styled select, after Gwenda ops' NativeSelect: native option menus can't be themed, so this is a button that
+  // Styled select for admin forms (a tournament's details, a member's role); a member's own choices use Choice, taps
+  // and sheets, not a drop-down. After Gwenda ops' NativeSelect: native option menus can't be themed, so this is a button that
   // opens a listbox. The menu is fixed-position so panels and scrollers never clip it, and it lives at the end of
   // the page (or of the open dialog it's in), so nothing it sits inside, an animated tab say, can shift it.
   import { onMount, tick } from "svelte";

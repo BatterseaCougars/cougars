@@ -1,0 +1,321 @@
+// Scoring a game as it's played (ADR 0071): each game suggests a team sitting it out to keep score, but one person
+// keeps it: whoever presses Start scoring holds the scoresheet, and nobody else can score until they (or an admin)
+// let it go. They start the clock, log each goal as it goes in (who scored, who assisted), pause, and call full time,
+// which makes the score the result. Everyone sees the score as it happens. Driven through the real Worker handlers
+// (ADR 0031).
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { NOW, testWorld } from "./testing";
+
+const ROSTER = [
+  { name: "Dana Admin", position: "D", rating: 75, email: "dana@example.com", roles: ["Admin"] },
+  { name: "Cara Captain", position: "F", rating: 70, email: "cara@example.com" },
+  { name: "Cole Captain", position: "D", rating: 68, email: "cole@example.com" },
+  { name: "Reg Captain", position: "F", rating: 60, email: "reg@example.com" },
+  { name: "Mo Member", position: "G", rating: 55, email: "mo@example.com" },
+];
+const at = (minutes: number) => new Date(NOW.getTime() + minutes * 60_000);
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Json = any;
+let w: ReturnType<typeof testWorld>;
+beforeEach(() => {
+  vi.spyOn(console, "log").mockImplementation(() => {});
+  w = testWorld(ROSTER);
+});
+
+/** A cup three teams entered, each captained by a member, with its fixtures made. */
+async function cup() {
+  const dana = await w.signedIn("dana@example.com");
+  const sees = async (as = dana, now = NOW) =>
+    (await as.call("GET", "/api/bootstrap", undefined, { now })).body as Json;
+  const boot = await sees();
+  const idOf = (name: string) => boot.members.find((m: Json) => m.name === name).id as number;
+  const captains = { Ants: idOf("Cara Captain"), Bees: idOf("Cole Captain"), Cats: idOf("Reg Captain") };
+  const res = await dana.call("POST", "/api/tournaments", {
+    name: "Summer Cup",
+    location: "Battersea Park",
+    heldOn: "2026-11-14",
+    startTime: "10:00",
+    endTime: "15:00",
+    status: "planned",
+    feePence: 0,
+    kind: "teams",
+    playoffs: [],
+    teams: Object.entries(captains).map(([name, captainMemberId]) => ({
+      name,
+      logo: null,
+      captainMemberId,
+      players: [],
+    })),
+  });
+  expect(res.status).toBe(201);
+  const id = res.body.id as number;
+  expect((await dana.call("POST", `/api/tournaments/${id}/fixtures`)).status).toBe(200);
+  const tournament = async (as = dana, now = NOW) => (await sees(as, now)).tournaments.find((t: Json) => t.id === id);
+  const t = await tournament();
+  // Who's who, by team id: its captain's email
+  const emailOf = new Map<number, string>(
+    t.teams.map((team: Json) => [team.id, ROSTER.find((r) => idOf(r.name) === team.captainMemberId)!.email]),
+  );
+  const first = t.games[0];
+  const as = async (teamId: number) => w.signedIn(emailOf.get(teamId)!);
+  const clock = (who: { call: Json }, gameId: number, action: string, now = NOW) =>
+    who.call("POST", `/api/tournaments/${id}/games/${gameId}/clock`, { action }, { now });
+  const goal = (who: { call: Json }, gameId: number, body: object, now = NOW) =>
+    who.call("POST", `/api/tournaments/${id}/games/${gameId}/goals`, body, { now });
+  /** Start scoring (take the scoresheet) or let it go. */
+  const sheet = (who: { call: Json }, gameId: number, action: "claim" | "release", now = NOW) =>
+    who.call("POST", `/api/tournaments/${id}/games/${gameId}/scorer`, { action }, { now });
+  /** The suggested team's captain, holding the scoresheet. */
+  const keeperOf = async (game: Json) => {
+    const k = await as(game.scoringTeamId);
+    expect((await sheet(k, game.id, "claim")).status).toBe(200);
+    return k;
+  };
+  const captainOf = (teamId: number) => t.teams.find((x: Json) => x.id === teamId).captainMemberId as number;
+  return {
+    dana,
+    id,
+    tournament,
+    first,
+    games: t.games as Json[],
+    as,
+    clock,
+    goal,
+    sheet,
+    keeperOf,
+    captainOf,
+    idOf,
+    gameMinutes: t.gameMinutes as number,
+  };
+}
+
+describe("scoring a game as it's played", () => {
+  it("each game suggests a team sitting it out to keep score", async () => {
+    const { games } = await cup();
+    for (const g of games) {
+      expect(g.scoringTeamId).toBeTruthy();
+      expect([g.homeTeamId, g.awayTeamId]).not.toContain(g.scoringTeamId);
+    }
+  });
+
+  it("the team keeping score starts the clock, logs each goal with who scored and assisted, and calls full time: that's the result", async () => {
+    const { first, keeperOf, clock, goal, captainOf, tournament, gameMinutes } = await cup();
+    const keeper = await keeperOf(first);
+    expect((await clock(keeper, first.id, "start", at(0))).status).toBe(200);
+    expect(
+      (await goal(keeper, first.id, { teamId: first.homeTeamId, scorerId: captainOf(first.homeTeamId) }, at(3))).status,
+    ).toBe(200);
+    expect((await clock(keeper, first.id, "pause", at(5))).status).toBe(200);
+
+    let g = (await tournament(undefined, at(5))).games.find((x: Json) => x.id === first.id);
+    expect(g).toMatchObject({ status: "live", homeGoals: 1, awayGoals: 0, clockStartedAt: null });
+    expect(g.clockLeftMs).toBe(gameMinutes * 60_000 - 5 * 60_000);
+    expect(g.goals).toEqual([
+      expect.objectContaining({
+        teamId: first.homeTeamId,
+        scorerId: captainOf(first.homeTeamId),
+        assistId: null,
+        atMs: 180_000,
+      }),
+    ]);
+
+    expect((await clock(keeper, first.id, "start", at(8))).status).toBe(200);
+    expect(
+      (await goal(keeper, first.id, { teamId: first.awayTeamId, scorerId: captainOf(first.awayTeamId) }, at(9))).status,
+    ).toBe(200);
+    expect((await clock(keeper, first.id, "end", at(15))).status).toBe(200);
+    g = (await tournament(undefined, at(15))).games.find((x: Json) => x.id === first.id);
+    expect(g).toMatchObject({ status: "done", homeGoals: 1, awayGoals: 1 });
+    // Over: the scorekeeper's done with it (an admin puts a result right)
+    expect((await goal(keeper, first.id, { teamId: first.homeTeamId }, at(16))).status).toBe(403);
+  });
+
+  it("everyone sees the score as it happens", async () => {
+    const { first, keeperOf, clock, goal, tournament } = await cup();
+    const keeper = await keeperOf(first);
+    await clock(keeper, first.id, "start", at(0));
+    await goal(keeper, first.id, { teamId: first.awayTeamId }, at(2));
+    const mo = await w.signedIn("mo@example.com");
+    const g = (await tournament(mo, at(2))).games.find((x: Json) => x.id === first.id);
+    expect(g).toMatchObject({ status: "live", homeGoals: 0, awayGoals: 1 });
+    expect(g.clockStartedAt).toBe(at(0).toISOString());
+  });
+
+  it("one person keeps score: whoever presses Start scoring holds the scoresheet, and nobody else can score", async () => {
+    const { first, clock, sheet, tournament, idOf } = await cup();
+    const mo = await w.signedIn("mo@example.com");
+    // Not the suggested team, but stepping in: anyone can take it while nobody has
+    expect((await clock(mo, first.id, "start")).status).toBe(403);
+    expect((await sheet(mo, first.id, "claim")).status).toBe(200);
+    expect((await tournament()).games[0].keeperId).toBe(idOf("Mo Member"));
+    expect((await clock(mo, first.id, "start")).status).toBe(200);
+    // Somebody else, even from the suggested team, even an admin, can't score it or take it
+    const cara = await w.signedIn("cara@example.com");
+    expect((await sheet(cara, first.id, "claim")).status).toBe(409);
+    expect((await clock(cara, first.id, "pause")).status).toBe(403);
+  });
+
+  it("scoring's taken on for the game up next, not one further down the day", async () => {
+    const { games, sheet, clock } = await cup();
+    const mo = await w.signedIn("mo@example.com");
+    expect((await sheet(mo, games[1].id, "claim")).status).toBe(409);
+    expect((await sheet(mo, games[0].id, "claim")).status).toBe(200);
+    await clock(mo, games[0].id, "start", at(0));
+    await clock(mo, games[0].id, "end", at(12));
+    // Game 1's done: game 2's up next
+    expect((await sheet(mo, games[1].id, "claim")).status).toBe(200);
+  });
+
+  it("the scorekeeper sets the time on the clock: paused, or running on from there", async () => {
+    const { id, first, keeperOf, clock, tournament } = await cup();
+    const keeper = await keeperOf(first);
+    const setClock = (who: { call: Json }, leftMs: number, now = NOW) =>
+      who.call("POST", `/api/tournaments/${id}/games/${first.id}/clock`, { action: "set", leftMs }, { now });
+    const game = async (now: Date) => (await tournament(undefined, now)).games.find((x: Json) => x.id === first.id);
+    // Not before kick-off: start the game first
+    expect((await setClock(keeper, 300_000)).status).toBe(409);
+    await clock(keeper, first.id, "start", at(0));
+    await clock(keeper, first.id, "pause", at(1));
+    expect((await setClock(keeper, 300_000, at(2))).status).toBe(200);
+    expect(await game(at(2))).toMatchObject({ clockLeftMs: 300_000, clockStartedAt: null });
+    // Running: it carries on from the time set
+    await clock(keeper, first.id, "start", at(3));
+    expect((await setClock(keeper, 120_000, at(4))).status).toBe(200);
+    expect(await game(at(4))).toMatchObject({ clockLeftMs: 120_000, clockStartedAt: at(4).toISOString() });
+    // Only the scorekeeper, and never more than an hour
+    const mo = await w.signedIn("mo@example.com");
+    expect((await setClock(mo, 60_000, at(5))).status).toBe(403);
+    expect((await setClock(keeper, 61 * 60_000, at(5))).status).toBe(400);
+  });
+
+  it("a result typed in goes on the game up next or one that's played, not one further down the day", async () => {
+    const { id, games, dana } = await cup();
+    const result = (gameId: number) =>
+      dana.call("PUT", `/api/tournaments/${id}/games/${gameId}`, { homeGoals: 2, awayGoals: 1 });
+    expect((await result(games[1].id)).status).toBe(409);
+    expect((await result(games[0].id)).status).toBe(200);
+    // Game 1's done: game 2's next, and game 1 can still be corrected
+    expect((await result(games[1].id)).status).toBe(200);
+    expect((await result(games[0].id)).status).toBe(200);
+  });
+
+  it("only whoever holds the scoresheet, or an admin, lets it go; then someone else can take it on", async () => {
+    const { first, clock, sheet, dana, tournament } = await cup();
+    const mo = await w.signedIn("mo@example.com");
+    const reg = await w.signedIn("reg@example.com");
+    await sheet(mo, first.id, "claim");
+    await clock(mo, first.id, "start", at(0));
+    expect((await sheet(reg, first.id, "release")).status).toBe(403);
+    expect((await clock(dana, first.id, "pause", at(1))).status).toBe(403);
+    // Mo's had to leave: an admin lets it go, and Reg carries on where Mo left off
+    expect((await sheet(dana, first.id, "release")).status).toBe(200);
+    expect((await tournament()).games[0].keeperId).toBeNull();
+    expect((await sheet(reg, first.id, "claim")).status).toBe(200);
+    expect((await clock(reg, first.id, "pause", at(2))).status).toBe(200);
+    expect((await sheet(reg, first.id, "release")).status).toBe(200);
+  });
+
+  it("a goal logged by mistake comes off: the last one", async () => {
+    const { id, first, keeperOf, clock, goal, tournament } = await cup();
+    const keeper = await keeperOf(first);
+    await clock(keeper, first.id, "start", at(0));
+    await goal(keeper, first.id, { teamId: first.homeTeamId }, at(1));
+    await goal(keeper, first.id, { teamId: first.homeTeamId }, at(2));
+    expect(
+      (await keeper.call("DELETE", `/api/tournaments/${id}/games/${first.id}/goals/last`, undefined, { now: at(2) }))
+        .status,
+    ).toBe(200);
+    const g = (await tournament(undefined, at(2))).games.find((x: Json) => x.id === first.id);
+    expect(g.homeGoals).toBe(1);
+    expect(g.goals).toHaveLength(1);
+  });
+
+  it("a goal is scored by someone on that team, and assisted by a teammate", async () => {
+    const { first, keeperOf, clock, goal, captainOf } = await cup();
+    const keeper = await keeperOf(first);
+    await clock(keeper, first.id, "start", at(0));
+    expect(
+      (await goal(keeper, first.id, { teamId: first.homeTeamId, scorerId: captainOf(first.awayTeamId) }, at(1))).status,
+    ).toBe(400);
+    expect((await goal(keeper, first.id, { teamId: first.scoringTeamId }, at(1))).status).toBe(400);
+  });
+
+  it("one game at a time: the next doesn't start while one's on", async () => {
+    const { games, clock, dana, sheet } = await cup();
+    await sheet(dana, games[0].id, "claim");
+    expect((await clock(dana, games[0].id, "start", at(0))).status).toBe(200);
+    // The next one can't even be taken on while this one's on
+    expect((await sheet(dana, games[1].id, "claim")).status).toBe(409);
+    expect((await clock(dana, games[0].id, "end", at(12))).status).toBe(200);
+    await sheet(dana, games[1].id, "claim");
+    expect((await clock(dana, games[1].id, "start", at(17))).status).toBe(200);
+  });
+});
+
+describe("an admin puts a game's result right, on the game's page", () => {
+  it("adds a goal (who scored, who assisted, when) or takes any one off, and the score follows", async () => {
+    const { id, first, keeperOf, clock, goal, captainOf, tournament, dana } = await cup();
+    const keeper = await keeperOf(first);
+    await clock(keeper, first.id, "start", at(0));
+    await goal(keeper, first.id, { teamId: first.homeTeamId }, at(2));
+    await goal(keeper, first.id, { teamId: first.homeTeamId }, at(4));
+    await clock(keeper, first.id, "end", at(12));
+    const game = async () => (await tournament()).games.find((x: Json) => x.id === first.id);
+    // A goal missed on the day, five minutes in: it goes in its place in the game
+    expect(
+      (
+        await goal(dana, first.id, {
+          teamId: first.awayTeamId,
+          scorerId: captainOf(first.awayTeamId),
+          atMs: 5 * 60_000,
+        })
+      ).status,
+    ).toBe(200);
+    let g = await game();
+    expect(g).toMatchObject({ status: "done", homeGoals: 2, awayGoals: 1 });
+    expect(g.goals.map((x: Json) => x.atMs)).toEqual([2 * 60_000, 4 * 60_000, 5 * 60_000]);
+    // One that wasn't a goal: any one comes off, not just the last
+    const wrong = g.goals[0].id;
+    expect((await dana.call("DELETE", `/api/tournaments/${id}/games/${first.id}/goals/${wrong}`)).status).toBe(200);
+    g = await game();
+    expect(g).toMatchObject({ homeGoals: 1, awayGoals: 1 });
+    expect(g.goals.map((x: Json) => x.id)).not.toContain(wrong);
+  });
+
+  it("the game up next: the result goes in as played, 0–0, then the goals go on it", async () => {
+    const { id, first, goal, tournament, dana } = await cup();
+    expect(
+      (await dana.call("PUT", `/api/tournaments/${id}/games/${first.id}`, { homeGoals: 0, awayGoals: 0 })).status,
+    ).toBe(200);
+    expect((await goal(dana, first.id, { teamId: first.homeTeamId })).status).toBe(200);
+    const g = (await tournament()).games.find((x: Json) => x.id === first.id);
+    expect(g).toMatchObject({ status: "done", homeGoals: 1, awayGoals: 0 });
+    // Nobody said when: no time on it
+    expect(g.goals[0].atMs).toBeNull();
+  });
+
+  it("a score typed in is that many goals, nobody said who, so the score and the goals always agree", async () => {
+    const { id, first, tournament, dana } = await cup();
+    await dana.call("PUT", `/api/tournaments/${id}/games/${first.id}`, { homeGoals: 3, awayGoals: 1 });
+    let g = (await tournament()).games.find((x: Json) => x.id === first.id);
+    expect(g.goals.filter((x: Json) => x.teamId === first.homeTeamId)).toHaveLength(3);
+    expect(g.goals.filter((x: Json) => x.teamId === first.awayTeamId)).toHaveLength(1);
+    // Typed in lower: goals come off to match
+    await dana.call("PUT", `/api/tournaments/${id}/games/${first.id}`, { homeGoals: 1, awayGoals: 1 });
+    g = (await tournament()).games.find((x: Json) => x.id === first.id);
+    expect(g.goals).toHaveLength(2);
+  });
+
+  it("only an admin, and only once it's played: not the scorekeeper, not a game still on", async () => {
+    const { id, first, keeperOf, clock, goal } = await cup();
+    const keeper = await keeperOf(first);
+    await clock(keeper, first.id, "start", at(0));
+    await goal(keeper, first.id, { teamId: first.homeTeamId }, at(1));
+    const mo = await w.signedIn("mo@example.com");
+    expect((await mo.call("DELETE", `/api/tournaments/${id}/games/${first.id}/goals/1`)).status).toBe(403);
+    await clock(keeper, first.id, "end", at(12));
+    // Full time: the scorekeeper's done with it
+    expect((await goal(keeper, first.id, { teamId: first.homeTeamId }, at(13))).status).toBe(403);
+  });
+});

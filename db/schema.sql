@@ -377,6 +377,24 @@ CREATE TABLE data_version (
   version INTEGER NOT NULL
 );
 
+-- Who won a tournament's awards (team/app/worker/awards.ts, ADR 0073): a team (Champions) or a player on one of its
+-- teams (Top scorer). The award is one of the tournament's own, by name (tournaments.awards).
+CREATE TABLE tournament_award_winners (
+  tournament_id INTEGER NOT NULL REFERENCES tournaments (id) ON DELETE CASCADE,
+  award TEXT NOT NULL,
+  team_id INTEGER REFERENCES tournament_teams (id) ON DELETE CASCADE,
+  member_id INTEGER REFERENCES members (id) ON DELETE CASCADE,
+  position INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (tournament_id, award, position)
+);
+
+-- The club's settings for the team app (team/app/worker/settings.ts, ADR 0072): one row, made on the first save.
+-- How often live pages (a game being scored, a tournament's home, the draft room) check for updates, in seconds.
+CREATE TABLE club_settings (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  live_refresh_seconds INTEGER NOT NULL DEFAULT 10 CHECK (live_refresh_seconds BETWEEN 5 AND 120)
+);
+
 -- The usage check's warnings (team/app/worker/usage.ts, ADR 0059): one email per metric per day (UTC)
 CREATE TABLE usage_warnings (
   day TEXT NOT NULL,
@@ -402,10 +420,30 @@ CREATE TABLE tournament_games (
   home_goals INTEGER,
   away_goals INTEGER,
   -- next / live / done
-  status TEXT NOT NULL DEFAULT 'next'
+  status TEXT NOT NULL DEFAULT 'next',
+  -- The game clock (ADR 0071): time left when it last stopped, and when it was started again (null: stopped). Time
+  -- left now is clock_left_ms minus the time since clock_started_at
+  clock_left_ms INTEGER,
+  clock_started_at TEXT,
+  -- Who holds the scoresheet: whoever pressed Start scoring; nobody else scores it until they (or an admin) let go
+  keeper_member_id INTEGER REFERENCES members (id) ON DELETE SET NULL
 );
 
 CREATE INDEX tournament_games_tournament ON tournament_games (tournament_id, position);
+
+-- Each goal as it went in (ADR 0071): its team, who scored and who assisted (null: not said), and when, in game time
+CREATE TABLE tournament_goals (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  game_id INTEGER NOT NULL REFERENCES tournament_games (id) ON DELETE CASCADE,
+  team_id INTEGER NOT NULL REFERENCES tournament_teams (id) ON DELETE CASCADE,
+  scorer_member_id INTEGER REFERENCES members (id) ON DELETE SET NULL,
+  assist_member_id INTEGER REFERENCES members (id) ON DELETE SET NULL,
+  -- When, in game time; NULL when nobody said (a result typed in, a goal an admin added without a time)
+  at_ms INTEGER,
+  created_at TEXT NOT NULL
+);
+
+CREATE INDEX tournament_goals_game ON tournament_goals (game_id, id);
 
 
 -- The club's agenda (ADR 0062): what's on and when, one row per thing on a day. Every part of the club pushes its own

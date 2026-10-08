@@ -7,7 +7,8 @@
 
   type Step = "email" | "code" | "join" | "asked";
   let step = $state<Step>("email");
-  let email = $state("");
+  // The link in a new member's welcome email fills in their address (ADR 0069)
+  let email = $state(new URLSearchParams(location.search).get("email") ?? "");
   let code = $state("");
   let busy = $state(false);
   let error = $state("");

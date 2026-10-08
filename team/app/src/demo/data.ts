@@ -46,6 +46,8 @@ export const TOURNAMENT_TYPES: TournamentType[] = [];
 export const TOURNAMENTS: Tournament[] = [];
 /** The club's agenda, from today (ADR 0062). */
 export const AGENDA: AgendaRow[] = [];
+/** The club's settings for the app (ADR 0072): how often live pages check for updates. */
+export const SETTINGS = { liveRefreshSeconds: 10 };
 export const ONE_OFFS: OneOff[] = [];
 
 export interface Role {
@@ -102,6 +104,7 @@ export interface Bootstrap {
   quips: Quip[];
   /** What's on from today (ADR 0062). */
   agenda: AgendaRow[];
+  settings: { liveRefreshSeconds: number };
 }
 
 /** Home's lines, from D1. */
@@ -161,6 +164,7 @@ export function applySlices(b: Slices) {
   if (b.tournaments) fill(TOURNAMENTS, b.tournaments);
   if (b.clubEvents) fill(ONE_OFFS, b.clubEvents);
   if (b.agenda) fill(AGENDA, b.agenda);
+  if (b.settings) Object.assign(SETTINGS, b.settings);
 }
 
 /** The old app's names: the Cougar players' team is "Cougars", the rest are colours (archive/team-manager). */

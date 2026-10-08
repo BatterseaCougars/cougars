@@ -1,0 +1,176 @@
+<script lang="ts">
+  // A tournament's awards and who won them (ADR 0073), on its landing page: each award, its line, and the team or
+  // player (or joint winners) who took it home. Once it's done, the data's picks show as provisional (lib/awards.ts)
+  // until an admin confirms them (here, or in Manage: AwardsDrawer).
+  import { can } from "../access/actions";
+  import { PLAYERS } from "../demo/data";
+  import type { Tournament } from "../demo/model";
+  import { granted } from "../demo/session.svelte";
+  import Icon from "../app/shell/Icon.svelte";
+  import { enterAwards } from "./AwardsDrawer.svelte";
+  import Kanji from "./Kanji.svelte";
+  import { kanjiFor } from "./motif";
+  import { typeById } from "../demo/schedule.svelte";
+  import TeamCrest from "./TeamCrest.svelte";
+  import { teamTone } from "./team-tones";
+  import { awardFromData } from "./awards";
+  import { editionState } from "./edition";
+
+  let { tournament }: { tournament: Tournament } = $props();
+
+  const admin = $derived(can(granted(), "manage:Tournament"));
+  const teams = $derived(tournament.teams);
+  const awards = $derived(tournament.awards ?? []);
+  const byId = (id: number | null) => PLAYERS.find((p) => p.id === id);
+  const teamIndex = (id: number | null) => teams.findIndex((t) => t.id === id);
+  const teamName = (id: number | null) => {
+    const t = teams[teamIndex(id)];
+    return t ? t.name || `Team ${byId(t.captainMemberId)?.name.split(" ")[0] ?? ""}` : "";
+  };
+  // Whose team a player's on
+  const teamOf = (memberId: number) =>
+    teams.find((t) => t.captainMemberId === memberId || t.players.some((p) => p.memberId === memberId))?.id ?? null;
+  // Confirmed, else (once it's done) what the data says, provisionally
+  const done = $derived(editionState(tournament) === "done");
+  const winnersOf = (award: string) => {
+    const saved = (tournament.winners ?? []).filter((w) => w.award === award);
+    if (saved.length) return { list: saved, provisional: false };
+    const data = done ? awardFromData(award, tournament, { positionOf: (id) => byId(id)?.position }) : null;
+    return { list: data?.winners ?? [], provisional: !!data };
+  };
+  const anyProvisional = $derived(awards.some((a) => winnersOf(a.name).provisional));
+  const unconfirmed = $derived(done && awards.length > 0 && !(tournament.winners ?? []).length);
+</script>
+
+{#if awards.length}
+  <section class="part">
+    <div class="part-head">
+      <h2 class="section-title">Awards<Kanji text={kanjiFor(typeById(tournament.typeId), "awards")} /></h2>
+      {#if admin}<button class="btn ghost sm" onclick={() => enterAwards(tournament.id)}
+          ><Icon name="medal" size={16} />{unconfirmed ? "Confirm the awards" : "Change the awards"}</button
+        >{/if}
+    </div>
+    {#if anyProvisional}
+      <p class="hint provisional">From the results so far: provisional until an admin confirms them.</p>
+    {/if}
+    <ol class="awards">
+      {#each awards as a (a.name)}
+        {@const w = winnersOf(a.name)}
+        <li class="award">
+          <span class="what">
+            <span class="award-name">{a.name}</span>
+            {#if a.about}<span class="hint">{a.about}</span>{/if}
+          </span>
+          <span class="winners">
+            {#if w.list.length > 2}
+              <!-- A big tie: one line, not a stack of names -->
+              <span class="won-text">
+                <span class="won-name">Shared by {w.list.length}</span>
+                <span class="hint shared"
+                  >{w.list
+                    .map((x) => (x.teamId ? teamName(x.teamId) : (byId(x.memberId)?.name ?? "")))
+                    .join(", ")}</span
+                >
+              </span>
+            {:else}
+              {#each w.list as x, i (i)}
+                {#if x.teamId}
+                  <span class="won">
+                    <TeamCrest
+                      name={teamName(x.teamId)}
+                      logo={teams[teamIndex(x.teamId)]?.logo ?? null}
+                      tone={teamTone(teamIndex(x.teamId))}
+                      size="2.25rem"
+                    />
+                    <span class="won-name">{teamName(x.teamId)}</span>
+                  </span>
+                {:else if x.memberId}
+                  <span class="won-text">
+                    <span class="won-name">{byId(x.memberId)?.name ?? ""}</span>
+                    {#if teamOf(x.memberId)}<span class="hint">{teamName(teamOf(x.memberId))}</span>{/if}
+                  </span>
+                {/if}
+              {:else}
+                <span class="hint">To be decided</span>
+              {/each}
+            {/if}
+          </span>
+        </li>
+      {/each}
+    </ol>
+  </section>
+{/if}
+
+<style>
+  .part {
+    display: grid;
+    gap: var(--s-3);
+  }
+  .part .section-title {
+    margin: 0;
+  }
+  .part-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .part-head .btn {
+    gap: var(--s-1);
+  }
+  .awards {
+    display: grid;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .award {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--s-4);
+    min-height: 4rem;
+    padding: var(--s-3) var(--s-1);
+  }
+  .award + .award {
+    border-top: 1px solid var(--border);
+  }
+  .what,
+  .won-text {
+    display: grid;
+    gap: 0.15rem;
+    min-width: 0;
+  }
+  .award-name {
+    color: var(--fg);
+    font-weight: 600;
+  }
+  .won {
+    display: flex;
+    align-items: center;
+    gap: var(--s-3);
+    min-width: 0;
+    text-align: right;
+  }
+  .won-name {
+    color: var(--fg);
+    font-weight: 500;
+  }
+  .winners {
+    display: grid;
+    justify-items: end;
+    gap: var(--s-2);
+    flex-shrink: 0;
+    max-width: 55%;
+    text-align: right;
+  }
+  .shared {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+  .provisional {
+    margin: 0;
+  }
+</style>

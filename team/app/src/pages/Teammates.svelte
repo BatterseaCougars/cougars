@@ -15,6 +15,8 @@
   import PlayerCard from "../lib/PlayerCard.svelte";
   import PlayerCardZoom from "../lib/PlayerCardZoom.svelte";
   import MemberSheet from "../lib/MemberSheet.svelte";
+  import AddMemberSheet from "../lib/AddMemberSheet.svelte";
+  import Icon from "../app/shell/Icon.svelte";
   import SearchField from "../lib/SearchField.svelte";
   import { pounds } from "../lib/dates";
   import DataGrid from "../lib/DataGrid.svelte";
@@ -25,6 +27,8 @@
   const perms = $derived(granted());
   const ratings = $derived(can(perms, "read:Rating"));
   const admin = $derived(can(perms, "manage:Member"));
+  // Adding someone to the club (ADR 0069)
+  let adding = $state(false);
   const who = $derived(me());
   let filter = $state<"all" | "F" | "D" | "G">("all");
   let query = $state("");
@@ -130,6 +134,13 @@
     active={filter === "all" ? 0 : 1}
     onclear={() => (filter = "all")}
   >
+    {#snippet actions()}
+      {#if admin}
+        <button class="btn sm primary" aria-haspopup="dialog" onclick={() => (adding = true)}
+          ><Icon name="userPlus" size={16} />Member</button
+        >
+      {/if}
+    {/snippet}
     {#snippet toolbar()}
       <SearchField bind:value={query} placeholder="Search teammates" />
       {#if admin}
@@ -180,6 +191,8 @@
     </div>
   {/if}
 </div>
+
+{#if admin}<AddMemberSheet bind:open={adding} />{/if}
 
 {#if lifted && admin}
   {#key lifted.player.id}

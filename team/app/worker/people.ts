@@ -3,6 +3,9 @@
 import { all, first, run } from "../../../shared/d1";
 import { ACTIONS, type Action } from "../src/access/actions";
 import { HttpError, bool, int, oneOf, text } from "./http";
+import { email, giveReference, mailConfig, type AuthEnv } from "./auth";
+import { sendMail } from "../../../shared/email";
+import { londonToday } from "../src/lib/dates";
 
 export interface MemberJson {
   id: number;
@@ -150,6 +153,50 @@ export async function firstAdmin(db: D1Database): Promise<number | null> {
      WHERE r.name = 'Admin' AND m.status = 'active' ORDER BY m.id LIMIT 1`,
   );
   return row?.id ?? null;
+}
+
+/**
+ * An admin adds someone to the club (ADR 0069): in straight away (no asking to join), with a payment reference, and
+ * an email with a link to the app that fills in their address on the sign-in screen. The email going astray doesn't
+ * undo the add: `emailed` says whether it went, so the admin can tell them another way.
+ */
+export async function addMember(env: AuthEnv, o: Record<string, unknown>, origin: string, now: Date) {
+  const name = text(o, "name", { max: 80 });
+  const address = email(o);
+  const position = oneOf(o, "position", ["F", "D", "G"] as const);
+  if (await first(env.DB, "SELECT 1 FROM members WHERE email = ?", [address]))
+    throw new HttpError(409, "Someone in the club has that email already.");
+  const res = await run(
+    env.DB,
+    `INSERT INTO members (name, email, position, status, joined_on, created_at) VALUES (?, ?, ?, 'active', ?, ?)`,
+    [name, address, position, londonToday(now), now.toISOString()],
+  );
+  const id = Number(res.meta.last_row_id);
+  await giveReference(env.DB, id, name);
+  const link = `${origin}/?email=${encodeURIComponent(address)}`;
+  const emailed = await sendMail(
+    {
+      to: [address],
+      subject: "You're in: the Battersea Cougars app",
+      text: [
+        `Hi ${name.split(" ")[0]},`,
+        "",
+        "You've been added to the Battersea Cougars app: training, tournaments, the draft and what you owe, all in one place.",
+        "",
+        `Open it here: ${link}`,
+        "",
+        "Sign in with this email address. We'll send you a code to type in; no password to remember.",
+        "",
+        "See you at training.",
+        "Battersea Cougars",
+      ].join("\n"),
+    },
+    mailConfig(env),
+  ).then(
+    () => true,
+    (e) => (console.error(JSON.stringify({ event: "member.invite_failed", error: String(e) })), false),
+  );
+  return { id, emailed };
 }
 
 /** An admin edits a member: position, rating, cougar, status and roles. */

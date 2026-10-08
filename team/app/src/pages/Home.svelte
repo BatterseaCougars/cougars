@@ -8,12 +8,13 @@
   import Icon from "../app/shell/Icon.svelte";
   import EventCard from "../lib/EventCard.svelte";
   import { formatDayDate, formatTime, londonToday, pounds } from "../lib/dates";
-  import { onTheClock } from "../lib/draft";
+  import { draftTurn } from "../lib/draft";
   import { downloadIcs } from "../lib/ics";
   import { fill, slot } from "../lib/greetings";
-  import { currentTournament, nextSession, sessionBookable, tournamentBookable } from "../demo/schedule.svelte";
+  import { latestTournament, nextSession, sessionBookable, tournamentBookable } from "../demo/schedule.svelte";
   import { pick, type Quip, type QuipKind } from "../lib/quips";
   import { prefersReducedMotion } from "../app/motion";
+  import { editionState, editionWhen } from "../lib/edition";
 
   const perms = $derived(granted());
   const who = $derived(me());
@@ -39,21 +40,22 @@
   const tournaments = $derived(
     db.tournamentTypes
       .filter((t) => t.active)
-      .map((type) => ({ type, t: currentTournament(type.id) }))
-      .filter((x) => x.t && x.t.status !== "finished"),
+      .map((type) => ({ type, t: latestTournament(type.id) }))
+      // The next one, not one that's done (by its games, lib/edition.ts)
+      .filter((x) => x.t && editionState(x.t) !== "done"),
   );
+  // Each series' next one is teased up top (a tentative date or a season is enough: people know to keep it free)
   const later = $derived(
-    [...others.map((o) => sessionBookable(o.session)), ...tournaments.map(({ t }) => tournamentBookable(t!))].sort(
-      (x, y) => x.startsAt.localeCompare(y.startsAt),
-    ),
+    others.map((o) => sessionBookable(o.session)).sort((x, y) => x.startsAt.localeCompare(y.startsAt)),
   );
   // For you (ADR 0060, 0062): a captain's draft, the draft an admin runs, a sign-up about to close you haven't answered
+  type Nudge = { key: string; href?: string; text: string; sub: string; hot: boolean; icon?: "draft" | "teams" };
   const nth = (n: number) => `${n}${n === 1 ? "st" : n === 2 ? "nd" : n === 3 ? "rd" : "th"}`;
   const today = londonToday();
   const nudges = $derived(
     db.agenda
       .filter((r) => r.day >= today && (r.kind === "draft" || r.kind === "signup_closes"))
-      .flatMap((r): { key: string; href: string; text: string; sub: string; hot: boolean }[] => {
+      .flatMap((r): Nudge[] => {
         const t = db.tournaments.find((x) => x.id === r.sourceId);
         const type = t && db.tournamentTypes.find((y) => y.id === t.typeId);
         if (!t || !type) return [];
@@ -72,20 +74,10 @@
         }
         const draft = `/tournaments/${type.slug}/draft`;
         const mine = t.teams.findIndex((x) => x.captainMemberId === who.id);
-        const picks = t.teams.reduce((n, x) => n + x.players.length, 0);
+        // Picks, as the server counts them: a player an admin put on by hand isn't one
+        // An open draft has a card of its own (liveDrafts), whatever day it was meant for
+        if (t.draftState === "open") return [];
         if (mine >= 0) {
-          if (t.draftState === "open") {
-            const yours = onTheClock(t.teams.length, picks) === mine;
-            return [
-              {
-                key: r.key,
-                href: draft,
-                text: yours ? "The draft's open: it's your pick" : "The draft's open",
-                sub: t.name,
-                hot: yours,
-              },
-            ];
-          }
           return [
             {
               key: r.key,
@@ -98,17 +90,74 @@
         }
         if (!can(perms, "run:Draft")) return [];
         return [
-          t.draftState === "open"
-            ? { key: r.key, href: draft, text: "The draft's open", sub: "Close it once everyone's picked", hot: true }
-            : {
-                key: r.key,
-                href: draft,
-                text: `Draft ${when}`,
-                sub: `${t.name} · open it when the captains are ready`,
-                hot: false,
-              },
+          {
+            key: r.key,
+            href: draft,
+            text: `Draft ${when}`,
+            sub: `${t.name} · open it when the captains are ready`,
+            hot: false,
+          },
         ];
       }),
+  );
+  // A draft that's open, for its captains and whoever runs it: on until it's closed, however long that takes. A
+  // captain hears when it's their pick, or how many picks away it is
+  const liveDrafts = $derived(
+    tournaments.flatMap(({ type, t }): Nudge[] => {
+      if (!t || t.kind !== "draft" || t.draftState !== "open") return [];
+      const mine = t.teams.findIndex((x) => x.captainMemberId === who.id);
+      if (mine < 0 && !can(perms, "run:Draft")) return [];
+      const href = `/tournaments/${type.slug}/draft`;
+      const key = `draft-open:${t.id}`;
+      const { left, until } = draftTurn(t, mine);
+      if (!left)
+        return [
+          { key, href, text: "Everyone's picked", sub: `${t.name} · the draft closes to set the teams`, hot: false },
+        ];
+      if (mine < 0)
+        return [{ key, href, text: "The draft's open", sub: `${t.name} · close it once everyone's picked`, hot: true }];
+      if (until === 0)
+        return [{ key, href, text: "It's your pick", sub: `${t.name} draft · you're on the clock`, hot: true }];
+      return [
+        {
+          key,
+          href,
+          text: "The draft's open",
+          sub: until < Infinity ? `${t.name} · you pick in ${until}` : `${t.name} · your picks are done`,
+          hot: false,
+        },
+      ];
+    }),
+  );
+  // Everyone else (ADR 0070): the draft is the captains' business, so a member hears that it's on, with nothing to
+  // open; once it's closed, the teams are out, and that's a link to them
+  const draftNews = $derived(
+    can(perms, "run:Draft")
+      ? []
+      : tournaments.flatMap(({ type, t }): Nudge[] => {
+          if (!t || t.kind !== "draft" || t.teams.some((x) => x.captainMemberId === who.id)) return [];
+          if (t.draftState === "open")
+            return [
+              {
+                key: `draft-on:${t.id}`,
+                text: `The ${t.name} draft is on`,
+                sub: "The captains are picking. You'll see the teams when they're done.",
+                hot: false,
+              },
+            ];
+          if (t.draftState === "closed" && t.teams.some((x) => x.players.length))
+            return [
+              {
+                key: `teams-out:${t.id}`,
+                href: `/tournaments/${type.slug}/teams`,
+                text: "The teams are out",
+                sub: `${t.name} · see who you're playing with`,
+                hot: false,
+                icon: "teams",
+              },
+            ];
+          return [];
+        }),
   );
   const isIn = $derived(next.going.includes(who.id));
   const waiting = $derived(next.waitlist.includes(who.id));
@@ -203,14 +252,23 @@
     </a>
   </header>
 
-  {#if nudges.length}
+  {#if nudges.length || liveDrafts.length || draftNews.length}
     <div class="nudges">
-      {#each nudges as n (n.key)}
-        <a class="nudge rise" class:hot={n.hot} href={n.href}>
-          <Icon name="draft" size={18} />
-          <span class="grow"><span class="nudge-text">{n.text}</span><span class="nudge-sub">{n.sub}</span></span>
-          <Icon name="chevronRight" size={16} />
-        </a>
+      {#each [...liveDrafts, ...nudges, ...draftNews] as n (n.key)}
+        {#if n.href}
+          <a class="nudge rise" class:hot={n.hot} href={n.href}>
+            <Icon name={n.icon ?? "draft"} size={18} />
+            <span class="grow"><span class="nudge-text">{n.text}</span><span class="nudge-sub">{n.sub}</span></span>
+            <Icon name="chevronRight" size={16} />
+          </a>
+        {:else}
+          <!-- Just news: nothing to open -->
+          <div class="nudge rise" role="status">
+            <Icon name={n.icon ?? "draft"} size={18} />
+            <span class="grow"><span class="nudge-text">{n.text}</span><span class="nudge-sub">{n.sub}</span></span>
+            <span class="badge red live">Live</span>
+          </div>
+        {/if}
       {/each}
     </div>
   {/if}
@@ -256,6 +314,31 @@
       </EventCard>
     </section>
   {/if}
+
+  <!-- The next of each tournament series, teased: when (or the season), signing up, and the way to its page -->
+  {#each tournaments as { type, t } (type.id)}
+    {#if t}
+      {@const w = editionWhen(t)}
+      <section>
+        <h2 class="section-title">The next {type.shortName}</h2>
+        <EventCard event={tournamentBookable(t)} canSignUp={can(perms, "signup:Event")} feature>
+          {#snippet footer()}
+            <a class="status" href="/tournaments/{type.slug}">
+              <Icon name={type.icon} size={18} />
+              <span class="grow"
+                >{w.tbc
+                  ? `${w.season}: the date's being set`
+                  : t.status === "open"
+                    ? "Sign-up's open"
+                    : "All about it"}: the draft, the teams, last time's champions</span
+              >
+              <Icon name="chevronRight" size={18} />
+            </a>
+          {/snippet}
+        </EventCard>
+      </section>
+    {/if}
+  {/each}
 
   <!-- Everything after the lead session, in date order: other trainings, then tournaments as they come -->
   {#if later.length}
@@ -477,7 +560,7 @@
     background: var(--surface-1);
     color: var(--fg);
   }
-  .nudge:hover {
+  a.nudge:hover {
     background: var(--surface-2);
   }
   .nudge.hot {

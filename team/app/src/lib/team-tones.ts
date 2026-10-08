@@ -6,3 +6,6 @@ const TONES = ["blue", "amber", "violet", "teal", "green", "red"] as const;
 /** The CSS colour for the team at this index in the tournament's teams. */
 export const teamTone = (index: number) =>
   `var(--tone-${TONES[((index % TONES.length) + TONES.length) % TONES.length]})`;
+
+/** A team's own page (TournamentTeam): wherever a team is shown, it links here. */
+export const teamHref = (slug: string, teamId: number) => `/tournaments/${slug}/teams/${teamId}`;

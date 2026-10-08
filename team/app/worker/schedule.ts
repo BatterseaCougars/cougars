@@ -1,5 +1,6 @@
 // The schedule (ADR 0030): training series and their sessions, tournament types and editions, one-off events.
 // Sessions are rows, made 12 weeks ahead from each active series' rule, so each can be cancelled on its own.
+import { listWinners } from "./awards";
 import { all, first, run, type Param } from "../../../shared/d1";
 import { cleanMapUrl } from "../../../shared/places";
 import { isSeason, seasonEnd, seasonYear, type Season } from "../../../shared/seasons";
@@ -536,13 +537,14 @@ export async function listTournaments(db: D1Database) {
               contact, pick
        FROM tournament_teams ORDER BY tournament_id, coalesce(pick, 1000), id`,
     ),
-    all<{ teamId: number; memberId: number | null; name: string }>(
+    all<{ teamId: number; memberId: number | null; name: string; pick: number | null }>(
       db,
-      `SELECT team_id teamId, member_id memberId, name FROM tournament_team_players
+      `SELECT team_id teamId, member_id memberId, name, pick_number pick FROM tournament_team_players
        ORDER BY team_id, coalesce(pick_number, position), id`,
     ),
     listGames(db),
   ]);
+  const winners = await listWinners(db);
   return rows.map((t) => ({
     ...t,
     draftState: draftStateOf(
@@ -554,6 +556,7 @@ export async function listTournaments(db: D1Database) {
     awards: parseAwards(t.awards),
     playoffs: parsePlayoffs(t.playoffs),
     games: games.filter((g) => g.tournamentId === t.id).map(({ tournamentId: _, ...g }) => g),
+    winners: winners.filter((x) => x.tournamentId === t.id).map(({ tournamentId: _, ...x }) => x),
     teams: teams
       .filter((team) => team.tournamentId === t.id)
       .map(({ tournamentId: _, ...team }) => ({

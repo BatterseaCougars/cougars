@@ -2,11 +2,29 @@
   // Full-screen pages hide the tabs and show this instead, frosted, sitting in the notch area.
   import Icon from "./Icon.svelte";
 
-  let { href, label, title, right }: { href: string; label: string; title: string; right?: string } = $props();
+  let {
+    href,
+    label,
+    title,
+    right,
+    onclick,
+  }: {
+    href: string;
+    label: string;
+    title: string;
+    right?: string;
+    /** Instead of following the link (going back in history); the link stays for a new tab. */
+    onclick?: () => void;
+  } = $props();
+  const click = (e: MouseEvent) => {
+    if (!onclick || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    e.preventDefault();
+    onclick();
+  };
 </script>
 
 <header class="backbar">
-  <a class="back" {href}><Icon name="chevronLeft" size={20} />{label}</a>
+  <a class="back" {href} onclick={click}><Icon name="chevronLeft" size={20} />{label}</a>
   <span class="title">{title}</span>
   <span class="right hint">{right ?? ""}</span>
 </header>

@@ -6,6 +6,11 @@
   import { api } from "../app/api";
   import Icon from "../app/shell/Icon.svelte";
   import PageHeader from "../lib/PageHeader.svelte";
+  import { can } from "../access/actions";
+  import { granted } from "../demo/session.svelte";
+  import { db } from "../demo/store.svelte";
+  import { saveSettings } from "../app/backend.svelte";
+  import { everyHowOften } from "../lib/live-updates.svelte";
 
   interface Metric {
     id: string;
@@ -51,6 +56,18 @@
   $effect(() => {
     load();
   });
+
+  // How often live pages check for updates (ADR 0072): a game being scored, the tournament's home on the day, the
+  // draft room. Each check is a request, so it's set here, beside what's left of the day
+  const CHOICES = [5, 10, 15, 30, 60];
+  const canSet = $derived(can(granted(), "manage:Settings"));
+  const seconds = $derived(db.settings.liveRefreshSeconds);
+  // A tournament day, roughly: 30 phones on a live page for 4 hours
+  const tournamentDay = $derived(Math.round((30 * 4 * 3600) / seconds));
+  const requestLimit = $derived(usage?.metrics.find((m) => m.id === "requests")?.limit ?? 100_000);
+  async function choose(s: number) {
+    if (s !== seconds) await saveSettings({ liveRefreshSeconds: s });
+  }
 
   const pct = (m: Metric) => Math.min(100, Math.round((m.used / m.limit) * 100));
   const level = (m: Metric) => (pct(m) >= 80 ? "high" : pct(m) >= 50 ? "mid" : "low");
@@ -148,9 +165,54 @@
       an email at 80%. Sanity's allowance is on sanity.io/manage.
     </p>
   {/if}
+
+  <!-- Live updates: how often, and what it costs the free day -->
+  <section class="live">
+    <h2 class="section">Live updates</h2>
+    <p class="hint small">
+      A game being scored, the tournament's home on the day, and the draft room check for changes {everyHowOften()}.
+      Every check from every phone is a request against the free daily allowance: faster feels more live, slower lasts
+      the day.
+    </p>
+    {#if canSet}
+      <div class="choices" role="radiogroup" aria-label="Check for updates every">
+        {#each CHOICES as c (c)}
+          <button
+            class="btn sm"
+            class:primary={c === seconds}
+            class:outline={c !== seconds}
+            role="radio"
+            aria-checked={c === seconds}
+            onclick={() => choose(c)}>{c < 60 ? `${c}s` : `${c / 60} min`}</button
+          >
+        {/each}
+      </div>
+    {/if}
+    <p class="hint small">
+      Each phone on a live page makes {n(Math.round(3600 / seconds))} requests an hour. A tournament day, say 30 phones for
+      4 hours, is about {n(tournamentDay)}: {Math.round((tournamentDay / requestLimit) * 100)}% of the {n(requestLimit)} a
+      day. On a paid plan, faster costs nothing extra to speak of.
+    </p>
+  </section>
 </div>
 
 <style>
+  .live {
+    display: grid;
+    gap: var(--s-3);
+    margin-top: var(--s-6);
+  }
+  .live .section {
+    margin: 0;
+  }
+  .live p {
+    margin: 0;
+  }
+  .choices {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-2);
+  }
   .meters {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
