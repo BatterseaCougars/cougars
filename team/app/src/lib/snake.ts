@@ -58,3 +58,24 @@ export function snakeTeams(players: Player[], names: string[]): Team[] {
     players: t.players.map((p) => p.id),
   }));
 }
+
+/**
+ * Late sign-ups onto teams already made, leaving everyone else where they are: best first, a Cougar to the Cougars,
+ * anyone else to the team with fewest players, then fewest in their position, then the lowest rating.
+ */
+export function slotIn(teams: Team[], late: Player[], byId: (id: number) => Player | undefined): Team[] {
+  const out = teams.map((t) => ({ name: t.name, players: [...t.players] }));
+  const rating = (t: Team) => t.players.reduce((s, id) => s + (byId(id)?.rating ?? 0), 0);
+  const count = (t: Team, position: string) => t.players.filter((id) => byId(id)?.position === position).length;
+  for (const p of [...late].sort((a, b) => b.rating - a.rating)) {
+    const cougars = p.cougar ? out.find((t) => t.name === "Cougars") : undefined;
+    const best =
+      cougars ??
+      [...out].sort(
+        (a, b) =>
+          a.players.length - b.players.length || count(a, p.position) - count(b, p.position) || rating(a) - rating(b),
+      )[0];
+    best.players.push(p.id);
+  }
+  return out;
+}

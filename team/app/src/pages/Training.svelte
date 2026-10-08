@@ -1,7 +1,13 @@
+<script lang="ts" module>
+  import type { Team } from "../lib/snake";
+  // Teams made but not published yet, by session: kept if an admin leaves the page and comes back
+  const proposals = $state<Record<number, Team[] | undefined>>({});
+</script>
+
 <script lang="ts">
-  // A training series' next session: who's in, and the teams. Members come here to see they're registered and
-  // which team they're on, so that's what leads. Ratings drive the teams but only admins see them (read:Rating),
-  // as in the old app.
+  // A training series' next session. Before the teams: who's in, in order, and your answer. Once there are teams,
+  // they're the page: anyone who signed up after them first (an admin slots them in or remakes them), then the
+  // teams, then sign-up. Ratings drive the teams but only admins see them (read:Rating), as in the old app.
   import PageHeader from "../lib/PageHeader.svelte";
   import { can } from "../access/actions";
   import { PLAYERS, TEAM_NAMES, TEAM_ORDER, type Player } from "../demo/data";
@@ -16,7 +22,8 @@
   import { publishTeams, setPlayer } from "../app/backend.svelte";
   import { formatDayDate } from "../lib/dates";
   import { describeRule } from "../lib/recurrence";
-  import { snakeTeams, type Team } from "../lib/snake";
+  import { slotIn, snakeTeams } from "../lib/snake";
+  import EmptyState from "../lib/EmptyState.svelte";
   import { nextSession, resolve, seriesById, seriesPlace, sessionBookable } from "../demo/schedule.svelte";
 
   let { seriesId }: { seriesId: number } = $props();
@@ -33,7 +40,6 @@
   const next = $derived(session ?? { id: 0, going: [] as number[], waitlist: [] as number[] });
   const byId = (id: number): Player => PLAYERS.find((p) => p.id === id)!;
 
-  let proposal: Team[] | null = $state(null);
   let registering = $state(false);
   // The card that's been picked up, and where it lies on the page
   let lifted = $state<{ id: number; el: HTMLElement; n?: number } | null>(null);
@@ -52,9 +58,10 @@
       s.going = [...s.going, s.waitlist[0]];
       s.waitlist = s.waitlist.slice(1);
     }
-    const published = db.teams[s.id];
-    if (published) for (const t of published) t.players = t.players.filter((x) => x !== id);
+    const out = db.teams[s.id];
+    if (out) for (const t of out) t.players = t.players.filter((x) => x !== id);
     if (proposal) for (const t of proposal) t.players = t.players.filter((x) => x !== id);
+    else if (out) void publishTeams(s.id, out);
   }
 
   // Trial: players as trading cards, or the plain list. Remembered per device.
@@ -75,7 +82,9 @@
       // Private mode: the choice just isn't remembered.
     }
   }
-  const teams = $derived(proposal ?? db.teams[next.id] ?? null);
+  const proposal = $derived(proposals[next.id] ?? null);
+  const published = $derived(db.teams[next.id] ?? null);
+  const teams = $derived(proposal ?? published);
   // Your team first, then the old app's order: Cougars, Black, White, then the rest.
   const ordered = $derived(
     teams
@@ -92,7 +101,7 @@
   const spaces = $derived(info?.capacity ? Math.max(0, info.capacity - next.going.length) : null);
 
   function generate() {
-    proposal = snakeTeams(next.going.map(byId), TEAM_NAMES);
+    proposals[next.id] = snakeTeams(next.going.map(byId), TEAM_NAMES);
   }
   function move(id: number, from: Team, to: Team) {
     from.players = from.players.filter((p) => p !== id);
@@ -102,8 +111,18 @@
     if (!proposal) return;
     db.teams[next.id] = proposal;
     void publishTeams(next.id, proposal);
-    proposal = null;
+    proposals[next.id] = undefined;
   }
+  // Signed up after the teams were made: onto the teams as they are (each to the weaker side), as draft teams to
+  // check and publish
+  function slot() {
+    if (published) proposals[next.id] = slotIn(published, unplaced.map(byId), (id) => byId(id));
+  }
+  const firstNames = (ids: number[]) => {
+    const names = ids.map((id) => (id === who.id ? "you" : byId(id).name.split(" ")[0]));
+    const list = names.length > 1 ? `${names.slice(0, -1).join(", ")} and ${names.at(-1)}` : names[0];
+    return list.charAt(0).toUpperCase() + list.slice(1);
+  };
   const rating = (ids: number[]) => ids.reduce((s, id) => s + byId(id).rating, 0);
 </script>
 
@@ -138,35 +157,48 @@
   {/if}
 {/snippet}
 
-<div class="page">
+<div class="page wide reading">
   <PageHeader
     title={series.name}
     subtitle="{describeRule(series)} · {series.startTime}–{series.endTime}{usual ? ` · ${usual.name}` : ''}"
   >
-    {#snippet toolbar()}
-      {#if session}
-        <div class="seg sm" role="group" aria-label="Show players as">
-          <button aria-pressed={view === "cards"} onclick={() => setView("cards")}>Cards</button>
-          <button aria-pressed={view === "list"} onclick={() => setView("list")}>List</button>
-        </div>
-      {/if}
-    {/snippet}
     {#snippet actions()}
       {#if session && can(perms, "record:Attendance")}
         <button class="btn sm outline" onclick={() => (registering = true)}>
           <Icon name="userPlus" size={16} /> Add player
         </button>
       {/if}
-      {#if session && can(perms, "generate:Teams")}
+      {#if session && can(perms, "generate:Teams") && next.going.length && !unplaced.length}
         <button class="btn sm" class:primary={!teams} class:outline={!!teams} onclick={generate}>
-          {teams ? "Regenerate" : "Make teams"}
+          {teams ? "Remake teams" : "Make teams"}
         </button>
       {/if}
     {/snippet}
   </PageHeader>
 
+  {#snippet signUp()}
+    <!-- This week's session and your answer, with the numbers -->
+    <div class="stats num">
+      <div class="stat"><span class="eyebrow">In</span><span class="value">{next.going.length}</span></div>
+      <div class="stat"><span class="eyebrow">Waiting</span><span class="value">{next.waitlist.length}</span></div>
+      <div class="stat">
+        <span class="eyebrow">Spaces</span><span class="value">{spaces ?? "–"}</span>
+      </div>
+    </div>
+    <EventCard event={sessionBookable(session!)} canSignUp={can(perms, "signup:Event")} beckon roster={false} />
+  {/snippet}
+
+  {#snippet waitlist()}
+    {#if next.waitlist.length}
+      <h2 class="section-title">Waitlist</h2>
+      {@render players(next.waitlist, true)}
+    {/if}
+  {/snippet}
+
   {#if !session}
-    <p class="note">No sessions coming up. An admin can set the dates under Settings → Training.</p>
+    <EmptyState icon="calendar" title="No sessions coming up">
+      An admin sets the dates under Settings → Training.
+    </EmptyState>
   {:else}
     {#if info && (info.place?.name !== usual?.name || info.startTime !== series.startTime)}
       <p class="note">
@@ -175,36 +207,75 @@
       </p>
     {/if}
 
-    <EventCard event={sessionBookable(session)} canSignUp={can(perms, "signup:Event")} beckon />
-
-    <div class="stats num">
-      <div class="stat"><span class="eyebrow">In</span><span class="value">{next.going.length}</span></div>
-      <div class="stat"><span class="eyebrow">Waiting</span><span class="value">{next.waitlist.length}</span></div>
-      <div class="stat">
-        <span class="eyebrow">Spaces</span><span class="value">{spaces ?? "–"}</span>
+    {#if !ordered}
+      <!-- Before the teams: who's in, in order -->
+      {@render signUp()}
+      <div class="list-head">
+        <h2 class="section-title">Who's in · first come, first served</h2>
+        {#if next.going.length || next.waitlist.length}
+          <div class="seg sm" role="group" aria-label="Show players as">
+            <button aria-pressed={view === "cards"} onclick={() => setView("cards")}>Cards</button>
+            <button aria-pressed={view === "list"} onclick={() => setView("list")}>List</button>
+          </div>
+        {/if}
       </div>
-    </div>
+      {#if next.going.length}
+        {@render players(next.going, true)}
+      {:else}
+        <p class="hint">Nobody yet. If you ain't first, you last.</p>
+      {/if}
+      <p class="hint">Teams come out after sign-up closes.</p>
+      {@render waitlist()}
+    {:else}
+      <!-- Once there are teams: anyone missing from them first, then sign-up and your answer, then the teams -->
+      {#if unplaced.length}
+        <div class="late rise">
+          <span class="late-icon"><Icon name="alert" size={22} /></span>
+          <p class="late-text">
+            <span class="eyebrow">{unplaced.length} not on a team</span>
+            <span
+              ><strong>{firstNames(unplaced)}</strong>
+              {unplaced.length === 1 && unplaced[0] !== who.id ? "is" : "are"} in, but signed up after the teams were made.{#if !can(perms, "generate:Teams")}
+                The teams may change.{/if}</span
+            >
+          </p>
+          {#if can(perms, "generate:Teams")}
+            <div class="late-acts">
+              <button class="btn primary sm" onclick={slot}>Slot them in</button>
+              <button class="btn outline sm" onclick={generate}>Remake teams</button>
+            </div>
+          {/if}
+        </div>
+      {/if}
 
-    {#if proposal}
-      <p class="note rise">
-        Draft teams, not published yet. Move a player with the arrow; drag and drop comes with the solver in T3.
-      </p>
-    {/if}
+      {@render signUp()}
 
-    {#if ordered}
-      {#each ordered as team (team.name)}
-        {@const mine = team.players.includes(who.id)}
-        <section class="team rise" class:mine>
-          <header>
-            <h2 class="display">{team.name}</h2>
-            {#if mine}<span class="badge green">Your team</span>{/if}
-            <span class="hint num count">
-              {team.players.length} players{ratings ? ` · rating ${rating(team.players)}` : ""}
-            </span>
-          </header>
-          {#if !proposal}
-            {@render players(team.players)}
-          {:else}
+      {#if proposal}
+        <div class="draft-bar rise">
+          <p><strong>Not published yet.</strong> Only admins see these. Move a player with the arrow.</p>
+          <div class="late-acts">
+            {#if published}
+              <button class="btn ghost" onclick={() => (proposals[next.id] = undefined)}>Discard</button>
+            {/if}
+            {#if can(perms, "publish:Teams")}
+              <button class="btn primary" onclick={publish}>Publish teams</button>
+            {/if}
+          </div>
+        </div>
+      {/if}
+
+      <div class="teams-grid">
+        {#each ordered as team (team.name)}
+          {@const mine = !proposal && team.players.includes(who.id)}
+          <section class="team rise" class:mine>
+            <header>
+              <h2 class="display">{team.name}</h2>
+              {#if mine}<span class="badge green">Your team</span>{/if}
+              <span class="hint num count">
+                {team.players.length}
+                {team.players.length === 1 ? "player" : "players"}{ratings ? ` · rating ${rating(team.players)}` : ""}
+              </span>
+            </header>
             <div class="list">
               {#each team.players as id (id)}
                 {#if proposal}
@@ -224,30 +295,11 @@
                 {/if}
               {/each}
             </div>
-          {/if}
-        </section>
-      {/each}
-      {#if proposal && can(perms, "publish:Teams")}
-        <button class="btn primary block" onclick={publish}>Publish teams</button>
-      {/if}
+          </section>
+        {/each}
+      </div>
 
-      {#if unplaced.length}
-        <h2 class="section-title">In, not on a team yet</h2>
-        {@render players(unplaced)}
-      {/if}
-    {:else}
-      <h2 class="section-title">Who's in · first come, first served</h2>
-      {#if next.going.length}
-        {@render players(next.going, true)}
-      {:else}
-        <p class="hint">Nobody yet. If you ain't first, you last.</p>
-      {/if}
-      <p class="hint">Teams come out after sign-up closes.</p>
-    {/if}
-
-    {#if next.waitlist.length}
-      <h2 class="section-title">Waitlist</h2>
-      {@render players(next.waitlist, true)}
+      {@render waitlist()}
     {/if}
   {/if}
 </div>
@@ -273,6 +325,23 @@
 {/if}
 
 <style>
+  .list-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s-3);
+  }
+  .list-head .section-title {
+    margin: 0;
+  }
+  /* The teams side by side where there's room, each a column of rows */
+  .teams-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr));
+    gap: var(--s-6);
+    align-items: start;
+  }
   .team {
     display: grid;
     gap: var(--s-3);
@@ -305,6 +374,60 @@
       grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr));
       gap: var(--s-4);
     }
+  }
+  /* The teams are out: a line on Who's in that goes to them */
+  /* Draft teams: what they are and the one thing to do, together */
+  .draft-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s-3);
+  }
+  .draft-bar p {
+    margin: 0;
+    color: var(--fg-muted);
+  }
+  .draft-bar strong {
+    color: var(--fg);
+  }
+  /* Someone's missing from the teams: the first thing on the page, in amber */
+  .late {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--s-4);
+    padding: var(--s-4) var(--s-5);
+    border-radius: var(--r-lg);
+    background: color-mix(in srgb, var(--amber) 10%, var(--surface-1));
+    color: var(--fg-muted);
+  }
+  .late-icon {
+    display: grid;
+    place-items: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    flex-shrink: 0;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--amber) 22%, transparent);
+    color: var(--amber-ink);
+  }
+  .late-text {
+    display: grid;
+    flex: 1;
+    gap: 0.15rem;
+    min-width: 14rem;
+    margin: 0;
+  }
+  .late-text .eyebrow {
+    color: var(--amber-ink);
+  }
+  .late strong {
+    color: var(--fg);
+  }
+  .late-acts {
+    display: flex;
+    gap: var(--s-2);
   }
   .n {
     width: 1.25rem;

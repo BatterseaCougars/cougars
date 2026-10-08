@@ -21,6 +21,7 @@
     onanswer,
     footer,
     beckon = false,
+    roster = true,
   }: {
     event: Bookable;
     canSignUp?: boolean;
@@ -34,6 +35,8 @@
     /** The session you're being asked about (Home's next one, a training's page): until you're in, In pulses once,
      * and again if you say out. */
     beckon?: boolean;
+    /** Who's going and the count; off where the page lists them itself (a training's Who's in). */
+    roster?: boolean;
   } = $props();
 
   const KIND = { training: "Training", tournament: "Tournament", social: "Social" } as const;
@@ -174,7 +177,7 @@
         {:else if waiting}<span class="badge amber num">Waitlist · number {entries.waitlist.indexOf(id) + 1}</span>
         {:else if out}<span class="badge red">You're out</span>
         {:else}<span class="badge">Not answered yet</span>{/if}
-        <span class="tally num"><strong>{entries.going.length}</strong>{tally}</span>
+        {#if roster}<span class="tally num"><strong>{entries.going.length}</strong>{tally}</span>{/if}
       {/if}
     </div>
   </div>
@@ -182,20 +185,22 @@
   {#if event.signup}
     <!-- Two rows at every width: who's going, then your answer -->
     <div class="going">
-      <div class="crowd">
-        <span class="faces" aria-hidden="true">
-          {#each faces as pid (pid)}<span class:you={pid === id}>{initials(nameOf(pid))}</span>{/each}
-          {#if entries.going.length > faces.length}<span class="more num">+{entries.going.length - faces.length}</span
-            >{/if}
-        </span>
-        <span class="who">
-          {#if !entries.going.length}
-            Nobody yet. First in, first on the list.
-          {:else}
-            {crowd}{#if rest > 0}&nbsp;{#if event.href}<a href={event.href}>and {rest} more</a>{:else}and {rest} more{/if}{/if}
-          {/if}
-        </span>
-      </div>
+      {#if roster}
+        <div class="crowd">
+          <span class="faces" aria-hidden="true">
+            {#each faces as pid (pid)}<span class:you={pid === id}>{initials(nameOf(pid))}</span>{/each}
+            {#if entries.going.length > faces.length}<span class="more num">+{entries.going.length - faces.length}</span
+              >{/if}
+          </span>
+          <span class="who">
+            {#if !entries.going.length}
+              Nobody yet. First in, first on the list.
+            {:else}
+              {crowd}{#if rest > 0}&nbsp;{#if event.href}<a href={event.href}>and {rest} more</a>{:else}and {rest} more{/if}{/if}
+            {/if}
+          </span>
+        </div>
+      {/if}
       <div class="reply">
         {#if canSignUp}
           <div class="answer" role="group" aria-label="Are you in?">
