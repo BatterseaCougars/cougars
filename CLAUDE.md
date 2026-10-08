@@ -41,6 +41,11 @@ Worker ([ADR 0022](docs/adr/0022-team-app-svelte-pwa.md)); its permissions follo
 - Dates: always format in Europe/London via `src/lib/dates.ts`.
 - Images: Sanity CDN via `src/lib/sanity/images.ts`; local assets in `src/assets/` (no `public/` except favicons).
 
+## Team app (team/app)
+
+- **Admin actions live on the thing's own page**, opening over it (sheet, drawer, editor panel), not buried under
+  Settings; Settings is for setting up and reuses the same editors ([ADR 0065](docs/adr/0065-admin-actions-where-the-thing-is.md)).
+
 ## Team app dev server (team/app)
 
 - A library the browser imports goes in team/app `package.json` **dependencies** (not devDependencies). Vite

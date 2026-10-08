@@ -1,4 +1,4 @@
-// A tournament's fixtures, results and playoffs (ADR 0061). Once its teams are set (a captains' draft closed, or the
+// A tournament's fixtures, results and playoffs (ADR 0061). Once it has two teams (a captains' draft's captains, or the
 // teams that entered), an admin has the app make the fixtures: a round robin, every team playing every other once
 // (lib/fixtures.ts), then the playoff games its settings ask for, by table position. They can be made again until a
 // game has a result. When the last group game has its result, the playoffs get their teams from the table.
@@ -65,8 +65,6 @@ const teamIdsOf = async (db: D1Database, id: number) =>
 /** An admin has the app make the fixtures: the round robin, then the playoffs waiting on the table. */
 export async function makeFixtures(db: D1Database, id: number) {
   const t = await tournamentOf(db, id);
-  if (t.kind === "draft" && t.draftState !== "closed")
-    throw new HttpError(409, "The fixtures come once the draft is closed.");
   const teams = await teamIdsOf(db, id);
   if (teams.length < 2) throw new HttpError(409, "Fixtures need at least two teams.");
   if (await first(db, "SELECT 1 FROM tournament_games WHERE tournament_id = ? AND home_goals IS NOT NULL", [id]))

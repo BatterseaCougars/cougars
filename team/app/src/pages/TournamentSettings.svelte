@@ -2,11 +2,10 @@
   // Settings → Tournaments: the schedule, a card for each tournament, what an admin comes here to change: when and
   // where it is, sign-up, the draft and its captains. A card opens that tournament's editor in a modal panel; "New
   // tournament" opens a blank one, which can start from a series' defaults (Settings → Tournament Series).
-  import { saving } from "../app/backend.svelte";
   import PageHeader from "../lib/PageHeader.svelte";
   import ScheduleCards, { type ScheduleCard } from "../lib/ScheduleCards.svelte";
-  import EditorPanel from "../lib/EditorPanel.svelte";
-  import TournamentDateEditor, { STATUSES } from "../lib/TournamentDateEditor.svelte";
+  import { STATUSES } from "../lib/TournamentDateEditor.svelte";
+  import TournamentEditorPanel, { editTournament } from "../lib/TournamentEditorPanel.svelte";
   import { tournamentPlace, typeById, whenOf } from "../demo/schedule.svelte";
   import { db } from "../demo/store.svelte";
   import { londonToday, pounds } from "../lib/dates";
@@ -53,11 +52,6 @@
       ];
     }),
   );
-
-  // The tournament open in the panel, or a new one
-  let open = $state<number | "new" | null>(null);
-  const date = $derived(typeof open === "number" ? db.tournaments.find((t) => t.id === open) : undefined);
-  const type = $derived(date ? typeById(date.typeId) : undefined);
 </script>
 
 <div class="page">
@@ -65,25 +59,8 @@
   <ScheduleCards
     cards={dateCards}
     add={{ name: "New tournament", hint: "On its own, or in a series to start from its defaults." }}
-    onopen={(id) => (open = id)}
+    onopen={(id) => editTournament(id)}
   />
 </div>
 
-{#if open !== null}
-  {#key open}
-    <EditorPanel
-      eyebrow={date ? `${type?.name ?? "Tournament"} · ${whenOf(date)}` : "Tournament"}
-      title={date?.name ?? "New tournament"}
-      icon={type?.icon}
-      tone={type?.tone}
-      onclose={() => (open = null)}
-    >
-      <TournamentDateEditor dateId={date?.id} oncreated={(id) => (open = id)} />
-      {#snippet footer()}
-        <button class="btn primary" type="submit" form="date-form" disabled={saving.busy > 0}
-          >{date ? "Save" : "Schedule it"}</button
-        >
-      {/snippet}
-    </EditorPanel>
-  {/key}
-{/if}
+<TournamentEditorPanel />

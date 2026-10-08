@@ -22,6 +22,8 @@
     removeLabel,
     onremove,
     detailsHref,
+    actionLabel,
+    onaction,
     onclose,
   }: {
     player: Player;
@@ -36,6 +38,9 @@
     onremove?: () => void;
     /** A link to the full card, for an admin looking at the small one. */
     detailsHref?: string;
+    /** The card's own big button along its foot ("Pick Alex" on draft night): does it, and puts the card down. */
+    actionLabel?: string;
+    onaction?: () => void;
     onclose: () => void;
   } = $props();
 
@@ -155,6 +160,11 @@
           <p class="bio" class:empty={!bio.trim()}>
             {bio.trim() || (you ? "No bio yet. Add one on your profile." : `No bio yet. ${first} is a mystery.`)}
           </p>
+          {#if actionLabel && onaction}
+            <div class="cb-action">
+              <button class="btn primary block" onclick={() => (onaction(), close())}>{actionLabel}</button>
+            </div>
+          {/if}
         </article>
       </div>
     </div>
@@ -383,5 +393,10 @@
   .act.remove.sure {
     background: var(--red);
     color: #fff;
+  }
+  /* The card's own action, along its foot */
+  .cb-action {
+    margin-top: auto;
+    padding: 0 5cqw 5cqw;
   }
 </style>

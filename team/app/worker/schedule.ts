@@ -620,6 +620,36 @@ interface TeamIn {
 
 const LOGO = /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/]+=*$/;
 
+/** A team's logo: a small image the browser shrank (TeamCard, TeamLookSheet), or none (its initials show). */
+function logoOf(t: Record<string, unknown>): string | null {
+  const logo = t.logo == null || t.logo === "" ? null : t.logo;
+  if (logo !== null && (typeof logo !== "string" || logo.length > 200_000 || !LOGO.test(logo)))
+    throw new HttpError(400, "A logo should be a small PNG, JPEG or WebP image.");
+  return logo;
+}
+
+/**
+ * A team's look, set by its captain or an admin (ADR 0065: from the team, not Settings): its name (empty: "Team"
+ * and the captain's name) and its logo (none: its initials).
+ */
+export async function setTeamLook(
+  db: D1Database,
+  tournamentId: number,
+  teamId: number,
+  by: { memberId: number; admin: boolean },
+  o: Record<string, unknown>,
+) {
+  const team = await first<{ captain: number | null }>(
+    db,
+    "SELECT captain_member_id captain FROM tournament_teams WHERE id = ? AND tournament_id = ?",
+    [teamId, tournamentId],
+  );
+  if (!team) throw new HttpError(404, "No such team.");
+  if (!by.admin && team.captain !== by.memberId) throw new HttpError(403, "Only its captain or an admin.");
+  const name = text(o, "name", { optional: true, max: 40 }).trim();
+  await run(db, "UPDATE tournament_teams SET name = ?, logo = ? WHERE id = ?", [name, logoOf(o), teamId]);
+}
+
 /**
  * A tournament's teams, in order (a draft's pick order), at most 16 of up to 30 players. A draft's teams each have a
  * member as captain; a team that entered has a name. Nobody plays for two teams. Absent: left as they are.
@@ -629,9 +659,7 @@ function teamsOf(o: Record<string, unknown>, kind: Kind): TeamIn[] | null {
   if (!Array.isArray(o.teams)) throw new HttpError(400, "teams should be a list.");
   if (o.teams.length > 16) throw new HttpError(400, "Up to 16 teams.");
   const teams = o.teams.map((t: Record<string, unknown>): TeamIn => {
-    const logo = t.logo == null || t.logo === "" ? null : t.logo;
-    if (logo !== null && (typeof logo !== "string" || logo.length > 200_000 || !LOGO.test(logo)))
-      throw new HttpError(400, "A logo should be a small PNG, JPEG or WebP image.");
+    const logo = logoOf(t);
     const list = t.players ?? [];
     if (!Array.isArray(list) || list.length > 30) throw new HttpError(400, "Up to 30 players a team.");
     const team = {

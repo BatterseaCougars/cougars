@@ -106,6 +106,12 @@
       }))
       .filter((s) => s.routes.length),
   );
+  // The phone's Settings is the More list; a desktop lists them beside the page instead. Widened onto More, open the
+  // first settings page in its place, as the dock's Settings does (members with nothing to set up keep More)
+  $effect(() => {
+    const first = settingsNav[0]?.routes[0];
+    if (!phone.current && route.id === "more" && first) navigate(first.path, { replace: true });
+  });
   // Each row's place in the list, so they arrive one after another
   const settingsOrder = $derived(new Map(settingsNav.flatMap((s) => s.routes).map((r, i) => [r.id, i])));
 
@@ -347,10 +353,6 @@
           <a class="brand" href="/" aria-label="Home">
             <img src={logo} alt="" width="36" height="36" />
           </a>
-          {#if inSettings}
-            <!-- Too narrow for the settings list: a way back to it -->
-            <a class="settings-back" href="/more"><Icon name="chevronLeft" size={16} />Settings</a>
-          {/if}
           <AccountMenu />
         </div>
       {/if}
@@ -803,31 +805,20 @@
       /* Eases across as the settings list slides out beside it */
       transition: padding var(--t-slow) var(--ease);
     }
+  }
+
+  /* Phones have no settings list: hidden by the width itself, so while a shrinking window crosses over it never lands
+     in the page's flow before the shell takes it away */
+  @media (max-width: 900px) {
     .settings-nav {
       display: none;
     }
-    .settings-back {
-      display: inline-flex;
-      align-items: center;
-      gap: var(--s-1);
-      margin-right: auto;
-      margin-left: var(--s-4);
-      padding: var(--s-1) var(--s-3) var(--s-1) var(--s-2);
-      border-radius: var(--r-md);
-      color: var(--fg-muted);
-      font-size: var(--text-sm);
-      font-weight: 500;
-    }
-    .settings-back:hover {
-      color: var(--fg);
-      background: var(--surface-2);
-    }
   }
 
-  /* Wide enough for the settings list beside the dock: the page moves over to make room */
-  @media (min-width: 1100px) {
-    .settings-back {
-      display: none;
+  /* Every desktop: the settings list beside the dock, slimmer on a narrow window; the page moves over to make room */
+  @media (min-width: 901px) {
+    .shell {
+      --settings-w: 11rem;
     }
     .settings-nav {
       position: fixed;
@@ -838,7 +829,7 @@
       display: flex;
       flex-direction: column;
       gap: 2px;
-      width: 13rem;
+      width: var(--settings-w);
       max-height: calc(100dvh - 8rem);
       overflow-y: auto;
     }
@@ -847,8 +838,13 @@
       display: none;
     }
     .shell.in-settings .view {
-      padding-left: calc(var(--s-5) + 3rem + var(--s-5) + 13rem + var(--s-5));
+      padding-left: calc(var(--s-5) + 3rem + var(--s-5) + var(--settings-w) + var(--s-5));
       padding-right: var(--s-6);
+    }
+  }
+  @media (min-width: 1100px) {
+    .shell {
+      --settings-w: 13rem;
     }
   }
   .settings-home {

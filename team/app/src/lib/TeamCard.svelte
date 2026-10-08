@@ -3,6 +3,7 @@
   // typing) and an optional name; its players come from the draft. A team that entered may be from outside the club,
   // so it's a card: its logo and name, a captain who's a member or just a name with a way to reach them, and its
   // players, members found by typing or names from outside.
+  import { shrinkLogo } from "./logo";
   import type { TournamentKind, TournamentTeam } from "../demo/model";
   import Icon from "../app/shell/Icon.svelte";
   import PersonPicker from "./PersonPicker.svelte";
@@ -39,21 +40,14 @@
       .toUpperCase(),
   );
 
-  // A logo: shrunk in the browser to 256px on its longest side, so it's small enough to keep in the database
+  // A logo: shrunk in the browser so it's small enough to keep in the database (logo.ts)
   let fileInput = $state<HTMLInputElement | undefined>();
   let logoError = $state("");
   async function pickLogo(file: File | undefined) {
     logoError = "";
     if (!file) return;
     try {
-      const bitmap = await createImageBitmap(file);
-      const scale = Math.min(1, 256 / Math.max(bitmap.width, bitmap.height));
-      const canvas = document.createElement("canvas");
-      canvas.width = Math.round(bitmap.width * scale);
-      canvas.height = Math.round(bitmap.height * scale);
-      canvas.getContext("2d")!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-      const webp = canvas.toDataURL("image/webp", 0.85);
-      team.logo = webp.startsWith("data:image/webp") ? webp : canvas.toDataURL("image/png");
+      team.logo = await shrinkLogo(file);
     } catch {
       logoError = "That image couldn't be read. Try a PNG or JPEG.";
     }

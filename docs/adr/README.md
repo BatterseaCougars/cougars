@@ -73,3 +73,7 @@ rule, a trade-off. Copy [template.md](template.md), take the next number, keep i
 | [0061](0061-fixtures-and-playoffs.md)                | The app makes a tournament's fixtures: a round robin, then its playoffs                  | Accepted              |
 | [0062](0062-the-club-agenda.md)                      | One agenda that every part of the club pushes to                                         | Accepted              |
 | [0063](0063-cpu-time-on-the-usage-page.md)           | The Usage page shows CPU time per request; a stopped request is an email                 | Accepted              |
+| [0064](0064-reset-a-draft.md)                        | An admin can reset a draft, until a game has a result                                    | Accepted              |
+| [0065](0065-admin-actions-where-the-thing-is.md)     | Admin actions live where the thing is, not under Settings                                | Accepted              |
+| [0066](0066-draft-and-fixtures-are-independent.md)   | The draft and the fixtures are independent; a closed draft can reopen                    | Accepted              |
+| [0067](0067-one-goalie-a-team.md)                    | One goalie a team in a draft                                                             | Accepted              |

@@ -5,7 +5,7 @@ import { can, type Action } from "../src/access/actions";
 import { all } from "../../../shared/d1";
 import { handleAuth, sessionOf, type AuthEnv } from "./auth";
 import { answer, listEntries, mark, setPlayer, type EntryKind } from "./entries";
-import { closeDraft, openDraft, pick, undoPick } from "./draft";
+import { closeDraft, openDraft, pick, putOnTeam, resetDraft, takeOffTeam, undoPick } from "./draft";
 import { makeFixtures, scoreGame } from "./fixtures";
 import { readUsage } from "./usage";
 import { readAgenda } from "../../../shared/agenda";
@@ -46,6 +46,7 @@ import {
   listVenues,
   moreSessions,
   setSessionCancelled,
+  setTeamLook,
   updateSeries,
   updateTournament,
   updateTournamentType,
@@ -412,6 +413,46 @@ export const ROUTES: Route[] = [
     changes: ["tournaments"],
     // Everyone's picked (or the rest are left out on purpose): the teams are locked
     handle: async (c) => (await closeDraft(c.env.DB, id(c), (await body(c.request)).leaveOut === true), ok()),
+  },
+  {
+    method: "PUT",
+    path: /^\/api\/tournaments\/(\d+)\/teams\/(\d+)\/look$/,
+    // Its captain or an admin: setTeamLook decides
+    action: "authenticated",
+    changes: ["tournaments"],
+    handle: async (c) => {
+      const admin = can(c.actions, "manage:Tournament");
+      await setTeamLook(c.env.DB, id(c), Number(c.params[1]), { memberId: c.memberId, admin }, await body(c.request));
+      return ok();
+    },
+  },
+  {
+    method: "POST",
+    path: /^\/api\/tournaments\/(\d+)\/teams\/(\d+)\/players$/,
+    action: "manage:Tournament",
+    changes: ["tournaments"],
+    // A replacement, outside the draft: onto this team (from another, or from outside the tournament)
+    handle: async (c) => {
+      const { memberId } = await memberIdIn(c);
+      await putOnTeam(c.env.DB, id(c), Number(c.params[1]), memberId, c.now);
+      return ok();
+    },
+  },
+  {
+    method: "DELETE",
+    path: /^\/api\/tournaments\/(\d+)\/teams\/(\d+)\/players\/(\d+)$/,
+    action: "manage:Tournament",
+    changes: ["tournaments"],
+    // Off the team, still signed up
+    handle: async (c) => (await takeOffTeam(c.env.DB, id(c), Number(c.params[1]), Number(c.params[2])), ok()),
+  },
+  {
+    method: "POST",
+    path: /^\/api\/tournaments\/(\d+)\/draft\/reset$/,
+    action: "run:Draft",
+    changes: ["tournaments"],
+    // Start again: the picks (and any fixtures) go, the sign-ups and captains stay
+    handle: async (c) => (await resetDraft(c.env.DB, id(c)), ok()),
   },
   {
     method: "POST",

@@ -120,7 +120,7 @@ describe("fixtures", () => {
     expect((await score((await tournament()).games[0].id, 1, 0, reg)).status).toBe(403);
   });
 
-  it("a captains' draft gets its fixtures only once the draft is closed", async () => {
+  it("a captains' draft gets its fixtures as soon as it has its captains: the draft can come before or after", async () => {
     const { dana, sees, idOf } = await people();
     const res = await dana.call("POST", "/api/tournaments", {
       name: "The Kumite",
@@ -141,10 +141,11 @@ describe("fixtures", () => {
       })),
     });
     const id = res.body.id;
-    expect((await dana.call("POST", `/api/tournaments/${id}/fixtures`)).status).toBe(409);
+    // Not opened yet: the teams are their captains, and that's enough to play each other
+    expect((await dana.call("POST", `/api/tournaments/${id}/fixtures`)).status).toBe(200);
+    // The draft opening and closing leaves them be
     await dana.call("POST", `/api/tournaments/${id}/draft/open`, {});
     await dana.call("POST", `/api/tournaments/${id}/draft/close`, { leaveOut: true });
-    expect((await dana.call("POST", `/api/tournaments/${id}/fixtures`)).status).toBe(200);
     const games = (await sees()).tournaments.find((t: Json) => t.id === id).games;
     expect(games.map((g: Json) => [g.stage, g.name])).toEqual([
       ["group", ""],

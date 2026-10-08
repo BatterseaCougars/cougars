@@ -61,3 +61,16 @@ export function table(
   }
   return [...rows.values()].sort((x, y) => y.pts - x.pts || y.gf - y.ga - (x.gf - x.ga) || y.gf - x.gf);
 }
+
+/** The changeover between games, in minutes. */
+export const BREAK_MINUTES = 5;
+
+/**
+ * When a game kicks off: one pitch, games in order from the tournament's start, each its format's length plus the
+ * break before the next (ADR 0061). "HH:MM", London time like the start; a day that runs past midnight wraps.
+ */
+export function kickOff(startTime: string, gameMinutes: number, position: number, breakMinutes = BREAK_MINUTES) {
+  const [h, m] = startTime.split(":").map(Number);
+  const at = (h * 60 + m + (position - 1) * (gameMinutes + breakMinutes)) % (24 * 60);
+  return `${String(Math.floor(at / 60)).padStart(2, "0")}:${String(at % 60).padStart(2, "0")}`;
+}

@@ -16,6 +16,7 @@ const ROSTER = [
   { name: "Mo Player", position: "G", rating: 55, email: "mo@example.com" },
   { name: "Ash Player", position: "F", rating: 58, email: "ash@example.com" },
   { name: "Bo Player", position: "D", rating: 52, email: "bo@example.com" },
+  { name: "Gil Keeper", position: "G", rating: 50, email: "gil@example.com" },
 ];
 /** Draft night: 8 December, after the 5th's sign-up deadline. */
 const DRAFT_DAY = new Date("2026-12-08T19:30:00Z");
@@ -297,6 +298,48 @@ describe("a tournament, from setting it up to the draft", () => {
       expect((await mo.answer(id, "out", DRAFT_DAY)).status).toBe(409);
     });
 
+    describe("an admin adds players to the tournament, or takes them off", () => {
+      const setPlayer = (as: { call: (...a: Json[]) => Promise<Json> }, id: number, memberId: number, inIt: boolean) =>
+        as.call("POST", `/api/tournaments/${id}/players`, { memberId, in: inIt }, { now: DRAFT_DAY });
+
+      it("an admin puts in a member who never said they're in, even with sign-up shut, and the captains can pick them", async () => {
+        const { dana, id, cara, draft, pick, tournament, ids } = await signedUp();
+        expect((await setPlayer(dana, id, ids.Dana, true)).status).toBe(200);
+        expect((await tournament()).going).toContain(ids.Dana);
+        expect((await draft(dana, "open")).status).toBe(200);
+        expect((await pick(cara, ids.Dana)).status).toBe(200);
+      });
+
+      it("only an admin can put someone in", async () => {
+        const { id, ids } = await signedUp();
+        const reg = await member("reg@example.com");
+        expect((await setPlayer(reg, id, ids.Dana, true)).status).toBe(403);
+      });
+
+      it("an admin taking off someone who's been picked takes them off their team too, even once it's closed", async () => {
+        const { dana, id, cara, cole, draft, pick, tournament, teams, ids } = await draftOpen();
+        expect((await pick(cara, ids.Reg)).status).toBe(200);
+        expect((await pick(cole, ids.Mo)).status).toBe(200);
+        expect((await setPlayer(dana, id, ids.Reg, false)).status).toBe(200);
+        expect(await teams()).toEqual([[], [ids.Mo]]);
+        expect((await draft(dana, "close", { leaveOut: true })).status).toBe(200);
+        expect((await setPlayer(dana, id, ids.Mo, false)).status).toBe(200);
+        expect(await teams()).toEqual([[], []]);
+        expect((await tournament()).going).not.toContain(ids.Mo);
+      });
+
+      it("a captain comes off through the tournament's settings, not here", async () => {
+        const { dana, id, ids } = await signedUp();
+        expect((await setPlayer(dana, id, ids.Cara, false)).status).toBe(409);
+      });
+
+      it("once the draft is closed the teams are set: nobody new goes in", async () => {
+        const { dana, id, draft, ids } = await draftOpen();
+        expect((await draft(dana, "close", { leaveOut: true })).status).toBe(200);
+        expect((await setPlayer(dana, id, ids.Dana, true)).status).toBe(409);
+      });
+    });
+
     it("the admin closes the draft once everyone's picked, or leaves the rest out on purpose; then it's locked", async () => {
       const { dana, cara, cole, draft, pick, tournament, ids } = await draftOpen();
       expect((await pick(cara, ids.Reg)).status).toBe(200);
@@ -310,6 +353,151 @@ describe("a tournament, from setting it up to the draft", () => {
       const t = await tournament();
       t.teams[1].captainMemberId = ids.Ash;
       expect((await dana.call("PUT", `/api/tournaments/${t.id}`, t, { now: DRAFT_DAY })).status).toBe(409);
+    });
+
+    it("an admin reopens a closed draft: the picks stay, and the captains carry on where they left off", async () => {
+      const { dana, id, cara, cole, draft, pick, tournament, teams, ids } = await draftOpen();
+      expect((await pick(cara, ids.Reg)).status).toBe(200);
+      expect((await draft(dana, "close", { leaveOut: true })).status).toBe(200);
+      expect((await dana.call("POST", `/api/tournaments/${id}/fixtures`)).status).toBe(200);
+      expect((await draft(cara, "open")).status).toBe(403);
+      expect((await draft(dana, "open")).status).toBe(200);
+      expect((await tournament()).draftState).toBe("open");
+      expect(await teams()).toEqual([[ids.Reg], []]);
+      // Cole's turn, as it was; the fixtures are untouched
+      expect((await pick(cara, ids.Mo)).status).toBe(409);
+      expect((await pick(cole, ids.Mo)).status).toBe(200);
+      expect((await tournament()).games.length).toBeGreaterThan(0);
+    });
+
+    it("a team takes one goalie: a second is refused, for a captain, for whoever runs the draft, and for an admin's team edit", async () => {
+      const { dana, id, cara, cole, pick, tournament, ids } = await draftOpen();
+      const gil = await dana.idOf("Gil Keeper");
+      // Gil is in too (an admin puts him in): two goalies in the pool, Mo and Gil
+      expect(
+        (await dana.call("POST", `/api/tournaments/${id}/players`, { memberId: gil, in: true }, { now: DRAFT_DAY }))
+          .status,
+      ).toBe(200);
+      // Snake order for two teams: Cara, Cole, Cole, Cara
+      expect((await pick(cara, ids.Mo)).status).toBe(200);
+      expect((await pick(cole, ids.Reg)).status).toBe(200);
+      expect((await pick(cole, ids.Ash)).status).toBe(200);
+      // Cara's turn: she has Mo, so not Gil, nor can the admin pick him for her
+      expect((await pick(cara, gil)).status).toBe(409);
+      expect((await pick(dana, gil)).status).toBe(409);
+      expect((await pick(cara, ids.Bo)).status).toBe(200);
+      // An admin's team edit is held to the same rule; Cole has no goalie, so Gil can go on his team
+      const teamIds = (await tournament()).teams.map((t: Json) => t.id);
+      const onTeam = (teamId: number) =>
+        dana.call("POST", `/api/tournaments/${id}/teams/${teamId}/players`, { memberId: gil }, { now: DRAFT_DAY });
+      expect((await onTeam(teamIds[0])).status).toBe(409);
+      expect((await onTeam(teamIds[1])).status).toBe(200);
+    });
+
+    describe("an admin edits a team directly, outside the draft", () => {
+      const onTeam = (as: { call: (...a: Json[]) => Promise<Json> }, id: number, teamId: number, memberId: number) =>
+        as.call("POST", `/api/tournaments/${id}/teams/${teamId}/players`, { memberId }, { now: DRAFT_DAY });
+      const offTeam = (as: { call: (...a: Json[]) => Promise<Json> }, id: number, teamId: number, memberId: number) =>
+        as.call("DELETE", `/api/tournaments/${id}/teams/${teamId}/players/${memberId}`, undefined, { now: DRAFT_DAY });
+      /** Drafted and closed: Cara took Reg, Cole took Mo; Ash and Bo left out. */
+      async function drafted() {
+        const s = await draftOpen();
+        expect((await s.pick(s.cara, s.ids.Reg)).status).toBe(200);
+        expect((await s.pick(s.cole, s.ids.Mo)).status).toBe(200);
+        expect((await s.draft(s.dana, "close", { leaveOut: true })).status).toBe(200);
+        const teamIds = (await s.tournament()).teams.map((t: Json) => t.id) as number[];
+        return { ...s, teamIds };
+      }
+
+      it("a player drops out after the draft: the admin takes them off their team and puts someone else on", async () => {
+        const { dana, id, teams, ids, teamIds, tournament } = await drafted();
+        expect((await offTeam(dana, id, teamIds[0], ids.Reg)).status).toBe(200);
+        expect(await teams()).toEqual([[], [ids.Mo]]);
+        // Off the team, still signed up
+        expect((await tournament()).going).toContain(ids.Reg);
+        expect((await onTeam(dana, id, teamIds[0], ids.Ash)).status).toBe(200);
+        expect(await teams()).toEqual([[ids.Ash], [ids.Mo]]);
+      });
+
+      it("putting someone on a team moves them from another, and puts them in the tournament if they weren't", async () => {
+        const { dana, id, teams, ids, teamIds, tournament } = await drafted();
+        expect((await onTeam(dana, id, teamIds[1], ids.Reg)).status).toBe(200);
+        // (Their pick number goes with them, so they sit in pick order)
+        expect((await teams()).map((t: number[]) => [...t].sort())).toEqual([[], [ids.Reg, ids.Mo].sort()]);
+        expect((await onTeam(dana, id, teamIds[0], ids.Dana)).status).toBe(200);
+        expect((await tournament()).going).toContain(ids.Dana);
+        expect((await teams())[0]).toEqual([ids.Dana]);
+      });
+
+      it("a captain stays on their own team, and only an admin edits teams", async () => {
+        const { dana, id, cara, ids, teamIds } = await drafted();
+        expect((await onTeam(dana, id, teamIds[1], ids.Cara)).status).toBe(409);
+        expect((await onTeam(cara, id, teamIds[0], ids.Ash)).status).toBe(403);
+        expect((await offTeam(cara, id, teamIds[0], ids.Reg)).status).toBe(403);
+      });
+    });
+
+    describe("a team's look: its name and logo, or its initials", () => {
+      const PNG = "data:image/png;base64,iVBORw0KGgo=";
+      const look = (as: { call: (...a: Json[]) => Promise<Json> }, id: number, teamId: number, body: object) =>
+        as.call("PUT", `/api/tournaments/${id}/teams/${teamId}/look`, body, { now: DRAFT_DAY });
+
+      it("a captain names their team and gives it a logo; the other captain can't, an admin can", async () => {
+        const { dana, id, cara, cole, tournament } = await signedUp();
+        const [caras, coles] = (await tournament()).teams.map((t: Json) => t.id);
+        expect((await look(cara, id, caras, { name: "The Dim Maks", logo: PNG })).status).toBe(200);
+        expect((await tournament()).teams[0]).toMatchObject({ name: "The Dim Maks", logo: PNG });
+        expect((await look(cara, id, coles, { name: "Losers" })).status).toBe(403);
+        expect((await look(dana, id, coles, { name: "Cole's Crew", logo: null })).status).toBe(200);
+        expect((await tournament()).teams[1]).toMatchObject({ name: "Cole's Crew", logo: null });
+        // Cleared, it's the initials again
+        expect((await look(cole, id, coles, { name: "Cole's Crew", logo: null })).status).toBe(200);
+      });
+
+      it("a logo has to be a small image", async () => {
+        const { id, cara, tournament } = await signedUp();
+        const caras = (await tournament()).teams[0].id;
+        expect((await look(cara, id, caras, { name: "", logo: "https://example.com/x.png" })).status).toBe(400);
+      });
+    });
+
+    describe("an admin resets the draft to start again", () => {
+      const reset = (as: { call: (...a: Json[]) => Promise<Json> }, id: number) =>
+        as.call("POST", `/api/tournaments/${id}/draft/reset`, {}, { now: DRAFT_DAY });
+
+      it("mid-draft: every pick comes off and it's back to not yet open, with the sign-ups and captains kept", async () => {
+        const { dana, id, cara, cole, pick, tournament, teams, ids, captains } = await draftOpen();
+        expect((await pick(cara, ids.Reg)).status).toBe(200);
+        expect((await pick(cole, ids.Mo)).status).toBe(200);
+        expect((await reset(dana, id)).status).toBe(200);
+        const t = await tournament();
+        expect(t.draftState).toBe("scheduled");
+        expect(await teams()).toEqual([[], []]);
+        expect(t.teams.map((x: Json) => x.captainMemberId)).toEqual(captains);
+        expect(t.going).toEqual(expect.arrayContaining([ids.Reg, ids.Mo, ids.Ash, ids.Bo]));
+        // Picks wait for it to be opened again, and then start from the first captain
+        expect((await pick(cara, ids.Reg)).status).toBe(409);
+      });
+
+      it("once it's closed too: the players come off, and the fixtures stay, as the teams are the same teams", async () => {
+        const { dana, id, cara, draft, pick, tournament, teams, ids } = await draftOpen();
+        expect((await pick(cara, ids.Reg)).status).toBe(200);
+        expect((await draft(dana, "close", { leaveOut: true })).status).toBe(200);
+        expect((await dana.call("POST", `/api/tournaments/${id}/fixtures`)).status).toBe(200);
+        const game = (await tournament()).games[0];
+        expect(
+          (await dana.call("PUT", `/api/tournaments/${id}/games/${game.id}`, { homeGoals: 2, awayGoals: 1 })).status,
+        ).toBe(200);
+        expect((await reset(dana, id)).status).toBe(200);
+        expect((await tournament()).draftState).toBe("scheduled");
+        expect(await teams()).toEqual([[], []]);
+        expect((await tournament()).games.map((g: Json) => g.id)).toContain(game.id);
+      });
+
+      it("only someone running the draft can reset it", async () => {
+        const { id, cara } = await draftOpen();
+        expect((await reset(cara, id)).status).toBe(403);
+      });
     });
   });
 });

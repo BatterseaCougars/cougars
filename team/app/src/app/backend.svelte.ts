@@ -140,6 +140,12 @@ export const answerFor = (key: string, answer: "in" | "out") =>
 /** An admin puts someone in a session, or takes them off. */
 export const setPlayer = (sessionId: number, memberId: number, inIt: boolean) =>
   save(() => api("POST", `/api/sessions/${sessionId}/players`, { memberId, in: inIt }), inIt ? "Added" : "Taken off");
+/** An admin puts someone in a tournament (sign-up shut or not), or takes them off. */
+export const setTournamentPlayer = (tournamentId: number, memberId: number, inIt: boolean) =>
+  save(
+    () => api("POST", `/api/tournaments/${tournamentId}/players`, { memberId, in: inIt }),
+    inIt ? "Added" : "Taken off",
+  );
 /** Publish a session's teams: everyone sees them. */
 export const publishTeams = (sessionId: number, teams: Team[]) =>
   save(() => api("POST", `/api/sessions/${sessionId}/teams`, { teams }), "Teams published");
@@ -289,6 +295,18 @@ export const draftPick = (tournamentId: number, memberId: number) =>
 /** Whoever's running the draft takes back the last pick. */
 export const undoDraftPick = (tournamentId: number) =>
   save(() => api("DELETE", `/api/tournaments/${tournamentId}/draft/picks/last`), "Pick undone");
+/** Whoever runs the draft starts it again: the picks (and any fixtures) go; sign-ups and captains stay. */
+export const resetDraft = (tournamentId: number) =>
+  save(() => api("POST", `/api/tournaments/${tournamentId}/draft/reset`, {}), "The draft is reset");
+/** An admin puts a member on a team directly (a replacement): moved from another, or put in the tournament. */
+export const putOnTeam = (tournamentId: number, teamId: number, memberId: number) =>
+  save(() => api("POST", `/api/tournaments/${tournamentId}/teams/${teamId}/players`, { memberId }), "On the team");
+/** ...or takes them off it: still signed up, back in the pool. */
+export const takeOffTeam = (tournamentId: number, teamId: number, memberId: number) =>
+  save(() => api("DELETE", `/api/tournaments/${tournamentId}/teams/${teamId}/players/${memberId}`), "Off the team");
+/** A team's name and logo: its captain or an admin. */
+export const setTeamLook = (tournamentId: number, teamId: number, name: string, logo: string | null) =>
+  save(() => api("PUT", `/api/tournaments/${tournamentId}/teams/${teamId}/look`, { name, logo }));
 /** Whoever runs the draft opens it (ADR 0060): the captains can pick. */
 export const openDraft = (tournamentId: number) =>
   save(() => api("POST", `/api/tournaments/${tournamentId}/draft/open`, {}), "The draft is open");

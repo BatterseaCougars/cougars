@@ -38,7 +38,19 @@
   import { seriesToOpen } from "../pages/TournamentSeries.svelte";
   import { SEASONS, seasonEnd, seasonOf, seasonYear, type Season } from "../../../../shared/seasons";
 
-  let { dateId, oncreated }: { dateId?: number; oncreated?: (id: number) => void } = $props();
+  let {
+    dateId,
+    typeId,
+    startTab = "details",
+    oncreated,
+  }: {
+    dateId?: number;
+    /** A new date in this series, its defaults copied in (from the series' own page) */
+    typeId?: number;
+    /** The tab it opens on: "teams" to add the captains */
+    startTab?: "details" | "rules" | "signup" | "teams";
+    oncreated?: (id: number) => void;
+  } = $props();
 
   interface DateForm {
     id: number;
@@ -179,6 +191,10 @@
     date.playoffs = (t.playoffs ?? []).map((g) => ({ ...g }));
   }
 
+  // Started from a series' page: in that series from the off (the panel mounts a fresh editor for each, as above)
+  // svelte-ignore state_referenced_locally
+  if (!dateId && typeId) pickType(String(typeId));
+
   /** Off to the series' own page, its defaults open. */
   function editSeries() {
     if (!type) return;
@@ -238,7 +254,8 @@
 
   // Four tabs: the tournament itself, how it's played, sign-up, then its teams (and a draft's night)
   type Tab = "details" | "rules" | "signup" | "teams";
-  let tab = $state<Tab>("details");
+  // svelte-ignore state_referenced_locally
+  let tab = $state<Tab>(startTab);
   const tabs = $derived<{ id: Tab; label: string }[]>([
     { id: "details", label: "Details" },
     { id: "rules", label: "Rules & awards" },

@@ -6,7 +6,7 @@ import { all, first, run } from "../../../shared/d1";
 import { londonToday } from "../src/lib/dates";
 import { HttpError } from "./http";
 import { offTeams } from "./teams";
-import { leaveDraft } from "./draft";
+import { joinDraft, leaveDraft } from "./draft";
 
 export type EntryKind = "session" | "tournament" | "event";
 export type Answer = "in" | "out";
@@ -144,10 +144,13 @@ export async function setPlayer(
   const limit = await capacity(db, kind, id);
   const was = await current(db, kind, id, memberId);
   if (inIt) {
-    if (was?.signup !== "in") await put(db, kind, id, memberId, "in", now);
+    if (was?.signup === "in") return;
+    if (kind === "tournament") await joinDraft(db, id);
+    await put(db, kind, id, memberId, "in", now);
     return;
   }
   if (!was) return;
+  if (kind === "tournament") await leaveDraft(db, id, memberId, true);
   const { table, key } = TABLES[kind];
   await run(db, `DELETE FROM ${table} WHERE ${key} = ? AND member_id = ?`, [id, memberId]);
   if (kind === "session") await offTeams(db, id, memberId);

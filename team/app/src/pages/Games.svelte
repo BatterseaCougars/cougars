@@ -10,9 +10,13 @@
   import { currentTournament, tournamentBookable, tournamentPlace, typeById, whenOf } from "../demo/schedule.svelte";
   import { db } from "../demo/store.svelte";
   import { makeFixtures, scoreGame } from "../app/backend.svelte";
+  import { BREAK_MINUTES, kickOff } from "../lib/fixtures";
   import { formatDayDate, londonISO } from "../lib/dates";
   import EventCard from "../lib/EventCard.svelte";
   import TournamentHead from "../lib/TournamentHead.svelte";
+  import TeamCrest from "../lib/TeamCrest.svelte";
+  import { teamTone } from "../lib/team-tones";
+  import { editTournament } from "../lib/TournamentEditorPanel.svelte";
 
   let { typeId }: { typeId: number } = $props();
 
@@ -30,6 +34,9 @@
     const t = teams.find((x) => x.id === id);
     return t ? t.name || `Team ${firstName(t.captainMemberId)}` : "";
   };
+  const logoOf = (id: number) => teams.find((x) => x.id === id)?.logo ?? null;
+  // Each team's colour, as on the Draft page
+  const toneOf = (id: number) => teamTone(teams.findIndex((x) => x.id === id));
   const games = $derived(tournament?.games ?? []);
   const rounds = $derived(
     [...new Set(games.filter((g) => g.stage === "group").map((g) => g.round))].map((r) => ({
@@ -40,10 +47,8 @@
   const playoffs = $derived(games.filter((g) => g.stage === "playoff"));
   const nth = (n: number | null) => (n === 1 ? "1st" : n === 2 ? "2nd" : n === 3 ? "3rd" : `${n}th`);
 
-  // The teams are set: a draft that's closed, or the teams that entered
-  const teamsSet = $derived(
-    !!tournament && teams.length >= 2 && (tournament.kind === "teams" || tournament.draftState === "closed"),
-  );
+  // Two teams are enough to make the fixtures: a draft's captains are its teams before anyone's picked (ADR 0066)
+  const teamsSet = $derived(!!tournament && teams.length >= 2);
   const hasResult = $derived(games.some((g) => g.homeGoals !== null));
   const manage = $derived(can(perms, "manage:Tournament"));
   const scorer = $derived(can(perms, "score:Match"));
@@ -70,8 +75,18 @@
 
 {#snippet game(g: TournamentGame)}
   <div class="row fixture" class:done={g.status === "done"}>
-    <span class="n hint num">{g.position}</span>
-    <span class="team">{g.homeTeamId ? teamName(g.homeTeamId) : nth(g.homeSeed)}</span>
+    <span class="n hint num" title="Game {g.position}"
+      >{tournament ? kickOff(tournament.startTime, tournament.gameMinutes, g.position) : g.position}</span
+    >
+    <span class="team">
+      {#if g.homeTeamId}<TeamCrest
+          name={teamName(g.homeTeamId)}
+          logo={logoOf(g.homeTeamId)}
+          tone={toneOf(g.homeTeamId)}
+          size="1.5rem"
+        />{/if}
+      {g.homeTeamId ? teamName(g.homeTeamId) : nth(g.homeSeed)}
+    </span>
     <span class="mid num">
       {#if editing === g.id}
         <input
@@ -86,7 +101,15 @@
           class="vs">vs</span
         >{/if}
     </span>
-    <span class="team right">{g.awayTeamId ? teamName(g.awayTeamId) : nth(g.awaySeed)}</span>
+    <span class="team right">
+      {g.awayTeamId ? teamName(g.awayTeamId) : nth(g.awaySeed)}
+      {#if g.awayTeamId}<TeamCrest
+          name={teamName(g.awayTeamId)}
+          logo={logoOf(g.awayTeamId)}
+          tone={toneOf(g.awayTeamId)}
+          size="1.5rem"
+        />{/if}
+    </span>
     {#if scorer && g.homeTeamId && g.awayTeamId}
       {#if editing === g.id}
         <button class="btn primary sm" onclick={() => saveScore(g)}>Save</button>
@@ -98,7 +121,7 @@
 {/snippet}
 
 <div class="page">
-  <TournamentHead {type} {tournament} title="Games" />
+  <TournamentHead {type} {tournament} title="Games" manage />
 
   {#if tournament && tournament.status !== "finished" && !games.length}
     <!-- What's coming up: when, where, and saying you're in -->
@@ -109,13 +132,26 @@
         {#if draftWhen && (iCaptain || can(perms, "run:Draft"))}
           · <a href="/tournaments/{type.slug}/draft">Draft {draftWhen}</a>
         {/if}
+        {#if manage}
+          · <button class="link" onclick={() => editTournament(tournament.id, { tab: "teams" })}>Change</button>
+        {/if}
+      </p>
+    {:else if tournament.kind === "draft" && manage}
+      <p class="hint captains">
+        No captains yet ·
+        <button class="link" onclick={() => editTournament(tournament.id, { tab: "teams" })}>Add the captains</button>
       </p>
     {/if}
   {/if}
 
   {#if games.length}
     <div class="fixtures-head">
-      <h2 class="section-title">Fixtures</h2>
+      <h2 class="section-title">
+        Fixtures
+        {#if tournament}<span class="hint num"
+            >· {tournament.gameMinutes}-minute games, {BREAK_MINUTES} between, from {tournament.startTime}</span
+          >{/if}
+      </h2>
       {#if manage && !hasResult}
         <button class="btn ghost sm" onclick={() => tournament && makeFixtures(tournament.id)}>Make them again</button>
       {/if}
@@ -138,7 +174,7 @@
   {:else if teamsSet && manage}
     <div class="panel pad make">
       <p>
-        The teams are set. Make the fixtures: every team plays every other once{tournament?.playoffs.length
+        {teams.length} teams. Make the fixtures: every team plays every other once{tournament?.playoffs.length
           ? `, then ${tournament.playoffs.map((p) => p.name).join(" and ")}`
           : ""}.
       </p>
@@ -147,7 +183,7 @@
     </div>
   {:else}
     <p class="note">
-      Fixtures are made once the teams are set: a round robin, {(tournament ?? type).gameMinutes}-minute games{tournament
+      Fixtures are made once the captains are in: a round robin, {(tournament ?? type).gameMinutes}-minute games{tournament
         ?.playoffs.length
         ? `, then ${tournament.playoffs.map((p) => p.name).join(" and ")}`
         : ""}.
@@ -173,11 +209,15 @@
 <style>
   .fixture {
     display: grid;
-    grid-template-columns: 1.5rem 1fr auto 1fr;
+    grid-template-columns: 2.75rem 1fr auto 1fr;
     gap: var(--s-3);
     min-height: 3.25rem;
   }
   .fixture .team {
+    display: flex;
+    align-items: center;
+    gap: var(--s-2);
+    min-width: 0;
     color: var(--fg);
     font-weight: 500;
   }
@@ -185,6 +225,7 @@
     color: var(--fg-body);
   }
   .right {
+    justify-content: flex-end;
     text-align: right;
   }
   .mid {
@@ -204,6 +245,16 @@
   }
   .captains {
     margin: var(--s-3) 0 var(--s-5);
+  }
+  .link {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--fg);
+    font: inherit;
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+    cursor: pointer;
   }
   .fixtures-head {
     display: flex;
