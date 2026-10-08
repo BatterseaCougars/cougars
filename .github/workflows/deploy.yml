@@ -163,10 +163,15 @@ jobs:
 
       - name: Smoke test the team app
         if: steps.team.outputs.url
+        # A brand-new worker's workers.dev address can take a few seconds to answer
         run: |
-          code=$(curl -s -o /dev/null -w '%{http_code}' "${{ steps.team.outputs.url }}/")
-          echo "${{ steps.team.outputs.url }} answered $code"
-          test "$code" = 200
+          for i in $(seq 12); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' "${{ steps.team.outputs.url }}/api/health")
+            echo "${{ steps.team.outputs.url }}/api/health answered $code"
+            [ "$code" = 200 ] && exit 0
+            sleep 5
+          done
+          exit 1
 
       - name: Upload preview
         id: preview
