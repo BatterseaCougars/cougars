@@ -143,6 +143,31 @@ jobs:
             fi
           done
 
+      # The team app (ADR 0075): its own worker on dev's account and D1, from main only. Production waits for launch.
+      - name: Deploy the team app
+        id: team
+        if: github.event_name == 'push' && env.SITE_ENV == 'dev'
+        run: |
+          npm run build -w @cougars/team
+          node scripts/ci/target.mjs dev team
+          cd team/app
+          out=$(npx wrangler deploy -c dist/cougars_team/wrangler.json --message "$PUBLIC_BUILD_VERSION" 2>&1 | tee /dev/stderr)
+          echo "url=$(echo "$out" | grep -oE 'https://[^ ]+\.workers\.dev' | head -1)" >> "$GITHUB_OUTPUT"
+          for name in GMAIL_CLIENT_ID GMAIL_CLIENT_SECRET GMAIL_REFRESH_TOKEN CLOUDFLARE_ANALYTICS_TOKEN; do
+            if [ -n "${!name}" ]; then
+              printf '%s' "${!name}" | npx wrangler secret put "$name" -c dist/cougars_team/wrangler.json
+            else
+              echo "$name: not in Secrets Manager for $SITE_ENV, skipped"
+            fi
+          done
+
+      - name: Smoke test the team app
+        if: steps.team.outputs.url
+        run: |
+          code=$(curl -s -o /dev/null -w '%{http_code}' "${{ steps.team.outputs.url }}/")
+          echo "${{ steps.team.outputs.url }} answered $code"
+          test "$code" = 200
+
       - name: Upload preview
         id: preview
         if: github.event_name == 'pull_request'

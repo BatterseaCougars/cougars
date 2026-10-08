@@ -1,7 +1,7 @@
 {
   "$schema": "../../node_modules/wrangler/config-schema.json",
-  // The team app (ADR 0022). Not deployed until sign-in exists (T1): until then the API answers only on a local
-  // dev server, where TEAM_ENV is "local" (vite.config.ts) and you're the first admin.
+  // The team app (ADR 0022). main deploys it to dev as cougars-team-dev (ADR 0075, scripts/ci/target.mjs); no
+  // production yet. On the local dev server TEAM_ENV is "local" (vite.config.ts) and you're the first admin.
   "name": "cougars-team",
   "main": "./worker/index.ts",
   "compatibility_date": "2026-10-01",
