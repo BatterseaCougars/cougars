@@ -1,12 +1,13 @@
 <script lang="ts">
   // One game, as a row in a list: its kick-off, the two teams (or the places a playoff waits on, 1st v 2nd), and the
-  // score once there is one. Each opens the game's own page (Details, or Full result once played): both teams, the
-  // goals, and where it's scored or an admin puts a result right (ADR 0061).
+  // score once there is one. A tap on it opens the game's own page (its matchup, or the full result once played):
+  // both teams, the goals, and where it's scored or an admin puts a result right (ADR 0061).
   import { nameOfTeam } from "./names";
   import type { Tournament, TournamentGame } from "../demo/model";
   import { PLAYERS } from "../demo/data";
   import { kickOff, table } from "./fixtures";
   import TeamCrest from "./TeamCrest.svelte";
+  import RollNumber from "./RollNumber.svelte";
   import { teamHref, teamTone } from "./team-tones";
   import { typeById } from "../demo/schedule.svelte";
   import { leftOf, mmss, ticking } from "./game-clock.svelte";
@@ -18,6 +19,9 @@
     live = false,
     chant = "Live",
     big = false,
+    carded = false,
+    feature = false,
+    scoresheet = false,
   }: {
     tournament: Tournament;
     game: TournamentGame;
@@ -26,6 +30,12 @@
     chant?: string;
     /** Up front (the tournament's home page): bigger crests, and each team's record so far under its name. */
     big?: boolean;
+    /** In a card of its own (the Kumite's home): the whole card opens the game and lights up, not just the row. */
+    carded?: boolean;
+    /** The game on now, up front: bigger again, the main draw. */
+    feature?: boolean;
+    /** You keep its score: the row opens the scoresheet (the live page), even before kick-off. */
+    scoresheet?: boolean;
   } = $props();
 
   const teams = $derived(tournament.teams);
@@ -50,9 +60,17 @@
       : null,
   );
   const recordOf = (id: number) => records?.get(id);
-  const crest = $derived(big ? "2.75rem" : "2rem");
+  // Once played, who won it (nobody, a draw): the winner's name stays bright, the loser's fades
+  const won = $derived(
+    g.status !== "done" || g.homeGoals === null || g.awayGoals === null || g.homeGoals === g.awayGoals
+      ? null
+      : g.homeGoals > g.awayGoals
+        ? "home"
+        : "away",
+  );
+  const crest = $derived(feature ? "4rem" : big ? "2.75rem" : "2rem");
 
-  // The game's matchup (Details, ADR 0061), and Live: the clock and the score for everyone, and the scoresheet for
+  // The game's matchup (a tap on the row, ADR 0061), and Live: the clock and the score for everyone, and the scoresheet for
   // whoever keeps score (ADR 0061)
   const gameHref = $derived(`/tournaments/${typeById(tournament.typeId)?.slug ?? ""}/games/${g.id}`);
   const clockHref = $derived(`${gameHref}/live`);
@@ -78,15 +96,19 @@
 {/snippet}
 
 {#snippet when()}
-  {#if live}<span class="badge red live">{chant}</span><span class="clock num">{mmss(leftOf(g))}</span>
+  <!-- The game on now, up front: its chant is the card's own (top middle), so here it's just the clock -->
+  {#if live}{#if !feature}<span class="badge red live">{chant}</span>{/if}<span class="clock num"
+      >{mmss(leftOf(g))}</span
+    >
   {:else}{kickOff(tournament.startTime, tournament.gameMinutes, g.position)}{/if}
 {/snippet}
 
 <!-- Every row has the same columns, so the teams, the score and the button line up down a list. Big: the time sits
-     over the score in the middle, and the score is entered on the Fight card -->
-<div class="row fixture" class:done={g.status === "done"} class:big>
+     over the score in the middle, and the score is entered on the Fight card. A tap anywhere on a row opens the game's
+     matchup (both squads, the result and its goals, when the sides last met); the team names open the teams -->
+<div class="row fixture" class:done={g.status === "done"} class:big class:carded class:feature>
   {#if !big}<span class="n hint num" title="Game {g.position}">{@render when()}</span>{/if}
-  <span class="team">
+  <span class="team" class:won={won === "home"} class:lost={won === "away"}>
     {#if g.homeTeamId}<TeamCrest
         name={teamName(g.homeTeamId)}
         logo={logoOf(g.homeTeamId)}
@@ -95,14 +117,24 @@
       />{/if}
     {@render side(g.homeTeamId, g.homeSeed)}
   </span>
-  <a class="mid num" href={gameHref} aria-label="Game {g.position}">
+  <!-- On now, a big row opens the live page (the clock, the goals as they go in); otherwise the matchup -->
+  <a
+    class="mid num"
+    href={(big && live) || scoresheet ? clockHref : gameHref}
+    aria-label={scoresheet
+      ? `Game ${g.position}, your scoresheet`
+      : big && live
+        ? `Game ${g.position}, live`
+        : `Game ${g.position}`}
+  >
     {#if big}<span class="when hint">{@render when()}</span>{/if}
     <span class="score">
-      {#if g.homeGoals !== null}{g.homeGoals}<span class="dash">–</span>{g.awayGoals}{:else}<span class="vs">vs</span
-        >{/if}
+      {#if g.homeGoals !== null}<RollNumber value={g.homeGoals} /><span class="dash">–</span><RollNumber
+          value={g.awayGoals ?? 0}
+        />{:else}<span class="vs">vs</span>{/if}
     </span>
   </a>
-  <span class="team right">
+  <span class="team right" class:won={won === "away"} class:lost={won === "home"}>
     {@render side(g.awayTeamId, g.awaySeed)}
     {#if g.awayTeamId}<TeamCrest
         name={teamName(g.awayTeamId)}
@@ -121,8 +153,6 @@
           >{#if live}<i class="dot" aria-hidden="true"></i>{:else}<Icon name="play" size={14} />{/if}Live</a
         >
       {/if}
-      <!-- Every game's matchup: both squads, the result and its goals, when the captains' sides last met -->
-      <a class="btn ghost sm" href={gameHref}>{g.status === "done" ? "Result" : "Details"}</a>
     </span>
   {/if}
 </div>
@@ -130,29 +160,46 @@
 <style>
   .fixture {
     display: grid;
-    grid-template-columns: 4.75rem minmax(0, 1fr) 5rem minmax(0, 1fr) 9.5rem;
+    position: relative;
+    grid-template-columns: 4.75rem minmax(0, 1fr) 5rem minmax(0, 1fr) 5.5rem;
     align-items: center;
     gap: var(--s-3);
     min-height: 3.25rem;
   }
   /* Big: home, the middle (time over score), away; the middle the same width in every row */
   .fixture.big {
-    position: relative;
     grid-template-columns: minmax(0, 1fr) 7rem minmax(0, 1fr);
     min-height: 5rem;
     padding-block: var(--s-3);
   }
-  /* Big: the whole card opens the game (its score, and keeping score); the team names still open the teams */
-  .big a.mid::after {
+  /* The whole row opens the game; the team names and Live still go where they say */
+  a.mid::after {
     content: "";
     position: absolute;
     inset: 0;
     border-radius: inherit;
   }
-  .big:hover {
-    background: color-mix(in srgb, var(--fg) 5%, transparent);
+  /* Under the pointer: warmed with the club's red rather than greyed (a card of its own does this itself) */
+  .fixture {
+    transition: background-color var(--t-fast) var(--ease-in-out);
   }
-  .big a.tn {
+  @media (hover: hover) {
+    .fixture:not(.carded):hover {
+      background: color-mix(in srgb, var(--red-hot) 7%, var(--surface-2));
+    }
+  }
+  /* The card is the one the click fills */
+  .fixture.carded {
+    position: static;
+    padding: var(--s-3) var(--s-6) var(--s-6);
+  }
+  @media (max-width: 600px) {
+    .fixture.carded {
+      padding: var(--s-3) var(--s-4) var(--s-4);
+    }
+  }
+  a.tn,
+  .act {
     position: relative;
     z-index: 1;
   }
@@ -198,6 +245,16 @@
     color: var(--fg-subtle);
     font-size: var(--text-xs);
     font-weight: 400;
+  }
+  .fixture.done .team.won .tn {
+    font-weight: 700;
+    color: var(--fg);
+  }
+  .fixture.done .team.lost {
+    color: var(--fg-subtle);
+  }
+  .fixture.done .team.lost :global(.crest) {
+    opacity: 0.55;
   }
   .fixture.done .team {
     color: var(--fg-body);
@@ -280,14 +337,66 @@
     border-radius: 50%;
     background: var(--red-hot);
   }
+  /* The game on now, the main draw: bigger crests, names and score */
+  .fixture.feature {
+    grid-template-columns: minmax(0, 1fr) 9rem minmax(0, 1fr);
+    min-height: 7rem;
+  }
+  .feature .tn {
+    font-size: var(--text-lg);
+    font-weight: 600;
+  }
+  .feature .clock {
+    font-size: var(--text-lg);
+  }
+  .feature .score {
+    font-size: clamp(2.6rem, 9vw, 3.6rem);
+  }
   /* Phones: tighter columns, the crests only on the big rows */
   @media (max-width: 600px) {
+    /* Two lines: when it is (or the live badge and the clock) with the buttons, then the teams either side of the
+       score, so the names get the row's width */
     .fixture:not(.big) {
-      grid-template-columns: 3rem minmax(0, 1fr) 3.25rem minmax(0, 1fr) 8.75rem;
+      grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+      grid-template-areas:
+        "n n act"
+        "home mid away";
+      gap: var(--s-2) var(--s-3);
+    }
+    .fixture:not(.big) .n {
+      grid-area: n;
+      display: flex;
+      align-items: center;
       gap: var(--s-2);
+    }
+    .fixture:not(.big) .team:not(.right) {
+      grid-area: home;
+    }
+    .fixture:not(.big) .mid {
+      grid-area: mid;
+    }
+    .fixture:not(.big) .team.right {
+      grid-area: away;
+    }
+    .fixture:not(.big) .act {
+      grid-area: act;
     }
     .fixture:not(.big) .team :global(.crest) {
       display: none;
+    }
+    /* Big: each side stacks, its crest over its name, so the name gets the side's whole width; the middle narrows */
+    .fixture.big {
+      grid-template-columns: minmax(0, 1fr) 5.5rem minmax(0, 1fr);
+      gap: var(--s-2);
+    }
+    .big .team {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: var(--s-2);
+    }
+    .big .team.right {
+      flex-direction: column-reverse;
+      align-items: flex-end;
     }
   }
 </style>

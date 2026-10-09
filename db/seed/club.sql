@@ -127,19 +127,19 @@ INSERT OR IGNORE INTO quips (id, kind, text) VALUES
   (58, 'ask', 'One tap. In or out?'),
   (59, 'ask', 'The bench wants to know.'),
   (60, 'ask', 'Spaces are going. You in?'),
-  (61, 'in', 'Lovely. See you on the rink.'),
+  (61, 'in', 'Lovely. Someone has to be the slowest.'),
   (62, 'in', 'Good call. Tape your stick.'),
   (63, 'in', 'In. Hydrate like you mean it.'),
   (64, 'in', 'Locked in. Bring the noise.'),
-  (65, 'waitlist', 'Full house. Spots do open up.'),
+  (65, 'waitlist', 'Full house. Start hoping someone pulls a hamstring.'),
   (66, 'waitlist', 'On the list. We''ll shout if a spot opens.'),
   (67, 'waitlist', 'Waitlist. Keep your skates by the door.'),
-  (68, 'out', 'Fair enough. Next time, then.'),
-  (69, 'out', 'Rest up. We''ll keep the ice cold.'),
-  (70, 'out', 'Life happens. See you next time.'),
+  (68, 'out', 'Gutted. Right, who wants their spot?'),
+  (69, 'out', 'Rest up. We''ll keep the wheels turning.'),
+  (70, 'out', 'We''ll miss you. Briefly.'),
   (71, 'out', 'Out. Your stick will forgive you.'),
-  (72, 'out', 'Noted. We''ll miss the chirping.'),
-  (73, 'out', 'Shame. Your spot''s here next time.');
+  (72, 'out', 'Tragic. Anyway, more shifts for us.'),
+  (73, 'out', 'Shame. Guess I''ll take your spot then.');
 
 -- series_fees: Friday Training's pay-as-you-go fee per session (ADR 0007), for every night from a year before the
 -- app went live

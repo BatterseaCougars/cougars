@@ -334,7 +334,7 @@
     {#if n !== undefined}<span class="n num">{n}</span>{/if}
     <Person player={p} showRating={ratings} />
     {#if hasLeft(id)}<span class="badge">Out</span>
-    {:else if id === who.id}<span class="badge green">You</span>{/if}
+    {:else if id === who.id}<span class="you-stamp">You</span>{/if}
     {#if p.cougar}<span class="badge red">Cougar</span>{/if}
   </div>
 {/snippet}
@@ -382,7 +382,7 @@
     </button>
     <Person player={byId(id)} showRating={ratings} />
     {#if hasLeft(id)}<span class="badge">Out</span>
-    {:else if id === who.id}<span class="badge green">You</span>{/if}
+    {:else if id === who.id}<span class="you-stamp">You</span>{/if}
     {#if byId(id).cougar}<span class="badge red">Cougar</span>{/if}
   </div>
 {/snippet}
@@ -864,6 +864,8 @@
   }
   .row.you {
     background: color-mix(in srgb, var(--green) 7%, transparent);
+    color: var(--fg);
+    font-weight: 600;
   }
   .cards {
     display: grid;

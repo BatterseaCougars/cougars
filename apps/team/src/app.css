@@ -389,6 +389,9 @@ h3 {
 
 .page {
   display: grid;
+  /* One column that can shrink to the window: a grid item's minimum is its content, so one line that doesn't wrap
+     (the header's "Autumn 2026 · … · Battersea Sports Centre") would otherwise widen every block past a phone's edge */
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--s-5);
   width: 100%;
   max-width: var(--page-max);
@@ -422,14 +425,17 @@ h3 {
     max-width: 52rem;
   }
 }
-/* Filter chips: a solid fill, no outline. In a row under a title, wrapping in the phone's Filters sheet, and
-   stacked in the desktop aside (PageHeader restyles them there). Each sets --tone for its icon and its "on" fill. */
+/* Filter chips: which of a list to show (Position on Teammates, a training on the Calendar). Solid tiles with an
+   icon, no outline; the chosen one lit like a Pick, in the club's red (or its own --tone, the Calendar's trainings)
+   with the title's slash under it. --icon colours a resting icon (a training's tone); otherwise it's muted. */
 .filters {
   display: flex;
   flex-wrap: wrap;
   gap: var(--s-2);
 }
 .filter {
+  --tone: var(--red-hot);
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: var(--s-2);
@@ -439,24 +445,37 @@ h3 {
   border: 0;
   border-radius: var(--r-sm);
   background: var(--surface-2);
-  color: var(--fg-muted);
+  color: var(--fg-body);
   font-size: var(--text-sm);
   font-weight: 500;
-  --tone: var(--fg);
   transition:
     background-color var(--t-fast) var(--ease-in-out),
     color var(--t-fast) var(--ease-in-out);
 }
 .filter svg {
-  color: var(--tone);
+  color: var(--icon, var(--fg-muted));
 }
-.filter:hover {
+.filter:hover:not([aria-pressed="true"]) {
   background: var(--surface-3);
   color: var(--fg);
 }
 .filter[aria-pressed="true"] {
-  background: color-mix(in srgb, var(--tone) 24%, var(--surface-2));
+  background: color-mix(in srgb, var(--tone) 18%, var(--surface-2));
   color: var(--fg);
+}
+.filter[aria-pressed="true"] svg {
+  color: var(--tone);
+}
+.filter[aria-pressed="true"]::after {
+  content: "";
+  position: absolute;
+  left: var(--s-3);
+  bottom: 0;
+  width: 1.25rem;
+  height: 3px;
+  transform: skewX(-24deg);
+  transform-origin: left;
+  background: var(--tone);
 }
 .page-head {
   display: flex;
@@ -506,6 +525,42 @@ h1.poster::after {
   color: var(--red-muted);
 }
 
+/* You, in a list of people: a green sticker, like the header's ON NOW stamp, so you find yourself at a glance */
+.you-stamp {
+  display: inline-block;
+  flex-shrink: 0;
+  margin-left: var(--s-2);
+  padding: 0.1rem 0.45rem 0;
+  border: 2px solid currentColor;
+  border-radius: 0.3rem;
+  color: var(--green-ink);
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 1.2;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  vertical-align: 0.1em;
+  transform: rotate(-4deg);
+}
+/* A player's position (F, D, G) in a squad: the letter in the display face on a small tile */
+.pos-badge {
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  min-width: 1.9rem;
+  height: 1.9rem;
+  padding: 0 0.3rem;
+  border-radius: var(--r-sm);
+  background: var(--surface-3);
+  color: var(--fg-body);
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  line-height: 1;
+  letter-spacing: 0.03em;
+}
+
 /* Read by screen readers, not shown */
 .sr-only {
   position: absolute;
@@ -540,6 +595,10 @@ h1.poster::after {
 /* Grouped list: rows split by hairlines, never separate boxes */
 .list {
   display: grid;
+  /* One column that can shrink: a grid item's minimum is its content, so a wide row (a big fixture) would otherwise
+     widen the list, and the page with it, past a phone's edge */
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
   overflow: hidden;
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
@@ -1123,4 +1182,26 @@ input[type="checkbox"] {
   font-size: 2rem;
   font-style: italic;
   text-transform: uppercase;
+}
+
+/* Switching role (motion.ts switchView): the old view blurs out as the new one sharpens in. */
+.mode-switch::view-transition-old(root) {
+  animation: 200ms var(--ease-in-out) both mode-out;
+}
+.mode-switch::view-transition-new(root) {
+  animation: 360ms var(--ease) 80ms both mode-in;
+}
+@keyframes mode-out {
+  to {
+    opacity: 0;
+    filter: blur(6px);
+    transform: scale(0.985);
+  }
+}
+@keyframes mode-in {
+  from {
+    opacity: 0;
+    filter: blur(6px);
+    transform: scale(1.015);
+  }
 }

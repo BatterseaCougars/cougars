@@ -12,6 +12,7 @@
   import Icon from "../app/shell/Icon.svelte";
   import PlayerCard from "./PlayerCard.svelte";
   import { initials } from "./initials";
+  import { portal } from "./portal";
 
   let {
     player,
@@ -53,12 +54,6 @@
   const first = $derived(shortName(player));
   const DURATION = 520;
   const EASE = EASE_OUT;
-
-  // Leave the page for <body>: inside the view, a transform would trap a fixed layer
-  function portal(node: HTMLElement) {
-    document.body.append(node);
-    return { destroy: () => node.remove() };
-  }
 
   // The turn, as two keyframes with the same transform functions in the same order, so the browser interpolates
   // each (travel, size, turn) together. With different lists it goes through matrices, and the card turned first,

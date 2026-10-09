@@ -115,7 +115,7 @@
           class="input"
           rows="3"
           maxlength={BIO_MAX}
-          placeholder="Shoots left. Blames the ice."
+          placeholder="Shoots left. Blames the wheels."
           bind:value={form.bio}></textarea>
       </label>
       <button class="btn primary">Save</button>

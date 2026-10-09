@@ -85,7 +85,7 @@ const mine = "(v.sees_private OR m.id = v.member_id)";
 const PARTS = {
   everydayRole: "json_array((SELECT m.everyday_role_id FROM members m, viewer v WHERE m.id = v.member_id))",
   members: rows(
-    "id name email position rating cougar status payment_reference roles bio web_name phone played quarterly quarterlyNext",
+    "id name email position rating cougar status payment_reference roles bio web_name phone played quarterly quarterlyNext everyday_role_id",
     `SELECT m.id, m.name, CASE WHEN ${mine} THEN m.email END email, m.position,
             CASE WHEN v.sees_ratings THEN m.rating ELSE 0 END rating, m.cougar, m.status,
             CASE WHEN ${mine} THEN m.payment_reference END payment_reference,
@@ -101,7 +101,8 @@ const PARTS = {
             ${mine} AND EXISTS (SELECT 1 FROM subscriptions sub, (SELECT date(v.today, 'start of month',
                 printf('-%d months', (CAST(strftime('%m', v.today) AS INTEGER) - 1) % 3), '+3 months') day) nq
               WHERE sub.member_id = m.id AND sub.starts_on <= nq.day
-                AND (sub.ends_on IS NULL OR sub.ends_on >= nq.day)) quarterlyNext
+                AND (sub.ends_on IS NULL OR sub.ends_on >= nq.day)) quarterlyNext,
+            CASE WHEN v.sees_roles OR m.id = v.member_id THEN m.everyday_role_id END everyday_role_id
      FROM members m, viewer v
      WHERE v.sees_private OR m.status = 'active' OR m.id = v.member_id
      ORDER BY m.name COLLATE NOCASE`,

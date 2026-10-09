@@ -5,6 +5,7 @@
   import { fade, fly } from "svelte/transition";
   import { easeOut, fadeMs } from "../app/motion";
   import Icon from "../app/shell/Icon.svelte";
+  import { portal } from "./portal";
 
   let {
     open = $bindable(false),
@@ -30,40 +31,47 @@
   } = $props();
 
   function onkeydown(e: KeyboardEvent) {
-    if (open && e.key === "Escape") open = false;
+    // A pop-over's own Escape (DateField, Select) closes just the pop-over
+    if (open && e.key === "Escape" && !e.defaultPrevented) open = false;
   }
 </script>
 
 <svelte:window {onkeydown} />
 
-{#if open}
-  <button class="scrim" aria-label="Close" onclick={() => (open = false)} transition:fade={{ duration: fadeMs }}
-  ></button>
-  <div
-    class="drawer"
-    class:wide
-    role="dialog"
-    aria-modal="true"
-    aria-label={title}
-    transition:fly={{ x: 420, duration: 320, easing: easeOut, opacity: 1 }}
-  >
-    <header>
-      <div class="titles">
-        <h2>{title}</h2>
-        {#if sub}<p class="hint">{sub}</p>{/if}
-      </div>
-      {@render head?.()}
-      <button class="btn ghost icon" aria-label="Close" onclick={() => (open = false)}>
-        <Icon name="x" size={18} />
-      </button>
-    </header>
-    {#if top}<div class="top">{@render top()}</div>{/if}
-    <div class="body">{@render children()}</div>
-    {#if footer}<footer>{@render footer()}</footer>{/if}
-  </div>
-{/if}
+<!-- In <body>, so the scrim covers the dock and the desktop corners too (lib/portal.ts) -->
+<div class="layer" use:portal>
+  {#if open}
+    <button class="scrim" aria-label="Close" onclick={() => (open = false)} transition:fade={{ duration: fadeMs }}
+    ></button>
+    <div
+      class="drawer"
+      class:wide
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
+      transition:fly={{ x: 420, duration: 320, easing: easeOut, opacity: 1 }}
+    >
+      <header>
+        <div class="titles">
+          <h2>{title}</h2>
+          {#if sub}<p class="hint">{sub}</p>{/if}
+        </div>
+        {@render head?.()}
+        <button class="btn ghost icon" aria-label="Close" onclick={() => (open = false)}>
+          <Icon name="x" size={18} />
+        </button>
+      </header>
+      {#if top}<div class="top">{@render top()}</div>{/if}
+      <div class="body">{@render children()}</div>
+      {#if footer}<footer>{@render footer()}</footer>{/if}
+    </div>
+  {/if}
+</div>
 
 <style>
+  .layer {
+    display: contents;
+  }
   .scrim {
     position: fixed;
     inset: 0;

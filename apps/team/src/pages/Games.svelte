@@ -12,6 +12,7 @@
   import SignUpLine from "../lib/SignUpLine.svelte";
   import { editionState } from "../lib/edition";
   import Kanji from "../lib/Kanji.svelte";
+  import GameCard from "../lib/GameCard.svelte";
   import { kanjiFor } from "../lib/motif";
   import FixtureRow from "../lib/FixtureRow.svelte";
   import TournamentHead from "../lib/TournamentHead.svelte";
@@ -42,15 +43,8 @@
   // Each start moves them all along
   const live = $derived(games.find((g) => g.status === "live"));
   const ahead = $derived(games.filter((g) => g.status !== "done" && g.status !== "live"));
-  const now = $derived(
-    live
-      ? { game: live, label: "Now playing", live: true }
-      : ahead[0]
-        ? { game: ahead[0], label: "Next game", live: false }
-        : undefined,
-  );
+  const now = $derived(live ?? ahead[0]);
   const after = $derived(live ? ahead[0] : ahead[1]);
-  const afterLabel = $derived(live ? "Next game" : "After that");
 
   // Everyone sees the score as it happens: on the day, until the last game's over, from the hub's stream, with a
   // check on the admins' beat as the fallback (ADR 0061, 0072)
@@ -126,25 +120,20 @@
     </section>
     <Awards {tournament} />
   {:else if tournament && mode === "during"}
-    <!-- During: your turn to keep score, what's on and next, what's just happened -->
-    {#if duty}
+    <!-- During: your team's turn to keep score (once you hold it, your game's card wears the whistle instead), what's
+         on and next, what's just happened -->
+    {#if duty && !holding}
       <div class="duty">
         <Icon name="whistle" size={20} />
         <span class="grow">
-          <span class="duty-title"
-            >{holding
-              ? `You're keeping score${duty.status === "live" ? " now" : ""}`
-              : "Your team's turn to keep score"}</span
-          >
+          <span class="duty-title">Your team's turn to keep score</span>
           <span class="duty-sub"
             >Game {duty.position} · {vs(duty)}{duty.status === "next"
               ? ` · ${kickOff(tournament.startTime, tournament.gameMinutes, duty.position)}`
               : ""}</span
           >
         </span>
-        <a class="btn sm outline" href="/tournaments/{type.slug}/games/{duty.id}/live"
-          >{holding ? "Open the scoresheet" : "Keep score"}</a
-        >
+        <a class="btn sm outline" href="/tournaments/{type.slug}/games/{duty.id}/live">Keep score</a>
       </div>
     {/if}
     <section class="part">
@@ -157,19 +146,15 @@
         <p class="updates hint">
           <Icon name={liveFeed.on ? "live" : "clock"} size={14} /><LiveNote
             what="Scores update"
+            live="Scores update live"
             tail=", to keep the club on the free plan"
           />
         </p>
       {/if}
       {#if now}
-        <div class="list">
-          <p class="label eyebrow">{now.label}</p>
-          <FixtureRow big {tournament} game={now.game} live={now.live} chant="{type.shortName}!" />
-          {#if after}
-            <p class="label eyebrow">{afterLabel}</p>
-            <FixtureRow big {tournament} game={after} />
-          {/if}
-        </div>
+        <!-- A card each: the game on (or up next), then the one after -->
+        <GameCard {tournament} game={now} />
+        {#if after}<GameCard {tournament} game={after} />{/if}
       {:else}
         <p class="note">Every fight's been fought. The final word's on <a href={board}>the board</a>.</p>
       {/if}
@@ -246,6 +231,7 @@
   }
   .part {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     gap: var(--s-3);
   }
   .part .section-title {
@@ -279,10 +265,6 @@
   }
   .duty-sub {
     font-size: var(--text-sm);
-  }
-  .label {
-    margin: 0;
-    padding: var(--s-3) var(--s-4) 0;
   }
   .note a {
     color: var(--fg);

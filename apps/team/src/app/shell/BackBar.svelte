@@ -1,5 +1,6 @@
 <script lang="ts">
   // Full-screen pages hide the tabs and show this instead, frosted, sitting in the notch area.
+  import type { Snippet } from "svelte";
   import Icon from "./Icon.svelte";
 
   let {
@@ -7,12 +8,15 @@
     label,
     title,
     right,
+    action,
     onclick,
   }: {
     href: string;
     label: string;
     title: string;
     right?: string;
+    /** A button on the right instead of the words (the scorekeeper's tools). */
+    action?: Snippet;
     /** Instead of following the link (going back in history); the link stays for a new tab. */
     onclick?: () => void;
   } = $props();
@@ -26,7 +30,7 @@
 <header class="backbar">
   <a class="back" {href} onclick={click}><Icon name="chevronLeft" size={20} />{label}</a>
   <span class="title">{title}</span>
-  <span class="right hint">{right ?? ""}</span>
+  {#if action}<span class="right">{@render action()}</span>{:else}<span class="right hint">{right ?? ""}</span>{/if}
 </header>
 
 <style>
@@ -56,6 +60,8 @@
     font-weight: 600;
   }
   .right {
+    display: flex;
+    justify-content: flex-end;
     text-align: right;
   }
 </style>

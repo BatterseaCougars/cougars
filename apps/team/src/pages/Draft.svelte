@@ -331,9 +331,9 @@
     {:else if pool.length}
       <!-- The position filter: the app's filter chips, as Teammates has them, each with how many are left -->
       <div class="filters" role="group" aria-label="Position">
-        {#each [["all", "All", pool.length], ["F", "Forwards", poolTally.F], ["D", "Defence", poolTally.D], ["G", "Keepers", poolTally.G]] as const as [v, label, n] (v)}
+        {#each [["all", "All", pool.length, "teams"], ["F", "Forwards", poolTally.F, "stick"], ["D", "Defence", poolTally.D, "shield"], ["G", "Keepers", poolTally.G, "net"]] as const as [v, label, n, icon] (v)}
           <button class="filter" aria-pressed={filter === v} onclick={() => (filter = v)}
-            >{label}<span class="count num">{n}</span></button
+            ><Icon name={icon} size={16} />{label}<span class="count num">{n}</span></button
           >
         {/each}
       </div>

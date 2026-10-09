@@ -671,9 +671,9 @@ describe("teams, quips, profiles and attendance", () => {
 
   it("you write your bio and phone; others see the bio but not the phone", async () => {
     const { dana } = await ids();
-    await call("PUT", "/api/me", { position: "G", phone: "07700 900123", bio: "Blames the ice." });
+    await call("PUT", "/api/me", { position: "G", phone: "07700 900123", bio: "Blames the wheels." });
     const me = (await boot()).members.find((m: { id: number }) => m.id === dana);
-    expect(me).toMatchObject({ position: "G", phone: "07700 900123", bio: "Blames the ice." });
+    expect(me).toMatchObject({ position: "G", phone: "07700 900123", bio: "Blames the wheels." });
   });
 
   it("you choose how your name shows on the website, or go back to the default", async () => {

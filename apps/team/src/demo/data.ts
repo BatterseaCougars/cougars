@@ -76,6 +76,8 @@ export interface MemberRow {
   plan: "Subscription" | "Pay as you go";
   /** Next quarter's: what they chose, or this one running on. Only your own (false for anyone else). */
   planNext: "Subscription" | "Pay as you go";
+  /** The role their app opens as (ADR 0024); null: their full role. Only if you see roles. */
+  everydayRoleId: number | null;
 }
 export const MEMBERS: MemberRow[] = [];
 
@@ -113,6 +115,7 @@ export interface Bootstrap {
     played: number;
     quarterly: boolean;
     quarterlyNext: boolean;
+    everydayRoleId: number | null;
   }[];
   roles: Role[];
   venues: Venue[];
@@ -172,6 +175,7 @@ export function applySlices(b: Slices) {
         roles: m.roles,
         plan: m.quarterly ? ("Subscription" as const) : ("Pay as you go" as const),
         planNext: m.quarterlyNext ? ("Subscription" as const) : ("Pay as you go" as const),
+        everydayRoleId: m.everydayRoleId ?? null,
       })),
     );
   }

@@ -181,6 +181,9 @@ export const saveProfile = (p: { position: Position; phone: string; bio: string;
   save(() => api("PUT", "/api/me", p));
 /** The role the app opens as (ADR 0024); null for your full role. */
 export const saveEverydayRole = (roleId: number | null) => save(() => api("PUT", "/api/me/everyday-role", { roleId }));
+/** Another member's everyday role, or null for their full role (ADR 0024). */
+export const setMemberEveryday = (memberId: number, roleId: number | null) =>
+  save(() => api("PUT", `/api/members/${memberId}/everyday-role`, { roleId }));
 /** Your plan for next quarter, until it starts: the server checks the date (ADR 0007). */
 export const choosePlan = (quarter: string, quarterly: boolean) =>
   save(() => api("PUT", "/api/me/plan", { quarter, quarterly }), "Plan saved");

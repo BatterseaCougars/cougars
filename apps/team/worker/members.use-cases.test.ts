@@ -94,3 +94,54 @@ describe("an admin edits the name a member goes by", () => {
     expect((await members(dana)).find((m) => m.id === reg.id)?.webName).toBe("The Wall");
   });
 });
+
+describe("an admin sets another admin's everyday role (ADR 0024)", () => {
+  type Row = { id: number; name: string; everydayRoleId?: number | null };
+  const boot = async (who: Awaited<ReturnType<typeof w.signedIn>>) => (await who.call("GET", "/api/bootstrap")).body;
+  async function twoAdmins() {
+    const dana = await w.signedIn("dana@example.com");
+    const b = await boot(dana);
+    const reg = (b.members as Row[]).find((m) => m.name === "Reg Player")!;
+    await dana.call("PUT", `/api/members/${reg.id}`, { ...reg, roles: ["Admin", "Member"] });
+    const role = (name: string) => (b.roles as { id: number; name: string }[]).find((r) => r.name === name)!.id;
+    return { dana, reg: reg.id, member: role("Member"), admin: role("Admin") };
+  }
+
+  it("their app opens in it, and the admin sees what it is; cleared, it opens in their full role", async () => {
+    const { dana, reg, member } = await twoAdmins();
+    expect((await dana.call("PUT", `/api/members/${reg}/everyday-role`, { roleId: member })).status).toBe(200);
+    expect((await boot(await w.signedIn("reg@example.com"))).everydayRole).toBe(member);
+    expect(((await boot(dana)).members as Row[]).find((m) => m.id === reg)?.everydayRoleId).toBe(member);
+
+    await dana.call("PUT", `/api/members/${reg}/everyday-role`, { roleId: null });
+    expect((await boot(await w.signedIn("reg@example.com"))).everydayRole).toBeNull();
+  });
+
+  it("is never more than they can do: a plain member's can't be Admin", async () => {
+    const dana = await w.signedIn("dana@example.com");
+    const b = await boot(dana);
+    const reg = (b.members as Row[]).find((m) => m.name === "Reg Player")!.id;
+    const admin = (b.roles as { id: number; name: string }[]).find((r) => r.name === "Admin")!.id;
+    expect(await dana.call("PUT", `/api/members/${reg}/everyday-role`, { roleId: admin })).toMatchObject({
+      status: 403,
+      body: { error: "Their everyday role has to be one that can do less than they can." },
+    });
+  });
+
+  it("is for whoever manages members, and on the record", async () => {
+    const { dana, member } = await twoAdmins();
+    const danaId = (await boot(dana)).me;
+    const plain = await w.signedIn("reg@example.com");
+    // Reg is an admin now: take it back so Reg is a plain member asking
+    await dana.call("PUT", `/api/members/${(await boot(plain)).me}`, {
+      ...((await boot(dana)).members as Row[]).find((m) => m.name === "Reg Player"),
+      roles: ["Member"],
+    });
+    expect((await plain.call("PUT", `/api/members/${danaId}/everyday-role`, { roleId: member })).status).toBe(403);
+    const { entries } = (await dana.call("GET", "/api/audit")).body as { entries: { action: string }[] };
+    expect(entries.map((e) => e.action)).toContain("member.updated");
+    await dana.call("PUT", `/api/members/${danaId}/everyday-role`, { roleId: member });
+    const after = (await dana.call("GET", "/api/audit")).body as { entries: { action: string }[] };
+    expect(after.entries.map((e) => e.action)).toContain("member.everyday");
+  });
+});

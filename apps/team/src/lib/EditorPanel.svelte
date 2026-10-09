@@ -8,6 +8,7 @@
   import { pageColumnStyle } from "./page-column";
   import type { IconName } from "../app/shell/icons";
   import { EASE_IN, EASE_OUT, prefersReducedMotion } from "../app/motion";
+  import { portal } from "./portal";
 
   // Opens in the page's own column (desktop), the same width as the cards under it
   // …measured again when the window changes size, so it keeps to the page as the page reflows
@@ -47,11 +48,6 @@
     { transform: "scale(0.94)", filter: "blur(8px)", opacity: 0 },
     { transform: "none", filter: "blur(0)", opacity: 1 },
   ];
-
-  function portal(node: HTMLElement) {
-    document.body.append(node);
-    return { destroy: () => node.remove() };
-  }
 
   onMount(() => {
     panel?.focus({ preventScroll: true });

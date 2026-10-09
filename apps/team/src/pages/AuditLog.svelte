@@ -84,6 +84,10 @@
         return `${who} changed ${about}'s sign-in email: ${str(d.from)} → ${str(d.to)}`;
       case "member.plan":
         return `${who} chose ${to?.quarterly ? "Quarterly" : "pay as you go"} for ${str(to?.quarter)}`;
+      case "member.everyday":
+        return d.to
+          ? `${who} set ${about}'s app to open as ${str(d.to)}`
+          : `${who} set ${about}'s app to open in their full role`;
       case "member.quarterly":
         return d.to ? `${who} made ${about} a Quarterly Member` : `${who} ended ${about}'s quarterly membership`;
       // Dues (ADR 0007): a charge reads { memberId, what (a training, tournament or quarter), pence, dueOn, paid }

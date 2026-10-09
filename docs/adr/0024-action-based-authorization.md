@@ -66,6 +66,9 @@ taps to start and stop.
   It's stored on the member (`members.everyday_role_id`, set through `/api/me/everyday-role`), so it applies on every
   device. The choices are roles that can do less than they can; the API refuses anything else, so it can never be a
   way up.
+- **An admin can set it for another member** on their card (Details → Opens as, `PUT /api/members/:id/everyday-role`,
+  `manage:Member`): the same rule, a role that can do less than that member can, and only for a member the admin may
+  change at all. It's on the record (`member.everyday`).
 - The app **opens in the everyday role**: the pages, buttons and data it shows are that role's and Member's.
 - A **switch beside the account badge**, labelled with their full role ("Admin"), moves them up. It's lit while
   they're in their full role and moves them back when tapped again; the account menu has the same switch. Going back
@@ -97,3 +100,4 @@ taps to start and stop.
   both members, the API refusing writes and the start and end audited (was 0029; built in the browser instead).
 - 2026-10-07: Members with more than Member can run the app day to day as a lesser everyday role and switch up for
   the tab (was 0037).
+- 2026-10-09: An admin can set another member's everyday role on their card.

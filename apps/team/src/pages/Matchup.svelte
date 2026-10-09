@@ -181,9 +181,9 @@
                 <li class="row">
                   <span class="c display" title="Captain" aria-label="Captain">C</span>
                   <span class="name"
-                    >{goesByOf(s.captain)}{#if s.captain.id === me().id}<small>you</small>{/if}</span
+                    >{goesByOf(s.captain)}{#if s.captain.id === me().id}<span class="you-stamp">You</span>{/if}</span
                   >
-                  <span class="pos">{s.captain.position}</span>
+                  <span class="pos-badge">{s.captain.position}</span>
                 </li>
               {/if}
               {#each s.players as p (p.memberId ?? p.name)}
@@ -191,9 +191,9 @@
                 <li class="row">
                   <span class="c"></span>
                   <span class="name"
-                    >{goesByOf(m) || p.name}{#if p.memberId === me().id}<small>you</small>{/if}</span
+                    >{goesByOf(m) || p.name}{#if p.memberId === me().id}<span class="you-stamp">You</span>{/if}</span
                   >
-                  {#if m}<span class="pos">{m.position}</span>{/if}
+                  {#if m}<span class="pos-badge">{m.position}</span>{/if}
                 </li>
               {/each}
             </ol>
@@ -362,7 +362,6 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  .name small,
   .who small {
     margin-left: var(--s-2);
     color: var(--fg-subtle);
@@ -370,11 +369,6 @@
     font-weight: 600;
     letter-spacing: 0.04em;
     text-transform: uppercase;
-  }
-  .pos {
-    color: var(--fg-muted);
-    font-size: var(--text-xs);
-    font-weight: 700;
   }
   .goals,
   .meetings {

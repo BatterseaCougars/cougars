@@ -159,7 +159,8 @@
           <button
             class="filter"
             aria-pressed={filter === c.id}
-            style:--tone={c.tone ? `var(--tone-${c.tone})` : "var(--fg)"}
+            style:--tone={c.tone ? `var(--tone-${c.tone})` : undefined}
+            style:--icon={c.tone ? `var(--tone-${c.tone})` : undefined}
             onclick={() => setFilter(c.id)}
           >
             {#if c.icon}<Icon name={c.icon} size={14} />{/if}

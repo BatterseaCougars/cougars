@@ -51,6 +51,8 @@ import {
   updateMember,
   updateProfile,
   setEverydayRole,
+  setMemberEverydayRole,
+  everydayOf,
   updateRole,
   canGrant,
   memberEmail,
@@ -436,6 +438,19 @@ export const ROUTES: Route[] = [
     changes: ["everydayRole"],
     // { roleId: number | null }: the role the app opens as (ADR 0024)
     handle: async (c) => (await setEverydayRole(c.env.DB, c.memberId, await body(c.request), c.actions), ok()),
+  },
+  {
+    method: "PUT",
+    path: /^\/api\/members\/(\d+)\/everyday-role$/,
+    audit: {
+      event: "member.everyday",
+      subject: (c) => everydayOf(c.env.DB, id(c)),
+      about: (c) => ({ memberId: id(c) }),
+    },
+    action: "manage:Member",
+    changes: ["members", "everydayRole"],
+    // { roleId: number | null }: the role another member's app opens as (an admin who runs it as a member)
+    handle: async (c) => (await setMemberEverydayRole(c.env.DB, id(c), await body(c.request), c), ok()),
   },
   {
     method: "GET",

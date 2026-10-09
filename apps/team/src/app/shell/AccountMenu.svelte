@@ -10,7 +10,7 @@
    */
   import { tick } from "svelte";
   import { fade, fly } from "svelte/transition";
-  import { easeOut, fadeMs, prefersReducedMotion } from "../motion";
+  import { easeOut, fadeMs, prefersReducedMotion, switchView } from "../motion";
   import { phone } from "../../lib/viewport.svelte";
   import { can } from "../../access/actions";
   import { db } from "../../demo/store.svelte";
@@ -66,8 +66,10 @@
   // Your full role and your everyday one (ADR 0024). Back to everyday on a page it can't see: Home.
   function toggleMode() {
     const up = !elevated();
-    setElevated(up);
-    if (!up) stayIfAllowed();
+    switchView(() => {
+      setElevated(up);
+      if (!up) stayIfAllowed();
+    });
   }
   const members = $derived(
     db.members

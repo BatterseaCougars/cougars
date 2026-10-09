@@ -31,6 +31,8 @@ export interface MemberJson {
   quarterly: boolean;
   /** Quarterly next quarter: what they chose, or their membership running on. Only your own. */
   quarterlyNext: boolean;
+  /** The role their app opens as (ADR 0024); null: their full role. Your own, or anyone's if you see roles. */
+  everydayRoleId: number | null;
 }
 
 export interface RoleJson {
@@ -78,6 +80,7 @@ export function membersFrom(
     played: number;
     quarterly: number;
     quarterlyNext: number;
+    everyday_role_id: number | null;
   }[],
 ): MemberJson[] {
   return rows.map((m) => ({
@@ -97,6 +100,7 @@ export function membersFrom(
     played: m.played,
     quarterly: Boolean(m.quarterly),
     quarterlyNext: Boolean(m.quarterlyNext),
+    everydayRoleId: m.everyday_role_id,
   }));
 }
 
@@ -322,7 +326,8 @@ export async function setEverydayRole(
   db: D1Database,
   id: number,
   o: Record<string, unknown>,
-  caller: ReadonlySet<Action>,
+  limit: ReadonlySet<Action>,
+  tooMuch = "Your everyday role has to be one that can do less than you can.",
 ) {
   const roleId = o.roleId;
   if (roleId === null) {
@@ -335,13 +340,39 @@ export async function setEverydayRole(
   const actions = await all<{ action: string }>(db, "SELECT action FROM role_actions WHERE role_id = ?", [roleId]);
   if (
     !canGrant(
-      caller,
+      limit,
       actions.map((a) => a.action),
     )
   )
-    throw new HttpError(403, "Your everyday role has to be one that can do less than you can.");
+    throw new HttpError(403, tooMuch);
   await run(db, "UPDATE members SET everyday_role_id = ? WHERE id = ?", [roleId, id]);
 }
+
+/**
+ * An admin sets another member's everyday role (an admin who runs the app as a member day to day), or clears it. The
+ * same rule as their own: one that can do less than they can; and only for a member the caller may change at all.
+ */
+export async function setMemberEverydayRole(db: D1Database, id: number, o: Record<string, unknown>, by: By) {
+  if (!(await first(db, "SELECT 1 FROM members WHERE id = ?", [id]))) throw new HttpError(404, "No such member.");
+  await mayChange(db, by.actions, id);
+  await setEverydayRole(
+    db,
+    id,
+    o,
+    await actionsOf(db, id),
+    "Their everyday role has to be one that can do less than they can.",
+  );
+}
+
+/** A member's everyday role, as the audit log records it: its name, or none (their full role). */
+export const everydayOf = async (db: D1Database, id: number) =>
+  (
+    await first<{ name: string | null }>(
+      db,
+      "SELECT r.name FROM members m LEFT JOIN roles r ON r.id = m.everyday_role_id WHERE m.id = ?",
+      [id],
+    )
+  )?.name ?? null;
 
 /**
  * An admin sets how to reach a member: the email they sign in with (ADR 0023), and a phone. A blank email means

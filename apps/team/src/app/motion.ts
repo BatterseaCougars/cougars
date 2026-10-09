@@ -1,4 +1,5 @@
 // One easing for the whole app (matches --ease in app.css). Reduced motion zeroes every duration.
+import { flushSync } from "svelte";
 import { cubicOut } from "svelte/easing";
 
 export const prefersReducedMotion =
@@ -42,3 +43,38 @@ export function eject(_node: Element, { delay = 0, out = false, x = 28 } = {}) {
 }
 
 export { cubicOut };
+
+/**
+ * Trading cards dealt in and folded away, as a filter or search changes which show (Teammates): one arriving tilts a
+ * little and settles, one leaving shrinks and fades. Short on the way out, so the rest can glide into place
+ * (`animate:flip` with `cardMoveMs`).
+ */
+export function deal(_node: Element, { out = false } = {}) {
+  if (prefersReducedMotion) return { duration: 0 };
+  return out
+    ? {
+        duration: 150,
+        easing: (t: number) => t * t,
+        css: (t: number) => `transform: scale(${(0.86 + 0.14 * t).toFixed(4)}); opacity: ${t.toFixed(3)};`,
+      }
+    : {
+        delay: 120,
+        duration: 340,
+        easing: easeOut,
+        css: (t: number, u: number) =>
+          `transform: translateY(${(10 * u).toFixed(2)}px) rotate(${(-4 * u).toFixed(2)}deg) scale(${(0.88 + 0.12 * t).toFixed(4)}); opacity: ${Math.min(1, t * 1.5).toFixed(3)};`,
+      };
+}
+export const cardMoveMs = prefersReducedMotion ? 0 : 360;
+
+/**
+ * Switching between your everyday role and your full one changes the whole app at once (nav, Manage, pages): the
+ * old view blurs away as the new one sharpens in (the "mode-switch" view transition in app.css). Without View
+ * Transitions, or with reduced motion, it just switches.
+ */
+export function switchView(update: () => void) {
+  if (prefersReducedMotion || typeof document === "undefined" || !document.startViewTransition) return update();
+  document.documentElement.classList.add("mode-switch");
+  const t = document.startViewTransition(() => flushSync(update));
+  t.finished.finally(() => document.documentElement.classList.remove("mode-switch"));
+}

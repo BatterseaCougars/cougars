@@ -100,9 +100,9 @@
           <li class="row">
             <span class="c display" title="Captain" aria-label="Captain">C</span>
             <span class="name"
-              >{captain.name}{#if captain.id === me().id}<small>you</small>{/if}</span
+              >{captain.name}{#if captain.id === me().id}<span class="you-stamp">You</span>{/if}</span
             >
-            <span class="pos">{captain.position}</span>
+            <span class="pos-badge">{captain.position}</span>
           </li>
         {/if}
         {#each team.players as p (p.memberId ?? p.name)}
@@ -110,9 +110,9 @@
           <li class="row">
             <span class="c"></span>
             <span class="name"
-              >{goesByOf(m) || p.name}{#if p.memberId === me().id}<small>you</small>{/if}</span
+              >{goesByOf(m) || p.name}{#if p.memberId === me().id}<span class="you-stamp">You</span>{/if}</span
             >
-            {#if m}<span class="pos">{m.position}</span>{/if}
+            {#if m}<span class="pos-badge">{m.position}</span>{/if}
           </li>
         {/each}
         {#if drafting}
@@ -253,18 +253,5 @@
     font-weight: 500;
     white-space: nowrap;
     text-overflow: ellipsis;
-  }
-  .name small {
-    margin-left: var(--s-2);
-    color: var(--fg-subtle);
-    font-size: var(--text-2xs);
-    font-weight: 600;
-    letter-spacing: var(--tracking-label);
-    text-transform: uppercase;
-  }
-  .pos {
-    color: var(--fg-subtle);
-    font-size: var(--text-2xs);
-    font-weight: 700;
   }
 </style>

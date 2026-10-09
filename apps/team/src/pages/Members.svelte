@@ -72,7 +72,8 @@
             headerName: "Owes",
             valueGetter: (p) => (p.data ? owedBy(p.data.player.id) : 0),
             valueFormatter: (p) => (p.value > 0 ? pounds(p.value) : ""),
-            cellClass: (p) => (p.value > 0 ? "owes" : ""),
+            // numericColumn's right alignment is a cellClass too, so keep it beside ours
+            cellClass: (p) => (p.value > 0 ? ["ag-right-aligned-cell", "owes"] : "ag-right-aligned-cell"),
             type: "numericColumn",
           } as ColDef<MemberRow>,
         ]
@@ -106,9 +107,9 @@
     {/snippet}
     {#snippet filters()}
       <div class="filters" role="group" aria-label="Position">
-        {#each [["all", "All"], ["F", "Forwards"], ["D", "Defence"], ["G", "Keepers"]] as [v, label] (v)}
+        {#each [["all", "All", "teams"], ["F", "Forwards", "stick"], ["D", "Defence", "shield"], ["G", "Keepers", "net"]] as const as [v, label, icon] (v)}
           <button class="filter" aria-pressed={filter === v} onclick={() => (filter = v as typeof filter)}
-            >{label}</button
+            ><Icon name={icon} size={16} />{label}</button
           >
         {/each}
       </div>

@@ -22,12 +22,13 @@
     saveContact,
     saveMember,
     setQuarterly,
+    setMemberEveryday,
     type AttendanceRow,
   } from "../app/backend.svelte";
-  import { POSITIONS, emailFor, phoneFor, referenceFor, type Position } from "../demo/data";
+  import { POSITIONS, REAL_ID, emailFor, phoneFor, referenceFor, type Position } from "../demo/data";
   import { chargesFor, creditOf, owedBy } from "../demo/dues.svelte";
   import { db } from "../demo/store.svelte";
-  import { granted } from "../demo/session.svelte";
+  import { granted, session } from "../demo/session.svelte";
   import { can } from "../access/actions";
   import Ledger from "./Ledger.svelte";
   import Sheet from "./Sheet.svelte";
@@ -70,12 +71,27 @@
     name: member.player.name,
     webName: member.player.webName ?? "",
     role: member.roles[0] ?? "Member",
+    // The role their app opens as: "full", or a role's id
+    everyday: member.everydayRoleId == null ? "full" : String(member.everydayRoleId),
     plan: member.plan,
     position: member.player.position,
     rating: member.player.rating,
     cougar: member.player.cougar,
     email: emailFor(member.player) === "No email yet" ? "" : emailFor(member.player),
     phone: phoneFor(memberId) ?? "",
+  });
+  // What their app can open as: their full role, or a role that can do less than it (the server checks the same)
+  const everydayOptions = $derived.by(() => {
+    const full = db.roles.find((r) => r.name === draft.role);
+    const theirs = new Set(full?.actions ?? []);
+    const less = (actions: readonly string[]) =>
+      theirs.has("manage:all") || actions.every((a) => theirs.has(a as never));
+    return [
+      { value: "full", label: `Their full role (${draft.role})` },
+      ...db.roles
+        .filter((r) => r.name !== draft.role && less(r.actions))
+        .map((r) => ({ value: String(r.id), label: r.name })),
+    ];
   });
   let saved = $state(current());
   let draft = $state(current());
@@ -125,6 +141,14 @@
         });
         member.roles = d.role === "Member" ? ["Member"] : [d.role, "Member"];
         results.push(await saveMember(member));
+      }
+      // Their everyday role; none once they're only a Member, since there's nothing to open as
+      const everyday = d.role === "Member" ? "full" : d.everyday;
+      if (everyday !== saved.everyday) {
+        member.everydayRoleId = everyday === "full" ? null : Number(everyday);
+        results.push(await setMemberEveryday(memberId, member.everydayRoleId));
+        // Your own: the app follows it now, as Profile's does
+        if (memberId === REAL_ID) session.everyday = member.everydayRoleId;
       }
       if (d.plan !== saved.plan) {
         member.plan = d.plan;
@@ -557,6 +581,18 @@
                       options={db.roles.map((r) => ({ value: r.name, label: r.name }))}
                     />
                   </label>
+                  {#if draft.role !== "Member"}
+                    <!-- An admin who runs the app as a member day to day (ADR 0024): what it opens as -->
+                    <label class="field">
+                      Opens as
+                      <Select
+                        id="member-everyday"
+                        value={draft.everyday}
+                        onchange={(v) => (draft.everyday = v)}
+                        options={everydayOptions}
+                      />
+                    </label>
+                  {/if}
                   <label class="field">
                     Plan
                     <Select
@@ -997,7 +1033,7 @@
     grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr) minmax(0, 1fr);
   }
   .fields.club {
-    grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(0, 0.6fr) minmax(0, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
   @container (max-width: 52rem) {
     .fields.contact,

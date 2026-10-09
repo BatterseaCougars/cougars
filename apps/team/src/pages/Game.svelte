@@ -18,7 +18,10 @@
   import Icon from "../app/shell/Icon.svelte";
   import BackBar from "../app/shell/BackBar.svelte";
   import Drawer from "../lib/Drawer.svelte";
+  import Sheet from "../lib/Sheet.svelte";
+  import { phone } from "../lib/viewport.svelte";
   import TeamCrest from "../lib/TeamCrest.svelte";
+  import RollNumber from "../lib/RollNumber.svelte";
   import { PLAYERS, type Player } from "../demo/data";
   import { granted, me } from "../demo/session.svelte";
   import { goBack, router } from "../app/router.svelte";
@@ -119,13 +122,6 @@
   }
   const take = () => tournament && game && act(() => holdScoresheet(tournament.id, game.id, "claim"));
   const letGo = () => tournament && game && act(() => holdScoresheet(tournament.id, game.id, "release"));
-  // Done scoring: let it go, and back to the games
-  const stop = () =>
-    tournament &&
-    game &&
-    act(async () => {
-      if (await holdScoresheet(tournament.id, game.id, "release")) goBack(games);
-    });
   const games = $derived(`/tournaments/${type.slug}`);
   // Back where you came from (the Fight card, a team, the home page), named for it; else the tournament's home
   const back = $derived.by(() => {
@@ -170,7 +166,7 @@
     act(() => clockGame(tournament.id, game.id, "end"));
   }
 
-  // The tools behind the gear: what the scorekeeper needs now and then, kept away from the big buttons
+  // The tools behind Scoring in the bar: what the scorekeeper needs now and then, kept away from the big buttons
   let toolsOpen = $state(false);
   const lastGoal = $derived(game?.goals?.length ? game.goals[game.goals.length - 1] : undefined);
   const tool = (what: () => unknown) => {
@@ -181,6 +177,7 @@
   // Set the time: by the scorekeeper's watch (the game started late on the app, or the ref says so). Paused, it stays
   // paused; running, it runs on from the time set
   let setting = $state(false);
+  const settable = $derived(keeper && game?.status === "live");
   let setMin = $state(0);
   let setSec = $state(0);
   function openSet() {
@@ -277,29 +274,31 @@
   onclick={() => goBack(games)}
   title={game ? `Game ${game.position}` : "Game"}
   right={over ? "Full time" : game?.status === "live" ? (running ? "Running" : "Paused") : "Not started"}
+  action={keeper && !over ? scoring_ : undefined}
 />
+<!-- Keeping score: said in the bar, in red, and a tap opens the scorekeeper's tools, so the clock gets the screen -->
+{#snippet scoring_()}
+  <button class="btn ghost sm keeping" aria-label="You're keeping score: tools" onclick={() => (toolsOpen = true)}
+    ><Icon name="whistle" size={18} />Scoring</button
+  >
+{/snippet}
 
 {#if !tournament || !game}
   <p class="note missing">No such game.</p>
 {:else}
   <div class="game">
-    {#if keeper && !over}
-      <!-- First thing on the page: this phone's the scoresheet -->
-      <div class="panel glass keeping" role="status">
-        <Icon name="whistle" size={22} />
-        <span class="keeping-text">
-          <strong>You're keeping score</strong>
-          <span class="hint">Only you can run the clock and log goals, until you hand it over.</span>
-        </span>
-        <button class="btn ghost sm" disabled={busy} onclick={letGo}>Hand over</button>
-        <!-- The rest, out of the way: set the time, take back a goal, full time early, stop scoring -->
-        <button class="btn ghost icon gear" aria-label="Game tools" onclick={() => (toolsOpen = true)}
-          ><Icon name="settings" size={24} /></button
-        >
-      </div>
-    {/if}
-    <!-- The clock: to read. Its start and pause is the big button under it -->
-    <div class="clock" class:running class:done={over || timeUp} role="timer" aria-label={mmss(left)}>
+    <!-- The clock: to read, and for the scorekeeper, a tap sets it (ADR 0103). Its start and pause is the big button
+         under it -->
+    <svelte:element
+      this={settable ? "button" : "div"}
+      class="clock"
+      class:running
+      class:done={over || timeUp}
+      class:settable
+      role={settable ? undefined : "timer"}
+      aria-label={settable ? `Set the time: ${mmss(left)} left` : mmss(left)}
+      onclick={settable ? openSet : undefined}
+    >
       <span class="time display num">{mmss(left)}</span>
       <span class="meter"><span style:transform="scaleX({left / full})"></span></span>
       <span class="cue hint">
@@ -309,7 +308,7 @@
         {:else if timeUp}{keeper ? "Time's up: call full time" : "Time's up"}
         {:else}{running ? "Live" : "Paused"}{/if}
       </span>
-    </div>
+    </svelte:element>
 
     {#if sayFollowing}
       <!-- The score follows along: live from the hub's stream, else on the admins' beat (ADR 0072) -->
@@ -384,7 +383,7 @@
             />
           {/if}
           <span class="display name">{teamName(teamId)}</span>
-          <span class="display goals num">{scoreOf(i)}</span>
+          <span class="display goals num"><RollNumber value={scoreOf(i)} /></span>
           {#if teamId && ((keeper && game.status === "live") || (fixing && over))}
             <button class="btn outline goal" disabled={busy} onclick={() => (picking = { team: teamId })}
               >{fixing ? "Add a goal" : "Goal"}</button
@@ -473,7 +472,7 @@
     <!-- Who's keeping score: take it on, let it go -->
     <div class="kept">
       {#if keeper}
-        <!-- Stop scoring is in the tools -->
+        <!-- Hand over is in the tools, from Scoring in the bar -->
       {:else if holder}
         <!-- Said under the clock -->
       {:else if over && canFix}
@@ -493,14 +492,12 @@
     </div>
   </div>
 
-  <!-- The tools, in a side drawer: big rows, one tap each (full time asks again) -->
-  <Drawer bind:open={toolsOpen} title="Game tools">
+  <!-- The tools: big rows, one tap each (full time asks again), each done right here. Up from the bottom on a phone,
+       a side drawer on a desktop (ADR 0103) -->
+  {#snippet toolList()}
     <div class="tools">
+      <p class="hint tools-note">Only you can run the clock and log goals, until you hand it over.</p>
       {#if game.status === "live"}
-        <button class="tool" disabled={busy} onclick={() => tool(openSet)}>
-          <Icon name="clock" size={22} />
-          <span class="tool-text"><strong>Set the time</strong><span>Now {mmss(left)} left</span></span>
-        </button>
         <button
           class="tool"
           disabled={busy || !lastGoal}
@@ -526,21 +523,23 @@
           >
         </button>
       {/if}
-      <button class="tool" disabled={busy} onclick={() => tool(stop)}>
+      <button class="tool" disabled={busy} onclick={() => tool(letGo)}>
         <Icon name="signOut" size={22} />
         <span class="tool-text"
-          ><strong>Stop scoring</strong><span>Someone else can take it on from where you are.</span></span
+          ><strong>Hand over</strong><span>Someone else can take it on from where you are.</span></span
         >
       </button>
     </div>
-  </Drawer>
+  {/snippet}
+  {#if phone.current}
+    <Sheet bind:open={toolsOpen} title="You're keeping score">{@render toolList()}</Sheet>
+  {:else}
+    <Drawer bind:open={toolsOpen} title="You're keeping score">{@render toolList()}</Drawer>
+  {/if}
 
-  <!-- Set the score, in a side drawer: each side's goals, up and down -->
-  <Drawer
-    bind:open={scoring}
-    title="Set the score"
-    sub="Goals go on, nobody said who, or the latest come off to match."
-  >
+  <!-- Set the score, in a sheet (a short form, ADR 0103): each side's goals, up and down -->
+  <Sheet bind:open={scoring} title="Set the score">
+    <p class="hint">Goals go on, nobody said who, or the latest come off to match.</p>
     <div class="score-set">
       {#each sides as teamId, i (i)}
         {#if teamId}
@@ -572,10 +571,10 @@
         <button class="btn primary name-skip" onclick={saveScore}>Save the score</button>
       </div>
     {/snippet}
-  </Drawer>
+  </Sheet>
 
-  <!-- Set the time, in a side drawer: minutes and seconds left, or nudge it -->
-  <Drawer bind:open={setting} title="Set the time">
+  <!-- Set the time, in a sheet from the clock: minutes and seconds left, or nudge it -->
+  <Sheet bind:open={setting} title="Set the time">
     <div class="set-time">
       <label class="field"
         ><span>Minutes</span><input
@@ -610,7 +609,7 @@
       <button class="btn ghost" onclick={() => (setting = false)}>Cancel</button>
       <button class="btn primary" onclick={saveTime}>Set the clock</button>
     {/snippet}
-  </Drawer>
+  </Sheet>
 
   <!-- Who scored, then who assisted: a side drawer (the whole screen on a phone), big names, quick to hit at the
        side of the rink -->
@@ -687,6 +686,20 @@
     gap: var(--s-3);
     padding: var(--s-4) 0 var(--s-2);
     color: var(--fg);
+  }
+  /* The scorekeeper's: a tap sets it. No box; it lifts a little under a finger */
+  button.clock {
+    width: 100%;
+    border: 0;
+    border-radius: var(--r-lg);
+    background: none;
+    font: inherit;
+    cursor: pointer;
+    transition: background-color var(--t-fast) var(--ease-in-out);
+  }
+  button.clock:hover,
+  button.clock:active {
+    background: color-mix(in srgb, var(--fg) 4%, transparent);
   }
   .time {
     font-size: clamp(6rem, 32vw, 9rem);
@@ -1068,13 +1081,6 @@
     font-size: var(--text-sm);
     text-align: center;
   }
-  .gear {
-    flex-shrink: 0;
-    width: 3rem;
-    height: 3rem;
-    margin-left: auto;
-    color: var(--fg-muted);
-  }
   .tools {
     display: grid;
     gap: var(--s-2);
@@ -1114,21 +1120,13 @@
   .tool-text span {
     font-size: var(--text-sm);
   }
+  /* Scoring, in the bar: says this phone's the scoresheet, and opens its tools */
   .keeping {
-    display: flex;
-    align-items: center;
-    gap: var(--s-3);
-    padding: var(--s-3) var(--s-4);
+    gap: var(--s-1);
     color: var(--red-hot);
   }
-  .keeping-text {
-    display: grid;
-    gap: 0.1rem;
-  }
-  .keeping strong {
-    color: var(--fg);
-    font-size: var(--text-md);
-    font-weight: 600;
+  .tools-note {
+    margin: 0 0 var(--s-2);
   }
   .let-go {
     width: 100%;

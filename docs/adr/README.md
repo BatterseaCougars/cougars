@@ -5,7 +5,7 @@ record per topic** ([0001](0001-record-decisions.md)). Read the relevant one bef
 
 - **Changing a decision:** update its topic's record in the same change as the code. Rewrite what no longer holds,
   add a dated line to its **History**, and bump _updated_.
-- **A new topic:** copy [template.md](template.md) and take the next unused number (the next is **0102**). Numbers are
+- **A new topic:** copy [template.md](template.md) and take the next unused number (the next is **0104**). Numbers are
   never reused.
 - **An old number** (from a commit, an issue or a chat) that has no file any more was merged into another record.
   `grep -l 0035 docs/adr/*.md` finds it on that record's _Merges_ line.
@@ -65,7 +65,7 @@ record per topic** ([0001](0001-record-decisions.md)). Read the relevant one bef
 | [0072](0072-live-updates.md)                 | Live pages are pushed to over SSE from a Durable Object; polling at the admins' pace is the fallback               |
 | [0065](0065-page-frame-and-admin-actions.md) | One page frame; admin actions live on the thing's own page, not under Settings                                     |
 | [0084](0084-sticker-colour-scheme.md)        | The Sticker colour scheme: one yellow main button, red for the brand, tokens for everything                        |
-| [0102](0102-drawers-sheets-and-panels.md)    | A side drawer for working beside the page, a sheet for a short job, a panel for a whole editor (proposed)          |
+| [0103](0103-drawers-sheets-and-panels.md)    | A side drawer for working beside the page, a sheet for a short job, a panel for a whole editor (proposed)          |
 
 ## Team app: the club
 

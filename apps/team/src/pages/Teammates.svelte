@@ -18,6 +18,8 @@
   import AddMemberSheet from "../lib/AddMemberSheet.svelte";
   import Icon from "../app/shell/Icon.svelte";
   import SearchField from "../lib/SearchField.svelte";
+  import { flip } from "svelte/animate";
+  import { cardMoveMs, deal, easeOut } from "../app/motion";
 
   let { memberId }: { memberId?: number } = $props();
 
@@ -77,9 +79,9 @@
     {/snippet}
     {#snippet filters()}
       <div class="filters" role="group" aria-label="Position">
-        {#each [["all", "All"], ["F", "Forwards"], ["D", "Defence"], ["G", "Keepers"]] as [v, label] (v)}
+        {#each [["all", "All", "teams"], ["F", "Forwards", "stick"], ["D", "Defence", "shield"], ["G", "Keepers", "net"]] as const as [v, label, icon] (v)}
           <button class="filter" aria-pressed={filter === v} onclick={() => (filter = v as typeof filter)}
-            >{label}</button
+            ><Icon name={icon} size={16} />{label}</button
           >
         {/each}
       </div>
@@ -101,14 +103,17 @@
   {#if !shown.length}<p class="hint">No one matches.</p>{/if}
 
   <div class="cards">
+    <!-- A filter or a search deals cards in and folds them away; the rest glide to their places -->
     {#each byCard as m (m.player.id)}
-      <PlayerCard
-        player={m.player}
-        you={m.player.id === who.id}
-        showRating={ratings}
-        lifted={lifted?.player.id === m.player.id}
-        onopen={(el) => open(m.player, el)}
-      />
+      <div class="slot" animate:flip={{ duration: cardMoveMs, easing: easeOut }} in:deal out:deal={{ out: true }}>
+        <PlayerCard
+          player={m.player}
+          you={m.player.id === who.id}
+          showRating={ratings}
+          lifted={lifted?.player.id === m.player.id}
+          onopen={(el) => open(m.player, el)}
+        />
+      </div>
     {/each}
   </div>
 </div>
