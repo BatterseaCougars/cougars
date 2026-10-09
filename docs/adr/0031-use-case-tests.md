@@ -39,3 +39,7 @@ How to write them: [docs/testing.md](../testing.md).
   fixed first, with a test.
 - Use cases are slower than unit tests (a migrated SQLite per world), still well under a second each.
 - The team app's demo store gets no use-case tests; they start with its first API handlers (team-app T1).
+
+## History
+
+- 2026-10-06: Tests describe what people do, against a fake world.

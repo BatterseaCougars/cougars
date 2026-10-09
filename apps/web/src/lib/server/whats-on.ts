@@ -1,5 +1,5 @@
 // What's on, for the home page: the next few training sessions, tournaments and one-off events from the club's
-// agenda in D1, which the team app keeps (ADR 0042, 0062). Read live on the Worker, so a change in the app shows on the
+// agenda in D1, which the team app keeps (ADR 0042). Read live on the Worker, so a change in the app shows on the
 // next page load. Only what's marked public; cancelled ones stay listed, marked, so nobody turns up to nothing.
 import { readAgenda } from "../../../../../shared/agenda";
 import { londonDay } from "../dates";
@@ -12,7 +12,7 @@ export interface WhatsOnItem {
   title: string;
   startsAt: string;
   endsAt: string | null;
-  /** Where (ADR 0051): the place's name, "" for nowhere yet. */
+  /** Where (ADR 0030): the place's name, "" for nowhere yet. */
   venue: string;
   /** Opens the map: the venue's link, the one pasted for it, or a search for its name. */
   mapUrl: string;
@@ -20,7 +20,7 @@ export interface WhatsOnItem {
   cancelled: boolean;
   /** A tournament whose date isn't fixed: its date only decides where it sorts. */
   dateTbc: boolean;
-  /** A tournament that's just a season so far: "Summer 2027", shown instead of a date (ADR 0048). */
+  /** A tournament that's just a season so far: "Summer 2027", shown instead of a date (ADR 0030). */
   season: string | null;
 }
 
@@ -31,11 +31,11 @@ export const ALL_LIMITS = { trainings: 4, tournaments: 50, events: 50 };
 /** Fresh for a minute, so a change in the team app shows soon; the last good list for an hour if D1 fails. */
 export const CALENDAR_CACHE: CacheOptions = { ttlMs: 60_000, staleMs: 60 * 60_000 };
 
-/** `whatsOn`, cached (ADR 0054): one D1 read a minute, however many people look. */
+/** `whatsOn`, cached (ADR 0053): one D1 read a minute, however many people look. */
 export const cachedWhatsOn = (db: D1Database, limits = LIMITS, deps?: CacheDeps) =>
   cached(`d1:whats-on:${Object.values(limits).join("-")}`, CALENDAR_CACHE, () => whatsOn(db, new Date(), limits), deps);
 
-/** Upcoming public items, soonest first: at most `limits` of each kind. Read from the club's agenda (ADR 0062). */
+/** Upcoming public items, soonest first: at most `limits` of each kind. Read from the club's agenda (ADR 0042). */
 export async function whatsOn(db: D1Database, now = new Date(), limits = LIMITS): Promise<WhatsOnItem[]> {
   const today = londonDay(now.toISOString());
   const cap = { training: limits.trainings, tournament: limits.tournaments, event: limits.events };

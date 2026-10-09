@@ -1,68 +1,119 @@
-# 0036. Every API response sends only what that caller may see, decided on the server
+# 0036. Every API response sends only what that caller may see, decided on the server, and every page is hardened
 
-- **Status:** Accepted. Extends [0024](0024-action-based-authorization.md). Amended by
-  [0092](0092-security-headers-from-the-asset-layer-too.md): the headers come from the asset layer too, with a
-  content security policy; and by [0099](0099-bootstrap-sends-only-your-own.md): of anything personal, only your own.
-- **Date:** 2026-10-06
+- **Status:** Accepted
+- **Date:** 2026-10-06 · updated 2026-10-09
+- **Merges:** 0092, 0099
 
 ## Context
 
-A security review of the team app's API (2026-10-06), done before sign-in went live, found that the UI was doing
-some of the server's job:
+Security reviews of the team app (2026-10-06, before sign-in went live, and 2026-10-09) found the UI doing the
+server's job:
 
-- `/api/bootstrap` sent every signed-in member every member's email and payment reference, plus the names and
-  emails of strangers asking to join. The screens hid them, but devtools showed them.
-- Anyone who could manage members could make themselves Admin. Anyone who could manage roles could add
-  `manage:all` to a role they held.
+- The bootstrap sent every signed-in member everyone's email, phone, payment reference and rating, and the names
+  and emails of strangers asking to join. Later it still sent who pays quarterly, every session's no-shows and
+  walk-ins, who said they're out of every event, every member's roles and every role's actions, and the contact of
+  every outside team entered in a tournament. The screens showing these are admin screens; the data was in every
+  member's devtools.
+- Anyone who could manage members could make themselves Admin. Anyone who could manage roles could add `manage:all`
+  to a role they held.
 - Forms on another site could post to the API wherever `SameSite=Lax` cookies let them through: from a sibling
   subdomain, or as `text/plain`.
+- The security headers reached only `/api/*`. The team app's `wrangler.jsonc` runs the Worker first for `/api/*`
+  alone, so the app's page and files came straight from Cloudflare's asset layer with none of them, and the
+  website's prerendered pages never had any. The test that proved the headers called the Worker directly, so it
+  couldn't see this.
 
-The repo is public and members' details are personal data ([0033](0033-personal-data-out-of-the-repo.md)). Once
-real people sign in ([0023](0023-device-bound-sign-in.md)), anything the API sends is effectively published to
-whoever receives it.
+The repo is public and members' details are personal data ([0029](0029-personal-data.md)). Once real people sign
+in ([0023](0023-sign-in-and-sessions.md)), anything the API sends is effectively published to whoever receives it.
+Dev's data becomes production's at launch ([0050](0050-schema-and-seed-until-launch.md)), so the time to stop
+sending it is before anyone real signs in.
 
 ## Decision
 
 **Every route is designed for its least trusted caller.** The UI hiding something is never the protection.
 
-- **Rows and fields are filtered on the server, per caller.** A response holds only what the caller's actions allow.
-  Anything personal (email, phone, payment reference, rating) is sent only to its owner or to whoever holds the
-  action for it. A new field or route starts private and is opened up deliberately.
-  - Bootstrap, for anyone without `manage:Member`:
-    - active members only;
-    - their own email, phone and payment reference only;
-    - ratings only with `read:Rating`.
-- **You can't grant what you don't have.** Only `manage:all` may give out any action. Anyone else may:
-  - give a member only roles whose actions they hold themselves;
-  - create or change only roles whose old and new actions they hold;
-  - change a member (their details, roles, status or sign-in email) only if that member can do nothing they can't.
+**Rows and fields are filtered on the server, per caller.** A response holds only what the caller's actions allow.
+A new field or route starts private and is opened up deliberately. Filtering is in the slices, so a change's reply
+(`changed`, [0057](0057-team-app-loading-and-changes.md)) is filtered exactly as the bootstrap is. Of anything
+personal, a member is sent **their own**, and everyone's only with the action that needs it:
 
-  So a member manager can't make an admin, demote one, or take over an admin's account by changing its email.
+| Field                            | Everyone's, with                                                                                                                       | Otherwise                                                                                                                                     |
+| -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Members                          | `manage:Member`                                                                                                                        | active members only                                                                                                                           |
+| Email, phone, payment reference  | `manage:Member`                                                                                                                        | your own                                                                                                                                      |
+| Rating                           | `read:Rating`                                                                                                                          | not sent                                                                                                                                      |
+| Member `quarterly`               | `manage:Member`                                                                                                                        | your own                                                                                                                                      |
+| Member `roles`                   | `manage:Member`, `manage:Role`, `impersonate:Member`                                                                                   | your own                                                                                                                                      |
+| `roles` (each role's actions)    | `manage:Member`, `manage:Role`, `impersonate:Member`                                                                                   | roles you could hold as you are: yours, and those that can do less (your everyday role's choices, [0024](0024-action-based-authorization.md)) |
+| An event's `out`                 | runs events: `record:Attendance`, `update:Event`, `generate:Teams`, `publish:Teams`, `manage:Member`, `manage:Tournament`, `run:Draft` | your own                                                                                                                                      |
+| A session's `noShows`, `walkIns` | the same                                                                                                                               | your own                                                                                                                                      |
+| An entered team's `contact`      | `manage:Tournament`                                                                                                                    | empty                                                                                                                                         |
 
-- **Changes come only from the app's own pages.** Every POST, PUT and DELETE must have an `Origin` header equal to
-  the app's own origin (or `Sec-Fetch-Site: same-origin` when there's no Origin), and only JSON bodies are
-  accepted. GET requests change nothing (bootstrap's adding of future sessions is idempotent).
-- **Security headers on every response:**
-  - `frame-ancestors 'none'` and `X-Frame-Options: DENY`;
-  - `X-Content-Type-Options: nosniff`;
-  - `Referrer-Policy: same-origin`.
-- **Tests prove it** (`team/app/worker/security.test.ts`):
-  - every route refuses someone who isn't signed in (401);
-  - every route refuses a member whose role lacks its action (403);
-  - bootstrap as a plain member holds nothing private but their own;
-  - the grant rules hold;
-  - other sites' requests and non-JSON bodies are refused.
+Unchanged, because they're the point of the screen or already public: who's in and waiting (a sign-up list), a
+member's name, position, bio, website name, Cougar flag and sessions played (all on the public website roster for
+Cougars, and on the player card), and a closed draft's teams ([0060](0060-the-draft.md)).
 
-  A new route is covered by the first two tests automatically. A new private field needs its own assertion.
+`impersonate:Member` gets everyone's roles because view as a member is worked out in the browser from their roles
+([0024](0024-action-based-authorization.md)). If it moves to the server, that action drops out of the list.
+
+**You can't grant what you don't have.** Only `manage:all` may give out any action. Anyone else may:
+
+- give a member only roles whose actions they hold themselves;
+- create or change only roles whose old and new actions they hold;
+- change a member (their details, roles, status or sign-in email) only if that member can do nothing they can't.
+
+So a member manager can't make an admin, demote one, or take over an admin's account by changing its email.
+
+**Changes come only from the app's own pages.** Every POST, PUT and DELETE with an `Origin` header must have the
+app's own origin; with no `Origin`, `Sec-Fetch-Site` must be `same-origin` or `none` if it's sent
+(`sameOrigin` in `worker/http.ts`). Only JSON bodies are accepted. GET requests change nothing (bootstrap's adding
+of future sessions is idempotent).
+
+**Security headers on every page, file and response, from both layers.**
+
+- Both apps carry a `_headers` file in `public/`, which Workers static assets apply to everything they serve. The
+  Worker (team app, `worker/index.ts`) and the middleware (website's live routes) set the same set on what they
+  answer. A test in each app reads the file and checks it equals the code's set, so the two can't drift.
+- **The team app** sends `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: same-origin`
+  and a **content security policy**: only its own scripts, styles (inline allowed: Svelte sets style attributes),
+  fonts and files; talks only to its own origin; its own images plus `data:` (team logos) and `blob:` (upload
+  previews); no objects, no other base, forms only to itself, `frame-ancestors 'none'`. A new outside resource means
+  widening the policy on purpose, in both places.
+- **The website** sends `frame-ancestors 'none'`, `X-Frame-Options: DENY`, `nosniff` and
+  `Referrer-Policy: strict-origin-when-cross-origin` (it links out and is public, so the origin may travel). A full
+  policy for the website (YouTube, Sanity's CDN, Turnstile) is left for when it's worth the upkeep.
+
+**Tests prove it**:
+
+- `team/app/worker/security.test.ts`: every route refuses someone who isn't signed in (401); every route refuses a
+  member whose role lacks its action (403); the grant rules hold; other sites' requests and non-JSON bodies are
+  refused; and each row of the table above is a story: what a plain member sees, what they see of themselves, and
+  what whoever runs the register sees. A new route is covered by the first two automatically. A new private field
+  needs its own assertion.
+- **The deploy's smoke test** fetches the team app's `/` and fails without `X-Frame-Options`, so the headers are
+  checked where they're served, not only in a unit test.
 
 ## Consequences
 
 - Each new route asks, for every field and row it returns: who is this for?
-- Admin-only screens get their data from the server only when the caller may see it. A screen showing an empty
-  value for someone else's email is the server working, not a bug.
+- A plain member's devtools show the club's calendar, who's coming, and themselves. Nothing about anyone's payments,
+  attendance record, permissions or contact details.
+- Admin-only screens get their data from the server only when the caller may see it. A screen showing an empty value
+  for someone else's email is the server working, not a bug.
+- A screen built later for plain members that wants one of the private fields has to argue for it here first.
 - Payment references follow the member's id (`COU-0001`), so they aren't secret. They're still sent only to the
   member and to managers.
-- When dues move to D1 ([0026](0026-dues-ledger.md)), they're gated on the server (`read:Dues`, `record:Payment`)
-  from the start.
-- "View as a member" ([0029](0029-view-as-a-member.md)) is still client-side, so an admin's preview holds admin
-  data. If it ever needs to be exact, it moves to the server and becomes read-only there.
+- Dues are gated on the server (`read:Dues`, `record:Payment`) from the start ([0007](0007-dues-and-payments.md)).
+- Every page and file from either app is unframeable and unsniffable, and the team app's page can't run a script or
+  reach a host that isn't its own, which limits what any injected content could do.
+- Adding a CDN, an embed or an analytics script to the team app takes a deliberate change to the policy in
+  `worker/index.ts` and `public/_headers`; the test fails until both agree.
+
+## History
+
+- 2026-10-06: A review before sign-in went live: responses filtered per caller on the server, no granting what you
+  don't hold, changes only from the app's own origin as JSON, four security headers set in the Worker (was 0036).
+- 2026-10-09: The headers reached only `/api/*`; both apps now carry `_headers` for the asset layer, the team app
+  gets a content security policy, and the smoke test checks `/` (was 0092).
+- 2026-10-09: Of anything personal, the bootstrap now sends a member only their own: quarterly, roles, role actions,
+  outs, no-shows, walk-ins and outside teams' contacts filtered by action (was 0099).

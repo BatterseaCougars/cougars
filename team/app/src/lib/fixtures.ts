@@ -27,7 +27,7 @@ export interface Result {
   awayTeamId: number | null;
   homeGoals: number | null;
   awayGoals: number | null;
-  /** A game being played has a score but no result yet: only a finished one counts (ADR 0071). */
+  /** A game being played has a score but no result yet: only a finished one counts (ADR 0061). */
   status?: string;
 }
 
@@ -103,7 +103,7 @@ export function kickOff(startTime: string, gameMinutes: number, position: number
 }
 
 /**
- * Who keeps score (ADR 0071): each game goes to a team sitting it out, in the day's order, taking turns evenly: the
+ * Who keeps score (ADR 0061): each game goes to a team sitting it out, in the day's order, taking turns evenly: the
  * one that's scored fewest so far, then the one that's waited longest, then the first in the pick order. A game whose
  * teams aren't known yet (a playoff waiting on the table) gets none, nor does any game when there's no third team.
  */

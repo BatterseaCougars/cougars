@@ -2,7 +2,7 @@
 
 Everything here is free. It takes about an hour. Do the steps in order; each one says which value goes where.
 
-There are two environments, each on its own Cloudflare account ([ADR 0010](adr/0010-two-environments.md)):
+There are two environments, each on its own Cloudflare account ([ADR 0010](adr/0010-environments-and-deploys.md)):
 **production** (account _Cougars_, the live site) and **dev** (account _Cougars Dev_: PR previews, design
 previews, your machine).
 
@@ -28,7 +28,7 @@ Bitwarden secrets (step 3): `CLOUDFLARE_API_TOKEN__PRODUCTION`, `CLOUDFLARE_ACCO
 ## 2. Sanity (content editing)
 
 Two free projects, one per environment, like the two Cloudflare accounts
-([ADR 0017](adr/0017-two-sanity-projects.md)). Both exist already:
+([ADR 0010](adr/0010-environments-and-deploys.md)). Both exist already:
 
 | Project         | ID         | Dataset               | Used by                                                      |
 | --------------- | ---------- | --------------------- | ------------------------------------------------------------ |
@@ -101,12 +101,12 @@ In `das974/cougars` → **Settings**:
    node scripts/env-pull.mjs -- bash scripts/deploy-dev.sh
    ```
 
-`main` deploys dev; `git push origin main:release` deploys production ([ADR 0013](adr/0013-main-deploys-dev.md)). The
+`main` deploys dev; `git push origin main:release` deploys production ([ADR 0010](adr/0010-environments-and-deploys.md)). The
 first production deploy creates the D1 database and applies migrations.
 
 ## 5. Publish → rebuild (deferred to the team app)
 
-Not set up ([ADR 0018](adr/0018-rebuilds-until-team-app.md)). Studio changes reach the live site at the daily
+Not set up ([ADR 0004](adr/0004-astro-workers-sanity-d1.md)). Studio changes reach the live site at the daily
 rebuild (04:30 UK winter, 05:30 summer) or the next release. Photos are read live and need no rebuild. To publish
 something sooner, start a production rebuild by hand: **Actions → Deploy → Run workflow → `release`**, or
 `gh workflow run deploy.yml --ref release`.

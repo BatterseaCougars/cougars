@@ -3,7 +3,7 @@
 import type { Bootstrap } from "../demo/data";
 import { Brake } from "./brake";
 
-/** Keeps a tab that's gone wrong from spending the club's free allowance (ADR 0058). */
+/** Keeps a tab that's gone wrong from spending the club's free allowance (ADR 0055). */
 export const brake = new Brake();
 
 /** What the server refused, and how (401: nobody's signed in). */
@@ -56,7 +56,7 @@ async function read<T>(res: Response, path: string): Promise<T> {
   return data as T;
 }
 
-// The bootstrap's ETag (ADR 0054). The browser keeps the reply and asks with it by itself; an unchanged club comes
+// The bootstrap's ETag (ADR 0053). The browser keeps the reply and asks with it by itself; an unchanged club comes
 // back as the kept copy, with the same tag.
 let bootstrapTag: string | null = null;
 

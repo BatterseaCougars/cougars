@@ -25,7 +25,7 @@
     })),
   );
   const playoffs = $derived(games.filter((g) => g.stage === "playoff"));
-  // Two teams are enough to make the fixtures: a draft's captains are its teams before anyone's picked (ADR 0066)
+  // Two teams are enough to make the fixtures: a draft's captains are its teams before anyone's picked (ADR 0060)
   const teamsSet = $derived(!!tournament && teams.length >= 2);
   const hasResult = $derived(games.some((g) => g.homeGoals !== null));
   const manage = $derived(can(perms, "manage:Tournament"));

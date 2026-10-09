@@ -8,7 +8,7 @@
   import { pounds } from "../lib/dates";
   import { phone } from "../lib/viewport.svelte";
 
-  // The quarterly subscription. Session fees are set on each training, tournament fees on each tournament (ADR 0032).
+  // The quarterly subscription. Session fees are set on each training, tournament fees on each tournament (ADR 0007).
   const kind = "Quarterly subscription";
   // A new fee is set in a sheet (a modal on desktop), as every quick form is: the page stays where it is
   let adding = $state(false);

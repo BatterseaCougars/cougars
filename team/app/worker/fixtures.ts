@@ -21,7 +21,7 @@ export interface Game {
   homeGoals: number | null;
   awayGoals: number | null;
   status: "next" | "live" | "done";
-  /** The team suggested to keep score: one sitting it out (ADR 0071); null until its teams are known. */
+  /** The team suggested to keep score: one sitting it out (ADR 0061); null until its teams are known. */
   scoringTeamId: number | null;
   /** Who holds the scoresheet: whoever pressed Start scoring (null: nobody yet). Only they score it. */
   keeperId: number | null;

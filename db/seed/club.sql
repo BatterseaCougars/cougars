@@ -144,6 +144,6 @@ INSERT OR IGNORE INTO quips (id, kind, text) VALUES
   (72, 'out', 'Noted. We''ll miss the chirping.'),
   (73, 'out', 'Shame. Your spot''s here next time.');
 
--- The seed may have changed the club's data: the team app reloads it (data_version, ADR 0054)
+-- The seed may have changed the club's data: the team app reloads it (data_version, ADR 0053)
 INSERT INTO data_version (id, version) VALUES (1, CAST(strftime('%s', 'now') AS INTEGER))
   ON CONFLICT (id) DO UPDATE SET version = version + 1;

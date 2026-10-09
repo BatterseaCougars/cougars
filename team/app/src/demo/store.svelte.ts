@@ -27,7 +27,7 @@ export const db = $state({
   tournamentTypes: structuredClone(TOURNAMENT_TYPES),
   tournaments: structuredClone(TOURNAMENTS),
   oneOffs: structuredClone(ONE_OFFS),
-  /** What's on from today, from the server (ADR 0062). */
+  /** What's on from today, from the server (ADR 0042). */
   agenda: structuredClone(AGENDA),
   roles: structuredClone(ROLES),
   members: structuredClone(MEMBERS),
@@ -37,7 +37,7 @@ export const db = $state({
   settings: structuredClone(SETTINGS),
   /** Published teams, by session id. */
   teams: structuredClone(TEAMS) as Record<number, Team[]>,
-  /** One person for one session or tournament, paid or not (ADR 0032). */
+  /** One person for one session or tournament, paid or not (ADR 0007). */
   charges: [] as Charge[],
 });
 

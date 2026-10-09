@@ -36,7 +36,7 @@
     <button class="btn primary block" disabled>Upload {files.length} (arrives in T7)</button>
   {/if}
 
-  <!-- Videos are uploaded on YouTube itself, signed in with your own access to the club channel (ADR 0039). -->
+  <!-- Videos are uploaded on YouTube itself, signed in with your own access to the club channel (ADR 0016). -->
   {#if can(perms, "upload:Video")}
     <section class="videos">
       <h2 class="title">Videos</h2>

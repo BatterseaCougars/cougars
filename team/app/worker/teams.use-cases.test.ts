@@ -47,7 +47,7 @@ describe("making Friday's teams", () => {
     expect(seen.teams.map((t: { name: string }) => t.name)).toEqual(["Black", "White"]);
   });
 
-  // No drafts (ADR 0079): each move a team maker makes is saved as they make it, and everyone sees it
+  // No drafts (ADR 0076): each move a team maker makes is saved as they make it, and everyone sees it
   it("a team maker moves a player and everyone sees it straight away", async () => {
     const tess = await w.signedIn("tess@example.com");
     const { session, teams } = await teamsFor(tess);

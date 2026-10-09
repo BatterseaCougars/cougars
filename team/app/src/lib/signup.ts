@@ -1,4 +1,4 @@
-// When a tournament takes sign-ups (ADR 0089), shared by the app and the Worker: once an admin opens it by hand, or
+// When a tournament takes sign-ups (ADR 0074), shared by the app and the Worker: once an admin opens it by hand, or
 // from the day it's set to open, until the end of its closing day (London).
 
 interface SigningUp {

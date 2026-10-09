@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Add or update a secret in Bitwarden SM, in the project its name says
-// (docs/adr/0012-secrets-manager-projects.md):
+// (docs/adr/0002-secrets-in-bitwarden.md):
 //   node scripts/secret-set.mjs CLOUDFLARE_API_TOKEN__DEV          (prompts, input hidden)
 //   pbpaste | node scripts/secret-set.mjs SANITY_API_TOKEN         (reads stdin)
 // NAME__PRODUCTION goes to `cougars`, anything else to `cougars-dev`. The value is never printed.

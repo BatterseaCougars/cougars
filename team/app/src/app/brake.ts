@@ -1,4 +1,4 @@
-// The app's own brake (ADR 0058). The club's Cloudflare allowance is free and daily (Worker requests, D1 reads), and
+// The app's own brake (ADR 0055). The club's Cloudflare allowance is free and daily (Worker requests, D1 reads), and
 // a request our Worker refuses still counts, so the cheapest protection is the app itself not running away:
 //
 //   - Background checks for others' changes wait after a failure: 10 s, doubling each time, up to 5 minutes. A

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Deploy your working copy to the DEV site (worker cougars-dev, D1 cougars-dev) on
 # the Cougars Dev Cloudflare account, with sample content (DEMO_CONTENT) and noindex.
-# Production (`cougars`, Cougars account) only deploys from main via
-# .github/workflows/deploy.yml (docs/adr/0010-two-environments.md).
+# Production (`cougars`, Cougars account) only deploys from `release` via
+# .github/workflows/deploy.yml (docs/adr/0010-environments-and-deploys.md).
 #
 #   node scripts/env-pull.mjs -- bash scripts/deploy-dev.sh
 set -euo pipefail

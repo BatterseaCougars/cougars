@@ -1,5 +1,5 @@
 <script lang="ts">
-  // One game, full screen (ADR 0071). For everyone, the live scoreboard: the clock, the score, each goal as it went
+  // One game, full screen (ADR 0061). For everyone, the live scoreboard: the clock, the score, each goal as it went
   // in. One person keeps score: whoever presses Start scoring (a team sitting it out is suggested, but anyone can step
   // in) holds the scoresheet until they let it go, or an admin does. Only the game on now (or up next) is scored: the
   // next opens when this one's over. For the scorekeeper it's the scoresheet: Goal for a team then who scored and who
@@ -87,7 +87,7 @@
     }
   });
 
-  // Everyone's scoreboard follows along, from the game up next to full time: the hub's stream (ADR 0096), with a
+  // Everyone's scoreboard follows along, from the game up next to full time: the hub's stream (ADR 0072), with a
   // check on the admins' beat as the fallback (ADR 0072), and the page says which. The scorekeeper's too: they may
   // have it open on another phone or browser
   const following = $derived(!!game && !over && (game.status === "live" || upNext));
@@ -312,7 +312,7 @@
     </div>
 
     {#if sayFollowing}
-      <!-- The score follows along: live from the hub's stream, else on the admins' beat (ADR 0096) -->
+      <!-- The score follows along: live from the hub's stream, else on the admins' beat (ADR 0072) -->
       <p class="updates hint">
         <Icon name={liveFeed.on ? "live" : "clock"} size={14} /><LiveNote tail=", to keep the club on the free plan" />
       </p>

@@ -59,7 +59,7 @@
     form = s ? structuredClone($state.snapshot(s)) : null;
   });
 
-  // The fee, going forward: a new amount applies from its date; sessions already held keep theirs (ADR 0032).
+  // The fee, going forward: a new amount applies from its date; sessions already held keep theirs (ADR 0007).
   const current = $derived(form ? feeOn(form.fees, londonToday()) : 0);
   let feeAmount = $state("");
   let feeFrom = $state(londonToday());

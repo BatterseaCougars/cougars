@@ -7,22 +7,22 @@ shapes in memory.
 
 ## People and access (T1)
 
-[ADR 0023](adr/0023-device-bound-sign-in.md), [ADR 0035](adr/0035-sessions-are-hashed-tokens.md), [ADR 0024](adr/0024-action-based-authorization.md),
-[ADR 0029](adr/0029-view-as-a-member.md).
+[ADR 0023](adr/0023-sign-in-and-sessions.md), [ADR 0024](adr/0024-action-based-authorization.md),
+[ADR 0024](adr/0024-action-based-authorization.md).
 
-| Table              | Columns                                                                                                                                                                                                                              |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `members`          | name, email (unique), phone, position (F/D/G), rating, cougar (on the official team, [ADR 0034](adr/0034-quarterly-members-and-the-cougars.md)), bio, photo, status (pending/active/inactive), payment_reference (unique), joined_on |
-| `login_challenges` | member_id, code_hash, nonce_hash, attempts, expires_at, used_at (`0008`)                                                                                                                                                             |
-| `auth_sessions`    | member_id, token_hash, method (code), user_agent, created_at, last_seen_at, expires_at, revoked_at (`0008`); viewing as a member comes with [ADR 0029](adr/0029-view-as-a-member.md)                                                 |
-| `roles`            | name, description, is_system                                                                                                                                                                                                         |
-| `role_actions`     | role_id, action                                                                                                                                                                                                                      |
-| `member_roles`     | member_id, role_id                                                                                                                                                                                                                   |
-| `audit_log`        | at, member_id, action (sign_in, sign_out, access.requested…), detail (JSON, never a secret) (`0008`)                                                                                                                                 |
+| Table              | Columns                                                                                                                                                                                                              |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `members`          | name, email (unique), phone, position (F/D/G), rating, cougar (on the official team, [ADR 0007](adr/0007-dues-and-payments.md)), bio, photo, status (pending/active/inactive), payment_reference (unique), joined_on |
+| `login_challenges` | member_id, code_hash, nonce_hash, attempts, expires_at, used_at (`0008`)                                                                                                                                             |
+| `auth_sessions`    | member_id, token_hash, method (code), user_agent, created_at, last_seen_at, expires_at, revoked_at (`0008`); viewing as a member comes with [ADR 0024](adr/0024-action-based-authorization.md)                       |
+| `roles`            | name, description, is_system                                                                                                                                                                                         |
+| `role_actions`     | role_id, action                                                                                                                                                                                                      |
+| `member_roles`     | member_id, role_id                                                                                                                                                                                                   |
+| `audit_log`        | at, member_id, action (sign_in, sign_out, access.requested…), detail (JSON, never a secret) (`0008`)                                                                                                                 |
 
 ## Schedule (T2, T5)
 
-[ADR 0030](adr/0030-training-series-and-tournaments.md).
+[ADR 0030](adr/0030-training-and-tournament-schedule.md).
 
 | Table               | Columns                                                                                                                                                                                                                                              |
 | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -35,7 +35,7 @@ shapes in memory.
 
 The calendar is a union of the three: sessions (with series defaults filled in), tournaments and club events.
 
-Where each is held ([ADR 0051](adr/0051-venues-and-map-links.md)): `venue_id` (a saved venue) wins; else its own name
+Where each is held ([ADR 0030](adr/0030-training-and-tournament-schedule.md)): `venue_id` (a saved venue) wins; else its own name
 (`venue`, or `location` on tournaments) and `map_url`; none of them, its series' place. One rule for both apps:
 `placeOf` in `shared/places.ts`.
 
@@ -62,17 +62,17 @@ Where each is held ([ADR 0051](adr/0051-venues-and-map-links.md)): `venue_id` (a
 
 ## Dues (T4)
 
-[ADR 0026](adr/0026-dues-ledger.md), amended by [ADR 0032](adr/0032-fees-per-session-and-tournament.md): fees belong to
+[ADR 0007](adr/0007-dues-and-payments.md), amended by [ADR 0007](adr/0007-dues-and-payments.md): fees belong to
 each session and tournament, payments are marked against charges, and Unpaid fees is the unpaid charges.
 
-| Table                 | Columns                                                                                                                                                      |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `series_fees`         | series_id, amount_pence, effective_from (a training's fee, going forward)                                                                                    |
-| `subscription_fees`   | amount_pence, effective_from (the quarterly subscription)                                                                                                    |
-| `subscriptions`       | member_id, starts_on, ends_on (a Quarterly Member while one covers the date; none: pay as you go, [ADR 0034](adr/0034-quarterly-members-and-the-cougars.md)) |
-| `charges`             | member_id, session_id or tournament_id or quarter, amount_pence, due_on, voided_at                                                                           |
-| `payments`            | member_id, amount_pence, received_on, via (transfer/cash), reference, recorded_by                                                                            |
-| `payment_allocations` | payment_id, charge_id, amount_pence                                                                                                                          |
+| Table                 | Columns                                                                                                                                      |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `series_fees`         | series_id, amount_pence, effective_from (a training's fee, going forward)                                                                    |
+| `subscription_fees`   | amount_pence, effective_from (the quarterly subscription)                                                                                    |
+| `subscriptions`       | member_id, starts_on, ends_on (a Quarterly Member while one covers the date; none: pay as you go, [ADR 0007](adr/0007-dues-and-payments.md)) |
+| `charges`             | member_id, session_id or tournament_id or quarter, amount_pence, due_on, voided_at                                                           |
+| `payments`            | member_id, amount_pence, received_on, via (transfer/cash), reference, recorded_by                                                            |
+| `payment_allocations` | payment_id, charge_id, amount_pence                                                                                                          |
 
 Also: `training_sessions.fee_pence` (written when the register closes, or an admin's override),
 `tournament_types.default_fee_pence`, `tournaments.fee_pence` (copied from the type's default when scheduled).
@@ -81,5 +81,5 @@ Also: `training_sessions.fee_pence` (written when the register closes, or an adm
 
 | Table          | Columns                                                                                                                                                                                       |
 | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `data_version` | version: one more on every change through the team app, the seed and the roster; the bootstrap's ETag ([ADR 0054](adr/0054-live-reads-are-cached-everywhere.md))                              |
+| `data_version` | version: one more on every change through the team app, the seed and the roster; the bootstrap's ETag ([ADR 0053](adr/0053-live-reads-are-cached.md))                                         |
 | `quips`        | kind (replies: ask/in/waitlist/out; greetings: morning/afternoon/evening/late/training/nag), text (each kind its own limit, lib/quips.ts); admins edit them, and each kind keeps at least one |

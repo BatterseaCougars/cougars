@@ -1,5 +1,5 @@
 <script lang="ts">
-  // Unpaid fees, the aged-receivables report (ADR 0032): every unpaid charge, added up per member and by how
+  // Unpaid fees, the aged-receivables report (ADR 0007): every unpaid charge, added up per member and by how
   // long it's been owed. Marking a charge paid on a member's profile takes it off here.
   import Icon from "../app/shell/Icon.svelte";
   import PageHeader from "../lib/PageHeader.svelte";

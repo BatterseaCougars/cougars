@@ -1,5 +1,5 @@
 <script lang="ts">
-  // Settings → Dev tools (ADR 0077): only outside production. Who gets their own email here, so an admin can sign in
+  // Settings → Dev tools (ADR 0027): only outside production. Who gets their own email here, so an admin can sign in
   // on dev without a deploy; everyone else's email goes to the dev account's inbox. Takes effect at once.
   import { api } from "../app/api";
   import { save } from "../app/backend.svelte";

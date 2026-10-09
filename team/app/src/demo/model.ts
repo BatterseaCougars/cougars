@@ -40,7 +40,7 @@ export interface TrainingSeries {
   endsOn: string | null;
   startTime: string;
   endTime: string;
-  /** Where (ADR 0051): a saved venue, else a name and the map link pasted for it. */
+  /** Where (ADR 0030): a saved venue, else a name and the map link pasted for it. */
   venueId: number | null;
   venue: string;
   mapUrl: string;
@@ -51,7 +51,7 @@ export interface TrainingSeries {
   /** Listed on the public website calendar. */
   public: boolean;
   active: boolean;
-  /** The fee per session, going forward from each date (ADR 0032). */
+  /** The fee per session, going forward from each date (ADR 0007). */
   fees: DatedFee[];
 }
 
@@ -94,19 +94,19 @@ export interface TournamentType {
   pointsDraw: number;
   pointsLoss: number;
   gameMinutes: number;
-  /** How its tournaments make teams (ADR 0052). */
+  /** How its tournaments make teams (ADR 0030). */
   kind: TournamentKind;
   active: boolean;
   /** Copied onto each new edition, where it can be changed. */
   defaultFeePence: number;
-  /** Its usual hours, copied onto each new edition (ADR 0091). */
+  /** Its usual hours, copied onto each new edition (ADR 0074). */
   defaultStartTime: string;
   defaultEndTime: string;
   /** What's handed out at each edition (ADR 0044), shown on the website. */
   awards: { name: string; about: string }[];
   /** The playoff games after the round robin, by table position (ADR 0061). */
   playoffs: Playoff[];
-  /** Where its dates are, unless a date says otherwise (ADR 0046): a saved venue, else a name and map link. */
+  /** Where its dates are, unless a date says otherwise (ADR 0030): a saved venue, else a name and map link. */
   venueId: number | null;
   location: string;
   mapUrl: string;
@@ -114,7 +114,7 @@ export interface TournamentType {
 
 export type TournamentStatus = "planned" | "open" | "live" | "finished";
 
-/** How a tournament makes its teams (ADR 0052): teams enter (a name, a captain, players), or captains draft members. */
+/** How a tournament makes its teams (ADR 0030): teams enter (a name, a captain, players), or captains draft members. */
 export type TournamentKind = "teams" | "draft";
 export const TOURNAMENT_KINDS: { id: TournamentKind; label: string; hint: string }[] = [
   { id: "teams", label: "Teams enter", hint: "Teams sign up with a name, a captain and their players." },
@@ -144,7 +144,7 @@ export interface Tournament extends Entries {
   /** Its series (a tournament type), if it has one: a tournament can stand on its own. */
   typeId: number | null;
   name: string;
-  /** Its own place: a saved venue, else a name and map link; none of them, its series' (ADR 0051). */
+  /** Its own place: a saved venue, else a name and map link; none of them, its series' (ADR 0030). */
   venueId: number | null;
   location: string;
   mapUrl: string;
@@ -157,20 +157,20 @@ export interface Tournament extends Entries {
   feePence: number;
   /** False: "Date TBC". The date still decides where it sorts. */
   dateConfirmed: boolean;
-  /** Just a season so far, "Summer 2027" (ADR 0048): heldOn is then the season's last day, never shown. */
+  /** Just a season so far, "Summer 2027" (ADR 0030): heldOn is then the season's last day, never shown. */
   season: Season | null;
   /** Listed on the website. */
   public: boolean;
   /** The last day members can say they're in; null: up to the day. */
-  /** Sign-up opens by itself on this day (ADR 0089), unless opened by hand. */
+  /** Sign-up opens by itself on this day (ADR 0074), unless opened by hand. */
   signupOpensOn: string | null;
   signupClosesOn: string | null;
-  /** Its own rules and awards, copied from its series and changed for it if need be (ADR 0049). */
+  /** Its own rules and awards, copied from its series and changed for it if need be (ADR 0030). */
   pointsWin: number;
   pointsDraw: number;
   pointsLoss: number;
   gameMinutes: number;
-  /** How it makes teams (ADR 0052): teams enter, or captains draft members. */
+  /** How it makes teams (ADR 0030): teams enter, or captains draft members. */
   kind: TournamentKind;
   awards: { name: string; about: string }[];
   /** The captains' draft, for a drafted one. */
@@ -180,7 +180,7 @@ export interface Tournament extends Entries {
   /** Its playoffs (copied from its series, ADR 0061), and its games once the fixtures are made. */
   playoffs: Playoff[];
   games?: TournamentGame[];
-  /** Who won its awards (ADR 0073): a team or a player on one, by award name. */
+  /** Who won its awards (ADR 0044): a team or a player on one, by award name. */
   winners?: { award: string; teamId: number | null; memberId: number | null }[];
   /** Its teams: in pick order for a draft, else in the order they entered. */
   teams: TournamentTeam[];
@@ -216,7 +216,7 @@ export interface Bookable {
   title: string;
   startsAt: string;
   endsAt: string;
-  /** Where it really is (ADR 0051); "" for nowhere yet. */
+  /** Where it really is (ADR 0030); "" for nowhere yet. */
   venue: string;
   address?: string;
   /** Opens the map. */
@@ -227,7 +227,7 @@ export interface Bookable {
   description?: string;
   /** The date isn't confirmed: shown as "TBC", sorted by the date it has. */
   dateTbc?: boolean;
-  /** Just a season so far: shown as "Summer 2027" instead (ADR 0048). */
+  /** Just a season so far: shown as "Summer 2027" instead (ADR 0030). */
   season?: { name: string; year: number };
   href?: string;
   /** Said instead of its times: a reminder's ("Last day to say you're in", "Time to be set"). */
@@ -259,7 +259,7 @@ export interface TournamentGame {
   homeGoals: number | null;
   awayGoals: number | null;
   status: "next" | "live" | "done";
-  /** The team suggested to keep score: one sitting it out (ADR 0071); null until its teams are known. */
+  /** The team suggested to keep score: one sitting it out (ADR 0061); null until its teams are known. */
   scoringTeamId?: number | null;
   /** Who holds the scoresheet: whoever pressed Start scoring. Only they score it. */
   keeperId?: number | null;
@@ -270,7 +270,7 @@ export interface TournamentGame {
   goals?: { id: number; teamId: number; scorerId: number | null; assistId: number | null; atMs: number }[];
 }
 
-/** A row of the club's agenda (ADR 0062, shared/agenda.ts): what's on and when, from today. */
+/** A row of the club's agenda (ADR 0042, shared/agenda.ts): what's on and when, from today. */
 export interface AgendaRow {
   key: string;
   source: "session" | "tournament" | "club_event";

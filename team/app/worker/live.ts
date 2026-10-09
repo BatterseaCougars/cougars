@@ -1,4 +1,4 @@
-// The club's live hub (ADR 0096): one Durable Object per environment that holds every open live page's stream and
+// The club's live hub (ADR 0072): one Durable Object per environment that holds every open live page's stream and
 // tells them all at once when something changed. It stores nothing (declared SQLite-backed because the free plan
 // asks for it; the streams live in memory, D1 is the source of truth), so if it restarts the phones just reconnect.
 // An event is only the names of the club's parts that changed (ADR 0057): what a member sees still comes from their

@@ -2,7 +2,7 @@
   import { goesBy, matchesName, shortName } from "../../lib/names";
   /**
    * Who's signed in, top right (the Gwenda ops account badge). Opens your account: profile, your tab, sign out,
-   * and for admins "View as", which shows the app exactly as a member sees it (ADR 0029). Escape or a click
+   * and for admins "View as", which shows the app exactly as a member sees it (ADR 0024). Escape or a click
    * outside closes it. No drop-down: on a desktop it's a side drawer from the right, on a phone a sheet from the
    * bottom, both moved to the end of the page so they sit
    * above the tabs wherever the badge is placed. `card` draws the trigger as a big row with your email and roles,
@@ -63,7 +63,7 @@
   const canViewAs = $derived(can(realGranted(), "impersonate:Member") && (!hasEveryday() || elevated()));
   const roles = $derived(shownRoles(shown.id));
 
-  // Your full role and your everyday one (ADR 0037). Back to everyday on a page it can't see: Home.
+  // Your full role and your everyday one (ADR 0024). Back to everyday on a page it can't see: Home.
   function toggleMode() {
     const up = !elevated();
     setElevated(up);
@@ -118,7 +118,7 @@
 />
 
 <div class="account" class:wide={card} bind:this={root}>
-  <!-- In your everyday role, a switch up to your full one; lit while you're in it (ADR 0037) -->
+  <!-- In your everyday role, a switch up to your full one; lit while you're in it (ADR 0024) -->
   {#if hasEveryday() && !card}
     <button
       type="button"

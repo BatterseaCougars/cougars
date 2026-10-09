@@ -101,7 +101,7 @@ export async function resetDraft(db: D1Database, tournamentId: number) {
 }
 
 /**
- * One goalie a team (ADR 0067): a goalie can't join a team that has one, its captain or a player. Refused for a pick,
+ * One goalie a team (ADR 0060): a goalie can't join a team that has one, its captain or a player. Refused for a pick,
  * whoever makes it, and for an admin's team edit.
  */
 async function oneGoalie(db: D1Database, teamId: number, memberId: number) {
@@ -267,7 +267,7 @@ export async function takeOffTeam(db: D1Database, tournamentId: number, teamId: 
   await run(db, "DELETE FROM tournament_team_players WHERE team_id = ? AND member_id = ?", [teamId, memberId]);
 }
 
-/** How far a draft has got: its state and picks made (the record, ADR 0098). */
+/** How far a draft has got: its state and picks made (the record, ADR 0095). */
 export const draftProgress = (db: D1Database, tournamentId: number) =>
   first<{ state: string; picks: number }>(
     db,

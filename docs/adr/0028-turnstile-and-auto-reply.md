@@ -35,3 +35,7 @@ The form must still work without JavaScript.
 - Two new secrets (`TURNSTILE_SECRET_KEY`, `__PRODUCTION`) and two public site keys in `deploy.yml`. Without the
   secret, nobody counts as verified and no auto-replies are sent; enquiries and the club's email carry on.
 - The privacy page mentions Turnstile and the confirmation email.
+
+## History
+
+- 2026-10-06: Auto-replies only to people Turnstile verified, and capped.

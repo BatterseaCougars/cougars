@@ -2,7 +2,7 @@
   // The club's free Cloudflare allowance today (ADR 0059): one account runs the website, this app and their
   // database, and its daily limits reset at midnight UTC. If one runs out, this app stops until then; the hourly
   // check emails the admins at 80%. Each Worker's CPU time per request is shown against the free plan's 10 ms, past
-  // which Cloudflare stops the request (ADR 0063). Read when the page opens, and again on Refresh.
+  // which Cloudflare stops the request (ADR 0059). Read when the page opens, and again on Refresh.
   import { api } from "../app/api";
   import Icon from "../app/shell/Icon.svelte";
   import PageHeader from "../lib/PageHeader.svelte";
@@ -37,7 +37,7 @@
     requests: "Every time this app talks to the server. The website's pages are free and don't count.",
     rowsRead: "Rows the app and the website's live pages read from the club's database.",
     rowsWritten: "Sign-ups, picks, saves: every change made.",
-    liveRequests: "Phones opening a live page's stream, and changes sent down them (ADR 0096).",
+    liveRequests: "Phones opening a live page's stream, and changes sent down them (ADR 0072).",
     liveTime: "How long the live hub was up today, at 128 MB a second. A 2-hour draft night is about 900.",
   };
 
@@ -59,7 +59,7 @@
     load();
   });
 
-  // How often live pages check for updates when their stream is down (ADR 0072, 0096): a game being scored, the
+  // How often live pages check for updates when their stream is down (ADR 0072): a game being scored, the
   // tournament's home on the day, the draft room. Each check is a request, so it's set here, beside what's left of
   // the day
   const CHOICES = [5, 10, 15, 30, 60];

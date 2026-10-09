@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Point a built site at production or dev (docs/adr/0010-two-environments.md):
+// Point a built site at production or dev (docs/adr/0010-environments-and-deploys.md):
 // make sure that environment's D1 database exists, then rewrite the config that
 // `astro build` generated (apps/web/dist/server/wrangler.json, which `wrangler
 // deploy` uses) with its worker name, database and SITE_ENV. Production also gets its domain (from SITE_URL) as a
@@ -7,7 +7,7 @@
 //
 //   node scripts/ci/target.mjs production|dev      (after `npm run build`)
 //   node scripts/ci/target.mjs dev team            (the team app, after `npm run build -w @cougars/team`: worker
-//                                                   cougars-team-dev on the same D1, ADR 0075; no domain yet)
+//                                                   cougars-team-dev on the same D1, ADR 0010; no domain yet)
 //
 // Needs CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID for that environment's account.
 import { execFileSync } from "node:child_process";

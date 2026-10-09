@@ -1,6 +1,6 @@
 # Roadmap
 
-The club runs two projects in this repo ([ADR 0021](adr/0021-website-and-team-app-projects.md)), on one D1
+The club runs two projects in this repo ([ADR 0006](adr/0006-one-repo-two-projects.md)), on one D1
 database, both on Cloudflare's free tier:
 
 | Project      | What                                                                                       | Roadmap                                    |
@@ -9,15 +9,15 @@ database, both on Cloudflare's free tier:
 | **Team app** | Mobile-first app for members: calendar, sign-up, teams, dues, Kumite, uploads (`team/app`) | [roadmap/team-app.md](roadmap/team-app.md) |
 
 Website milestones are numbered M0–M5, team-app milestones T0–T9. Each lands on `main` when it passes the pre-push
-checks. `main` deploys dev; `release` deploys production ([ADR 0013](adr/0013-main-deploys-dev.md)).
+checks. `main` deploys dev; `release` deploys production ([ADR 0010](adr/0010-environments-and-deploys.md)).
 
 ## Free-tier budget
 
 | Service                   | Free allowance                                                | Expected use                                       |
 | ------------------------- | ------------------------------------------------------------- | -------------------------------------------------- |
 | Cloudflare Workers        | 100k dynamic requests a day; static assets free and unlimited | Form posts, photo pages, team-app API, live Kumite |
-| Workers CPU               | 10 ms per request and per cron run; waiting on I/O is free    | 1–5 ms; watched on the Usage page (ADR 0063)       |
-| Durable Objects           | 100k requests, 13,000 GB-s a day (SQLite classes only)        | One live hub (ADR 0096): a draft night ~900 GB-s   |
+| Workers CPU               | 10 ms per request and per cron run; waiting on I/O is free    | 1–5 ms; watched on the Usage page (ADR 0059)       |
+| Durable Objects           | 100k requests, 13,000 GB-s a day (SQLite classes only)        | One live hub (ADR 0072): a draft night ~900 GB-s   |
 | D1                        | 5 GB storage, 5M rows read a day                              | Tiny                                               |
 | Cron Triggers             | Free                                                          | Friday series, quarterly dues                      |
 | Sanity                    | Free plan: 1M CDN, 250k API requests a month; see below       | A handful of editors; live photo reads             |
@@ -29,7 +29,7 @@ checks. `main` deploys dev; `release` deploys production ([ADR 0013](adr/0013-ma
 
 Sanity Free, checked on [sanity.io/pricing](https://www.sanity.io/pricing) on 2026-10-05: 20 seats, 2 datasets
 (public only), 10k documents, 1M API CDN requests and 250k API requests a month, 100 GB of assets, 100 GB of
-bandwidth a month. Photo pages read the API CDN live ([ADR 0016](adr/0016-live-photo-gallery.md)).
+bandwidth a month. Photo pages read the API CDN live ([ADR 0016](adr/0016-photos-and-videos-read-live.md)).
 
 YouTube uploads from an unverified Google Cloud project are locked to private until the project passes Google's
 API compliance audit (free). The team app applies for it in T0.

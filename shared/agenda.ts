@@ -1,4 +1,4 @@
-// The club's agenda (ADR 0062): one list of what's on and when. Each part of the club pushes its own rows when it
+// The club's agenda (ADR 0042): one list of what's on and when. Each part of the club pushes its own rows when it
 // changes: a training's sessions (syncSeries), a tournament's day, draft night and sign-up deadline (syncTournament),
 // a one-off event (syncClubEvent). The website's What's on and the app's calendar read it, so they can't disagree.
 // The rules for each kind of row live here, once: where it is (its own place, else its series'), TBC and seasons,
@@ -25,7 +25,7 @@ export interface AgendaItem {
   day: string;
   allDay: boolean;
   dateTbc: boolean;
-  /** "Summer 2027" for a tournament that's only a season so far (ADR 0048). */
+  /** "Summer 2027" for a tournament that's only a season so far (ADR 0030). */
   season: string | null;
   venue: string;
   mapUrl: string;
@@ -39,7 +39,7 @@ type SeriesPlace = { seriesVenueId: number | null; seriesName: string; seriesMap
 
 const venuesOf = (db: D1Database) => all<Venue>(db, "SELECT id, name, address, map_url mapUrl, active FROM venues");
 
-/** Its own place wins, else its series' (ADR 0051). */
+/** Its own place wins, else its series' (ADR 0030). */
 function where(own: OwnPlace, venues: Venue[], series?: SeriesPlace) {
   const usual = series
     ? placeOf({ venueId: series.seriesVenueId, name: series.seriesName, mapUrl: series.seriesMapUrl }, venues)

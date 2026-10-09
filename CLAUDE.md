@@ -2,15 +2,16 @@
 
 Architecture follows gwenda-hackney/ark, simplified. Read README.md first.
 
-**Decisions are recorded in [docs/adr/](docs/adr/README.md).** Read the relevant ADR before changing how
-something works. A new decision (a service, a rule, a pattern, a trade-off) gets a new ADR; changing one means
-a new ADR that supersedes it, never a quiet edit.
+**Decisions are recorded in [docs/adr/](docs/adr/README.md), one record per topic.** Read the relevant ADR before
+changing how something works. Changing a decision means updating its topic's record in the same change, with a dated
+History line, never a quiet edit; a new topic (a service, a rule, a pattern, a trade-off) gets a new ADR
+([ADR 0001](docs/adr/0001-record-decisions.md)).
 
 ## Hard rules
 
 - **Free tiers only.** Don't add a paid service or binding (Cloudflare Images, Durable Objects that store rows,
   paid Sanity features, card-payment providers) without asking. Check limits in docs/roadmap.md. A Durable Object
-  that stores nothing (the live hub, ADR 0096) is fine.
+  that stores nothing (the live hub, ADR 0072) is fine.
 - **Secrets live only in Bitwarden Secrets Manager** ([ADR 0002](docs/adr/0002-secrets-in-bitwarden.md)).
   Never print secret values, never write them to files (`.env`, `.dev.vars`), never commit them. `.env` is for
   local non-secret overrides only. GitHub holds only the Bitwarden tokens (`BWS_ACCESS_TOKEN__PRODUCTION`, `__DEV`). Use
@@ -18,8 +19,8 @@ a new ADR that supersedes it, never a quiet edit.
 - **Every secret is documented in [README.md#secrets](README.md#secrets)**, and a provider token is named
   exactly like its secret. Adding or renaming a secret means updating that section in the same change.
 - **Never deploy to production by hand.** Production deploys only from the `release` branch via
-  `.github/workflows/deploy.yml`; `main` and PRs deploy dev ([ADR 0013](docs/adr/0013-main-deploys-dev.md)).
-  Dev is a separate Cloudflare account (worker `cougars-dev`) ([ADR 0010](docs/adr/0010-two-environments.md)). Your machine is dev; production secrets are `NAME__PRODUCTION`.
+  `.github/workflows/deploy.yml`; `main` and PRs deploy dev ([ADR 0010](docs/adr/0010-environments-and-deploys.md)).
+  Dev is a separate Cloudflare account (worker `cougars-dev`) ([ADR 0010](docs/adr/0010-environments-and-deploys.md)). Your machine is dev; production secrets are `NAME__PRODUCTION`.
 - **Not live yet: no migrations.** The database is `db/schema.sql` plus `db/seed/club.sql`; change them and run
   `npm run db:rebuild:local` (dev rebuilds on deploy), which keeps the data. Dev's data becomes production at
   launch; only then do migrations start ([ADR 0050](docs/adr/0050-schema-and-seed-until-launch.md), db/README.md).
@@ -45,12 +46,12 @@ Worker ([ADR 0022](docs/adr/0022-team-app-svelte-pwa.md)); its permissions follo
 ## Team app (team/app)
 
 - **Admin actions live on the thing's own page**, opening over it (sheet, drawer, editor panel), not buried under
-  Settings; Settings is for setting up and reuses the same editors ([ADR 0065](docs/adr/0065-admin-actions-where-the-thing-is.md)).
+  Settings; Settings is for setting up and reuses the same editors ([ADR 0065](docs/adr/0065-page-frame-and-admin-actions.md)).
 
 ## Team app dev server (team/app)
 
 - A library the browser imports goes in team/app `package.json` **dependencies** (not devDependencies). Vite
-  pre-bundles exactly that list at startup; `scripts/team-app-deps.test.mjs` enforces it ([ADR 0047](docs/adr/0047-team-app-dev-server-bundles-up-front.md)).
+  pre-bundles exactly that list at startup; `scripts/team-app-deps.test.mjs` enforces it ([ADR 0022](docs/adr/0022-team-app-svelte-pwa.md)).
 - One dev server on 4510. A second `vite` is refused; stop the running one to restart. Never `--force` beside it.
 
 ## Tests

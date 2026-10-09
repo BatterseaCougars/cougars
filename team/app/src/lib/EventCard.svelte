@@ -45,7 +45,7 @@
   const entries = $derived(event.entries);
   const badge = $derived(dateBadge(event.startsAt));
   const id = $derived(me().id);
-  // Viewing as someone is read-only (ADR 0029): you see their answer, you can't change it.
+  // Viewing as someone is read-only (ADR 0024): you see their answer, you can't change it.
   const locked = $derived(impersonating());
   // Three answers and none: in (or waitlisted), out, or not said yet, when neither button is pressed.
   const inIt = $derived(entries.going.includes(id));

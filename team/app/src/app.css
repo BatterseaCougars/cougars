@@ -652,7 +652,7 @@ button.row:hover:not(:disabled) {
   box-shadow: none;
   cursor: not-allowed;
 }
-/* The main button: solid VCR blue, white words (ADR 0083). One per group: the clearest thing in its row */
+/* The main button: solid VCR blue, white words (ADR 0084). One per group: the clearest thing in its row */
 .btn.primary {
   background: var(--action);
   color: var(--on-action);

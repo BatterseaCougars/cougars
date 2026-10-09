@@ -28,7 +28,7 @@ export interface Reply {
 export function testWorld(roster: object[]) {
   const db = createTestD1();
   db.raw.exec(rosterSql(parseRoster(JSON.stringify(roster)), NOW));
-  // The live hub (ADR 0096) as the Worker reaches it: one object, behind a namespace that always finds it
+  // The live hub (ADR 0072) as the Worker reaches it: one object, behind a namespace that always finds it
   const live = new LiveHub();
   const env: Env = { DB: db, TEAM_ENV: "local", LIVE: liveNamespace(live) };
 

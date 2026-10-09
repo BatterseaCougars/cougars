@@ -36,7 +36,7 @@ CREATE TABLE members (
   photo TEXT,
   -- pending (asked to join), active, inactive
   status TEXT NOT NULL DEFAULT 'active',
-  -- The bank-transfer reference, COU-0001; set from the id once the row exists
+  -- The bank-transfer reference, the name as a bank shows it: COUGARS ADRIAN K (ADR 0007)
   payment_reference TEXT UNIQUE,
   joined_on TEXT NOT NULL,
   created_at TEXT NOT NULL,
@@ -69,7 +69,7 @@ CREATE TABLE member_roles (
 
 CREATE INDEX member_roles_role ON member_roles (role_id);
 
--- Places the club goes again and again (ADR 0051), picked by trainings, tournaments and events. Each of those also
+-- Places the club goes again and again (ADR 0030), picked by trainings, tournaments and events. Each of those also
 -- has a name and map_url of its own, for a one-off that needn't be saved; empty map links mean a map search.
 CREATE TABLE venues (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -96,7 +96,7 @@ CREATE TABLE training_series (
   ends_on TEXT,
   start_time TEXT NOT NULL,
   end_time TEXT NOT NULL,
-  -- Where (ADR 0051): a saved venue, else its own name and map link
+  -- Where (ADR 0030): a saved venue, else its own name and map link
   venue_id INTEGER REFERENCES venues (id),
   venue TEXT NOT NULL DEFAULT '',
   map_url TEXT NOT NULL DEFAULT '',
@@ -144,18 +144,18 @@ CREATE TABLE tournament_types (
   points_draw INTEGER NOT NULL DEFAULT 1,
   points_loss INTEGER NOT NULL DEFAULT 0,
   game_minutes INTEGER NOT NULL DEFAULT 12,
-  -- How its tournaments make teams (ADR 0052): teams (teams enter) or draft (captains draft members)
+  -- How its tournaments make teams (ADR 0030): teams (teams enter) or draft (captains draft members)
   kind TEXT NOT NULL DEFAULT 'teams',
   active INTEGER NOT NULL DEFAULT 1,
-  -- Copied onto each new edition, where it can be changed (ADR 0032)
+  -- Copied onto each new edition, where it can be changed (ADR 0007)
   default_fee_pence INTEGER NOT NULL DEFAULT 0,
-  -- Its usual hours, copied onto each new edition (ADR 0091): the Kumite is instead of Friday training, at its time
+  -- Its usual hours, copied onto each new edition (ADR 0074): the Kumite is instead of Friday training, at its time
   default_start_time TEXT NOT NULL DEFAULT '11:00',
   default_end_time TEXT NOT NULL DEFAULT '16:00',
   awards TEXT NOT NULL DEFAULT '[]',
   -- The playoff games after the round robin, by table position: [{name, home, away}] (ADR 0061)
   playoffs TEXT NOT NULL DEFAULT '[]',
-  -- Its usual place (ADR 0046, 0051): a saved venue, else a name and map link
+  -- Its usual place (ADR 0030): a saved venue, else a name and map link
   venue_id INTEGER REFERENCES venues (id),
   location TEXT NOT NULL DEFAULT '',
   map_url TEXT NOT NULL DEFAULT ''
@@ -166,7 +166,7 @@ CREATE TABLE tournaments (
   -- Its series, if it has one: a tournament can stand on its own
   type_id INTEGER REFERENCES tournament_types (id),
   name TEXT NOT NULL,
-  -- Its place (ADR 0051): a saved venue, else a name and map link; none of them: its series'
+  -- Its place (ADR 0030): a saved venue, else a name and map link; none of them: its series'
   venue_id INTEGER REFERENCES venues (id),
   location TEXT NOT NULL DEFAULT '',
   map_url TEXT NOT NULL DEFAULT '',
@@ -180,7 +180,7 @@ CREATE TABLE tournaments (
   fee_pence INTEGER NOT NULL DEFAULT 0,
   public INTEGER NOT NULL DEFAULT 1,
   date_confirmed INTEGER NOT NULL DEFAULT 1,
-  -- Sign-up opens by itself on this day (ADR 0089), unless an admin opened it by hand (status 'open')
+  -- Sign-up opens by itself on this day (ADR 0074), unless an admin opened it by hand (status 'open')
   signup_opens_on TEXT,
   signup_closes_on TEXT,
   draft_on TEXT,
@@ -191,7 +191,7 @@ CREATE TABLE tournaments (
   points_draw INTEGER NOT NULL DEFAULT 1,
   points_loss INTEGER NOT NULL DEFAULT 0,
   game_minutes INTEGER NOT NULL DEFAULT 12,
-  -- teams (teams enter) or draft (captains draft members), copied from its series (ADR 0052)
+  -- teams (teams enter) or draft (captains draft members), copied from its series (ADR 0030)
   kind TEXT NOT NULL DEFAULT 'teams',
   awards TEXT NOT NULL DEFAULT '[]',
   -- The playoff games after the round robin, by table position: [{name, home, away}] (ADR 0061)
@@ -205,7 +205,7 @@ CREATE TABLE club_events (
   title TEXT NOT NULL,
   starts_at TEXT NOT NULL,
   ends_at TEXT NOT NULL,
-  -- A saved venue, else a name and the map link pasted for it (ADR 0051)
+  -- A saved venue, else a name and the map link pasted for it (ADR 0030)
   venue_id INTEGER REFERENCES venues (id),
   venue TEXT NOT NULL DEFAULT '',
   map_url TEXT NOT NULL DEFAULT '',
@@ -340,7 +340,7 @@ CREATE TABLE audit_log (
 
 CREATE INDEX audit_log_at ON audit_log (at);
 
--- A tournament's teams (ADR 0052). Teams enter: each signs up with a name, a captain and its players, who may be
+-- A tournament's teams (ADR 0030). Teams enter: each signs up with a name, a captain and its players, who may be
 -- from outside the club. Captains draft: each captain is a member, given a pick order, and drafts members.
 CREATE TABLE tournament_teams (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -374,14 +374,14 @@ CREATE TABLE tournament_team_players (
 CREATE INDEX tournament_team_players_team ON tournament_team_players (team_id);
 
 -- One number for "the club's data has changed": one more on every change through the team app, the seed and the
--- roster, so the app's bootstrap can answer "nothing's changed" (ETag, ADR 0054). It starts from the time it was
+-- roster, so the app's bootstrap can answer "nothing's changed" (ETag, ADR 0053). It starts from the time it was
 -- made, so a remade database never repeats an old version.
 CREATE TABLE data_version (
   id INTEGER PRIMARY KEY CHECK (id = 1),
   version INTEGER NOT NULL
 );
 
--- Who won a tournament's awards (team/app/worker/awards.ts, ADR 0073): a team (Champions) or a player on one of its
+-- Who won a tournament's awards (team/app/worker/awards.ts, ADR 0044): a team (Champions) or a player on one of its
 -- teams (Top scorer). The award is one of the tournament's own, by name (tournaments.awards).
 CREATE TABLE tournament_award_winners (
   tournament_id INTEGER NOT NULL REFERENCES tournaments (id) ON DELETE CASCADE,
@@ -399,7 +399,7 @@ CREATE TABLE club_settings (
   live_refresh_seconds INTEGER NOT NULL DEFAULT 10 CHECK (live_refresh_seconds BETWEEN 5 AND 120)
 );
 
--- Dev tools (team/app/worker/devtools.ts, ADR 0077): outside production, who gets their own email instead of the
+-- Dev tools (team/app/worker/devtools.ts, ADR 0027): outside production, who gets their own email instead of the
 -- safe inbox. Never read in production.
 CREATE TABLE dev_mail_recipients (
   email TEXT PRIMARY KEY,
@@ -433,7 +433,7 @@ CREATE TABLE tournament_games (
   away_goals INTEGER,
   -- next / live / done
   status TEXT NOT NULL DEFAULT 'next',
-  -- The game clock (ADR 0071): time left when it last stopped, and when it was started again (null: stopped). Time
+  -- The game clock (ADR 0061): time left when it last stopped, and when it was started again (null: stopped). Time
   -- left now is clock_left_ms minus the time since clock_started_at
   clock_left_ms INTEGER,
   clock_started_at TEXT,
@@ -443,7 +443,7 @@ CREATE TABLE tournament_games (
 
 CREATE INDEX tournament_games_tournament ON tournament_games (tournament_id, position);
 
--- Each goal as it went in (ADR 0071): its team, who scored and who assisted (null: not said), and when, in game time
+-- Each goal as it went in (ADR 0061): its team, who scored and who assisted (null: not said), and when, in game time
 CREATE TABLE tournament_goals (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   game_id INTEGER NOT NULL REFERENCES tournament_games (id) ON DELETE CASCADE,
@@ -458,7 +458,7 @@ CREATE TABLE tournament_goals (
 CREATE INDEX tournament_goals_game ON tournament_goals (game_id, id);
 
 
--- The club's agenda (ADR 0062): what's on and when, one row per thing on a day. Every part of the club pushes its own
+-- The club's agenda (ADR 0042): what's on and when, one row per thing on a day. Every part of the club pushes its own
 -- rows when it changes (shared/agenda.ts): each training session, a tournament's day, its draft night and its sign-up
 -- deadline, each one-off event. The website's What's on and the app's calendar both read it.
 CREATE TABLE agenda (

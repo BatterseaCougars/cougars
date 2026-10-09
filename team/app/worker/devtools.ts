@@ -1,4 +1,4 @@
-// Dev tools (ADR 0077): what an admin can change outside production without a deploy. For now, who gets their own
+// Dev tools (ADR 0027): what an admin can change outside production without a deploy. For now, who gets their own
 // email: everyone else's still goes to the safe inbox (shared/email.ts). In production none of this exists, and the
 // list is never read: real recipients always get their own email there.
 import { all, run } from "../../../shared/d1";

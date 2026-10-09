@@ -1,5 +1,5 @@
 // Content access for pages. Everything is fetched at build time; the site
-// rebuilds daily and on each release (ADR 0018). Until a Sanity project is configured, pages
+// rebuilds daily and on each release (ADR 0004). Until a Sanity project is configured, pages
 // render from the fallback club facts (fallback.ts) and empty lists. The merge
 // rules are in merge.ts.
 import { DEMO_CONTENT } from "astro:env/server";
@@ -37,7 +37,7 @@ async function fetchOr<T>(query: string, fallback: T): Promise<T> {
     return result ?? fallback;
   } catch (error) {
     // A build fails loudly. A server route (ADR 0016), and a page in `astro dev`, render with the fallback rather
-    // than an error page (ADR 0058): degraded, not broken.
+    // than an error page (ADR 0055): degraded, not broken.
     if (!onWorker && !import.meta.env.DEV) throw error;
     if (import.meta.env.DEV) devSanity.problem = String(error);
     console.error(JSON.stringify({ event: "content.sanity_error", error: String(error) }));
@@ -50,7 +50,7 @@ const fetchList = async <T>(query: string, demoList: T[] | null = null) =>
   listOr(await fetchOr<T[] | null>(query, null), demo ? demoList : null);
 
 // Once per build. A Worker isolate lives on between requests, so it re-reads every five minutes; `astro dev` every
-// minute, so a Studio change shows soon without a query per page load (ADR 0054).
+// minute, so a Studio change shows soon without a query per page load (ADR 0053).
 const memo = <T>(fn: () => Promise<T>) => {
   let p: Promise<T> | undefined;
   let at = 0;
@@ -68,7 +68,7 @@ export const getPub = memo(async () => mergePub(FALLBACK_PUB, await fetchOr(q.PU
 export const getTeam = memo(async () => mergeTeam(FALLBACK_TEAM, await fetchOr(q.TEAM, null)));
 // The Kumite's awards come from the team app (ADR 0044), through the build's club snapshot; Sanity's list (names
 // only) until the snapshot has them.
-/** The next Kumite as the team app has it (ADR 0062): when, where, or that it's TBC or only a season so far. */
+/** The next Kumite as the team app has it (ADR 0042): when, where, or that it's TBC or only a season so far. */
 export interface NextKumite {
   startsAt: string;
   venue: string;
@@ -108,7 +108,7 @@ export const getKumiteResults = memo(async () =>
   newestFirst(await fetchList<KumiteResult>(q.KUMITE_RESULTS, DEMO_KUMITE_RESULTS)),
 );
 // The club's videos as of this build: only the homepage's no-JavaScript fallback uses these. /videos and the
-// homepage reel read them live (lib/server/videos.ts, docs/adr/0019-live-videos.md).
+// homepage reel read them live (lib/server/videos.ts, docs/adr/0016-photos-and-videos-read-live.md).
 export const getVideos = memo(async () => (await liveVideos(videosConfig())).data);
 export const getEvents = memo(() => fetchList<ClubEvent>(q.EVENTS, DEMO_EVENTS));
 export const getEventPages = memo(() => fetchList<ClubEvent>(q.EVENT_PAGES, DEMO_EVENTS));

@@ -2,7 +2,7 @@
   // Where a tournament's draft stands, on its landing page: its date up front, as the event card has it, then that
   // it's coming, on, or closed, and its captains as discs in their teams' colours. Its captains and whoever runs it get
   // a way in, and a captain hears when it's their pick. Everyone else just hears the news: the draft itself is the
-  // captains' business (ADR 0070). Closed is loud: the teams are set, and that's the way to them.
+  // captains' business (ADR 0060). Closed is loud: the teams are set, and that's the way to them.
   import { goesBy } from "./names";
   import { initials } from "./initials";
   import { teamTone } from "./team-tones";

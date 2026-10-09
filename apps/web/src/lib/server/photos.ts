@@ -1,6 +1,6 @@
 // Photo albums, read live from Sanity (ADR 0016), so a published album is on the site without a rebuild. Reads go
 // through Sanity's API CDN with plain fetch (no client library in the Worker), behind a circuit breaker
-// (ADR 0055), and are cached for a minute (ADR 0054).
+// (ADR 0055), and are cached for a minute (ADR 0053).
 // When Sanity can't be reached, callers get empty data and `unavailable: true` and show a friendly empty
 // state instead of an error page. With DEMO_CONTENT, the sample albums stand in until Sanity has some.
 import { HttpFailure, QuotaError, guard, retryAfter } from "../../../../../shared/breaker";

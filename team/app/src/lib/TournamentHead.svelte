@@ -2,7 +2,7 @@
   // The top of every tournament page: the type as the eyebrow, the page, and the edition it's showing, big: its day
   // (or Date to be confirmed), its season, its hours and place, and where it stands, worked out from what's happened
   // (lib/edition.ts). Past ones are on History, each with a page of its own.
-  // On the front page (The Kumite), an admin's Manage menu (ADR 0065): its settings and the awards, open over the page; and Next Kumite once there's nothing coming up (ADR 0087).
+  // On the front page (The Kumite), an admin's Manage menu (ADR 0065): its settings and the awards, open over the page; and Next Kumite once there's nothing coming up (ADR 0074).
   import type { Tournament, TournamentType } from "../demo/model";
   import { can } from "../access/actions";
   import { granted } from "../demo/session.svelte";
@@ -55,10 +55,10 @@
     run: () => void;
   }
   let menuOpen = $state(false);
-  // What an admin does to this edition that has no tab of its own (ADR 0087): its settings (day, sign-up, captains,
+  // What an admin does to this edition that has no tab of its own (ADR 0074): its settings (day, sign-up, captains,
   // draft day, rules), then the awards. The draft and the fight card are run on their own tabs, not from here. A bottom
   // sheet on a phone (where it's mostly done, at the rink), a side drawer on a desktop. The next one isn't here: it's
-  // the page's own button once this one's done (ADR 0087)
+  // the page's own button once this one's done (ADR 0074)
   const tools = $derived.by(() => {
     if (!tournament) return [] as Tool[];
     const t = tournament;

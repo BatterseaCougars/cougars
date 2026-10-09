@@ -29,7 +29,7 @@ const sample = (path: RegExp) =>
     .replace(/\\\//g, "/");
 
 describe("every change", () => {
-  it("says which parts of the club it touches, so the app gets them back (ADR 0054)", () => {
+  it("says which parts of the club it touches, so the app gets them back (ADR 0053)", () => {
     const silent = ROUTES.filter((r) => r.method !== "GET" && !r.changes?.length).map((r) => `${r.method} ${r.path}`);
     expect(silent).toEqual([]);
   });
@@ -76,7 +76,7 @@ describe("what bootstrap tells a plain member", () => {
   });
 });
 
-describe("what bootstrap tells a plain member about everyone else (ADR 0099)", () => {
+describe("what bootstrap tells a plain member about everyone else (ADR 0036)", () => {
   it("who's in and waiting, but not who said no, who didn't turn up, who pays quarterly, or anyone's roles", async () => {
     const dana = await w.signedIn("dana@example.com");
     const reg = await w.signedIn("reg@example.com");
@@ -200,7 +200,7 @@ describe("requests from somewhere else", () => {
     expect(ours.status).toBe(200);
   });
 
-  it("is never framed, sniffed or told where it came from, from the Worker or the asset layer (ADR 0092)", async () => {
+  it("is never framed, sniffed or told where it came from, from the Worker or the asset layer (ADR 0036)", async () => {
     const res = await worker.fetch(
       new Request("https://team.test/api/health"),
       { DB: w.db, ASSETS: { fetch: async () => new Response("<!doctype html>") } as unknown as Fetcher },
@@ -214,7 +214,7 @@ describe("requests from somewhere else", () => {
   });
 });
 
-describe("an everyday role (ADR 0037)", () => {
+describe("an everyday role (ADR 0024)", () => {
   const roleId = (b: { roles: { id: number; name: string }[] }, name: string) =>
     b.roles.find((r) => r.name === name)!.id;
 
@@ -233,7 +233,7 @@ describe("an everyday role (ADR 0037)", () => {
 
   it("is never a way up: a plain member can't make Admin their everyday role", async () => {
     const reg = await w.signedIn("reg@example.com");
-    // They aren't sent the Admin role (ADR 0099), so they guess its id, as anyone could
+    // They aren't sent the Admin role (ADR 0036), so they guess its id, as anyone could
     const admin = w.db.raw.prepare("SELECT id FROM roles WHERE name = 'Admin'").get() as { id: number };
     const res = await reg.call("PUT", "/api/me/everyday-role", { roleId: admin.id });
     expect(res.status).toBe(403);
@@ -241,7 +241,7 @@ describe("an everyday role (ADR 0037)", () => {
   });
 });
 
-describe("what's on the record (ADR 0024, ADR 0098)", () => {
+describe("what's on the record (ADR 0024, ADR 0095)", () => {
   const record = async () =>
     (await all<{ action: string; member_id: number; detail: string }>(w.db, "SELECT * FROM audit_log ORDER BY id")).map(
       (r) => ({ event: r.action, by: r.member_id, ...JSON.parse(r.detail) }),
@@ -303,7 +303,7 @@ describe("what's on the record (ADR 0024, ADR 0098)", () => {
     ]);
   });
 
-  it("is declared on every change: what it puts on the record, or that it puts nothing (ADR 0098)", () => {
+  it("is declared on every change: what it puts on the record, or that it puts nothing (ADR 0095)", () => {
     const silent = ROUTES.filter((r) => r.method !== "GET" && r.audit === undefined).map(
       (r) => `${r.method} ${r.path}`,
     );

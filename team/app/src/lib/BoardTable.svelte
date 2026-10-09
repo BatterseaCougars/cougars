@@ -12,7 +12,7 @@
 
   let { type, tournament }: { type: TournamentType; tournament: Tournament } = $props();
 
-  // This tournament's own points (ADR 0049)
+  // This tournament's own points (ADR 0030)
   const points = $derived({ win: tournament.pointsWin, draw: tournament.pointsDraw, loss: tournament.pointsLoss });
   const teams = $derived(tournament.teams);
   const group = $derived((tournament.games ?? []).filter((g) => g.stage === "group"));

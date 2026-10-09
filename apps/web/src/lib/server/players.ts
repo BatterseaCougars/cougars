@@ -1,5 +1,5 @@
 // One player's details, live from D1, for a card that's just been picked up (lib/roster.ts). Only active Cougars.
-// Cached for a minute (ADR 0054), so flipping cards back and forth doesn't read D1 each time.
+// Cached for a minute (ADR 0053), so flipping cards back and forth doesn't read D1 each time.
 import { first } from "../../../../../shared/d1";
 import { toPlayer, type RosterRow } from "../roster";
 import { cached, type CacheDeps } from "./cache";

@@ -1,4 +1,4 @@
-// Rate limiting for the Worker's live routes (ADR 0056). Prerendered pages are static assets, served without the
+// Rate limiting for the Worker's live routes (ADR 0055). Prerendered pages are static assets, served without the
 // Worker, so this only sees the live ones: photos, videos, What's on, events, player cards and the join form. A
 // generous limit per address, enough that no person notices, but a loop or a scraper can't spend the club's free
 // quotas (Workers requests, D1 reads, Sanity, YouTube). The join form has its own, tighter limit (pages/api/join.ts).
@@ -8,7 +8,7 @@ import { rateLimit, type CacheLike } from "../../../shared/rate-limit";
 export const LIVE_LIMIT = { limit: 240, windowSeconds: 60 };
 
 /**
- * On every live response (ADR 0092): never shown in another site's frame, no sniffing a type, and only the origin
+ * On every live response (ADR 0036): never shown in another site's frame, no sniffing a type, and only the origin
  * to other sites. Prerendered pages get the same from public/_headers; middleware.test.ts keeps the two the same.
  */
 export const SITE_HEADERS: Record<string, string> = {

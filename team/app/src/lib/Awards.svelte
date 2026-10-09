@@ -1,5 +1,5 @@
 <script lang="ts">
-  // A tournament's awards and who won them (ADR 0073), on its landing page: each award, its line, and the team or
+  // A tournament's awards and who won them (ADR 0044), on its landing page: each award, its line, and the team or
   // player (or joint winners) who took it home. Once it's done, the data's picks show as provisional (lib/awards.ts)
   // until an admin confirms them (here, or in Manage: AwardsDrawer).
   import { goesByOf, nameOfTeam } from "./names";

@@ -30,7 +30,7 @@ async function firstPage() {
 }
 
 function showError(e: unknown) {
-  // Resting (the day's free allowance is used up, ADR 0058) isn't broken: say when it's back
+  // Resting (the day's free allowance is used up, ADR 0055) isn't broken: say when it's back
   const title = e instanceof ApiError && e.status === 429 ? "Back soon" : "Can't reach the club's data";
   target.innerHTML = `<div class="boot-error"><p class="display"></p><p class="hint"></p></div>`;
   target.querySelector(".display")!.textContent = title;

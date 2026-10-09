@@ -1,6 +1,6 @@
 // One-off: create the club-facts singletons (Club, Fridays, Pub, Team, Kumite) from the website's defaults
 // (apps/web/src/lib/sanity/fallback.ts). Safe to re-run: it never overwrites an existing document.
-// Seed the dev project first, then the live one (docs/adr/0017-two-sanity-projects.md):
+// Seed the dev project first, then the live one (docs/adr/0010-environments-and-deploys.md):
 //   npm run seed -w @cougars/studio
 //   SANITY_STUDIO_SITE_ENV=production npm run seed -w @cougars/studio
 import { getCliClient } from "sanity/cli";

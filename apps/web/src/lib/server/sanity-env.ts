@@ -15,7 +15,7 @@ export const photosConfig = (): PhotosConfig => ({
   demo: DEMO_CONTENT,
 });
 
-/** A live page's Cache-Control: cached, except when Sanity is unreachable (ADR 0054). */
+/** A live page's Cache-Control: cached, except when Sanity is unreachable (ADR 0053). */
 export const cacheControl = (unavailable: boolean) => (unavailable ? UNAVAILABLE_CACHE_CONTROL : CACHE_CONTROL);
 
 export const videosConfig = (): VideosConfig => ({

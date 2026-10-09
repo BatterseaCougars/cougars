@@ -17,7 +17,7 @@ export interface MemberJson {
   cougar: boolean;
   status: "pending" | "active" | "inactive";
   paymentReference: string | null;
-  /** Highest first: Admin, then newer roles, Member last. Only your own, unless you manage members or roles (ADR 0099). */
+  /** Highest first: Admin, then newer roles, Member last. Only your own, unless you manage members or roles (ADR 0036). */
   roles: string[];
   bio: string;
   /** How their name shows on the website; null: first name and initial. */
@@ -26,7 +26,7 @@ export interface MemberJson {
   phone: string | null;
   /** Training sessions they came to: in, not a no-show, held before today and not cancelled. */
   played: number;
-  /** A Quarterly Member today: a subscription covers it (ADR 0034). Only your own, unless you manage members. */
+  /** A Quarterly Member today: a subscription covers it (ADR 0007). Only your own, unless you manage members. */
   quarterly: boolean;
 }
 
@@ -66,7 +66,7 @@ export async function listMembers(
     ratings: boolean;
     /** Whose email, phone, payment reference and quarterly status to send: everyone's (a member manager) or your own. */
     privateFor: "all" | number;
-    /** Whose roles to send: everyone's (who manages members or roles, or views as them) or just your own (ADR 0099). */
+    /** Whose roles to send: everyone's (who manages members or roles, or views as them) or just your own (ADR 0036). */
     rolesFor: "all" | number;
     today: string;
   },
@@ -119,12 +119,12 @@ export async function listMembers(
     webName: m.web_name,
     phone: mine(m.id) ? m.phone : null,
     played: m.played,
-    // Whether they pay quarterly is between them and whoever manages members (ADR 0099)
+    // Whether they pay quarterly is between them and whoever manages members (ADR 0036)
     quarterly: mine(m.id) && Boolean(m.quarterly),
   }));
 }
 
-/** Who's making a change: what they can do (the grant rules) and when. The record is the route's (api.ts, ADR 0098). */
+/** Who's making a change: what they can do (the grant rules) and when. The record is the route's (api.ts, ADR 0095). */
 export interface By {
   actions: ReadonlySet<Action>;
   now: string;
@@ -332,7 +332,7 @@ export async function updateProfile(db: D1Database, id: number, o: Record<string
   ]);
 }
 
-/** The role someone runs the app as day to day (ADR 0037); null means their full role. */
+/** The role someone runs the app as day to day (ADR 0024); null means their full role. */
 export async function everydayRoleOf(db: D1Database, id: number): Promise<number | null> {
   const row = await first<{ everyday_role_id: number | null }>(
     db,
@@ -393,7 +393,7 @@ export async function setContact(db: D1Database, id: number, o: Record<string, u
   await run(db, "UPDATE members SET email = ?, phone = ? WHERE id = ?", [email, phone, id]);
 }
 
-/** Make someone a Quarterly Member from today, or end it today (ADR 0034). */
+/** Make someone a Quarterly Member from today, or end it today (ADR 0007). */
 export async function setQuarterly(db: D1Database, id: number, quarterly: boolean, today: string, now: string) {
   if (!(await first(db, "SELECT 1 FROM members WHERE id = ?", [id]))) throw new HttpError(404, "No such member.");
   const covering = "member_id = ? AND starts_on <= ? AND (ends_on IS NULL OR ends_on >= ?)";
@@ -445,7 +445,7 @@ export async function attendanceOf(db: D1Database, id: number, year: string, tod
   }));
 }
 
-// ─── What the record compares (ADR 0098) ───
+// ─── What the record compares (ADR 0095) ───
 // Each reads one thing a change can touch, the same way before and after, so the route's audit writes an entry only
 // when it really changed, with both sides.
 
@@ -468,7 +468,7 @@ export const memberEmail = async (db: D1Database, id: number) =>
 export const memberJoined = (db: D1Database, id: number) =>
   first<{ name: string; email: string | null }>(db, "SELECT name, email FROM members WHERE id = ?", [id]);
 
-/** Whether a member is a Quarterly Member today (ADR 0034). */
+/** Whether a member is a Quarterly Member today (ADR 0007). */
 export const quarterlyToday = async (db: D1Database, id: number, today: string) =>
   Boolean(
     await first(

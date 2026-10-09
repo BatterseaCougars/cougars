@@ -1,4 +1,4 @@
-// The team app's local-only switches (ADR 0093): `vite` alone sets TEAM_ENV "local" (the sign-in code shown on screen)
+// The team app's local-only switches (ADR 0023): `vite` alone sets TEAM_ENV "local" (the sign-in code shown on screen)
 // and TEAM_AUTO_ADMIN (no session means the first admin). A deploy must never carry either: not from wrangler.jsonc,
 // and not from scripts/ci/target.mjs, which writes the deployed config's vars. The deploy's smoke test
 // (.github/workflows/deploy.yml) then checks the live worker answers 401 without a session.

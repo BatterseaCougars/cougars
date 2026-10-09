@@ -14,7 +14,7 @@ settings, entered in the app, which will become production.
 
 - Until launch, `db/schema.sql` is the database: every table and index, changed directly. `db/seed/club.sql` holds
   what it starts with that isn't personal (roles, Friday Training, the Kumite series, quips), `INSERT OR IGNORE` by
-  id. The roster stays in Secrets Manager (ADR 0033).
+  id. The roster stays in Secrets Manager (ADR 0029).
 - `scripts/db-rebuild.mjs` rebuilds a database from the schema and keeps its data: it reads every row out (backing
   them up to a private temp file), drops the tables, makes them again, puts the rows back (a new column takes its
   default; a column that's gone is dropped and said so), and tops up the club seed. Local runs it with
@@ -30,3 +30,7 @@ settings, entered in the app, which will become production.
 - Renaming a column loses that column's data in a rebuild (it's read out under the old name): copy it across by hand
   in the same change, or don't rename before launch.
 - The old migrations are gone from the tree; git history has them.
+
+## History
+
+- 2026-10-07: Until launch, the database is a schema and a seed, not migrations.

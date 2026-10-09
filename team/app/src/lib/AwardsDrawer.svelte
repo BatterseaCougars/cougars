@@ -7,7 +7,7 @@
 </script>
 
 <script lang="ts">
-  // Confirming a tournament's awards (ADR 0073), usually on a phone straight after the final. The data decides them
+  // Confirming a tournament's awards (ADR 0044), usually on a phone straight after the final. The data decides them
   // (lib/awards.ts): the champions, the top scorer, the best goalie; the Dim Mak is drawn at random (Draw again for
   // another). The admin checks and confirms; only an award the data can't decide asks them to pick someone.
   import { PLAYERS } from "../demo/data";

@@ -111,7 +111,7 @@
                   Short name <input class="input" bind:value={form.shortName} placeholder="e.g. Cup" maxlength="12" />
                 </label>
               </div>
-              <!-- How its tournaments make teams (ADR 0052); each tournament copies it -->
+              <!-- How its tournaments make teams (ADR 0030); each tournament copies it -->
               <div class="field">
                 <span id="series-kind">Type</span>
                 <div class="seg kind" role="group" aria-labelledby="series-kind">

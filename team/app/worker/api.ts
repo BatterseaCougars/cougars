@@ -76,7 +76,7 @@ export interface Env extends AuthEnv {
   /** Read-only (Account Analytics: Read), for the Usage page and the hourly check (ADR 0059). */
   CLOUDFLARE_ANALYTICS_TOKEN?: string;
   CLOUDFLARE_ACCOUNT_ID?: string;
-  /** The live hub (ADR 0096), wrangler.jsonc durable_objects; a server without one falls back to checking. */
+  /** The live hub (ADR 0072), wrangler.jsonc durable_objects; a server without one falls back to checking. */
   LIVE?: DurableObjectNamespace;
 }
 
@@ -101,7 +101,7 @@ interface Route {
    */
   changes?: readonly Slice[];
   /**
-   * On the record (ADR 0098): a change says what it does to the club's record, or `false` for none. Every route
+   * On the record (ADR 0095): a change says what it does to the club's record, or `false` for none. Every route
    * that isn't a GET says (security.test.ts). The wrapper reads `subject` before the handler and again after; when the
    * two differ it writes `event` to the audit log, with who did it, both sides, and `about`.
    */
@@ -109,7 +109,7 @@ interface Route {
   handle: (c: Ctx) => Promise<Response>;
 }
 
-/** What a change puts on the record (ADR 0098). */
+/** What a change puts on the record (ADR 0095). */
 export interface Audit {
   /** The entry's name: "member.updated". The audit page says each in plain words. */
   event: string;
@@ -125,8 +125,8 @@ const theMember = (c: Ctx, reply?: Record<string, unknown>) => (reply?.id as num
 // ─── The club, in parts ───
 // The bootstrap is all of them; a change's reply is the ones it touched. Each is what this member may see (ADR 0036).
 
-// Who may see more than their own (ADR 0036, ADR 0099). Anyone else sees, of anything personal, only their own.
-/** Everyone's roles, and every role's actions: who sets them, and who views the app as someone (ADR 0029). */
+// Who may see more than their own (ADR 0036, ADR 0036). Anyone else sees, of anything personal, only their own.
+/** Everyone's roles, and every role's actions: who sets them, and who views the app as someone (ADR 0024). */
 const SEES_ROLES: readonly Action[] = ["manage:Member", "manage:Role", "impersonate:Member"];
 /** Everyone's answers (out as well as in) and the register (no-shows, walk-ins): who runs events and their teams. */
 const SEES_REGISTER: readonly Action[] = [
@@ -142,7 +142,7 @@ const holdsAny = (c: Ctx, actions: readonly Action[]) =>
   c.actions.has("manage:all") || actions.some((a) => c.actions.has(a));
 
 const SLICES = {
-  // The role the app opens as, when it isn't your full one (ADR 0037)
+  // The role the app opens as, when it isn't your full one (ADR 0024)
   everydayRole: (c: Ctx) => everydayRoleOf(c.env.DB, c.memberId),
   members: (c: Ctx) => {
     const can = (a: Action) => c.actions.has("manage:all") || c.actions.has(a);
@@ -154,7 +154,7 @@ const SLICES = {
     });
   },
   // Every role, for whoever sets them; anyone else, only the roles they could hold as they are: their own, and the
-  // ones that can do less (their everyday role's choices, ADR 0037). What a stronger role can do isn't theirs to see.
+  // ones that can do less (their everyday role's choices, ADR 0024). What a stronger role can do isn't theirs to see.
   roles: async (c: Ctx) => {
     const roles = await listRoles(c.env.DB);
     return holdsAny(c, SEES_ROLES) ? roles : roles.filter((r) => canGrant(c.actions, r.actions));
@@ -178,7 +178,7 @@ const SLICES = {
   quips: (c: Ctx) => listQuips(c.env.DB),
   // How often live pages check for updates (ADR 0072)
   settings: (c: Ctx) => readSettings(c.env.DB),
-  // What's on from today (ADR 0062). A tournament's draft night is for its captains and whoever runs the draft.
+  // What's on from today (ADR 0042). A tournament's draft night is for its captains and whoever runs the draft.
   agenda: async (c: Ctx) => {
     const rows = await readAgenda(c.env.DB, c.today);
     if (!rows.some((r) => r.audience === "captains")) return rows;
@@ -198,7 +198,7 @@ const SLICES = {
 export type Slice = keyof typeof SLICES;
 
 /**
- * A draft is for its captains and whoever runs it (ADR 0070): who went when is nobody else's business. Anyone else
+ * A draft is for its captains and whoever runs it (ADR 0060): who went when is nobody else's business. Anyone else
  * sees the captains and no players while it's on; once it's closed, the teams, with no pick numbers and in an order
  * that says nothing about them (a hash of the team and player, so it's the same every time they look).
  */
@@ -224,7 +224,7 @@ function draftSeenBy<T extends Awaited<ReturnType<typeof listTournaments>>[numbe
   });
 }
 
-/** Anything on the calendar changed: the agenda comes back with it (ADR 0062). */
+/** Anything on the calendar changed: the agenda comes back with it (ADR 0042). */
 const SCHEDULE: readonly Slice[] = ["series", "sessions", "venues", "tournamentTypes", "tournaments", "clubEvents"];
 
 /** The named parts of the club, read one after another. */
@@ -289,14 +289,14 @@ export const ROUTES: Route[] = [
     method: "GET",
     path: /^\/api\/live$/,
     action: "authenticated",
-    // Changes as they happen, as a stream (ADR 0096): only the names of the parts that changed, from the live hub
+    // Changes as they happen, as a stream (ADR 0072): only the names of the parts that changed, from the live hub
     handle: async (c) => liveStream(c.env),
   },
   {
     method: "GET",
     path: /^\/api\/bootstrap$/,
     action: "authenticated",
-    // Everything the app shows, in one go: it's a small club. Or a 304 when nothing's changed (ADR 0054).
+    // Everything the app shows, in one go: it's a small club. Or a 304 when nothing's changed (ADR 0053).
     handle: async (c) => {
       const db = c.env.DB;
       const tag = bootstrapTag(buildOf(c.env), await dataVersion(db), c.memberId, c.today);
@@ -305,7 +305,7 @@ export const ROUTES: Route[] = [
       const reply = json({
         me: c.memberId,
         actions: [...c.actions],
-        // Dev tools (ADR 0077): outside production, for whoever sets the club's settings
+        // Dev tools (ADR 0027): outside production, for whoever sets the club's settings
         devTools: devToolsHere(c.env) && (c.actions.has("manage:all") || c.actions.has("manage:Settings")),
         ...(await slices(c, Object.keys(SLICES) as Slice[])),
       });
@@ -327,7 +327,7 @@ export const ROUTES: Route[] = [
     audit: false,
     action: "authenticated",
     changes: ["everydayRole"],
-    // { roleId: number | null }: the role the app opens as (ADR 0037)
+    // { roleId: number | null }: the role the app opens as (ADR 0024)
     handle: async (c) => (await setEverydayRole(c.env.DB, c.memberId, await body(c.request), c.actions), ok()),
   },
   {
@@ -547,7 +547,7 @@ export const ROUTES: Route[] = [
     audit: false,
     action: "manage:Tournament",
     changes: ["tournaments"],
-    // { winners: [{ award, teamId | memberId }] }: who won the tournament's awards (ADR 0073)
+    // { winners: [{ award, teamId | memberId }] }: who won the tournament's awards (ADR 0044)
     handle: async (c) => (await setWinners(c.env.DB, id(c), await body(c.request)), ok()),
   },
   {
@@ -559,7 +559,7 @@ export const ROUTES: Route[] = [
     // { liveRefreshSeconds }: how often live pages check for updates (ADR 0072)
     handle: async (c) => (await saveSettings(c.env.DB, await body(c.request)), ok()),
   },
-  // Dev tools (ADR 0077): who gets their own email outside production. Not there at all in production.
+  // Dev tools (ADR 0027): who gets their own email outside production. Not there at all in production.
   {
     method: "GET",
     path: /^\/api\/dev\/mail$/,
@@ -625,7 +625,7 @@ export const ROUTES: Route[] = [
     // A game's final score; the last group result fills the playoffs
     handle: async (c) => (await scoreGame(c.env.DB, id(c), Number(c.params[1]), await body(c.request)), ok()),
   },
-  // Scoring a game as it's played (ADR 0071): whoever holds the scoresheet
+  // Scoring a game as it's played (ADR 0061): whoever holds the scoresheet
   {
     method: "POST",
     path: /^\/api\/tournaments\/(\d+)\/games\/(\d+)\/scorer$/,
@@ -835,7 +835,7 @@ export const ROUTES: Route[] = [
 
 /**
  * Each event with its answers: who's in and who's waiting, for everyone (that's what a sign-up is for); who said
- * they're out, who didn't turn up and who walked in, only your own, unless you run events (ADR 0099).
+ * they're out, who didn't turn up and who walked in, only your own, unless you run events (ADR 0036).
  */
 async function withEntries<T extends { id: number }>(c: Ctx, kind: EntryKind, rows: T[]) {
   const entries = await listEntries(
@@ -851,7 +851,7 @@ async function withEntries<T extends { id: number }>(c: Ctx, kind: EntryKind, ro
   });
 }
 
-/** How to reach a team that entered from outside the club: for whoever runs tournaments (ADR 0099). */
+/** How to reach a team that entered from outside the club: for whoever runs tournaments (ADR 0036). */
 function teamContactsSeenBy<T extends { teams: { contact: string }[] }>(c: Ctx, tournaments: T[]): T[] {
   if (holdsAny(c, ["manage:Tournament"])) return tournaments;
   return tournaments.map((t) => ({ ...t, teams: t.teams.map((team) => ({ ...team, contact: "" })) }));
@@ -870,7 +870,7 @@ async function withTeams<T extends { id: number }>(db: D1Database, rows: T[]) {
 async function whoIs(request: Request, env: Env, now: Date): Promise<{ memberId: number; setCookie?: string } | null> {
   const session = await sessionOf(request, env, now);
   if (session) return session;
-  // Only on a private address (ADR 0093): a build that said "local" by mistake still opens to nobody
+  // Only on a private address (ADR 0023): a build that said "local" by mistake still opens to nobody
   if (localHere(env, request) && env.TEAM_AUTO_ADMIN === "1") {
     const memberId = await firstAdmin(env.DB);
     return memberId == null ? null : { memberId };
@@ -888,7 +888,7 @@ export async function handleApi(
   if (url.pathname === "/api/health") return json({ ok: true });
   if (!sameOrigin(request)) return json({ error: "That came from somewhere else." }, 403);
   try {
-    // A generous limit per address (ADR 0056); sign-in and changes have tighter ones of their own
+    // A generous limit per address (ADR 0055); sign-in and changes have tighter ones of their own
     await enforce("api", addressOf(request), LIMITS.perAddress, "Too many requests from here. Wait a minute.");
   } catch (e) {
     if (e instanceof HttpError) return json({ error: e.message }, e.status);
@@ -934,7 +934,7 @@ export async function handleApi(
       today: londonToday(now),
       now: now.toISOString(),
     };
-    // On the record (ADR 0098): what the change is to, before it
+    // On the record (ADR 0095): what the change is to, before it
     const record = writes && hit.r.audit ? hit.r.audit : null;
     const before = record ? await record.subject(ctx) : undefined;
     const res = await hit.r.handle(ctx);
@@ -952,12 +952,12 @@ export async function handleApi(
         });
     }
     if (writes && res.ok) {
-      // A change: every member's bootstrap is out of date (ADR 0054)
+      // A change: every member's bootstrap is out of date (ADR 0053)
       await bumpDataVersion(env.DB);
       // ...and this member gets the parts it touched back, to put in place
       const declared = hit.r.changes ?? [];
       const changes = declared.some((d) => SCHEDULE.includes(d)) ? [...declared, "agenda" as const] : declared;
-      // ...and everyone on a live page hears which parts (ADR 0096), once this reply is on its way
+      // ...and everyone on a live page hears which parts (ADR 0072), once this reply is on its way
       const told = notifyLive(env, changes);
       if (waitUntil) waitUntil(told);
       else await told;

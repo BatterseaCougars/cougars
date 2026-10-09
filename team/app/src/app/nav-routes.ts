@@ -52,7 +52,7 @@ export interface NavConfig {
     name: string;
     shortName: string;
     icon: IconName;
-    /** A draft tournament gets a Draft page (ADR 0052). */
+    /** A draft tournament gets a Draft page (ADR 0030). */
     kind: "teams" | "draft";
     active: boolean;
     /** The captains of its next tournament: they see its Draft page, as do those running the draft. */
@@ -70,11 +70,11 @@ export interface NavConfig {
   me?: number;
   /** Members, for their pages (Teammates with their card up). */
   members?: { id: number; name: string }[];
-  /** Outside production: Settings → Dev tools (ADR 0077). */
+  /** Outside production: Settings → Dev tools (ADR 0027). */
   devTools?: boolean;
 }
 
-// Outside production only (ADR 0077)
+// Outside production only (ADR 0027)
 const DEV_TOOLS_ROUTE: Route = {
   id: "dev-tools",
   path: "/settings/dev",
@@ -346,7 +346,7 @@ export function buildRoutes(config: NavConfig): Route[] {
           path: `/tournaments/${t.slug}/teams`,
           name: "Teams",
           page: "tournament-teams",
-          // Everyone's: a draft's teams once it closes (ADR 0070); where an admin edits a team (ADR 0066, 0068)
+          // Everyone's: a draft's teams once it closes (ADR 0060); where an admin edits a team (ADR 0060)
           action: "read:Event",
           icon: "teams",
         },
@@ -418,7 +418,7 @@ export function buildRoutes(config: NavConfig): Route[] {
               })),
             ]
           : []),
-        // Each game's matchup (ADR 0090): both squads, the result, when the captains' sides last met. Under the
+        // Each game's matchup (ADR 0061): both squads, the result, when the captains' sides last met. Under the
         // fight card
         ...(t.games ?? []).map((gameId): Route => ({
           ...base,
@@ -433,7 +433,7 @@ export function buildRoutes(config: NavConfig): Route[] {
           under: `schedule:${t.id}`,
         })),
         // Each game's clock, full screen: its live score for anyone, its scoresheet for whoever keeps time and score
-        // (ADR 0071)
+        // (ADR 0061)
         ...(t.games ?? []).map((gameId): Route => ({
           ...base,
           id: `game:${t.id}:${gameId}`,

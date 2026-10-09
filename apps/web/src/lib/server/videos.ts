@@ -1,4 +1,4 @@
-// The club's videos, read live (docs/adr/0019-live-videos.md): a new upload or a Studio change shows within
+// The club's videos, read live (docs/adr/0016-photos-and-videos-read-live.md): a new upload or a Studio change shows within
 // minutes, with no rebuild. Two cached reads, merged:
 //   - Sanity: the club's YouTube settings and the `video` documents (overrides and pasted links). Fresh for a
 //     minute, so Studio changes show quickly; Sanity's API CDN is cheap.

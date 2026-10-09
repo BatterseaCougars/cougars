@@ -1,4 +1,4 @@
-// The app's own brake (ADR 0058): a tab that's gone wrong can't spend the club's free Cloudflare allowance.
+// The app's own brake (ADR 0055): a tab that's gone wrong can't spend the club's free Cloudflare allowance.
 import { describe, expect, it } from "vitest";
 import { Brake } from "./brake";
 

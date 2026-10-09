@@ -1,7 +1,7 @@
 <script lang="ts">
   // A training series' next session. Before the teams: who's in, in order, and your answer. Once there are teams,
   // they're the page: anyone who signed up after them first (an admin slots them in or remakes them), then the
-  // teams, then sign-up. A team maker's changes to the teams are saved as they're made (ADR 0079). Ratings drive the teams but only admins see them (read:Rating), as in the old app.
+  // teams, then sign-up. A team maker's changes to the teams are saved as they're made (ADR 0076). Ratings drive the teams but only admins see them (read:Rating), as in the old app.
   import { goesBy, shortName } from "../lib/names";
   import PageHeader from "../lib/PageHeader.svelte";
   import { can } from "../access/actions";
@@ -108,7 +108,7 @@
     (teams ?? []).map((t) => ({ name: t.name, players: t.players.filter((id) => next.going.includes(id)) }));
   const spaces = $derived(info?.capacity ? Math.max(0, info.capacity - next.going.length) : null);
 
-  // Every change to the teams is saved as it's made, and everyone sees it (ADR 0079): no draft to publish, so
+  // Every change to the teams is saved as it's made, and everyone sees it (ADR 0076): no draft to publish, so
   // nothing waits on a button scrolled out of sight
   function commit(list: Team[], done?: string) {
     db.teams[next.id] = list;

@@ -1,4 +1,4 @@
-// "Has anything changed?" for the app's bootstrap (ADR 0054). The app reloads everything after each change and when it
+// "Has anything changed?" for the app's bootstrap (ADR 0053). The app reloads everything after each change and when it
 // opens; most of those reloads find nothing new. The bootstrap carries an ETag, and the browser asks again with it
 // (If-None-Match) by itself: if the club's data hasn't changed, the answer is an empty 304 after one row read,
 // not the whole club read out of D1.

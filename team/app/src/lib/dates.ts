@@ -1,5 +1,5 @@
 // Europe/London formatting. A copy of the website's helpers until dates.ts moves to shared/ (team-app T2);
-// projects don't import each other's files (ADR 0021).
+// projects don't import each other's files (ADR 0006).
 const TZ = "Europe/London";
 const fmt = (opts: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat("en-GB", { timeZone: TZ, ...opts });
 

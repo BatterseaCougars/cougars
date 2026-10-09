@@ -1,4 +1,4 @@
-// Keeping the free tier's limits (ADR 0054, ADR 0056): reopening the app when nothing's changed costs one row read,
+// Keeping the free tier's limits (ADR 0053, ADR 0055): reopening the app when nothing's changed costs one row read,
 // and nobody, signed in or not, can hammer the API. Driven through the real handler in the fake world (testing.ts).
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { QuotaError, guard, resetBreakers } from "../../../shared/breaker";

@@ -1,4 +1,4 @@
-// Sign-in (ADR 0023, ADR 0035). A member types their email; the browser gets a private nonce cookie and the member
+// Sign-in (ADR 0023, ADR 0023). A member types their email; the browser gets a private nonce cookie and the member
 // gets a 6-digit code by email. The code signs them in only next to that cookie, so a forwarded email signs no one
 // in elsewhere. There's no link to tap: on an iPhone it would open a browser, never the installed app. Then a
 // session cookie for about 6 months, renewed while it's used, backed by an auth_sessions row an admin can revoke.
@@ -79,7 +79,7 @@ export function privateHost(hostname: string): boolean {
 }
 
 /**
- * Whether this is your own machine's server (ADR 0093): `vite` says so (TEAM_ENV "local"), and the request came to a
+ * Whether this is your own machine's server (ADR 0023): `vite` says so (TEAM_ENV "local"), and the request came to a
  * private address. A build never says so; and if one ever did by mistake, a public address still gets nothing local
  * (no code on screen, no first admin without signing in).
  */
@@ -118,7 +118,7 @@ export const mailConfig = (env: AuthEnv): MailConfig => ({
   safeTo: env.MAIL_SAFE_TO ?? null,
 });
 
-/** How to send: the secrets, and outside production who gets their own email (Dev tools, ADR 0077). */
+/** How to send: the secrets, and outside production who gets their own email (Dev tools, ADR 0027). */
 export async function mailSetup(env: AuthEnv): Promise<MailConfig> {
   const config = mailConfig(env);
   if (isProduction(env.SITE_ENV)) return config;
@@ -159,7 +159,7 @@ export async function sessionOf(
   return { memberId: row.member_id, setCookie: setCookie(request, "session", value, SESSION_DAYS * 86_400) };
 }
 
-/** A member's bank reference (ADR 0038), unless they have one. */
+/** A member's bank reference (ADR 0007), unless they have one. */
 export async function giveReference(db: D1Database, memberId: number, name: string) {
   const { sql, candidates } = assignReferenceSql(name, "id = ?");
   await run(db, sql, [...candidates, memberId]);
@@ -259,7 +259,7 @@ async function start(request: Request, env: AuthEnv, now: Date, waitUntil?: Wait
     [address],
   );
   if (!member) return res();
-  // One member a browser at a time (ADR 0094): asking for another account's code starts a fresh nonce, so the earlier
+  // One member a browser at a time (ADR 0023): asking for another account's code starts a fresh nonce, so the earlier
   // account's codes die with the old one, and every guess under a nonce counts against the one account it's for
   const another = await first(
     env.DB,

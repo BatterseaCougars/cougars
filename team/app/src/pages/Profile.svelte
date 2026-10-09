@@ -12,7 +12,7 @@
   const who = me();
   let form = $state({ phone: phoneFor(who.id) ?? "", position: who.position, bio: who.bio ?? "" });
 
-  // The name you go by, in the app and on the website (ADR 0043, 0085): ready-made forms of your name, or a nickname. Saved as the text itself;
+  // The name you go by, in the app and on the website (ADR 0043): ready-made forms of your name, or a nickname. Saved as the text itself;
   // the default (first name and initial) is saved as nothing, so it follows a change to your name.
   const [firstName, ...rest] = who.name.trim().split(/\s+/);
   const lastName = rest.at(-1);
@@ -38,7 +38,7 @@
   const locked = impersonating();
   const BIO_MAX = 160;
 
-  // Your everyday role (ADR 0037): anyone with more than Member can open the app as a lesser role, so ratings and admin
+  // Your everyday role (ADR 0024): anyone with more than Member can open the app as a lesser role, so ratings and admin
   // screens stay hidden while they show someone the app; the switch beside their badge brings their full role back.
   // The choices are roles that can do less than you can.
   const full = fullRole();

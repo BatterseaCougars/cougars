@@ -1,7 +1,7 @@
 # Battersea Cougars
 
 Website and team app for the Battersea Cougars inline hockey club: two projects in one repo
-([ADR 0021](docs/adr/0021-website-and-team-app-projects.md)). The website is live; the team app is next
+([ADR 0006](docs/adr/0006-one-repo-two-projects.md)). The website is live; the team app is next
 ([roadmap](docs/roadmap/team-app.md)). In team-app T0, `apps/web` and `apps/studio` move to `website/`, and the team
 app lands in `team/app`.
 
@@ -40,7 +40,7 @@ node scripts/env-pull.mjs -- npm run dev    # run with dev secrets injected
 
 ## Secrets
 
-Rules ([ADR 0002](docs/adr/0002-secrets-in-bitwarden.md), [ADR 0010](docs/adr/0010-two-environments.md)):
+Rules ([ADR 0002](docs/adr/0002-secrets-in-bitwarden.md), [ADR 0010](docs/adr/0010-environments-and-deploys.md)):
 
 - Every secret lives in **Bitwarden Secrets Manager** and nowhere else. GitHub holds only the Bitwarden tokens
   (one per GitHub environment). There are no secret files; `.env` is for local, non-secret overrides
@@ -48,11 +48,11 @@ Rules ([ADR 0002](docs/adr/0002-secrets-in-bitwarden.md), [ADR 0010](docs/adr/00
 - **Two environments.** Production (Cloudflare account **Cougars**) and dev (account **Cougars Dev**). Your
   machine, PR previews and `scripts/deploy-dev.sh` are dev.
 - **Two Sanity projects** to match: **Cougars** (`ah165efl`, production) and **Cougars Dev** (`zmg6rbe3`), each
-  with one public `production` dataset ([ADR 0017](docs/adr/0017-two-sanity-projects.md)). Their IDs aren't
+  with one public `production` dataset ([ADR 0010](docs/adr/0010-environments-and-deploys.md)). Their IDs aren't
   secret (`shared/sanity.ts`), and public datasets need no read token.
 - **Naming:** `NAME` applies to both; `NAME__PRODUCTION` / `NAME__DEV` override it for one. Code reads `NAME`.
   Production values sit in the Secrets Manager project `cougars`; dev and shared values in `cougars-dev`. Every
-  app shares these two projects ([ADR 0012](docs/adr/0012-secrets-manager-projects.md)); _Used by_ says which app
+  app shares these two projects ([ADR 0002](docs/adr/0002-secrets-in-bitwarden.md)); _Used by_ says which app
   needs a secret.
 - **A token is named exactly like its secret** at the provider that issued it.
 - **Every secret has an entry below.** Adding one: create the token with its secret name, add it to Secrets
@@ -185,7 +185,7 @@ Lets CI deploy the Studio to https://battersea-cougars.sanity.studio on every pu
 ### YouTube API keys
 
 Lets the website list the club's YouTube videos live (`apps/web/src/lib/server/videos.ts`,
-[ADR 0019](docs/adr/0019-live-videos.md)). One key per environment, so a leaked dev key can be revoked without
+[ADR 0016](docs/adr/0016-photos-and-videos-read-live.md)). One key per environment, so a leaked dev key can be revoked without
 touching production. Without a key the site still works and shows only the videos in Sanity.
 
 - **Issued by:** Google Cloud console, one project for the club (free, no billing account). **APIs & Services →
@@ -266,7 +266,7 @@ enquiries are still saved and emailed to the club, but nobody gets an auto-reply
 
 - **What:** the club's players as one line of JSON: name, position (F/D/G), rating, and optionally an email and
   roles. Not a credential, but personal data (names and skill ratings), so it never goes in this public repo
-  ([ADR 0033](docs/adr/0033-personal-data-out-of-the-repo.md)). Format and local use: [db/seed/README.md](db/seed/README.md).
+  ([ADR 0029](docs/adr/0029-personal-data.md)). Format and local use: [db/seed/README.md](db/seed/README.md).
 - **Set:** from the local copy, `db/seed/roster.local.json` (gitignored):
   `node -e "console.log(JSON.stringify(require('./db/seed/roster.local.json')))" | node scripts/secret-set.mjs TEAM_ROSTER`,
   and again with `TEAM_ROSTER__PRODUCTION`.

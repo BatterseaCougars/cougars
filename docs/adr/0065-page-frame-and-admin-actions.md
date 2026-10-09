@@ -1,0 +1,68 @@
+# 0065. One page frame; admin actions live on the thing's own page, not under Settings
+
+- **Status:** Accepted
+- **Date:** 2026-10-07 · updated 2026-10-09
+- **Merges:** 0078
+
+## Context
+
+An admin's jobs were reached through Settings: to add a Kumite date or its captains you went to Settings →
+Tournaments, found the card and opened its editor, then went back to the tournament to run the draft. That's how the
+data is organised, not how an admin works. They are on the tournament's page when they think "next date" or "who
+captains", and the trip through Settings made the app feel harder than it is.
+
+The team app's pages also came in two widths on a desktop: `.page`, a column centred at about 60% of the window, and
+`.page.wide` (76rem), centred too. Going between them on the dock moved the title 176px sideways at 1440px, and titles
+sat at three heights (pages with an eyebrow pushed theirs down; Home had its own taller header). Editor panels
+(EditorPanel, MemberSheet) were 60rem, centred beside the dock: never the width of the cards they opened from.
+
+## Decision
+
+**Admin actions where the thing is**
+
+- **An admin acts on a thing from the thing's own page.** Its page carries the actions the admin's role allows (Next
+  Kumite, the settings, Add the captains, Add member, Reset), and they open over the page: a sheet, drawer or editor
+  panel, never a navigation to Settings.
+- **Admin jobs sit behind one quiet Manage button** in the page's header bar: a bottom sheet on a phone, a side drawer
+  on a desktop. The menu holds only what has no page of its own; something with its own tab (running the draft,
+  making the fixtures) is done there, not from the menu.
+- **One main button may sit beside Manage** when it's the job the page is waiting for: Next Kumite on a series page
+  when nothing's coming up ([0074](0074-tournament-home-and-scheduling.md)), Make teams on a training for whoever makes
+  the teams ([0076](0076-training-teams.md)). Once that job is done it goes, and the rest stays in Manage.
+- **Settings is for setting up, not for running.** It keeps the full list (every tournament, every series, the members
+  table) and configuration nothing else owns (roles, fees, venues), and its editors are the same components the pages
+  open, so there's one editor per thing.
+- Members see the same pages without the admin actions; nothing about the page changes shape for them.
+- New features are designed from the page out: where is the admin when they need this? Put it there first.
+
+**One page frame**
+
+- On a desktop every page is the same frame (`--page-max`, 76rem) and its content keeps a reading width (52rem) from
+  the frame's left edge. A page that needs the room (the Draft, Teammates, Settings → Tournaments) is `.page.full` and
+  uses the whole frame. A page that is one big table (Settings → Members) is `.page.fill`
+  ([0069](0069-members.md)). Nothing is centred on its own.
+- Every title is at the same height: PageHeader keeps the eyebrow's line on a desktop even when there's none, and
+  Home's own header matches it.
+- An editor panel opens in the page's column: the same left edge and width as the content under it
+  (`lib/page-column.ts`), the reading width or the whole frame for a `.full` page. Phones are unchanged: full screen.
+- Settings keeps its list beside the dock, so its pages share their own left edge, all of them.
+
+## Consequences
+
+- The tournament pages open the tournament editor in place (`TournamentEditorPanel`), on the tab the action needs;
+  Settings → Tournaments uses the same panel. A new date in a series opens on its quick questions
+  (`TournamentQuickCreate`, [0074](0074-tournament-home-and-scheduling.md)).
+- Admin flows still in Settings (training dates, fees) should move the same way as they're touched.
+- Nothing moves sideways or up and down when you go between pages, and a panel reads as the card grown.
+- On a very wide window a reading page sits left of centre with room on its right. That's the cost of one edge.
+- A new page gets `class="page"`, or `page full` if it really needs the width.
+
+## History
+
+- 2026-10-07: Admin actions moved from Settings onto the thing's own page, opening over it; Settings kept for setting
+  up, with the same editors (was 0065).
+- 2026-10-08: One page frame on a desktop: 76rem, a 52rem reading width from its left edge, `.page.full` for pages that
+  need the room, every title at the same height, editors in the page's column; `wide` and `wide reading` went
+  (was 0078).
+- 2026-10-09: A main button beside Manage, not only an item in the menu, when the page is waiting for it (Next Kumite
+  when nothing's scheduled); the Manage menu keeps only what has no page of its own (was 0087, now in 0074).

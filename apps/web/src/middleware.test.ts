@@ -28,7 +28,7 @@ describe("live routes", () => {
   });
 });
 
-describe("security headers (ADR 0092)", () => {
+describe("security headers (ADR 0036)", () => {
   it("go on every live response, and public/_headers gives prerendered pages the same", () => {
     const live = secured(new Response("<!doctype html>", { headers: { "content-type": "text/html" } }));
     expect(Object.fromEntries(live.headers)).toMatchObject(SITE_HEADERS);

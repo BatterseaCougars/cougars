@@ -1,6 +1,6 @@
 # Security headers for every prerendered page and file, which the asset layer serves without the Worker. The live
 # routes (middleware.ts, SITE_HEADERS) send the same set; a test keeps them the same.
-# Decision: docs/adr/0092-security-headers-from-the-asset-layer-too.md.
+# Decision: docs/adr/0036-api-security.md.
 /*
   Content-Security-Policy: frame-ancestors 'none'
   X-Frame-Options: DENY

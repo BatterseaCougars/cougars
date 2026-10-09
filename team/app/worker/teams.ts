@@ -95,7 +95,7 @@ export async function resetSession(db: D1Database, sessionId: number) {
   await run(db, "DELETE FROM attendance WHERE session_id = ?", [sessionId]);
 }
 
-/** A session's day and how many said anything: what a reset takes away (the record, ADR 0098). */
+/** A session's day and how many said anything: what a reset takes away (the record, ADR 0095). */
 export const sessionSignups = (db: D1Database, sessionId: number) =>
   first<{ heldOn: string; signups: number }>(
     db,

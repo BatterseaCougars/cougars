@@ -1,6 +1,6 @@
 // The club's free Cloudflare allowance (ADR 0059): admins see today's use on the Usage page, and an hourly check
-// emails them once a day when anything passes 80%, or when a request was stopped for using too much CPU (ADR 0063).
-// The live hub's requests and time (ADR 0096) are Durable Objects' own allowance, shown and checked the same way.
+// emails them once a day when anything passes 80%, or when a request was stopped for using too much CPU (ADR 0059).
+// The live hub's requests and time (ADR 0072) are Durable Objects' own allowance, shown and checked the same way.
 // Cloudflare's analytics API is faked; everything else is real.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Mail } from "../../../shared/email";

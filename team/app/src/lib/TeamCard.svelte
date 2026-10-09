@@ -1,5 +1,5 @@
 <script lang="ts">
-  // One team in a tournament's editor (ADR 0052). In a draft it's a row: its pick, its captain (a member, found by
+  // One team in a tournament's editor (ADR 0030). In a draft it's a row: its pick, its captain (a member, found by
   // typing) and an optional name; its players come from the draft. A team that entered may be from outside the club,
   // so it's a card: its logo and name, a captain who's a member or just a name with a way to reach them, and its
   // players, members found by typing or names from outside.

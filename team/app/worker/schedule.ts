@@ -24,7 +24,7 @@ async function freeSlug(db: D1Database, table: string, base: string, id = 0) {
   }
 }
 
-// ─── Venues (ADR 0051) ───
+// ─── Venues (ADR 0030) ───
 
 export async function listVenues(db: D1Database) {
   return (
@@ -59,7 +59,7 @@ export async function updateVenue(db: D1Database, id: number, o: Record<string, 
     id,
   ]);
   if (!res.meta.changes) throw new HttpError(404, "No such venue.");
-  // It's the place of everything held there: the agenda's rows say where (ADR 0062)
+  // It's the place of everything held there: the agenda's rows say where (ADR 0042)
   await syncAll(db);
 }
 
@@ -344,7 +344,7 @@ interface TypeRow {
   map_url: string;
 }
 
-/** How a tournament makes its teams (ADR 0052): teams enter, or captains draft members. */
+/** How a tournament makes its teams (ADR 0030): teams enter, or captains draft members. */
 export const KINDS = ["teams", "draft"] as const;
 type Kind = (typeof KINDS)[number];
 
@@ -489,8 +489,8 @@ export async function updateTournamentType(db: D1Database, id: number, o: Record
 
 /**
  * Every tournament date. Its place (`venueId`, `location`, `mapUrl`) is its own; none of them set, its series' is
- * where it really is (ADR 0051), which the app works out. Its teams come in pick order (a draft) or the order they
- * entered, each with its players in order (ADR 0052).
+ * where it really is (ADR 0030), which the app works out. Its teams come in pick order (a draft) or the order they
+ * entered, each with its players in order (ADR 0030).
  */
 export async function listTournaments(db: D1Database) {
   const [rows, teams, players, games] = await Promise.all([
@@ -586,7 +586,7 @@ export function draftStateOf(t: { kind: string; draftOn: string | null; draftSta
 
 async function tournamentFields(db: D1Database, o: Record<string, unknown>) {
   const heldOn = date(o, "heldOn")!;
-  // Just a season so far (ADR 0048): its day is the season's last, and it isn't confirmed
+  // Just a season so far (ADR 0030): its day is the season's last, and it isn't confirmed
   const season = o.season == null || o.season === "" ? null : o.season;
   if (season !== null && !isSeason(season))
     throw new HttpError(400, "season should be spring, summer, autumn or winter.");
@@ -621,7 +621,7 @@ async function tournamentFields(db: D1Database, o: Record<string, unknown>) {
   ] as Param[];
 }
 
-/** A team as the app sends it (ADR 0052). */
+/** A team as the app sends it (ADR 0030). */
 interface TeamIn {
   /** The team it is, if it's been saved before: teams are changed in place, never remade (ADR 0060). */
   id: number | null;
@@ -783,7 +783,7 @@ async function seriesOf(db: D1Database, o: Record<string, unknown>) {
 }
 
 /**
- * A tournament's own rules and awards, copied from its series and changed for it if need be (ADR 0049). One left
+ * A tournament's own rules and awards, copied from its series and changed for it if need be (ADR 0030). One left
  * out keeps what it was (on a change), or takes the series' (or, with no series, the usual round robin's).
  */
 type Rules = Pick<
@@ -805,9 +805,9 @@ function rulesOf(o: Record<string, unknown>, series: Rules | null) {
 }
 
 /**
- * An admin deletes a tournament (ADR 0088). One statement: the schema's cascades take everything that's its (sign-ups,
+ * An admin deletes a tournament (ADR 0074). One statement: the schema's cascades take everything that's its (sign-ups,
  * teams and their players, games and goals, the awards' winners), so the database does the work, not the Worker
- * (ADR 0063). The agenda points at it by source, not a foreign key, so its rows go by syncing it away.
+ * (ADR 0059). The agenda points at it by source, not a foreign key, so its rows go by syncing it away.
  */
 export async function deleteTournament(db: D1Database, id: number) {
   const res = await run(db, "DELETE FROM tournaments WHERE id = ?", [id]);
@@ -817,7 +817,7 @@ export async function deleteTournament(db: D1Database, id: number) {
 
 /**
  * A new tournament. Only its series, name and day are needed (the next one's quick form): what's left out takes the
- * series' fee, rules and usual hours (ADR 0091), and sign-up not open yet.
+ * series' fee, rules and usual hours (ADR 0074), and sign-up not open yet.
  */
 export async function createTournament(db: D1Database, given: Record<string, unknown>) {
   const { typeId, series } = await seriesOf(db, given);
@@ -950,6 +950,6 @@ export async function setClubEventCancelled(db: D1Database, id: number, cancelle
   await syncClubEvent(db, id);
 }
 
-/** A tournament's name and day, while it exists (the record, ADR 0098). */
+/** A tournament's name and day, while it exists (the record, ADR 0095). */
 export const tournamentSummary = (db: D1Database, id: number) =>
   first<{ name: string; heldOn: string }>(db, "SELECT name, held_on heldOn FROM tournaments WHERE id = ?", [id]);

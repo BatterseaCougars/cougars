@@ -1,4 +1,4 @@
-// Where something is held (ADR 0051). A place the club goes again and again is a saved venue: a name, an address
+// Where something is held (ADR 0030). A place the club goes again and again is a saved venue: a name, an address
 // and its map link, set once and picked, so moving it fixes every event that uses it. A one-off (a social) needn't
 // make one: it has its own name and the map link pasted for it. Nothing set: its series' place, if it has one.
 

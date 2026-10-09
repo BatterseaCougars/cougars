@@ -27,9 +27,9 @@ export const PLAYERS: Player[] = [];
 
 /** Who you really are (the signed-in member). */
 export let REAL_ID = 0;
-/** Dev tools are here (outside production, for whoever sets the club's settings; ADR 0077). */
+/** Dev tools are here (outside production, for whoever sets the club's settings; ADR 0027). */
 export let DEV_TOOLS = false;
-/** The role you run the app as day to day, if not your full one (ADR 0037). Read once by session.svelte.ts. */
+/** The role you run the app as day to day, if not your full one (ADR 0024). Read once by session.svelte.ts. */
 export let EVERYDAY_ROLE: number | null = null;
 
 const EMAILS = new Map<number, string | null>();
@@ -38,7 +38,7 @@ const PHONES = new Map<number, string | null>();
 /** Only yours, unless you manage members. */
 export const phoneFor = (id: number) => PHONES.get(id) ?? null;
 export const emailFor = (p: Player) => EMAILS.get(p.id) ?? "No email yet";
-/** Their bank reference (ADR 0038), or a dash: one that isn't sent is never made up, as it's what they pay with. */
+/** Their bank reference (ADR 0007), or a dash: one that isn't sent is never made up, as it's what they pay with. */
 export const referenceFor = (id: number) => REFERENCES.get(id) ?? "—";
 
 export const VENUES: Venue[] = [];
@@ -46,7 +46,7 @@ export const SERIES: TrainingSeries[] = [];
 export const SESSIONS: TrainingSession[] = [];
 export const TOURNAMENT_TYPES: TournamentType[] = [];
 export const TOURNAMENTS: Tournament[] = [];
-/** The club's agenda, from today (ADR 0062). */
+/** The club's agenda, from today (ADR 0042). */
 export const AGENDA: AgendaRow[] = [];
 /** The club's settings for the app (ADR 0072): how often live pages check for updates. */
 export const SETTINGS = { liveRefreshSeconds: 10 };
@@ -66,7 +66,7 @@ export interface MemberRow {
   status: "pending" | "active" | "inactive";
   /** Highest first: Admin, then the others, Member last. */
   roles: string[];
-  /** A Quarterly Member today, from `subscriptions` (ADR 0034); everyone else pays as they go. */
+  /** A Quarterly Member today, from `subscriptions` (ADR 0007); everyone else pays as they go. */
   plan: "Subscription" | "Pay as you go";
 }
 export const MEMBERS: MemberRow[] = [];
@@ -79,7 +79,7 @@ export interface Bootstrap {
   me: number;
   actions: Action[];
   devTools?: boolean;
-  /** The role the app opens as, when it isn't your full one (ADR 0037). */
+  /** The role the app opens as, when it isn't your full one (ADR 0024). */
   everydayRole: number | null;
   members: {
     id: number;
@@ -105,7 +105,7 @@ export interface Bootstrap {
   tournaments: Tournament[];
   clubEvents: OneOff[];
   quips: Quip[];
-  /** What's on from today (ADR 0062). */
+  /** What's on from today (ADR 0042). */
   agenda: AgendaRow[];
   settings: { liveRefreshSeconds: number };
 }

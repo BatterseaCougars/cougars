@@ -4,12 +4,12 @@ import cloudflare from "@astrojs/cloudflare";
 import sitemap from "@astrojs/sitemap";
 import { sanityProject } from "../../shared/sanity";
 
-// The Sanity project for this build: production on `release`, otherwise dev (docs/adr/0017-two-sanity-projects.md).
+// The Sanity project for this build: production on `release`, otherwise dev (docs/adr/0010-environments-and-deploys.md).
 // SITE_ENV is set by deploy.yml; a laptop and scripts/deploy-dev.sh are dev.
 const sanity = sanityProject(process.env.SITE_ENV);
 
 // Pages are prerendered at build time (content comes from Sanity; the site rebuilds
-// daily and on each release, ADR 0018). Only routes that opt out with `prerender = false`
+// daily and on each release, ADR 0004). Only routes that opt out with `prerender = false`
 // (/api/*, later /kumite/live) run on the Worker. Admin lives in apps/ops.
 export default defineConfig({
   site: process.env.SITE_URL || "https://cougars.workers.dev",

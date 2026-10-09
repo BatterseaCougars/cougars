@@ -1,0 +1,104 @@
+# 0023. Everyone signs in with an emailed code that works only in the browser that asked for it
+
+- **Status:** Accepted
+- **Date:** 2026-10-05 · updated 2026-10-09
+- **Merges:** 0008, 0035, 0093, 0094
+
+## Context
+
+Every member signs in to the team app, mostly from a phone, often from the installed PWA. They won't manage
+passwords well, and we won't pay for an identity provider ([0003](0003-free-tiers-only.md)). Two problems with a
+plain magic link:
+
+- On an iPhone an installed web app keeps its sign-in apart from every browser, and a link in an email always opens
+  a browser, so a link could never sign in the app most members use.
+- A link or a code can be forwarded, and whoever opens it is signed in.
+
+Every request already looks the session up in D1, so that an admin can sign someone out and an inactive member is
+shut out at once. With that lookup, a signed cookie adds nothing: the row decides.
+
+Local dev needs a way to sign in when nothing is emailed from a laptop, and that way must never work on a deployed
+worker.
+
+## Decision
+
+**Sign-in**
+
+- A member enters their email. The Worker sets a private **nonce cookie** on that browser and emails a **6-digit
+  code**, and nothing else: no link. The code signs in only alongside the nonce cookie, so a forwarded email signs no
+  one in ("open this on the device you signed in from").
+- Codes are sent only to the email on the member's own account. An unknown email gets the same reply, so the form
+  doesn't reveal who's a member.
+- Codes are stored hashed (SHA-256), are single-use and expire after 15 minutes.
+- **One browser, one member, any of its codes.** A browser keeps its nonce while it asks again for the same member,
+  so any code it asked for in the last 15 minutes works there, and using one spends all of them. Asking for a
+  _different_ member's code starts a fresh nonce, and the earlier member's codes die with the old one. So every live
+  code under a nonce is one member's, and every guess and every cap below is that member's, whoever is typing. Two
+  people signing in one after the other on a shared browser each get their own code.
+- **Guesses are counted before they're checked**, in one statement, and a code is spent the same way, so requests
+  sent all at once can't get extra tries or two sessions. The limits:
+  - 5 wrong codes per code;
+  - 5 codes an hour and 10 a day per member;
+  - 20 wrong codes a day per member, after which no codes are sent or accepted until the day has passed (logged as
+    `sign_in.capped`);
+  - per address, best effort: 10 code requests in 10 minutes and 5 requests to join an hour;
+  - asking to join stops while 50 people are waiting.
+- New people **request access**; an admin approves them ([0024](0024-action-based-authorization.md)).
+- The email goes through the Gmail API (`shared/email.ts`, [0027](0027-email-through-gmail-api.md)).
+- **Sign in with Google** (OAuth with PKCE, for a member whose verified Google email matches) is planned as a
+  shortcut. It isn't built.
+
+**Sessions**
+
+- The session cookie holds a **random 256-bit token**. D1 keeps only its SHA-256 hash in `auth_sessions`, as it does
+  for the nonce and the code. There is no signing key and no `TEAM_SESSION_SECRET`.
+- The session lasts 180 days. Its expiry moves on at most once a day while it's used, so most requests read and don't
+  write. Revoking the row, or making the member inactive, ends it on the next request.
+- Cookies: `cougars_session` and `cougars_nonce` (15 minutes), both `HttpOnly`, `SameSite=Lax` and `Path=/`. On https
+  they're `Secure` and named with the `__Host-` prefix, so no sibling subdomain can set or shadow them.
+- Sign-ins, sign-outs, capped sign-ins and requests to join go in `audit_log` ([0095](0095-audit-log.md)).
+
+**Local dev**
+
+- Local dev (`vite`) signs in the same way. Two switches exist for your own machine: `TEAM_ENV=local` returns the
+  code in `/api/auth/start`'s reply (nothing is emailed from a laptop), and `TEAM_AUTO_ADMIN=1` in the shell makes
+  any request without a session the first admin, for screenshots and tests. Only `vite`'s serve config sets them; a
+  build carries neither, and `scripts/ci/target.mjs` writes only `SITE_ENV`.
+- **Both switches also need a private address.** `localHere(env, request)` (`worker/auth.ts`) is true only when
+  `TEAM_ENV` is `local` _and_ the request's host is loopback, a private range (10/8, 172.16/12, 192.168/16),
+  `localhost`, or a `.test` name (reserved, never public; the tests' host). A deployed worker is reached by its
+  public name, so on it the switches do nothing even if set. A phone on the house wifi still reaches the laptop by
+  its LAN address.
+- **A test reads `wrangler.jsonc` and `target.mjs`** and fails if either names a switch
+  (`scripts/team-app-config.test.mjs`).
+- **The deploy's smoke test** asks the live worker for `/api/bootstrap` with no session and fails unless it's 401.
+
+## Consequences
+
+- One way to sign in, the same in the PWA, in a browser and in any future store app: copy the code from the email.
+- Sign-in depends on email delivery.
+- No session secret to create, rotate and document.
+- A stolen database can't sign anyone in, because it holds only hashes. A stolen cookie works until the session is
+  revoked or the member is made inactive, the same as with a signed cookie.
+- Each API request makes one indexed D1 read for the session, well inside the free tier for a club.
+- The limits mean what they say: 5 wrong per code, 20 a day per member. The odds of guessing are negligible (a
+  million codes, 15 minutes, ten codes a day).
+- For a deploy to open up the local switches, three independent things now have to go wrong: the config, the config
+  test and the smoke test.
+- A tunnel to your laptop (a public name onto a local server) doesn't get the code on screen or the auto admin; sign
+  in from the laptop's own address instead.
+- If Google sign-in is built, it adds a Google OAuth client to the secrets and a dependency on Google for that
+  shortcut.
+
+## History
+
+- 2026-10-05: Admins log in with a one-time magic link to an allow-listed email, with a signed session cookie (was
+  0008).
+- 2026-10-06: Every member signs in, with a device-bound code or link, or Google; the session an HMAC-signed cookie
+  backed by `auth_sessions` (was 0023).
+- 2026-10-06: The session becomes a hashed random token with no signing key; the link is dropped because it can't
+  reach the installed iPhone app; guess limits counted before checking; local dev switches added (was 0035).
+- 2026-10-09: A security review found nothing stopped the local switches working on a deployed worker; they now need
+  a private address, a config test and a smoke test (was 0093).
+- 2026-10-09: The same review found one browser holding codes for two members let guesses count against the wrong
+  member; asking for another member's code now starts a fresh nonce (was 0094).

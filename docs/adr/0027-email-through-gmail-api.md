@@ -1,43 +1,74 @@
-# 0027. Email goes through the Gmail API, and only production reaches real people
+# 0027. Email goes through the Gmail API; outside production it reaches only the safe inbox, admins and a dev list
 
 - **Status:** Accepted
-- **Date:** 2026-10-06
+- **Date:** 2026-10-06 · updated 2026-10-09
+- **Merges:** 0077
 
 ## Context
 
-The club should hear about each "Try a session" enquiry by email. The club can't spend money and has no Google
-Workspace: its inbox is the consumer account batterseahockey@gmail.com, and until 2026-10-06 there was no domain.
-The free options (researched 2026-10-06): Cloudflare Email Routing only sends to verified addresses; Resend, Brevo
-and MailChannels need a domain; Cloudflare's outbound Email Service needs Workers Paid; SMTP from Workers was
-unreliable for Gwenda, who moved to the Gmail API.
+The club should hear about each "Try a session" enquiry by email, and the team app emails sign-in codes, invites and
+usage warnings. The club can't spend money and has no Google Workspace: its inbox is the consumer account
+batterseahockey@gmail.com, and until 2026-10-06 there was no domain. The free options (researched 2026-10-06):
+Cloudflare Email Routing only sends to verified addresses; Resend, Brevo and MailChannels need a domain; Cloudflare's
+outbound Email Service needs Workers Paid; SMTP from Workers was unreliable for Gwenda, who moved to the Gmail API.
 
-Gwenda (gwenda-hackney/ark) also learned that a non-production environment must never email a real person, and
-that the environment check must fail safe.
+Gwenda (gwenda-hackney/ark) also learned that a non-production environment must never email a real person, and that
+the environment check must fail safe. But if every email on dev goes to one safe inbox, nobody can sign in on dev
+with their own inbox, and changing a secret to fix that needs a deploy each time.
 
 ## Decision
 
-- Email is sent with the **Gmail API** over HTTPS (`shared/email.ts`, for the website and the team app), authorised
-  by an **OAuth refresh token** with the send-only scope, from the club's Google Cloud project _Battersea Cougars_
-  (owned by the developer account cougars.dev). Setup and the four secrets: [README.md#gmail](../../README.md#gmail).
+**Sending**
+
+- Email is sent with the **Gmail API** over HTTPS (`shared/email.ts`, for the website and the team app), authorised by
+  an **OAuth refresh token** with the send-only scope, from the club's Google Cloud project _Battersea Cougars_ (owned
+  by the developer account cougars.dev). Setup and the four secrets: [README.md#gmail](../../README.md#gmail). Gmail
+  sits behind a circuit breaker ([0055](0055-degrade-instead-of-break.md)).
 - **Two sending accounts.** Production sends as batterseahockey@gmail.com; dev sends as cougars.dev@gmail.com.
-  `scripts/gmail-auth.mjs` refuses the club account for dev and any other account for production, and the club's
-  token lives only in the `cougars` Secrets Manager project.
-- **Only production reaches real people** (`safeMail`, run on every send):
-  - production means `SITE_ENV` is exactly `production`, set only by `target.mjs` on `release`; `wrangler.jsonc`
-    defaults to `dev`;
-  - anywhere else, every recipient is replaced by `MAIL_SAFE_TO`, or the sending account itself (dev sends to
-    cougars.dev), with the real recipients in the subject and `X-Cougars-Original-To`;
-  - the club's inbox is refused as the safe address, and as the sending account, outside production;
-  - with no Gmail secrets (a laptop, tests) the email is logged, not sent.
-- The enquiry is saved first; the email goes out after the response (`waitUntil`). A failed email is logged and
-  never loses the enquiry.
+  `scripts/gmail-auth.mjs` refuses the club account for dev and any other account for production, and the club's token
+  lives only in the `cougars` Secrets Manager project ([0002](0002-secrets-in-bitwarden.md)).
+- The enquiry is saved first; the email goes out after the response (`waitUntil`). A failed email is logged and never
+  loses the enquiry.
+
+**Who receives it** (`safeMail`, run on every send)
+
+- Production means `SITE_ENV` is exactly `production`, set only by `target.mjs` on `release`; `wrangler.jsonc`
+  defaults to `dev`, and unset is not production ([0010](0010-environments-and-deploys.md)). In production real
+  recipients always get their email.
+- Anywhere else, an email goes to its real recipients only when **every one** of them is allowed. Otherwise the whole
+  email goes to one safe address: `MAIL_SAFE_TO`, or the sending account itself (dev sends to cougars.dev). Either way
+  the subject names the environment and the real recipients, and `X-Cougars-Original-To` carries them.
+- Allowed outside production, for the team app's emails only: every active Admin (so they can sign in and get to Dev
+  tools), plus the addresses in `dev_mail_recipients`. The website's emails still go to the safe inbox only.
+- The club's inbox is never allowed, and is refused as the safe address and as the sending account outside
+  production.
+- With no Gmail secrets (a laptop, tests) the email is logged, not sent.
+
+**Dev tools**
+
+- **Settings → Dev tools** exists only outside production, for whoever holds `manage:Settings`: add and take off
+  addresses on the list; it takes effect at once, with no deploy. The bootstrap says whether it's there (`devTools`).
+  Changes are on the audit log as `dev_mail.changed` ([0095](0095-audit-log.md)).
+- **In production none of this exists:** the routes answer 404 and the list is never read.
 
 ## Consequences
 
 - Free, about 500 emails a day, no domain needed, and replies go from an address members know.
 - The app is unverified (Google warns on the consent screen), which is fine for two accounts. It must stay
   **In production** in Google Auth Platform: in Testing, tokens expire after 7 days.
-- A password change on a sending account, removing its access, or 6 months unused cancels its token: emails
-  then fail (logged as `enquiry.email_failed`) until `gmail-auth.mjs` is re-run. Enquiries are still saved.
+- A password change on a sending account, removing its access, or 6 months unused cancels its token: emails then fail
+  (logged, e.g. `enquiry.email_failed`) until `gmail-auth.mjs` is re-run. Enquiries are still saved. Sign-in on that
+  environment stops until then ([0023](0023-sign-in-and-sessions.md)).
+- An admin on dev can make dev email a real person, by adding them. That's the point; it's limited to
+  `manage:Settings`.
+- Dev's data becomes production's at launch ([0050](0050-schema-and-seed-until-launch.md)); the list comes with it but
+  is ignored there.
 - Once there's a domain, the club notification could move to Cloudflare Email Routing and auto-replies to Resend,
   behind the same `sendMail`.
+
+## History
+
+- 2026-10-06: Email goes through the Gmail API from two accounts, and outside production every recipient is replaced
+  by one safe inbox (was 0027).
+- 2026-10-08: Outside production, active admins and a list kept on Dev tools get their own team app email, so people
+  can sign in on dev without a deploy (was 0077).

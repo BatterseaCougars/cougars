@@ -2,7 +2,7 @@
 // and the free plan's daily limits reset at 00:00 UTC. Admins see today's use on the Usage page; an hourly check
 // (index.ts `scheduled`) emails them once a day when anything passes 80%, before the app stops working. The free plan
 // also stops any request that computes for more than 10 ms; the page shows each Worker's CPU time against that, and
-// the check emails when a request was stopped (ADR 0063).
+// the check emails when a request was stopped (ADR 0059).
 // Read with a read-only token (Account Analytics: Read), CLOUDFLARE_ANALYTICS_TOKEN, never the deploy token.
 import { all, run } from "../../../shared/d1";
 import { sendMail, type Mail } from "../../../shared/email";
@@ -36,7 +36,7 @@ export interface Usage {
   cpu?: { limitMs: number; workers: WorkerCpu[] };
 }
 
-/** The Workers free plan's daily limits (docs/roadmap.md); the live hub's (ADR 0096) are Durable Objects' */
+/** The Workers free plan's daily limits (docs/roadmap.md); the live hub's (ADR 0072) are Durable Objects' */
 const FREE = { requests: 100_000, rowsRead: 5_000_000, rowsWritten: 100_000, liveRequests: 100_000, liveTime: 13_000 };
 const LABELS: Record<Metric["id"], string> = {
   requests: "Worker requests",

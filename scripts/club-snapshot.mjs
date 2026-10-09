@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 // What the website takes from the club's D1 at build time (ADR 0043, ADR 0044), each into its own gitignored file under
-// apps/web/src/data/ (the roster is personal data, ADR 0033). Run before `astro dev` and `astro build` (apps/web's
+// apps/web/src/data/ (the roster is personal data, ADR 0029). Run before `astro dev` and `astro build` (apps/web's
 // predev/prebuild). Only what the website shows leaves the database.
 //   roster.local.json   the active Cougars and their record (lib/roster-sql.mjs)
-//   kumite.local.json   the Kumite's awards, and the next one's date and place (the club's agenda, ADR 0062)
+//   kumite.local.json   the Kumite's awards, and the next one's date and place (the club's agenda, ADR 0042)
 //
 //   node scripts/club-snapshot.mjs                   local D1 (apps/web/.wrangler)
 //   CLUB_SNAPSHOT_ENV=dev|production node ...       that environment's D1, over the API (CI: CLOUDFLARE_API_TOKEN
@@ -17,8 +17,8 @@ import { ROSTER_SQL } from "./lib/roster-sql.mjs";
 const SNAPSHOTS = {
   roster: { sql: ROSTER_SQL, shape: (rows) => rows, say: (r) => `${r.length} Cougars` },
   kumite: {
-    // The series' awards, and the next public Kumite from the club's agenda (ADR 0062) with that tournament's own
-    // awards (ADR 0049): when, where, TBC or a season
+    // The series' awards, and the next public Kumite from the club's agenda (ADR 0042) with that tournament's own
+    // awards (ADR 0030): when, where, TBC or a season
     sql: `SELECT y.awards seriesAwards,
             (SELECT json_object('startsAt', a.starts_at, 'venue', a.venue, 'dateTbc', a.date_tbc, 'season', a.season,
                                 'awards', t.awards)

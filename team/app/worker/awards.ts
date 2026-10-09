@@ -1,4 +1,4 @@
-// Who won a tournament's awards (ADR 0073). The awards themselves are the tournament's (copied from its series, ADR
+// Who won a tournament's awards (ADR 0044). The awards themselves are the tournament's (copied from its series, ADR
 // 0044, 0049); this is who took each one home: a team (Champions) or a player on one of its teams (Top scorer, Best
 // goalie). An admin sets the whole list at once, on the tournament's page; everyone sees it with the tournament.
 import { all, run } from "../../../shared/d1";

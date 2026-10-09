@@ -1,8 +1,8 @@
 <script lang="ts">
   // A captains' draft (ADR 0060). An admin opens it on the night; the captains take turns, in snake order, picking
   // from the members who said they're in (captains are in automatically, never picked). The captain on the clock picks
-  // on their own phone: Pick marks a player, End turn sends it (ADR 0068). Whoever runs the draft can pick for them,
-  // undo the last pick, close it, reopen it (ADR 0066). A team takes one goalie (ADR 0067). Teams are edited on the
+  // on their own phone: Pick marks a player, End turn sends it (ADR 0060). Whoever runs the draft can pick for them,
+  // undo the last pick, close it, reopen it (ADR 0060). A team takes one goalie (ADR 0060). Teams are edited on the
   // Teams page, not here.
   //
   // Laid out as a draft room: a ticker of picks across the top (the one on the clock brought forward with a badge),
@@ -93,7 +93,7 @@
   const untilMine = $derived(myTeam < 0 || turnIn(myTeam) === Infinity ? -1 : turnIn(myTeam));
   const teamName = (i: number) => nameOfTeam(teams[i], teams, (id) => (id ? byId(id) : undefined));
 
-  // Positions: what a team has, counting its captain; one goalie a team (ADR 0067)
+  // Positions: what a team has, counting its captain; one goalie a team (ADR 0060)
   const membersOf = (i: number) =>
     [teams[i].captainMemberId, ...teams[i].players.map((p) => p.memberId)].flatMap((id) =>
       id ? (byId(id) ?? []) : [],
@@ -236,7 +236,7 @@
     await closeDraft(tournament.id, pool.length > 0);
     confirmLeaveOut = false;
   }
-  // Start again: once there's a pick to take back. The fixtures stay (ADR 0066). Asked first, as it can't be undone
+  // Start again: once there's a pick to take back. The fixtures stay (ADR 0060). Asked first, as it can't be undone
   const resettable = $derived(made > 0);
   let confirmReset = $state(false);
   async function reset() {
@@ -249,9 +249,9 @@
     if (tournament && (await makeFixtures(tournament.id))) navigate(`/tournaments/${type.slug}/schedule`);
   }
 
-  // While it's open, the other captains' picks show up as they're made, from the hub's stream (ADR 0096), with a
+  // While it's open, the other captains' picks show up as they're made, from the hub's stream (ADR 0072), with a
   // check on the admins' beat as the fallback (ADR 0072). A check is a Worker request and a few small queries
-  // (session, roles, data version); a room of phones on one wifi stays inside the per-address limit (ADR 0056)
+  // (session, roles, data version); a room of phones on one wifi stays inside the per-address limit (ADR 0055)
   $effect(() => {
     if (open) return checkForUpdates();
   });
@@ -482,7 +482,7 @@
       {/if}
       <div class="tools">
         {#if open}
-          <!-- Picks show up as they're made while the hub's stream is open; else on the admins' beat (ADR 0096) -->
+          <!-- Picks show up as they're made while the hub's stream is open; else on the admins' beat (ADR 0072) -->
           <span
             class="updates hint"
             title={liveFeed.on

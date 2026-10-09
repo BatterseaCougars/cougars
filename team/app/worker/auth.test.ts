@@ -155,7 +155,7 @@ describe("signing in with the code", () => {
   });
 });
 
-describe("one member a browser at a time (ADR 0094)", () => {
+describe("one member a browser at a time (ADR 0023)", () => {
   it("asking for another account's code ends the first account's codes in that browser", async () => {
     const shared = w.browser();
     const reg = (await w.ask(shared, "reg@example.com")).devCode;
@@ -192,7 +192,7 @@ describe("signing out and being let go", () => {
     expect((await w.browser().call("GET", "/api/bootstrap")).status).toBe(401);
   });
 
-  it("gives nothing local on a public address, even to a build that says it's local by mistake (ADR 0093)", async () => {
+  it("gives nothing local on a public address, even to a build that says it's local by mistake (ADR 0023)", async () => {
     Object.assign(env, { TEAM_ENV: "local", TEAM_AUTO_ADMIN: "1", SITE_ENV: "dev", MAIL_SAFE_TO: "dev@example.com" });
     const deployed = { host: "https://cougars-team.example.workers.dev" };
     expect((await w.browser().call("GET", "/api/bootstrap", undefined, deployed)).status).toBe(401);

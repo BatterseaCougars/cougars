@@ -1,16 +1,19 @@
-# 0084. The Sticker colour scheme
+# 0084. The Sticker colour scheme: one yellow main button, red for the brand, tokens for everything
 
 - **Status:** Accepted
-- **Date:** 2026-10-08
-- **Supersedes:** [0083](0083-main-button-is-vcr-blue.md)
+- **Date:** 2026-10-08 · updated 2026-10-09
+- **Merges:** 0083
 
 ## Context
 
 The team app's colours had grown one at a time. Red was the brand, "live", danger, the focus ring and a team colour;
-green was in, paid and a team colour; amber was heads-up and a team colour; blue had just become the main button and
-was a team colour too. The six schedule and team tones were picked by eye at different weights, about thirty literal
-colours sat outside the tokens (the trading card, the Draft, Game), and three calls to action were red fills. The
-VCR-blue main button (ADR 0083) stood out but looked like a web framework's default.
+green was in, paid and a team colour; amber was heads-up and a team colour. The six schedule and team tones were picked
+by eye at different weights, about thirty literal colours sat outside the tokens (the trading card, the Draft, Game),
+and three calls to action were red fills.
+
+The main button (`.btn.primary`) had been through a red fill (lost among the brand's red titles, read as an error), a
+cream fill (glared on the dark page), a cream edge on a faint cream wash (read as grey, not prominent enough) and solid
+VCR blue (stood out, but looked like a web framework's default). It needs a colour of its own that means nothing else.
 
 Three whole schemes were compared on the same screen in the brand document (Cougars Brand): Sticker, Signal (indigo)
 and One red.
@@ -23,13 +26,18 @@ The **Sticker** scheme, one system the whole app follows:
   `--fg-body`, `--fg-muted`, `--fg-subtle`), so greys and words belong together.
 - **Cougar red** (`--red`, `--red-hot` for words) is the brand: the logo, the title slash, section titles, the switch,
   live, and danger. Red fills only an armed "are you sure" and a count on the dock.
-- **One action colour**: the website's sticker yellow (`--action: #ffd60a`) with carbon words (13.8:1), for the main
-  button only: one per group, nothing else. The calls to action that were red fills (Watch a live game, Go to the
-  draft on your turn, End turn) are main buttons.
+- **One action colour**: the website's sticker yellow (`--action: #ffd60a`, `--action-hover: #ffe03d`) with carbon
+  words (13.8:1), for the main button only: one per group, nothing else. It doesn't mark state, links or anything
+  else, so it always means "tap here". Every main-button look uses it: `.btn.primary`, the one in a bar, the floating
+  action button (Fab) and the Draft's Pick when pointed at. The calls to action that were red fills (Watch a live game,
+  Go to the draft on your turn, End turn) are main buttons.
+- **A disabled main or outline button gives up its colours**: a faint edge and `--fg-subtle` words, so it never seems
+  live (`.btn:disabled` alone sat above the kinds at the same weight).
 - **Three statuses, one job each, always with a word**: success green (in, paid), heads-up orange (`--caution`, so
   yellow means only "tap here"), live/danger red.
-- **Six tones at one lightness** (OKLCH 0.74) for trainings, tournaments and teams: crests, chips and dots, never a
-  card fill. The red tone is coral, so a team never looks live.
+- **Six tones at one lightness** (OKLCH 0.74) for trainings, tournaments and teams: crests, chips and dots, never a card
+  fill. The red tone is coral, so a team never looks live.
+- `--primary` (cream, the logo's white half) is ink on red only: the kanji seal and the tournament stamp.
 - **The trading card** keeps its printed colours as tokens (`--card-stock`, `--card-ink`, `--card-band`).
 - Colours live in `app.css` tokens; a component doesn't type a colour of its own.
 
@@ -37,4 +45,12 @@ The **Sticker** scheme, one system the whole app follows:
 
 - One look across the app and the brand document; a new screen picks from the tokens.
 - Yellow is loud, so the one-per-group rule matters: two yellow buttons in a row is a bug.
-- `--amber*` is now `--caution*`. The brand document holds the same values; change both together.
+- `--amber*` is now `--caution*`.
+- The brand document (Cougars Brand) holds the same values; change both together.
+
+## History
+
+- 2026-10-08: The main button became solid VCR blue (`--action: #1f5eff`, from the website's 404 screen), after red,
+  cream and cream-edge versions; disabled main buttons lost their look; cream kept as ink on red (was 0083).
+- 2026-10-08: The Sticker scheme replaced it: the main button became sticker yellow, the whole palette moved to one
+  warm ramp, one red, three statuses and six tones as tokens, and amber became caution (was 0084).

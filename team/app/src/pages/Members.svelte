@@ -31,7 +31,7 @@
   // One column per thing an admin checks, each as wide as what's in it (DataGrid)
   const columns = $derived<ColDef<MemberRow>[]>([
     { headerName: "Name", valueGetter: (p) => p.data?.player.name, pinned: "left", cellClass: "name" },
-    // What the app calls them (ADR 0085), when it isn't their full name
+    // What the app calls them (ADR 0043), when it isn't their full name
     {
       headerName: "Goes by",
       valueGetter: (p) => (p.data && goesBy(p.data.player) !== p.data.player.name ? goesBy(p.data.player) : ""),

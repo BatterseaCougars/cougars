@@ -32,7 +32,7 @@ const kumite = all.find((e) => e.type === "kumite");
 const slot = s.training[0];
 const day = slot?.day ?? "Friday";
 const players = (await getPlayers()).slice(0, 5);
-// As of this build; VideoReel then swaps in the live ones (ADR 0019)
+// As of this build; VideoReel then swaps in the live ones (ADR 0016)
 const videos = await getVideos();
 // The newest photos across albums as of this build; PhotoStrip then fetches the live ones
 const photos = (await getAlbums()).flatMap((a) => a.photos).slice(0, 12);

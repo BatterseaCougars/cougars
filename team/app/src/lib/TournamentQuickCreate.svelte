@@ -10,7 +10,7 @@
     draftOn: string;
     captains: number[];
   }
-  /** A new one's answers: its series' usual hours (ADR 0091), sign-up opening today. */
+  /** A new one's answers: its series' usual hours (ADR 0074), sign-up opening today. */
   export const blankQuick = (series?: { defaultStartTime: string; defaultEndTime: string }): QuickValues => ({
     heldOn: "",
     dateConfirmed: true,
@@ -23,8 +23,8 @@
 </script>
 
 <script lang="ts">
-  // The next date in a series, as a few questions (ADR 0087): when it is (its day, and its hours, the series' usual
-  // ones filled in, ADR 0091), when sign-up opens (ADR 0089), when the draft is, who the captains are. Only the day
+  // The next date in a series, as a few questions (ADR 0074): when it is (its day, and its hours, the series' usual
+  // ones filled in, ADR 0074), when sign-up opens (ADR 0074), when the draft is, who the captains are. Only the day
   // is needed; the draft's day shows as TBC and the captains as "to be named" until they're set. The rest (place,
   // fee, rules, awards) comes from the series; Advanced opens the full editor with these filled in.
   import TimeSelect from "./TimeSelect.svelte";

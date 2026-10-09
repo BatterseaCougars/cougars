@@ -2,7 +2,7 @@
 
 Data D1 starts with. `club.sql` is public, so it only seeds things that aren't about
 people (roles, Friday Training, the Kumite). Anything personal comes from here, and never from this repo
-([ADR 0033](../../docs/adr/0033-personal-data-out-of-the-repo.md)).
+([ADR 0029](../../docs/adr/0029-personal-data.md)).
 
 ## The team roster
 

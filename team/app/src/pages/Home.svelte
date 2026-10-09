@@ -50,7 +50,7 @@
   const later = $derived(
     others.map((o) => sessionBookable(o.session)).sort((x, y) => x.startsAt.localeCompare(y.startsAt)),
   );
-  // For you (ADR 0060, 0062): a captain's draft, the draft an admin runs, a sign-up about to close you haven't answered
+  // For you (ADR 0060, 0042): a captain's draft, the draft an admin runs, a sign-up about to close you haven't answered
   type Nudge = { key: string; href?: string; text: string; sub: string; hot: boolean; icon?: "draft" | "teams" };
   const nth = (n: number) => `${n}${n === 1 ? "st" : n === 2 ? "nd" : n === 3 ? "rd" : "th"}`;
   const today = londonToday();
@@ -131,7 +131,7 @@
       ];
     }),
   );
-  // Everyone else (ADR 0070): the draft is the captains' business, so a member hears that it's on, with nothing to
+  // Everyone else (ADR 0060): the draft is the captains' business, so a member hears that it's on, with nothing to
   // open; once it's closed, the teams are out, and that's a link to them
   const draftNews = $derived(
     can(perms, "run:Draft")

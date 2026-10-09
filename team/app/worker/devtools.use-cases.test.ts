@@ -1,4 +1,4 @@
-// Dev tools (ADR 0077): outside production, an admin keeps a list of addresses that get their own email (a sign-in
+// Dev tools (ADR 0027): outside production, an admin keeps a list of addresses that get their own email (a sign-in
 // code, say), so they can sign in on dev without a deploy. Everyone else's email still goes to the safe inbox. In
 // production there's no such thing. Driven through the real Worker handlers (ADR 0031).
 import { beforeEach, describe, expect, it, vi } from "vitest";

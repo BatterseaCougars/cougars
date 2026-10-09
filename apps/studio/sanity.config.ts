@@ -5,7 +5,7 @@ import { sanityProject } from "../../shared/sanity";
 import { schemaTypes } from "./schemaTypes";
 import { structure, SINGLETONS } from "./structure";
 
-// One project per environment (docs/adr/0017-two-sanity-projects.md). The hosted Studio is built with
+// One project per environment (docs/adr/0010-environments-and-deploys.md). The hosted Studio is built with
 // SANITY_STUDIO_SITE_ENV=production (deploy.yml); a local Studio is always the dev project.
 const live = process.env.SANITY_STUDIO_SITE_ENV === "production";
 const { projectId, dataset } = sanityProject(live ? "production" : "dev");

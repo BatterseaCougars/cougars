@@ -24,9 +24,13 @@ as soon as a time, venue or event changes, and the team manager shouldn't have t
 
 ## Consequences
 
-- A new event or a changed session time gets a matching card at the next build (ADR 0018), with nothing to upload.
+- A new event or a changed session time gets a matching card at the next build (ADR 0004), with nothing to upload.
 - Server-rendered pages (/videos, /photos) use the prebuilt section cards, so they can't have per-request cards. We
   don't need those.
 - About 1 second of build time per 10 cards, and roughly 80–100 KB per card in the static assets.
 - The two TTF files (OFL, licences beside them in `src/assets/fonts/`) must stay in step with the WOFF2 files if a
   font ever changes.
+
+## History
+
+- 2026-10-06: Share pictures are drawn at build time.

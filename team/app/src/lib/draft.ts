@@ -1,4 +1,4 @@
-// A captains' draft's turn order (ADR 0052), shared by the Draft page and the Worker: snake order, so the teams
+// A captains' draft's turn order (ADR 0030), shared by the Draft page and the Worker: snake order, so the teams
 // pick 1, 2, … n, then n, … 2, 1, and round again.
 
 /** A team has at least this many players, its captain included, so a draft only opens with enough to pick from. */

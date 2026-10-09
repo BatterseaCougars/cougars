@@ -46,7 +46,7 @@
   const list = (v: unknown) => (Array.isArray(v) && v.length ? v.map(label).join(", ") : "nothing");
   const str = (v: unknown) => (typeof v === "string" && v ? v : "none");
 
-  /** The entry in plain words: who, then what. Changes carry what they were (`from`) and are (`to`), ADR 0098. */
+  /** The entry in plain words: who, then what. Changes carry what they were (`from`) and are (`to`), ADR 0095. */
   function said(e: Entry): string {
     const d = e.detail;
     const who = e.by?.name ?? "Someone";

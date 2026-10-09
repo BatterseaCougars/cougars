@@ -1,4 +1,4 @@
-// A tournament's awards from its data (ADR 0073): an admin confirms them, they don't pick them. By the award's name:
+// A tournament's awards from its data (ADR 0044): an admin confirms them, they don't pick them. By the award's name:
 //   Champions: the champion team (lib/fixtures.ts champion).
 //   Top scorer: most goals, then most assists; still level, joint winners.
 //   Best goalie: the goalie (position G) whose team let in fewest goals a game.

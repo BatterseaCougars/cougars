@@ -2,7 +2,7 @@
 // parts of the club it touched (`changed`), which replace those parts of the app's working copy
 // (demo/store.svelte.ts), so what you see is what's stored. Screens change the copy at once for a quick answer, then
 // the reply brings back what the server decided (the waitlist, say). The whole club is read when the app opens, when
-// it comes back into view (only if something changed, ADR 0054), and after a failed change.
+// it comes back into view (only if something changed, ADR 0053), and after a failed change.
 import type { MemberRow, Role } from "../demo/data";
 import {
   applySlices,
@@ -83,9 +83,9 @@ export async function refresh() {
   copyAll();
 }
 
-/** Anyone else's changes, if there are any: a small check (no club data read) when there aren't (ADR 0054). */
+/** Anyone else's changes, if there are any: a small check (no club data read) when there aren't (ADR 0053). */
 export async function refreshIfChanged() {
-  // A background check: skipped while the brake says wait (ADR 0058)
+  // A background check: skipped while the brake says wait (ADR 0055)
   if (!brake.mayCheck()) return;
   const b = await bootstrapIfChanged();
   if (!b) return;
@@ -163,9 +163,9 @@ export const resetSession = (sessionId: number) =>
 /** Your own phone, position and bio. */
 export const saveProfile = (p: { position: Position; phone: string; bio: string; webName: string }) =>
   save(() => api("PUT", "/api/me", p));
-/** The role the app opens as (ADR 0037); null for your full role. */
+/** The role the app opens as (ADR 0024); null for your full role. */
 export const saveEverydayRole = (roleId: number | null) => save(() => api("PUT", "/api/me/everyday-role", { roleId }));
-/** Make someone a Quarterly Member from today, or end it (ADR 0034). */
+/** Make someone a Quarterly Member from today, or end it (ADR 0007). */
 export const setQuarterly = (memberId: number, quarterly: boolean) =>
   save(() => api("POST", `/api/members/${memberId}/quarterly`, { quarterly }));
 /** A member's attendance for a year, for an admin: every session held so far, answered or not. */
@@ -234,7 +234,7 @@ export const addRole = (name: string) =>
     "Role added",
   );
 
-/** A saved venue (ADR 0051). */
+/** A saved venue (ADR 0030). */
 const venueBody = (v: Venue) => ({ name: v.name, address: v.address, mapUrl: v.mapUrl, active: v.active });
 export const createVenue = (v: Venue) =>
   save(() => api<{ id: number }>("POST", "/api/venues", venueBody(v)), "Venue saved");
@@ -328,7 +328,7 @@ export const draftPick = (tournamentId: number, memberId: number) =>
 /** Whoever's running the draft takes back the last pick. */
 export const undoDraftPick = (tournamentId: number) =>
   save(() => api("DELETE", `/api/tournaments/${tournamentId}/draft/picks/last`), "Pick undone");
-/** Whoever runs the draft starts it again: the picks go; sign-ups, captains and fixtures stay (ADR 0066). */
+/** Whoever runs the draft starts it again: the picks go; sign-ups, captains and fixtures stay (ADR 0060). */
 export const resetDraft = (tournamentId: number) =>
   save(() => api("POST", `/api/tournaments/${tournamentId}/draft/reset`, {}), "The draft is reset");
 /** An admin puts a member on a team directly (a replacement): moved from another, or put in the tournament. */
@@ -352,7 +352,7 @@ export const makeFixtures = (tournamentId: number) =>
 /** A game's final score; the last group result fills the playoffs. */
 export const scoreGame = (tournamentId: number, gameId: number, homeGoals: number, awayGoals: number) =>
   save(() => api("PUT", `/api/tournaments/${tournamentId}/games/${gameId}`, { homeGoals, awayGoals }), "Result saved");
-// Scoring a game as it's played (ADR 0071): whoever holds the scoresheet
+// Scoring a game as it's played (ADR 0061): whoever holds the scoresheet
 const gamePath = (tournamentId: number, gameId: number) => `/api/tournaments/${tournamentId}/games/${gameId}`;
 /** Start scoring (take the scoresheet), or let it go (whoever holds it, or an admin). */
 export const holdScoresheet = (tournamentId: number, gameId: number, action: "claim" | "release") =>
@@ -363,7 +363,7 @@ export const holdScoresheet = (tournamentId: number, gameId: number, action: "cl
 /** The clock: start (or start again), pause, or full time (the score's the result). */
 export const clockGame = (tournamentId: number, gameId: number, action: "start" | "pause" | "end") =>
   save(() => api("POST", `${gamePath(tournamentId, gameId)}/clock`, { action }), action === "end" ? "Full time" : "");
-/** Who won a tournament's awards, the whole list (ADR 0073). */
+/** Who won a tournament's awards, the whole list (ADR 0044). */
 export const setWinners = (
   tournamentId: number,
   winners: { award: string; teamId: number | null; memberId: number | null }[],

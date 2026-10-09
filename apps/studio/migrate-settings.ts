@@ -3,7 +3,7 @@
 // Page wording (headline, about text) moved into the website code and is not copied.
 //
 // It never overwrites: documents that already exist are left alone. Without --commit it only prints the plan.
-// The dev project unless SANITY_STUDIO_SITE_ENV=production (docs/adr/0017-two-sanity-projects.md):
+// The dev project unless SANITY_STUDIO_SITE_ENV=production (docs/adr/0010-environments-and-deploys.md):
 //   npm run migrate-settings -w @cougars/studio              # dry run
 //   npm run migrate-settings -w @cougars/studio -- --commit  # write
 // Then check the results in the Studio, and delete siteSettings by hand once the site looks right.

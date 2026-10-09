@@ -31,7 +31,7 @@
     padding: 0 var(--s-5) 0 var(--s-4);
     border: 0;
     border-radius: var(--r-lg);
-    /* The main button, floating: solid VCR blue (ADR 0083) */
+    /* The main button, floating: solid VCR blue (ADR 0084) */
     background: var(--action);
     color: var(--on-action);
     font-weight: 600;

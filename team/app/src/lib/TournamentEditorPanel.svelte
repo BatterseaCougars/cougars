@@ -1,7 +1,7 @@
 <script lang="ts" module>
   // Which tournament the editor panel has open, from wherever an admin is: Settings → Tournaments, or a series' own
   // pages (Games, Standings, Draft), where "New date", "Edit" and "Add the captains" open it in place. A new date in a
-  // series opens on its three questions (ADR 0087); Advanced opens the full editor with the answers filled in.
+  // series opens on its three questions (ADR 0074); Advanced opens the full editor with the answers filled in.
   type Tab = "details" | "rules" | "signup" | "teams";
   export const tournamentPanel = $state<{ open: number | "new" | null; typeId?: number; tab: Tab; advanced: boolean }>({
     open: null,

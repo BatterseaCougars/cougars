@@ -1,4 +1,4 @@
-// Who won a tournament's awards (ADR 0073): the awards are the tournament's own (its series', ADR 0044, 0049); an
+// Who won a tournament's awards (ADR 0044): the awards are the tournament's own (its series', ADR 0044, 0030); an
 // admin says who won each, a team (Champions) or one of its players (Top scorer), on the tournament's page, and
 // everyone sees them. Driven through the real Worker handlers (ADR 0031).
 import { beforeEach, describe, expect, it, vi } from "vitest";

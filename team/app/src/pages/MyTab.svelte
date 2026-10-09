@@ -1,5 +1,5 @@
 <script lang="ts">
-  // Your dues (ADR 0032): every session and tournament you were charged for, and whether it's paid.
+  // Your dues (ADR 0007): every session and tournament you were charged for, and whether it's paid.
   import ChargeRow from "../lib/ChargeRow.svelte";
   import { referenceFor } from "../demo/data";
   import { chargesFor, owedBy } from "../demo/dues.svelte";

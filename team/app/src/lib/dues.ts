@@ -1,4 +1,4 @@
-// Dues (ADR 0032): every charge is one person for one session or tournament. What someone owes, what a session
+// Dues (ADR 0007): every charge is one person for one session or tournament. What someone owes, what a session
 // collected and Unpaid fees are all sums over charges. Pure, so the D1 queries can be checked against it.
 
 export interface Charge {

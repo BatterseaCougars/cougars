@@ -22,7 +22,7 @@ export const thumbnailUrl = (id: string) => `https://i.ytimg.com/vi/${id}/hqdefa
 export const embedUrl = (id: string) => `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0`;
 
 // ---------------------------------------------------------------------------------------------------------------
-// The club's videos from YouTube, read live and cached (lib/server/videos.ts, docs/adr/0019-live-videos.md).
+// The club's videos from YouTube, read live and cached (lib/server/videos.ts, docs/adr/0016-photos-and-videos-read-live.md).
 // YouTube Data API v3 with an API key: a club playlist is read directly; a channel costs one `channels` call to find
 // its uploads playlist first. Then one `playlistItems` call per 50 videos. Each call is 1 unit of the free 10,000 a
 // day.

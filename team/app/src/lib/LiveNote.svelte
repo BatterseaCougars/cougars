@@ -1,5 +1,5 @@
 <script lang="ts">
-  // What a live page says about following along (ADR 0096): "Live" while the hub's stream is open, else how often it
+  // What a live page says about following along (ADR 0072): "Live" while the hub's stream is open, else how often it
   // checks (the admins' setting, ADR 0072). Both are laid out on top of each other so the words can swap without
   // anything around them moving.
   import { everyHowOften, liveFeed } from "./live-updates.svelte";

@@ -14,7 +14,7 @@ import { parseEnv } from "node:util";
 
 export const ENVIRONMENTS = ["production", "dev"];
 
-// Secrets Manager projects (docs/adr/0012-secrets-manager-projects.md), shared by every app.
+// Secrets Manager projects (docs/adr/0002-secrets-in-bitwarden.md), shared by every app.
 export const PROJECTS = { production: "cougars", dev: "cougars-dev" };
 
 /** The project a secret belongs in: NAME__PRODUCTION in `cougars`, everything else in `cougars-dev`. */

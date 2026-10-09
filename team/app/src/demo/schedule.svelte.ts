@@ -22,7 +22,7 @@ export const whenOf = (t: Tournament) =>
       ? `${formatDayDate(londonISO(t.heldOn, t.startTime))} · ${t.startTime}–${t.endTime}`
       : "Date TBC";
 
-// Where each thing really is (ADR 0051): its saved venue, else its own name and map link, else its series' place
+// Where each thing really is (ADR 0030): its saved venue, else its own name and map link, else its series' place
 export const seriesPlace = (s: TrainingSeries) =>
   placeOf({ venueId: s.venueId, name: s.venue, mapUrl: s.mapUrl }, db.venues);
 export const typePlace = (t: TournamentType | undefined) =>
@@ -172,7 +172,7 @@ function reminderBookable(row: AgendaRow, t: Tournament): Bookable {
 }
 
 /**
- * Everything from today on, in date order, as the club's agenda has it (ADR 0062): the server decides what's on (and
+ * Everything from today on, in date order, as the club's agenda has it (ADR 0042): the server decides what's on (and
  * a draft night only for its captains); each one's sign-up comes from its session, tournament or event.
  */
 export function calendar(today = londonToday()): Bookable[] {

@@ -1,6 +1,6 @@
 {
   "$schema": "../../node_modules/wrangler/config-schema.json",
-  // The team app (ADR 0022). main deploys it to dev as cougars-team-dev (ADR 0075, scripts/ci/target.mjs); no
+  // The team app (ADR 0022). main deploys it to dev as cougars-team-dev (ADR 0010, scripts/ci/target.mjs); no
   // production yet. On the local dev server TEAM_ENV is "local" (vite.config.ts) and you're the first admin.
   "name": "cougars-team",
   "main": "./worker/index.ts",
@@ -11,9 +11,9 @@
   // The website's database: one club, one D1 (ADR 0022). Same entry as apps/web/wrangler.jsonc, so local dev
   // shares its state.
   "d1_databases": [{ "binding": "DB", "database_name": "cougars" }],
-  // This deploy's id, part of the bootstrap's ETag (worker/version.ts, ADR 0054). Free; no storage.
+  // This deploy's id, part of the bootstrap's ETag (worker/version.ts, ADR 0053). Free; no storage.
   "version_metadata": { "binding": "CF_VERSION_METADATA" },
-  // The live hub (ADR 0096): one object holding every live page's stream; it stores nothing. Declared SQLite-backed
+  // The live hub (ADR 0072): one object holding every live page's stream; it stores nothing. Declared SQLite-backed
   // because that is what the free plan allows; the migration makes the class on the first deploy.
   "durable_objects": { "bindings": [{ "name": "LIVE", "class_name": "LiveHub" }] },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["LiveHub"] }],

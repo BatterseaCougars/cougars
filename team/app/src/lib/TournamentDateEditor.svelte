@@ -13,8 +13,8 @@
 
 <script lang="ts">
   // One tournament's editor, in the panel its card opens (Settings → Tournaments): what an admin comes here
-  // for. When and where it is, its rules and awards, sign-up, and its teams (ADR 0052): teams that entered, or a
-  // draft's captains in pick order and the draft night, on tabs as the training editor lays out its fields. Picking a series copies its defaults in (ADR 0049); they can
+  // for. When and where it is, its rules and awards, sign-up, and its teams (ADR 0030): teams that entered, or a
+  // draft's captains in pick order and the draft night, on tabs as the training editor lays out its fields. Picking a series copies its defaults in (ADR 0030); they can
   // then change for this one. The series' look (icon, colour) stays the series'.
   import TimeSelect from "./TimeSelect.svelte";
   import { tick } from "svelte";
@@ -66,7 +66,7 @@
     /** Its series, or none: a tournament can stand on its own */
     typeId: number | null;
     name: string;
-    /** Optional: empty while it's just a season (ADR 0048) */
+    /** Optional: empty while it's just a season (ADR 0030) */
     heldOn: string;
     dateConfirmed: boolean;
     /** Always: the season it's in, which a day sets */
@@ -74,7 +74,7 @@
     seasonYear: number;
     startTime: string;
     endTime: string;
-    /** Its place (ADR 0051); none set: its series' */
+    /** Its place (ADR 0030); none set: its series' */
     venueId: number | null;
     location: string;
     mapUrl: string;
@@ -189,7 +189,7 @@
     if (!t) return;
     if (!date.name) date.name = t.name;
     if (!charged) date.fee = String(t.defaultFeePence / 100);
-    // Its usual hours (ADR 0091)
+    // Its usual hours (ADR 0074)
     date.startTime = t.defaultStartTime;
     date.endTime = t.defaultEndTime;
     date.venueId = t.venueId;
@@ -276,7 +276,7 @@
   );
   const memberList = $derived(members.map((m) => ({ id: m.player.id, name: goesBy(m.player) })));
 
-  // Teams (ADR 0052): nobody on two of them; a draft's are in pick order
+  // Teams (ADR 0030): nobody on two of them; a draft's are in pick order
   const MAX_TEAMS = 16;
   const taken = $derived(
     new Set(

@@ -13,7 +13,7 @@
 
   const type = $derived(typeById(typeId)!);
   const tournament = $derived(currentTournament(typeId));
-  // This tournament's own points (ADR 0049), else the series'
+  // This tournament's own points (ADR 0030), else the series'
   const rules = $derived(tournament ?? type);
   const group = $derived((tournament?.games ?? []).filter((g) => g.stage === "group"));
 </script>

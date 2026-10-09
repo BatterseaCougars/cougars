@@ -63,7 +63,7 @@ export function rosterSql(players, now = new Date()) {
         `UPDATE members SET email = ${q(p.email)} WHERE ${same(p.name)} AND email IS NULL ` +
           `AND NOT EXISTS (SELECT 1 FROM members WHERE email = ${q(p.email)});`,
       );
-    // Their bank reference (ADR 0038), filled in by value: the seed is one SQL file, not bound statements
+    // Their bank reference (ADR 0007), filled in by value: the seed is one SQL file, not bound statements
     const { sql, candidates } = assignReferenceSql(p.name, "lower(name) = lower(?)");
     const values = [...candidates, p.name];
     let i = 0;
@@ -74,7 +74,7 @@ export function rosterSql(players, now = new Date()) {
           `SELECT m.id, r.id FROM members m, roles r WHERE lower(m.name) = lower(${q(p.name)}) AND r.name = ${q(role)};`,
       );
   }
-  // The roster changed the club's data: the team app reloads it (data_version, ADR 0054)
+  // The roster changed the club's data: the team app reloads it (data_version, ADR 0053)
   out.push(
     "INSERT INTO data_version (id, version) VALUES (1, CAST(strftime('%s', 'now') AS INTEGER)) " +
       "ON CONFLICT (id) DO UPDATE SET version = version + 1;",

@@ -15,17 +15,17 @@ actions that an admin can change in the app ([ADR 0024](../adr/0024-action-based
 
 Decisions so far:
 
-| ADR                                                    | Decision                                                                     |
-| ------------------------------------------------------ | ---------------------------------------------------------------------------- |
-| [0021](../adr/0021-website-and-team-app-projects.md)   | Website and team app are separate projects in one repo                       |
-| [0022](../adr/0022-team-app-svelte-pwa.md)             | The team app is a mobile-first Svelte 5 SPA on a Worker, as a PWA            |
-| [0023](../adr/0023-device-bound-sign-in.md)            | Everyone signs in with a device-bound email code or link, or Google          |
-| [0024](../adr/0024-action-based-authorization.md)      | Permissions are actions; roles are data built from actions                   |
-| [0030](../adr/0030-training-series-and-tournaments.md) | Training repeats as a series; tournaments are typed and scheduled one by one |
-| [0026](../adr/0026-dues-ledger.md)                     | Dues are a ledger fed by the register                                        |
-| [0006](../adr/0006-monorepo-and-team-generator.md)     | The team generator runs in the browser                                       |
-| [0007](../adr/0007-bank-transfer-payments.md)          | Payments by bank transfer with a reference, no card provider                 |
-| [0018](../adr/0018-rebuilds-until-team-app.md)         | The team app will trigger production rebuilds                                |
+| ADR                                                     | Decision                                                                     |
+| ------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| [0006](../adr/0006-one-repo-two-projects.md)            | Website and team app are separate projects in one repo                       |
+| [0022](../adr/0022-team-app-svelte-pwa.md)              | The team app is a mobile-first Svelte 5 SPA on a Worker, as a PWA            |
+| [0023](../adr/0023-sign-in-and-sessions.md)             | Everyone signs in with a device-bound email code or link, or Google          |
+| [0024](../adr/0024-action-based-authorization.md)       | Permissions are actions; roles are data built from actions                   |
+| [0030](../adr/0030-training-and-tournament-schedule.md) | Training repeats as a series; tournaments are typed and scheduled one by one |
+| [0007](../adr/0007-dues-and-payments.md)                | Dues are a ledger fed by the register                                        |
+| [0006](../adr/0006-one-repo-two-projects.md)            | The team generator runs in the browser                                       |
+| [0007](../adr/0007-dues-and-payments.md)                | Payments by bank transfer with a reference, no card provider                 |
+| [0004](../adr/0004-astro-workers-sanity-d1.md)          | The team app will trigger production rebuilds                                |
 
 ## The shell
 
@@ -56,7 +56,7 @@ Copied in shape from Gwenda ops (`gwenda-hackney/ark`, `ops/site/src/app/`), whi
   - **Kumite**: games, standings, draft
   - **More**: the club (teammates, upload), you (profile, tab) and **Settings** for admins, grouped People and Money
 - **Account badge**, top right: your name, profile, tab, sign out, and **View as a member** for admins
-  ([ADR 0029](../adr/0029-view-as-a-member.md)). On desktop the rail lists the same pages, with Settings folding
+  ([ADR 0024](../adr/0024-action-based-authorization.md)). On desktop the rail lists the same pages, with Settings folding
   open.
 - **Look:** the club's red, white and carbon, and the logo, in a plain readable app font. The video-shop styling
   stays on the website; working screens, and their names, stay plain.
@@ -66,7 +66,7 @@ Copied in shape from Gwenda ops (`gwenda-hackney/ark`, `ops/site/src/app/`), whi
 ## T0: Projects split and app scaffold
 
 - [ ] Move `apps/web` → `website/web` and `apps/studio` → `website/studio`
-      ([ADR 0021](../adr/0021-website-and-team-app-projects.md)). Fix what points at the old paths:
+      ([ADR 0006](../adr/0006-one-repo-two-projects.md)). Fix what points at the old paths:
   - root workspaces and scripts (`db:migrate:local`)
   - `deploy.yml` and `pr.yml`
   - `wrangler.jsonc` `migrations_dir`, `scripts/ci/target.mjs`, `scripts/worktree.sh`, `scripts/deploy-dev.sh`
@@ -83,7 +83,7 @@ Copied in shape from Gwenda ops (`gwenda-hackney/ark`, `ops/site/src/app/`), whi
 
 ## T1: Accounts, actions and roles
 
-[ADR 0023](../adr/0023-device-bound-sign-in.md), [ADR 0024](../adr/0024-action-based-authorization.md).
+[ADR 0023](../adr/0023-sign-in-and-sessions.md), [ADR 0024](../adr/0024-action-based-authorization.md).
 
 - [x] Migrations: `members` (name, email, phone, position F/D/G, rating, cougar, photo, status
       pending/active/inactive, joined_on, payment reference), `roles`, `role_actions`, `member_roles`
@@ -95,7 +95,7 @@ Copied in shape from Gwenda ops (`gwenda-hackney/ark`, `ops/site/src/app/`), whi
       only a local dev server answers, signed in as the first admin.
 - [x] `shared/email.ts` on the Gmail API (also used by the website's enquiry email, M5).
 - [x] Sign-in: email → 6-digit code, typed in the same browser → session (`worker/auth.ts`,
-      [ADR 0035](../adr/0035-sessions-are-hashed-tokens.md)). Locally the code shows on screen.
+      [ADR 0023](../adr/0023-sign-in-and-sessions.md)). Locally the code shows on screen.
 - [ ] "Sign in with Google" as a shortcut for a member whose Google email matches.
 - [ ] Deploy the team Worker to dev through CI, with the Gmail secrets, then production.
 - [x] The action catalog (`actions.ts`), the API wrapper that denies by default, `/api/bootstrap` returning the
@@ -106,18 +106,18 @@ Copied in shape from Gwenda ops (`gwenda-hackney/ark`, `ops/site/src/app/`), whi
   - **Members** (admin): approve requests, assign roles, set position, rating and the cougar flag
   - **Roles** (admin): create a role, tick its actions; the last admin can't be removed
   - **Profile**: own details and photo
-- [ ] **View as a member** (`impersonate:Member`, [ADR 0029](../adr/0029-view-as-a-member.md)): an admin sees the
+- [ ] **View as a member** (`impersonate:Member`, [ADR 0024](../adr/0024-action-based-authorization.md)): an admin sees the
       app exactly as a member does, read-only, from the account badge.
 - [x] Import of players from the Airtable base: the roster seed from Secrets Manager
-      ([ADR 0033](../adr/0033-personal-data-out-of-the-repo.md), [db/seed/README.md](../../db/seed/README.md)).
+      ([ADR 0024](../adr/0029-personal-data.md), [db/seed/README.md](../../db/seed/README.md)).
 - [ ] Website enquiries can be turned into members.
 - [ ] Secrets, each documented in [README.md#secrets](../../README.md#secrets): the Gmail OAuth client and refresh
       token (the website's, shared) and the Google sign-in OAuth client. No session key
-      ([ADR 0035](../adr/0035-sessions-are-hashed-tokens.md)).
+      ([ADR 0023](../adr/0023-sign-in-and-sessions.md)).
 
 ## T2: Training, calendar, sign-up and the register
 
-[ADR 0030](../adr/0030-training-series-and-tournaments.md); tables in [the data model](../team-app-data-model.md).
+[ADR 0030](../adr/0030-training-and-tournament-schedule.md); tables in [the data model](../team-app-data-model.md).
 
 - [x] Migrations: `training_series`, `training_sessions`, `tournament_types`, `tournaments`, `club_events`
       (`0004_team_schedule.sql`), seeded with Friday Training (every Friday, 19:30–21:30, Battersea Sports Centre,
@@ -143,16 +143,16 @@ Copied in shape from Gwenda ops (`gwenda-hackney/ark`, `ops/site/src/app/`), whi
   - **Close the register** at the end of the night: attendance is final and feeds dues (T4). An admin can reopen it
     to correct a mistake; corrections are audited.
 - [x] Website: the home page's What's on reads the next trainings, tournaments and events from D1 live
-      ([ADR 0042](../adr/0042-whats-on-from-the-club-calendar.md)). One-off events have a description, an end time,
+      ([ADR 0042](../adr/0042-website-reads-the-club-agenda.md)). One-off events have a description, an end time,
       _Show on the website_, and can be edited and cancelled.
 - [ ] Website: the events and Fridays pages read public dates from D1 live, with a cache (like the videos,
-      [ADR 0019](../adr/0019-live-videos.md)). Existing Sanity events are imported once, then the Sanity `event`
+      [ADR 0016](../adr/0016-photos-and-videos-read-live.md)). Existing Sanity events are imported once, then the Sanity `event`
       type is retired.
 - [ ] Europe/London dates: `dates.ts` moves to `shared/` so both projects use it.
 
 ## T3: Team generator
 
-[ADR 0006](../adr/0006-monorepo-and-team-generator.md).
+[ADR 0006](../adr/0006-one-repo-two-projects.md).
 
 - [ ] Port the **current** solver, `archive/team-manager/lib/solver_lp.py`, to TypeScript on glpk.js. The port in
       `.github/kb/js-solver-port.md` is a starting point but out of date: it hardcodes 3 teams, and lacks the team
@@ -167,22 +167,22 @@ Copied in shape from Gwenda ops (`gwenda-hackney/ark`, `ops/site/src/app/`), whi
 
 ## T4: Dues and payments
 
-[ADR 0026](../adr/0026-dues-ledger.md), [ADR 0007](../adr/0007-bank-transfer-payments.md).
+[ADR 0007](../adr/0007-dues-and-payments.md).
 
-- [ ] **Fees** ([ADR 0032](../adr/0032-fees-per-session-and-tournament.md)), set by an admin (`manage:Fees`):
+- [ ] **Fees** ([ADR 0007](../adr/0007-dues-and-payments.md)), set by an admin (`manage:Fees`):
   - **Each training** has a fee that applies from a date going forward (`series_fees`); a session keeps the fee
     it was held at, and one session's fee can be overridden.
   - **Each tournament type** has a default fee; scheduling an edition copies it, and it can be changed there.
   - **Quarterly subscription:** covers every training session in the quarter; charged at the start of it.
 - [ ] **Quarterly Members:** `subscriptions` (member, from, to); no subscription is pay as you go
-      ([ADR 0034](../adr/0034-quarterly-members-and-the-cougars.md)).
+      ([ADR 0007](../adr/0007-dues-and-payments.md)).
 - [ ] **Charges are one person for one session or tournament**, made from the register, not from sign-ups:
   - closing a register charges every pay-as-you-go attendee, walk-ins included; subscribers aren't charged
   - tournament entrants are all charged the edition's fee
   - a quarterly Cron Trigger charges subscribers
 - [ ] **Marking payments**: on a member's profile an admin ticks which sessions and tournaments they paid for
       (transfer or cash), or "Mark all paid"; each session shows what it collected against what it was due.
-- [ ] **Payments** by bank transfer, quoting the member's fixed reference (for example `COU-0042`). Uploading a
+- [ ] **Payments** by bank transfer, quoting the member's fixed reference (their name, for example `COUGARS ADRIAN K`). Uploading a
       bank statement creates payments by reference and allocates them oldest first; an admin can re-point them
       (`payments`, `payment_allocations`).
 - [ ] **Dues**: what I owe, each session and tournament I was charged for and whether it's paid, and the bank
@@ -211,7 +211,7 @@ first session is free.
       harmless.
 - [ ] Standings (points, then goal difference, then goals for, then head-to-head) and leaderboards (goals, assists,
       points).
-- [ ] Website: a public `/kumite/live` page polling every 10 seconds (or the team app's live hub, ADR 0096).
+- [ ] Website: a public `/kumite/live` page polling every 10 seconds (or the team app's live hub, ADR 0072).
 - [ ] Finalising a Kumite writes a `kumiteResult` to Sanity (champions, top scorer, best goalie), feeding the hall
       of fame.
 
@@ -220,20 +220,20 @@ Open questions: match length, tiebreak order, whether a draw scores 1 point, the
 ## T6: Kumite draft
 
 - [x] An admin sets a draft tournament's captains, in pick order, and its draft night; the pool is the members who
-      said they're in once sign-up opened; captains are in automatically ([ADR 0052](../adr/0052-tournament-types-and-teams.md),
-      [ADR 0060](../adr/0060-draft-lifecycle.md)).
+      said they're in once sign-up opened; captains are in automatically ([ADR 0030](../adr/0030-training-and-tournament-schedule.md),
+      [ADR 0060](../adr/0060-the-draft.md)).
 - [x] An admin opens the draft on the night and closes it once everyone's picked (or leaving the rest out); closed
       locks the teams. Captains see "Draft on …, you pick 2nd" on Home, then "it's your pick".
 - [x] **The draft room** for that draft's captains and those running it (`run:Draft`): whose pick it is, the
       players left, and a _Pick_ button for the captain on the clock. Refreshes every 10 seconds, not 2–3, to stay
-      inside the free plan ([ADR 0058](../adr/0058-degrade-instead-of-break.md)).
+      inside the free plan ([ADR 0055](../adr/0055-degrade-instead-of-break.md)).
 - [x] A pick only counts if nobody picked since, so two taps at once can't both count. An admin can undo or make a
       pick. Snake order. Told as a story in `tournament.use-cases.test.ts`.
 - [ ] A pick clock, and positions on the players left.
 - [ ] Pick order as a setting, once the rules are written.
 - [x] Drafted teams go into the tournament: the app makes the fixtures (a round robin, then the playoffs set for it,
       e.g. a Final of 1st v 2nd), admins enter final scores, the table fills the playoffs
-      ([ADR 0061](../adr/0061-fixtures-and-playoffs.md)).
+      ([ADR 0061](../adr/0061-fixtures-games-and-scoring.md)).
 
 Open questions: the rules; whether captains see ratings; the pick time limit; whether the solver can suggest
 teams instead.
@@ -244,10 +244,10 @@ Can start any time after T1.
 
 - [ ] **Photos → website gallery** (`upload:Photo`): resized on the phone, sent through the Worker to Sanity
       (`SANITY_WRITE_TOKEN`) into a chosen or new album. An admin (`publish:Media`) publishes the album; the website
-      shows it live ([ADR 0016](../adr/0016-live-photo-gallery.md)).
-- [x] **Videos are uploaded on YouTube, not in the app** ([ADR 0039](../adr/0039-videos-uploaded-on-youtube.md)).
+      shows it live ([ADR 0016](../adr/0016-photos-and-videos-read-live.md)).
+- [x] **Videos are uploaded on YouTube, not in the app** ([ADR 0016](../adr/0016-photos-and-videos-read-live.md)).
       Upload links people with `upload:Video` to YouTube, where they upload as the club channel with their own
-      access, unlisted and into the club playlist the website reads ([ADR 0019](../adr/0019-live-videos.md)).
+      access, unlisted and into the club playlist the website reads ([ADR 0016](../adr/0016-photos-and-videos-read-live.md)).
 
 Depends on: the club YouTube channel (website M3).
 
@@ -257,7 +257,7 @@ Depends on: the club YouTube channel (website M3).
       need the Studio. Events are already in D1 (T2).
 - [ ] An enquiries inbox (website "Try a session" form).
 - [ ] Start a production rebuild when content changes, batched after a few quiet minutes, with a GitHub token held
-      by the team Worker ([ADR 0018](../adr/0018-rebuilds-until-team-app.md)).
+      by the team Worker ([ADR 0004](../adr/0004-astro-workers-sanity-d1.md)).
 
 ## T9: Notifications and store app
 

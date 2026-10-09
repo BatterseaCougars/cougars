@@ -1,4 +1,4 @@
-// Rate limits for the team app's API (ADR 0056), best effort through the Workers Cache API (shared/rate-limit.ts).
+// Rate limits for the team app's API (ADR 0055), best effort through the Workers Cache API (shared/rate-limit.ts).
 // Where there's no Cache API (a plain unit test) everything goes through; the per-member sign-in limits in D1 still
 // hold. Generous: a whole squad on the rink's wifi shares one address, and nobody tapping normally should see them.
 import { rateLimit } from "../../../shared/rate-limit";

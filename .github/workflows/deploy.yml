@@ -1,12 +1,12 @@
 name: Deploy
 
-# Branches map to environments like Ark (docs/adr/0013-main-deploys-dev.md), each on its own Cloudflare account
-# (docs/adr/0010-two-environments.md):
+# Branches map to environments like Ark (docs/adr/0010-environments-and-deploys.md), each on its own Cloudflare account
+# (docs/adr/0010-environments-and-deploys.md):
 # pull request    -> dev: a preview version of `cougars-dev`, commented on the PR
 # main            -> dev: worker `cougars-dev`, Cougars Dev account
 # release         -> production: worker `cougars`, Cougars account
-# sanity-publish  -> production rebuild when content changes (from the team app, roadmap M6; ADR 0018)
-# schedule        -> daily production rebuild, so Studio changes go live (docs/adr/0018)
+# sanity-publish  -> production rebuild when content changes (from the team app, roadmap M6; ADR 0004)
+# schedule        -> daily production rebuild, so Studio changes go live (docs/adr/0004)
 # Those two run on the default branch, which the `production` environment refuses, so their only job
 # (`rebuild`) starts this workflow again on `release`, where the real production deploy runs.
 # GitHub environment `production` (release only) holds BWS_ACCESS_TOKEN__PRODUCTION; `preview` holds
@@ -108,7 +108,7 @@ jobs:
         run: node ../../scripts/db-rebuild.mjs --remote -c dist/server/wrangler.json
 
       # The team roster: personal data, so it lives in Secrets Manager (TEAM_ROSTER), never in this public repo
-      # (ADR 0033). Adds players who aren't there yet and changes no one, so it's safe on every deploy.
+      # (ADR 0029). Adds players who aren't there yet and changes no one, so it's safe on every deploy.
       - name: Seed the team roster
         working-directory: apps/web
         run: node ../../scripts/seed-roster.mjs --remote -c dist/server/wrangler.json
@@ -128,7 +128,7 @@ jobs:
           url=$(echo "$out" | grep -oE 'https://[^ ]+\.workers\.dev' | head -1)
           echo "url=${SITE_URL:-$url}" >> "$GITHUB_OUTPUT"
 
-      # Secrets the Worker reads at request time: the live video list (ADR 0019). PR previews share dev's.
+      # Secrets the Worker reads at request time: the live video list (ADR 0016). PR previews share dev's.
       # Secrets the Worker reads at request time, from this environment's Secrets Manager project (README#secrets).
       # One that isn't there yet is skipped: the site does without (no live YouTube; emails logged, not sent; no auto-replies).
       - name: Worker secrets
@@ -143,7 +143,7 @@ jobs:
             fi
           done
 
-      # The team app (ADR 0075): its own worker on dev's account and D1, from main only. Production waits for launch.
+      # The team app (ADR 0010): its own worker on dev's account and D1, from main only. Production waits for launch.
       - name: Deploy the team app
         id: team
         if: github.event_name == 'push' && env.SITE_ENV == 'dev'
@@ -164,7 +164,7 @@ jobs:
       - name: Smoke test the team app
         if: steps.team.outputs.url
         # A brand-new worker's workers.dev address can take a few seconds to answer. Then, with no session, the club
-        # is closed (401): the local-only switches (ADR 0093) are off, as a deploy must have them.
+        # is closed (401): the local-only switches (ADR 0023) are off, as a deploy must have them.
         run: |
           url="${{ steps.team.outputs.url }}"
           for i in $(seq 12); do
@@ -203,7 +203,7 @@ jobs:
           message: "Preview: ${{ steps.preview.outputs.url }} (`${{ env.PUBLIC_BUILD_VERSION }}`)"
 
   # The Studio (https://battersea-cougars.sanity.studio) ships with production: on push to `release` only
-  # (docs/adr/0013-main-deploys-dev.md). One Studio edits both datasets, so there's no dev Studio to deploy.
+  # (docs/adr/0010-environments-and-deploys.md). Cougars Dev's Studio runs locally (port 4520), not hosted.
   studio:
     if: github.event_name == 'push' && github.ref == 'refs/heads/release'
     runs-on: ubuntu-latest
@@ -229,6 +229,6 @@ jobs:
       - name: Deploy Studio
         run: npm run deploy -w @cougars/studio -- --yes
         env:
-          # The live project (shared/sanity.ts, ADR 0017)
+          # The live project (shared/sanity.ts, ADR 0010)
           SANITY_STUDIO_SITE_ENV: production
           SANITY_AUTH_TOKEN: ${{ env.SANITY_DEPLOY_TOKEN }}

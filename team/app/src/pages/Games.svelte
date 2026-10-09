@@ -53,7 +53,7 @@
   const afterLabel = $derived(live ? "Next game" : "After that");
 
   // Everyone sees the score as it happens: on the day, until the last game's over, from the hub's stream, with a
-  // check on the admins' beat as the fallback (ADR 0071, 0072, 0096)
+  // check on the admins' beat as the fallback (ADR 0061, 0072)
   const following = $derived(
     !!live || (tournament?.heldOn === londonToday() && games.some((g) => g.status !== "done")),
   );
@@ -61,7 +61,7 @@
     if (following) return checkForUpdates();
   });
 
-  // The teams: a draft's only once it's closed, unless you're in it (the server holds back the rest, ADR 0070)
+  // The teams: a draft's only once it's closed, unless you're in it (the server holds back the rest, ADR 0060)
   const mine = $derived(
     teams.findIndex((t) => t.captainMemberId === me().id || t.players.some((p) => p.memberId === me().id)),
   );
@@ -72,7 +72,7 @@
       !can(perms, "run:Draft") &&
       !manage,
   );
-  // Keeping score (ADR 0071): a game whose scoresheet you hold, else the game up next when it's your team's turn and
+  // Keeping score (ADR 0061): a game whose scoresheet you hold, else the game up next when it's your team's turn and
   // nobody's taken it yet
   const myTeamId = $derived(mine >= 0 ? teams[mine].id : undefined);
   // Only the game up next (or on now) is taken on: the first in the day's order that isn't over
@@ -153,7 +153,7 @@
         <a class="btn ghost sm" href={schedule}>Full fight card<Icon name="chevronRight" size={16} /></a>
       </div>
       {#if following}
-        <!-- The scores follow along: live from the hub's stream, else on the admins' beat (ADR 0096) -->
+        <!-- The scores follow along: live from the hub's stream, else on the admins' beat (ADR 0072) -->
         <p class="updates hint">
           <Icon name={liveFeed.on ? "live" : "clock"} size={14} /><LiveNote
             what="Scores update"
