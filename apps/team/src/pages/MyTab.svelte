@@ -2,7 +2,7 @@
   // Your dues (ADR 0007): every session and tournament you were charged for, and whether it's paid.
   import ChargeRow from "../lib/ChargeRow.svelte";
   import { referenceFor } from "../demo/data";
-  import { chargesFor, owedBy } from "../demo/dues.svelte";
+  import { chargesFor, creditOf, owedBy } from "../demo/dues.svelte";
   import { me } from "../demo/session.svelte";
   import { pounds } from "../lib/dates";
 
@@ -11,6 +11,8 @@
   const unpaid = $derived(charges.filter((c) => !c.paidOn));
   const paid = $derived(charges.filter((c) => c.paidOn));
   const owed = $derived(owedBy(who.id));
+  // Paid in and not yet spent: it pays your next charge
+  const credit = $derived(creditOf(who.id));
 </script>
 
 <div class="page">
@@ -19,7 +21,9 @@
     <p class="eyebrow">{owed > 0 ? "You owe" : "All square"}</p>
     <p class="display amount num" class:zero={owed <= 0}>{pounds(owed)}</p>
     <p class="hint">
-      {unpaid.length ? `${unpaid.length} not paid yet` : "Nothing owed"}
+      {unpaid.length ? `${unpaid.length} not paid yet` : "Nothing owed"}{credit
+        ? ` · ${pounds(credit)} in credit, for what's next`
+        : ""}
     </p>
   </header>
 

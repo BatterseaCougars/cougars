@@ -9,6 +9,8 @@
 
   let { charge, editable = false }: { charge: Charge; editable?: boolean } = $props();
   const label = $derived(labelFor(charge));
+  // Part paid: a lump sum ran out on it (it pays the oldest first)
+  const part = $derived(charge.paidOn ? 0 : charge.paidPence);
   const paidOn = $derived(charge.paidOn ? formatDayDate(`${charge.paidOn}T12:00:00Z`) : "");
 </script>
 
@@ -18,7 +20,9 @@
     <span class="title">{label.title}</span>
     <span class="sub">
       {formatDayDate(label.at)}
-      {#if charge.paidOn}· paid {paidOn}{charge.paidVia === "cash" ? " in cash" : " by transfer"}{/if}
+      {#if charge.paidOn}· paid {paidOn}{charge.paidVia === "cash" ? " in cash" : " by transfer"}{:else if part}
+        · {pounds(part)} paid, {pounds(charge.pence - part)} to go{#if editable}
+          <button class="linkish" onclick={() => unpayCharge(charge.id)}>Take back</button>{/if}{/if}
     </span>
   </span>
   <span class="num amt">{pounds(charge.pence)}</span>
@@ -49,6 +53,15 @@
 </div>
 
 <style>
+  .linkish {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--fg-muted);
+    font: inherit;
+    text-decoration: underline;
+    cursor: pointer;
+  }
   .chip {
     display: grid;
     place-items: center;

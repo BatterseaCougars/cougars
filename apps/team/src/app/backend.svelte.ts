@@ -20,6 +20,7 @@ import {
   AGENDA,
   SETTINGS,
   CHARGES,
+  CREDITS,
   SUBSCRIPTION_FEES,
 } from "../demo/data";
 import type { Position, Slices } from "../demo/data";
@@ -68,6 +69,9 @@ const COPY: Record<keyof Slices, () => void> = {
   },
   charges: () => {
     db.charges = structuredClone(CHARGES);
+  },
+  credits: () => {
+    db.credits = structuredClone(CREDITS);
   },
   subscriptionFees: () => {
     db.fees = structuredClone(SUBSCRIPTION_FEES);
@@ -277,6 +281,9 @@ export const unpayCharge = (chargeId: number) => save(() => api("DELETE", `/api/
 /** Everything a member owes, paid at once. */
 export const payAll = (memberId: number, via: "transfer" | "cash") =>
   save(() => api("POST", `/api/members/${memberId}/payments`, { via }), "All paid");
+/** Money in (a lump sum): it pays what they owe oldest first, and anything left over is credit for what's next. */
+export const recordPayment = (memberId: number, pence: number, via: "transfer" | "cash") =>
+  save(() => api("POST", `/api/members/${memberId}/payments`, { pence, via }), "Payment recorded");
 /** A member owes for a quarter ("2026-Q3"): at the quarterly rate then, unless an amount is given. */
 export const chargeQuarter = (memberId: number, quarter: string, pence?: number) =>
   save(() => api("POST", `/api/members/${memberId}/charges`, { quarter, pence }), "Charged");

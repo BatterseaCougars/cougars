@@ -14,6 +14,7 @@
     top,
     children,
     footer,
+    wide = false,
   }: {
     open?: boolean;
     title: string;
@@ -24,6 +25,8 @@
     top?: Snippet;
     children: Snippet;
     footer?: Snippet;
+    /** A form that needs the room (Charge a quarter): wider on desktop; phones are full width anyway. */
+    wide?: boolean;
   } = $props();
 
   function onkeydown(e: KeyboardEvent) {
@@ -38,6 +41,7 @@
   ></button>
   <div
     class="drawer"
+    class:wide
     role="dialog"
     aria-modal="true"
     aria-label={title}
@@ -119,8 +123,12 @@
     padding: var(--s-3) var(--s-5) max(var(--s-4), env(safe-area-inset-bottom));
     border-top: 1px solid var(--border);
   }
+  .drawer.wide {
+    width: min(36rem, 100vw);
+  }
   @media (max-width: 900px) {
-    .drawer {
+    .drawer,
+    .drawer.wide {
       width: 100vw;
       border-left: 0;
     }

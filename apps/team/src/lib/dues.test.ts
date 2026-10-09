@@ -15,6 +15,7 @@ const charge = (over: Partial<Charge>): Charge => ({
   dueOn: "2026-10-02",
   paidOn: null,
   paidVia: null,
+  paidPence: 0,
   byHand: false,
   ...over,
 });

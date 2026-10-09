@@ -4,6 +4,7 @@ import type { Team } from "../lib/snake";
 import {
   AGENDA,
   CHARGES,
+  CREDITS,
   MEMBERS,
   ONE_OFFS,
   QUIPS,
@@ -38,4 +39,6 @@ export const db = $state({
   teams: structuredClone(TEAMS) as Record<number, Team[]>,
   /** One person for one session or tournament, paid or not (ADR 0007). */
   charges: structuredClone(CHARGES),
+  /** Money paid in and not yet spent, by member: it pays their next charge. */
+  credits: structuredClone(CREDITS),
 });

@@ -1,7 +1,7 @@
--- What the club's database starts with that isn't about anyone: roles and what they can do, Friday Training and
--- its 2026 nights, the Kumite series and its first date, and the quips. INSERT OR IGNORE by id, so it's safe to run
--- on a database that already has them (scripts/db-rebuild.mjs runs it after every rebuild): what admins changed in
--- the app stays. People come from the roster (db/seed/README.md), never from here.
+-- What the club's database starts with that isn't about anyone: roles and what they can do, Friday Training,
+-- its fee and its 2026 nights, the Kumite series and its first date, the quarterly rate, and the quips. INSERT OR
+-- IGNORE by id, so it's safe to run on a database that already has them (scripts/db-rebuild.mjs runs it after every
+-- rebuild): what admins changed in the app stays. People come from the roster (db/seed/README.md), never from here.
 
 -- roles
 INSERT OR IGNORE INTO roles (id, name, description, is_system) VALUES
@@ -143,6 +143,16 @@ INSERT OR IGNORE INTO quips (id, kind, text) VALUES
   (71, 'out', 'Out. Your stick will forgive you.'),
   (72, 'out', 'Noted. We''ll miss the chirping.'),
   (73, 'out', 'Shame. Your spot''s here next time.');
+
+-- series_fees: Friday Training's pay-as-you-go fee per session (ADR 0007), from when the app starts charging, so
+-- sessions before it aren't charged
+INSERT OR IGNORE INTO series_fees (series_id, effective_from, amount_pence) VALUES
+  (1, '2026-10-01', 1200);
+
+-- subscription_fees: the quarterly rate (ADR 0007), from the first quarter the app charges, so nobody is charged for
+-- quarters before it
+INSERT OR IGNORE INTO subscription_fees (effective_from, amount_pence) VALUES
+  ('2026-10-01', 9000);
 
 -- The seed may have changed the club's data: the team app reloads it (data_version, ADR 0053)
 INSERT INTO data_version (id, version) VALUES (1, CAST(strftime('%s', 'now') AS INTEGER))

@@ -33,6 +33,9 @@ const subscribed = (member: string, day: string) =>
   `EXISTS (SELECT 1 FROM subscriptions sub WHERE sub.member_id = ${member} AND sub.starts_on <= ${day}
      AND (sub.ends_on IS NULL OR sub.ends_on >= ${day}))`;
 const unpaid = "NOT EXISTS (SELECT 1 FROM payment_allocations pa WHERE pa.charge_id = c.id)";
+/** Not paid in full: a charge that no longer counts can go, and what part of it was paid is credit again. */
+const notPaidUp =
+  "c.amount_pence > COALESCE((SELECT SUM(pa.amount_pence) FROM payment_allocations pa WHERE pa.charge_id = c.id), 0)";
 
 /** Who should be charged for a session: everyone in who wasn't a no-show (walk-ins too), but Quarterly Members. */
 const SESSIONS_DUE = `
@@ -73,12 +76,12 @@ export async function chargeAttendance(db: D1Database, today: string, now: strin
       [now, today],
     );
     await count(
-      `DELETE FROM charges AS c WHERE c.${column} IS NOT NULL AND ${unpaid}
+      `DELETE FROM charges AS c WHERE c.${column} IS NOT NULL AND ${notPaidUp}
          AND (c.member_id, c.${column}) NOT IN (SELECT member_id, event_id FROM (${due}))`,
       [today],
     );
   }
-  return changed;
+  return changed + (await settle(db));
 }
 
 /**
@@ -124,7 +127,7 @@ export async function chargeQuarters(db: D1Database, today: string, now: string)
       await run(db, "DELETE FROM charges WHERE id = ?", [c.id]);
       changed++;
     }
-  return changed;
+  return changed + (await settle(db));
 }
 
 /** The hourly check (and the day's first open of the app): whatever a new day makes due. */
@@ -245,6 +248,63 @@ const via = (o: Record<string, unknown>) => {
   return o.via;
 };
 
+/**
+ * Money not yet spent pays what's owed, oldest first (FIFO): each payment's unspent part, oldest payment first, goes
+ * to the member's oldest charges not paid in full. A lump sum pays several charges and part of the next; what's left
+ * over is credit, and pays the next charge as it comes. Returns how many allocations it made.
+ */
+export async function settle(db: D1Database, memberId?: number): Promise<number> {
+  const who = memberId === undefined ? "" : "AND p.member_id = ?";
+  const spare = await all<{ id: number; member_id: number; spare: number }>(
+    db,
+    `SELECT p.id, p.member_id, p.amount_pence - COALESCE((SELECT SUM(pa.amount_pence) FROM payment_allocations pa
+       WHERE pa.payment_id = p.id), 0) spare
+     FROM payments p WHERE spare > 0 ${who} ORDER BY p.received_on, p.id`,
+    memberId === undefined ? [] : [memberId],
+  );
+  let made = 0;
+  const owed = new Map<number, { id: number; left: number }[]>();
+  for (const p of spare) {
+    if (!owed.has(p.member_id)) owed.set(p.member_id, await owing(db, "c.member_id", p.member_id));
+    let left = p.spare;
+    for (const c of owed.get(p.member_id)!) {
+      if (!left) break;
+      const amount = Math.min(left, c.left);
+      if (!amount) continue;
+      await run(
+        db,
+        `INSERT INTO payment_allocations (payment_id, charge_id, amount_pence) VALUES (?, ?, ?)
+         ON CONFLICT (payment_id, charge_id) DO UPDATE SET amount_pence = amount_pence + excluded.amount_pence`,
+        [p.id, c.id, amount],
+      );
+      c.left -= amount;
+      left -= amount;
+      made++;
+    }
+  }
+  return made;
+}
+
+/** { pence, via }: money in, by transfer or cash, paying what they owe oldest first; the rest is credit. */
+export async function recordPayment(
+  db: D1Database,
+  memberId: number,
+  o: Record<string, unknown>,
+  by: number,
+  now: string,
+) {
+  const how = via(o);
+  if (!Number.isInteger(o.pence) || (o.pence as number) <= 0 || (o.pence as number) > 1_000_000)
+    throw new HttpError(400, "How much, in pence?");
+  await memberExists(db, memberId);
+  await run(
+    db,
+    `INSERT INTO payments (member_id, amount_pence, received_on, via, recorded_by, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
+    [memberId, o.pence as number, londonToday(new Date(now)), how, by, now],
+  );
+  await settle(db, memberId);
+}
+
 /** One payment, received today, for what's left of each of these charges. */
 async function pay(
   db: D1Database,
@@ -288,18 +348,27 @@ export async function payCharge(db: D1Database, id: number, o: Record<string, un
   if (left.length) await pay(db, left[0].member_id, left, how, by, now);
 }
 
-/** { via }: Mark all paid, one payment for everything they owe. */
+/** { via, pence? }: with an amount, a lump sum paid oldest first; without, Mark all paid (one payment for it all). */
 export async function payAll(db: D1Database, memberId: number, o: Record<string, unknown>, by: number, now: string) {
+  if (o.pence != null) return recordPayment(db, memberId, o, by, now);
   const how = via(o);
   await memberExists(db, memberId);
+  // Their credit first, then one payment for the rest
+  await settle(db, memberId);
   await pay(db, memberId, await owing(db, "c.member_id", memberId), how, by, now);
 }
 
-/** A mistake: the charge isn't paid after all. A payment that paid for nothing else goes with it. */
+/**
+ * A mistake: the charge isn't paid after all. Every payment that paid towards it is taken back whole (a lump sum
+ * with everything else it paid for); any credit they still have then pays what's owed again, oldest first.
+ */
 export async function unpayCharge(db: D1Database, id: number) {
-  if (!(await first(db, "SELECT 1 FROM charges WHERE id = ?", [id]))) throw new HttpError(404, "No such charge.");
-  await run(db, "DELETE FROM payment_allocations WHERE charge_id = ?", [id]);
-  await run(db, "DELETE FROM payments WHERE id NOT IN (SELECT payment_id FROM payment_allocations)");
+  const c = await first<{ member_id: number }>(db, "SELECT member_id FROM charges WHERE id = ?", [id]);
+  if (!c) throw new HttpError(404, "No such charge.");
+  const taken = "SELECT payment_id FROM payment_allocations WHERE charge_id = ?";
+  await run(db, `DELETE FROM payments WHERE id IN (${taken})`, [id]);
+  await run(db, `DELETE FROM payment_allocations WHERE payment_id NOT IN (SELECT id FROM payments)`);
+  await settle(db, c.member_id);
 }
 
 // ─── As the app reads them ───
@@ -321,6 +390,8 @@ export interface ChargeJson {
   dueOn: string;
   /** Paid in full: the day, and how. */
   paidOn: string | null;
+  /** Paid so far: all of it, or part (a lump sum that ran out). */
+  paidPence: number;
   paidVia: "transfer" | "cash" | null;
   /** Charged by an admin, so it can be taken back. */
   byHand: boolean;

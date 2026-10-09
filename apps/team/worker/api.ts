@@ -226,6 +226,7 @@ const SLICES = {
   },
   // Dues (ADR 0007): your own charges, or everyone's for who sees Unpaid fees; and the quarterly rate
   charges: { parts: ["charges"], shape: (_c: Ctx, p: Parts) => chargesFrom(p.charges) },
+  credits: { parts: ["credits"], shape: (_c: Ctx, p: Parts) => p.credits as { memberId: number; pence: number }[] },
   subscriptionFees: {
     parts: ["subscriptionFees"],
     shape: (_c: Ctx, p: Parts) => p.subscriptionFees as { pence: number; from: string }[],
@@ -315,7 +316,7 @@ const ENTRY_ROUTES: Route[] = KINDS.flatMap(([path, kind, slice]): Route[] => [
     path: new RegExp(`^/api/${path}/(\\d+)/answer$`),
     audit: false,
     action: "signup:Event",
-    changes: slice === "clubEvents" ? [slice] : [slice, "charges"],
+    changes: slice === "clubEvents" ? [slice] : [slice, "charges", "credits"],
     // You, in or out
     handle: async (c) => {
       const b = await body(c.request);
@@ -332,9 +333,9 @@ const ENTRY_ROUTES: Route[] = KINDS.flatMap(([path, kind, slice]): Route[] => [
     // A past session's line-up is what a player's "played" counts
     changes:
       slice === "sessions"
-        ? ["sessions", "members", "charges"]
+        ? ["sessions", "members", "charges", "credits"]
         : slice === "tournaments"
-          ? [slice, "charges"]
+          ? [slice, "charges", "credits"]
           : [slice],
     // An admin puts someone in, or takes them off
     handle: async (c) => {
@@ -421,7 +422,7 @@ export const ROUTES: Route[] = [
       about: (c) => ({ memberId: id(c) }),
     },
     action: "manage:Member",
-    changes: ["members", "charges"],
+    changes: ["members", "charges", "credits"],
     handle: async (c) => {
       const b = await body(c.request);
       if (typeof b.quarterly !== "boolean") throw new HttpError(400, "quarterly should be true or false.");
@@ -513,7 +514,7 @@ export const ROUTES: Route[] = [
     path: /^\/api\/series$/,
     audit: false,
     action: "manage:Training",
-    changes: ["series", "sessions", "charges"],
+    changes: ["series", "sessions", "charges", "credits"],
     handle: async (c) => {
       const b = await body(c.request);
       const made = await createSeries(c.env.DB, b, c.today);
@@ -527,7 +528,7 @@ export const ROUTES: Route[] = [
     path: /^\/api\/series\/(\d+)$/,
     audit: false,
     action: "manage:Training",
-    changes: ["series", "sessions", "charges"],
+    changes: ["series", "sessions", "charges", "credits"],
     // Its fees too, for whoever sets fees (ADR 0007)
     handle: async (c) => {
       const b = await body(c.request);
@@ -549,7 +550,7 @@ export const ROUTES: Route[] = [
     path: /^\/api\/sessions\/(\d+)\/cancelled$/,
     audit: false,
     action: "manage:Training",
-    changes: ["sessions", "members", "charges"],
+    changes: ["sessions", "members", "charges", "credits"],
     handle: async (c) => {
       const b = await body(c.request);
       if (typeof b.cancelled !== "boolean") throw new HttpError(400, "cancelled should be true or false.");
@@ -578,7 +579,7 @@ export const ROUTES: Route[] = [
     path: /^\/api\/tournaments$/,
     audit: false,
     action: "manage:Tournament",
-    changes: ["tournaments", "charges"],
+    changes: ["tournaments", "charges", "credits"],
     handle: async (c) => json(await createTournament(c.env.DB, await body(c.request)), 201),
   },
   {
@@ -586,7 +587,7 @@ export const ROUTES: Route[] = [
     path: /^\/api\/tournaments\/(\d+)$/,
     audit: false,
     action: "manage:Tournament",
-    changes: ["tournaments", "charges"],
+    changes: ["tournaments", "charges", "credits"],
     handle: async (c) => (await updateTournament(c.env.DB, id(c), await body(c.request)), ok()),
   },
   {
@@ -594,7 +595,7 @@ export const ROUTES: Route[] = [
     path: /^\/api\/tournaments\/(\d+)$/,
     audit: { event: "tournament.deleted", subject: (c) => tournamentSummary(c.env.DB, id(c)) },
     action: "manage:Tournament",
-    changes: ["tournaments", "charges"],
+    changes: ["tournaments", "charges", "credits"],
     // Gone, with its teams, sign-ups, games, awards and charges (Settings → Tournaments)
     handle: async (c) => (await deleteTournament(c.env.DB, id(c)), ok()),
   },
@@ -843,7 +844,7 @@ export const ROUTES: Route[] = [
     path: /^\/api\/sessions\/(\d+)\/reset$/,
     audit: { event: "session.reset", subject: (c) => sessionSignups(c.env.DB, id(c)) },
     action: "update:Event",
-    changes: ["sessions", "charges"],
+    changes: ["sessions", "charges", "credits"],
     // Start the session again: no sign-ups, no teams
     handle: async (c) => (await resetSession(c.env.DB, id(c)), ok()),
   },
@@ -877,7 +878,7 @@ export const ROUTES: Route[] = [
     audit: false,
     action: "record:Attendance",
     // Who came is who's charged (ADR 0007)
-    changes: ["sessions", "members", "charges"],
+    changes: ["sessions", "members", "charges", "credits"],
     // The register on the night: here or not
     handle: async (c) => {
       const { b, memberId } = await memberIdIn(c);
@@ -892,7 +893,7 @@ export const ROUTES: Route[] = [
     path: /^\/api\/subscription-fees$/,
     audit: { event: "fees.quarterly", subject: (c) => subscriptionFees(c.env.DB) },
     action: "manage:Fees",
-    changes: ["subscriptionFees", "charges"],
+    changes: ["subscriptionFees", "charges", "credits"],
     // { pence, from }: the quarterly rate from a date
     handle: async (c) => (await setSubscriptionFee(c.env.DB, await body(c.request)), ok()),
   },
@@ -905,7 +906,7 @@ export const ROUTES: Route[] = [
       about: (c) => ({ memberId: id(c) }),
     },
     action: "record:Payment",
-    changes: ["charges"],
+    changes: ["charges", "credits"],
     // { quarter: "2026-Q3", pence? }: they owe for a quarter
     handle: async (c) => json(await addQuarterCharge(c.env.DB, id(c), await body(c.request), c.memberId, c.now), 201),
   },
@@ -918,7 +919,7 @@ export const ROUTES: Route[] = [
       about: (c, reply) => ({ memberId: reply.memberId }),
     },
     action: "record:Payment",
-    changes: ["charges"],
+    changes: ["charges", "credits"],
     // A quarter charged by hand by mistake
     handle: async (c) => {
       const was = await chargeState(c.env.DB, id(c));
@@ -935,7 +936,7 @@ export const ROUTES: Route[] = [
       about: (c, reply) => ({ memberId: reply.memberId }),
     },
     action: "record:Payment",
-    changes: ["charges"],
+    changes: ["charges", "credits"],
     // { via: "transfer" | "cash" }: paid
     handle: async (c) => {
       await payCharge(c.env.DB, id(c), await body(c.request), c.memberId, c.now);
@@ -951,7 +952,7 @@ export const ROUTES: Route[] = [
       about: (c, reply) => ({ memberId: reply.memberId }),
     },
     action: "record:Payment",
-    changes: ["charges"],
+    changes: ["charges", "credits"],
     // Marked paid by mistake
     handle: async (c) => {
       await unpayCharge(c.env.DB, id(c));
@@ -967,8 +968,8 @@ export const ROUTES: Route[] = [
       about: (c) => ({ memberId: id(c) }),
     },
     action: "record:Payment",
-    changes: ["charges"],
-    // { via }: Mark all paid
+    changes: ["charges", "credits"],
+    // { via }: Mark all paid; { via, pence }: a lump sum, paying the oldest first (FIFO), the rest kept as credit
     handle: async (c) => (await payAll(c.env.DB, id(c), await body(c.request), c.memberId, c.now), ok()),
   },
   {

@@ -78,6 +78,8 @@ export const MEMBERS: MemberRow[] = [];
 export const SUBSCRIPTION_FEES: DatedFee[] = [];
 /** Charges: your own, or everyone's if you see Unpaid fees (ADR 0007). */
 export const CHARGES: Charge[] = [];
+/** Money paid in and not yet spent on a charge, by member: it pays their next one (ADR 0007). */
+export const CREDITS: { memberId: number; pence: number }[] = [];
 
 /** What /api/bootstrap sends (apps/team/worker/api.ts). */
 export interface Bootstrap {
@@ -116,6 +118,7 @@ export interface Bootstrap {
   agenda: AgendaRow[];
   settings: { liveRefreshSeconds: number };
   charges: Charge[];
+  credits: { memberId: number; pence: number }[];
   subscriptionFees: DatedFee[];
 }
 
@@ -180,6 +183,7 @@ export function applySlices(b: Slices) {
   if (b.agenda) fill(AGENDA, b.agenda);
   if (b.settings) Object.assign(SETTINGS, b.settings);
   if (b.charges) fill(CHARGES, b.charges);
+  if (b.credits) fill(CREDITS, b.credits);
   if (b.subscriptionFees) fill(SUBSCRIPTION_FEES, b.subscriptionFees);
 }
 

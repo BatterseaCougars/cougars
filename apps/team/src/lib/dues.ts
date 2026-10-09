@@ -20,6 +20,8 @@ export interface Charge {
   dueOn: string;
   paidOn: string | null;
   paidVia: "transfer" | "cash" | null;
+  /** Paid so far: all of it, or part of it (a lump sum pays the oldest first and runs out). */
+  paidPence: number;
   /** Charged by an admin (a quarter), so it can be taken back. */
   byHand: boolean;
 }
@@ -59,6 +61,9 @@ export interface AgedRow {
   oldest: 0 | 1 | 2 | 3;
 }
 
+/** What's still to pay on a charge. */
+export const leftOn = (c: Charge) => (c.paidOn ? 0 : Math.max(0, c.pence - (c.paidPence ?? 0)));
+
 /** Unpaid fees: everyone with unpaid charges, worst first (oldest debt, then most owed). */
 export function aged(charges: Charge[], today: string): AgedRow[] {
   const rows = new Map<number, AgedRow>();
@@ -66,8 +71,8 @@ export function aged(charges: Charge[], today: string): AgedRow[] {
     if (c.paidOn) continue;
     const row = rows.get(c.memberId) ?? { memberId: c.memberId, amounts: [0, 0, 0, 0], total: 0, oldest: 0 };
     const b = bucketOf(c.dueOn, today);
-    row.amounts[b] += c.pence;
-    row.total += c.pence;
+    row.amounts[b] += leftOn(c);
+    row.total += leftOn(c);
     row.oldest = Math.max(row.oldest, b) as AgedRow["oldest"];
     rows.set(c.memberId, row);
   }
@@ -76,7 +81,7 @@ export function aged(charges: Charge[], today: string): AgedRow[] {
 
 /** What someone owes: their unpaid charges. */
 export const owed = (charges: Charge[], memberId: number) =>
-  charges.reduce((sum, c) => sum + (c.memberId === memberId && !c.paidOn ? c.pence : 0), 0);
+  charges.reduce((sum, c) => sum + (c.memberId === memberId ? leftOn(c) : 0), 0);
 
 /** What a session or tournament was due, and what it has collected. */
 export function collected(charges: Charge[], kind: Charge["kind"], refId: number) {
@@ -84,7 +89,7 @@ export function collected(charges: Charge[], kind: Charge["kind"], refId: number
   const paid = mine.filter((c) => c.paidOn);
   return {
     due: mine.reduce((s, c) => s + c.pence, 0),
-    paid: paid.reduce((s, c) => s + c.pence, 0),
+    paid: mine.reduce((s, c) => s + c.pence - leftOn(c), 0),
     people: mine.length,
     paidPeople: paid.length,
   };

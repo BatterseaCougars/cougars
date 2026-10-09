@@ -28,6 +28,7 @@ interface Charge {
   dueOn: string;
   paidOn: string | null;
   paidVia: string | null;
+  paidPence: number;
 }
 
 beforeEach(() => {
@@ -113,6 +114,20 @@ describe("who came is charged", () => {
     expect(await chargesOf(dana, reg)).toEqual([]);
   });
 
+  it("Friday Training starts at £12 a session from October (the club's seed)", async () => {
+    const dana = await w.signedIn("dana@example.com");
+    const reg = await memberId(dana, "Reg Player");
+    await dana.call("POST", `/api/sessions/${await sessionOn(dana, LAST_FRIDAY)}/register`, {
+      memberId: reg,
+      here: true,
+    });
+    await dana.call("POST", `/api/sessions/${await sessionOn(dana, "2026-09-25")}/register`, {
+      memberId: reg,
+      here: true,
+    });
+    expect((await chargesOf(dana, reg)).map((c) => [c.dueOn, c.pence])).toEqual([[LAST_FRIDAY, 1200]]);
+  });
+
   it("a session keeps the fee it was charged at when the fee changes later", async () => {
     const dana = await w.signedIn("dana@example.com");
     await fridayFee(dana, 800);
@@ -125,6 +140,8 @@ describe("who came is charged", () => {
 
   it("with no fee set, nobody is charged", async () => {
     const dana = await w.signedIn("dana@example.com");
+    const series = (await boot(dana)).series[0];
+    await dana.call("PUT", `/api/series/${series.id}`, { ...series, fees: [] });
     const reg = await memberId(dana, "Reg Player");
     const session = await sessionOn(dana, LAST_FRIDAY);
     await dana.call("POST", `/api/sessions/${session}/register`, { memberId: reg, here: true });
@@ -156,10 +173,10 @@ describe("who came is charged", () => {
     });
     expect(t.status).toBe(201);
     await reg.call("POST", `/api/tournaments/${t.body.id}/answer`, { answer: "in" });
-    expect(await chargesOf(dana, regId)).toEqual([]);
+    expect((await chargesOf(dana, regId)).filter((c) => c.kind === "tournament")).toEqual([]);
 
     await chargeDue(w.env, on("2026-10-10"));
-    expect(await chargesOf(dana, regId, on("2026-10-10"))).toEqual([
+    expect((await chargesOf(dana, regId, on("2026-10-10"))).filter((c) => c.kind === "tournament")).toEqual([
       expect.objectContaining({ kind: "tournament", refId: t.body.id, pence: 1500, dueOn: "2026-10-10" }),
     ]);
   });
@@ -174,10 +191,11 @@ describe("the quarterly rate", () => {
 
     await chargeDue(w.env, on("2026-09-15"));
     await chargeDue(w.env, on("2026-10-01"));
-    // Joining mid-quarter pays that quarter; the next is due on its first day. Running again charges nothing more.
+    // Joining mid-quarter pays that quarter; the next is due on its first day, at the rate then (the club's seed
+    // makes it £90 from October). Running again charges nothing more.
     await chargeDue(w.env, on("2026-10-06"));
     expect(await chargesOf(dana, reg)).toEqual([
-      expect.objectContaining({ kind: "quarter", quarter: "2026-Q4", pence: 6000, dueOn: "2026-10-01" }),
+      expect.objectContaining({ kind: "quarter", quarter: "2026-Q4", pence: 9000, dueOn: "2026-10-01" }),
       expect.objectContaining({ kind: "quarter", quarter: "2026-Q3", pence: 6000, dueOn: "2026-09-15" }),
     ]);
   });
@@ -242,6 +260,38 @@ describe("paying", () => {
     await dana.call("POST", `/api/charges/${newest.id}/payment`, { via: "cash" });
     await dana.call("POST", `/api/sessions/${newest.refId}/register`, { memberId: reg, here: false });
     expect((await chargesOf(dana, reg)).map((c) => c.id)).toContain(newest.id);
+  });
+
+  it("a lump sum pays the oldest dues first, and part of the next", async () => {
+    const { dana, reg } = await owing();
+    expect((await dana.call("POST", `/api/members/${reg}/payments`, { via: "transfer", pence: 1000 })).status).toBe(
+      200,
+    );
+    expect((await chargesOf(dana, reg)).map((c) => [c.dueOn, c.paidPence, c.paidOn])).toEqual([
+      [LAST_FRIDAY, 200, null],
+      ["2026-09-25", 800, "2026-10-06"],
+    ]);
+    expect((await boot(dana)).credits).toEqual([]);
+  });
+
+  it("money left over is their credit, and pays the next charge as it comes", async () => {
+    const { dana, reg } = await owing();
+    await dana.call("POST", `/api/members/${reg}/payments`, { via: "cash", pence: 2000 });
+    expect((await boot(dana)).credits).toEqual([{ memberId: reg, pence: 400 }]);
+
+    const next = await sessionOn(dana, NEXT_FRIDAY);
+    await dana.call("POST", `/api/sessions/${next}/register`, { memberId: reg, here: true }, { now: on(NEXT_FRIDAY) });
+    const [newest] = await chargesOf(dana, reg, on(NEXT_FRIDAY));
+    expect(newest).toMatchObject({ dueOn: NEXT_FRIDAY, paidPence: 400, paidOn: null });
+    expect((await boot(dana, on(NEXT_FRIDAY))).credits).toEqual([]);
+  });
+
+  it("taking back a lump sum takes back all it paid for", async () => {
+    const { dana, reg } = await owing();
+    await dana.call("POST", `/api/members/${reg}/payments`, { via: "transfer", pence: 1600 });
+    const [newest] = await chargesOf(dana, reg);
+    expect((await dana.call("DELETE", `/api/charges/${newest.id}/payment`)).status).toBe(200);
+    expect((await chargesOf(dana, reg)).map((c) => c.paidPence)).toEqual([0, 0]);
   });
 
   it("payments are on the record", async () => {

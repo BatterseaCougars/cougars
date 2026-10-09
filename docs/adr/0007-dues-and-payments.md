@@ -88,6 +88,12 @@ upload, reminder emails, and an override of one session's fee.
 - **Payments are marked against charges.** On a member's sheet an admin ticks what they paid for (transfer or cash),
   or "Mark all paid", and can untick a mistake; each tick is a payment (`payments`) allocated to that charge
   (`payment_allocations`). Each tick saves as it's made ([0069](0069-members.md)).
+- **A lump sum pays the oldest first (FIFO).** "Record a payment" on the member sheet takes any amount: it pays their
+  oldest charges not yet paid in full, then part of the next. What's left over is **credit**, which pays each new
+  charge as it comes (also oldest payment first). A charge part paid this way shows what's paid and what's to go.
+  Taking back a payment on any charge takes back the whole payment, with everything else it paid for; any other credit
+  then pays again, oldest first. A charge that stops counting (unticked) goes unless it's paid in full; what part of
+  it was paid is credit again.
 - A **bank-statement upload** (later) creates payments by reference and allocates them oldest first, which the admin
   can then re-point. Matching is by the whole reference, never by the name in it.
 
@@ -120,8 +126,7 @@ upload, reminder emails, and an override of one session's fee.
   back.
 - "Who's a Quarterly Member this quarter" is a date query on `subscriptions`; history comes for free, lapsing needs no
   update to the member, and pay-as-you-go needs no rows.
-- Marking payments one charge at a time is more taps for someone who pays for a month at once; "Mark all paid" covers
-  it. Partial payments (£5 of £10) are possible through allocations but have no screen.
+- Someone who pays for a month at once is one payment of that amount, not a tick per night.
 - The day's charges for a session appear that morning, before anyone has played; dropping out takes them off.
 - Deleting a tournament deletes its charges, paid ones too.
 - Still open: concessions, a free first session.
@@ -141,4 +146,6 @@ upload, reminder emails, and an override of one session's fee.
 - 2026-10-08: Overdue Rentals was renamed Unpaid fees in the app and the roadmap; no record of its own.
 - 2026-10-09: Built (#46). No closing the register: charges follow who came, worked out after each change and hourly
   (#11). Calendar quarters, charged by the hourly Cron Trigger; joining mid-quarter pays that quarter; an admin can
-  charge a quarter by hand. A session's fee is written on it when it first charges someone.
+  charge a quarter by hand. A session's fee is written on it when it first charges someone. A lump sum pays the oldest
+  charges first, with credit for what's left. The seed starts charging from 1 October 2026: Friday Training £12 a
+  session, the quarterly rate £90.

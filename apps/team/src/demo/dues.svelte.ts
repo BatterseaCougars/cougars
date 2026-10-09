@@ -43,4 +43,7 @@ export const chargesFor = (memberId: number) =>
 
 export const owedBy = (memberId: number) => owed(db.charges, memberId);
 
+/** Money they've paid that no charge has used yet. */
+export const creditOf = (memberId: number) => db.credits.find((c) => c.memberId === memberId)?.pence ?? 0;
+
 export const collectedFor = (kind: Charge["kind"], refId: number) => collected(db.charges, kind, refId);
