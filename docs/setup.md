@@ -15,8 +15,9 @@ secret**, for example a Cloudflare token called `CLOUDFLARE_API_TOKEN__PRODUCTIO
 Do this twice: once for **Cougars** (production), once for **Cougars Dev** (dev).
 
 1. Create a free account at <https://dash.cloudflare.com/sign-up> (or add a second account to your login).
-2. **Workers & Pages** → pick a `*.workers.dev` subdomain. Production will be at
-   `https://cougars.<subdomain>.workers.dev` until we buy a domain; dev at `https://cougars-dev.<subdomain>.workers.dev`.
+2. **Workers & Pages** → pick a `*.workers.dev` subdomain. The workers are `web` and `team` in both
+   accounts: dev at `https://web.<subdomain>.workers.dev` and `https://team.<subdomain>.workers.dev`; production's site
+   at its domain.
 3. Copy the **Account ID** (account home page).
 4. **Manage Account → Account API Tokens → Create Token** (account-owned, so it doesn't depend on one person's
    login). Scope **Entire _account_**; permissions **Workers Admin** (Editor can't create a new worker) and **D1 Write**. Name it
@@ -96,7 +97,7 @@ In `battersea-cougars/ark` → **Settings**:
    - No repository-level secrets.
 2. **Variables → Actions** (optional):
    - `BWS_SERVER_URL`: `https://vault.bitwarden.eu` if your vault is on the EU server.
-3. Deploy dev once, so the `cougars-dev` worker exists before the first PR preview:
+3. Deploy dev once, so the `web` worker exists before the first PR preview:
    ```sh
    node scripts/env-pull.mjs -- bash scripts/deploy-dev.sh
    ```

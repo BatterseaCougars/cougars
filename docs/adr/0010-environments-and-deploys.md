@@ -20,8 +20,8 @@ be checked before it goes live. Ark deploys `main` to dev and production from a 
 |                     | Production                                         | Dev                                                                  |
 | ------------------- | -------------------------------------------------- | -------------------------------------------------------------------- |
 | Cloudflare account  | **Cougars**                                        | **Cougars Dev** (free)                                               |
-| Website worker / D1 | `cougars` / `cougars`, at batterseacougars.com     | `cougars-dev` / `cougars-dev`, on workers.dev                        |
-| Team app worker     | none until launch                                  | `cougars-team-dev`, on dev's D1                                      |
+| Website worker / D1 | `web` / `cougars`, at batterseacougars.com         | `web` / `cougars-dev`, at `web.cougars-dev.workers.dev`              |
+| Team app worker     | none until launch                                  | `team`, on dev's D1, at `team.cougars-dev.workers.dev`               |
 | Deploys from        | `release`, the daily rebuild, by `deploy.yml` only | `main`, PRs (preview versions), `scripts/deploy-dev.sh`              |
 | Secret names        | `NAME__PRODUCTION`                                 | `NAME__DEV`                                                          |
 | Bitwarden project   | `cougars`                                          | `cougars-dev` (also holds shared plain `NAME`s)                      |
@@ -31,12 +31,12 @@ be checked before it goes live. Ark deploys `main` to dev and production from a 
 
 **Deploys** (`.github/workflows/deploy.yml`, which runs the checks, rebuilds D1 from the schema and smoke-tests):
 
-| Trigger                  | Environment | Deploys                                                                         |
-| ------------------------ | ----------- | ------------------------------------------------------------------------------- |
-| Pull request into `main` | dev         | a preview version of `cougars-dev` (`pr-<n>` alias), linked on the PR           |
-| Push to `main`           | dev         | `cougars-dev`, then the team app as `cougars-team-dev`                          |
-| Push to `release`        | production  | `cougars` and the hosted Studio                                                 |
-| Daily, 04:30 UTC         | production  | `cougars`, rebuilt from `release` ([ADR 0004](0004-astro-workers-sanity-d1.md)) |
+| Trigger                  | Environment | Deploys                                                                     |
+| ------------------------ | ----------- | --------------------------------------------------------------------------- |
+| Pull request into `main` | dev         | a preview version of `web` (`pr-<n>` alias), linked on the PR               |
+| Push to `main`           | dev         | `web`, then the team app as `team`                                          |
+| Push to `release`        | production  | `web` and the hosted Studio                                                 |
+| Daily, 04:30 UTC         | production  | `web`, rebuilt from `release` ([ADR 0004](0004-astro-workers-sanity-d1.md)) |
 
 - **Every app is linked from GitHub's Deployments page.** The deploy job's environment (`preview`, `production`)
   links the website; `scripts/ci/link-deployment.sh` gives the team app (`team app (dev)`) and the Studio (`studio`)
@@ -56,6 +56,8 @@ be checked before it goes live. Ark deploys `main` to dev and production from a 
   `production`. The website build reads `SITE_ENV` (set by `deploy.yml`); the Studio reads `SANITY_STUDIO_SITE_ENV`,
   set to `production` only by the Studio deploy job. Project IDs live in code: they aren't secret (every image URL
   contains one), and public datasets need no read token.
+- **Workers are named for the app, not the club**: `web` and `team` in both accounts, since the account's workers.dev
+  subdomain already says which environment (`cougars-dev`). Databases and Bitwarden projects keep their names.
 - **The team app deploys to dev only**, in the same job as the site, after the site has rebuilt dev's database and
   seeded the roster (`scripts/ci/target.mjs dev team`). Its secrets come from dev's project (`GMAIL_*`,
   `CLOUDFLARE_ANALYTICS_TOKEN`); a missing one is skipped. `SITE_ENV` is `dev`, so every email goes to the safe address
@@ -82,7 +84,8 @@ be checked before it goes live. Ark deploys `main` to dev and production from a 
   practises in Cougars Dev, which they're invited to separately. Content doesn't flow between the projects; copying
   live content into dev, if ever wanted, is a script, not a deploy step.
 - On dev, the team app's sign-in codes arrive in the dev sending account's inbox, not the member's.
-- The dev site is `cougars-dev.<dev subdomain>.workers.dev`; PR previews are aliases on it. Run `scripts/deploy-dev.sh`
+- The dev site is `web.<dev subdomain>.workers.dev`, the team app `team.<dev subdomain>.workers.dev`; PR previews are
+  aliases on `web`. Run `scripts/deploy-dev.sh`
   once before the first PR on a fresh account, so the worker exists.
 
 ## History
@@ -99,3 +102,5 @@ be checked before it goes live. Ark deploys `main` to dev and production from a 
 - 2026-10-09: Team-app screens still on demo data (dues, fees, Upload) are hidden in production (#63).
 - 2026-10-09: Every app gets a link on the Deployments page: the team app and the Studio as their own environments;
   the Studio deploy moves into the production job.
+- 2026-10-09: Workers renamed `web` and `team` in both accounts (were `cougars`, `cougars-dev`, `cougars-team-dev`), so
+  dev is `web.cougars-dev.workers.dev`, not `cougars-dev.cougars-dev.workers.dev`.

@@ -21,7 +21,7 @@ folder **before** it tries the port, so it broke the running server's page even 
 ## Decision
 
 - `apps/team` is a **Svelte 5 + Vite single-page app** with client-side routing, served as static assets by its own
-  Cloudflare **Worker** (`cougars-team`, dev `cougars-team-dev`), which also answers `/api/*` with JSON. It deploys to
+  Cloudflare **Worker** (`team` in each account), which also answers `/api/*` with JSON. It deploys to
   dev from `main`, and to production only at launch ([ADR 0010](0010-environments-and-deploys.md)).
 - It binds the same D1 database as the website (`DB`); the schema stays in `db/`.
 - **Mobile first.** The shell follows Gwenda ops: one route tree, five bottom tabs at ≤900px with safe-area insets, a

@@ -58,7 +58,7 @@ The club may one day pay for hosting, when checking more often costs next to not
   (`live.use-cases.test.ts`), and the fallback is what a locked phone, a dropped connection or a hub restart falls back
   on.
 - Moving to a paid plan is a setting change for the fallback pace, not a code change.
-- Deploying the first time applies the `v1` migration to that Worker (`cougars-team-dev`, and `cougars-team` at
+- Deploying the first time applies the `v1` migration to that Worker (`team` on dev, and on production at
   launch). A previews-only upload (`wrangler versions upload`) can't apply it; the team app deploys with
   `wrangler deploy`.
 - The same object would carry the website's live Kumite page one day; for now the website keeps polling.

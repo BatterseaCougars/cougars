@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Deploy your working copy to the DEV site (worker cougars-dev, D1 cougars-dev) on
+# Deploy your working copy to the DEV site (worker web, D1 cougars-dev) on
 # the Cougars Dev Cloudflare account, with sample content (DEMO_CONTENT) and noindex.
-# Production (`cougars`, Cougars account) only deploys from `release` via
+# Production (`web`, Cougars account) only deploys from `release` via
 # .github/workflows/deploy.yml (docs/adr/0010-environments-and-deploys.md).
 #
 #   node scripts/env-pull.mjs -- bash scripts/deploy-dev.sh
@@ -14,7 +14,7 @@ cd "$(dirname "$0")/.."
 subdomain=$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
   "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/subdomain" |
   node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>process.stdout.write(JSON.parse(s).result?.subdomain??""))' || true)
-export SITE_URL="https://cougars-dev.${subdomain:-example}.workers.dev"
+export SITE_URL="https://web.${subdomain:-example}.workers.dev"
 export DEMO_CONTENT=true
 export PUBLIC_BUILD_VERSION="dev-$(git rev-parse --short HEAD)"
 

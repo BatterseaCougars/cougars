@@ -20,7 +20,7 @@ History line, never a quiet edit; a new topic (a service, a rule, a pattern, a t
   exactly like its secret. Adding or renaming a secret means updating that section in the same change.
 - **Never deploy to production by hand.** Production deploys only from the `release` branch via
   `.github/workflows/deploy.yml`; `main` and PRs deploy dev ([ADR 0010](docs/adr/0010-environments-and-deploys.md)).
-  Dev is a separate Cloudflare account (worker `cougars-dev`) ([ADR 0010](docs/adr/0010-environments-and-deploys.md)). Your machine is dev; production secrets are `NAME__PRODUCTION`.
+  Dev is a separate Cloudflare account (workers `web` and `team`, at `web.cougars-dev.workers.dev` and `team.cougars-dev.workers.dev`) ([ADR 0010](docs/adr/0010-environments-and-deploys.md)). Your machine is dev; production secrets are `NAME__PRODUCTION`.
 - **Not live yet: no migrations.** The database is `db/schema.sql` plus `db/seed/club.sql`; change them and run
   `npm run db:rebuild:local` (dev rebuilds on deploy), which keeps the data. Dev's data becomes production at
   launch; only then do migrations start ([ADR 0050](docs/adr/0050-schema-and-seed-until-launch.md), db/README.md).

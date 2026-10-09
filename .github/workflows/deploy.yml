@@ -2,9 +2,9 @@ name: Deploy
 
 # Branches map to environments like Ark (docs/adr/0010-environments-and-deploys.md), each on its own Cloudflare account
 # (docs/adr/0010-environments-and-deploys.md):
-# pull request    -> dev: a preview version of `cougars-dev`, commented on the PR
-# main            -> dev: worker `cougars-dev`, Cougars Dev account
-# release         -> production: worker `cougars`, Cougars account
+# pull request    -> dev: a preview version of `web`, commented on the PR
+# main            -> dev: workers `web` and `team`, Cougars Dev account
+# release         -> production: worker `web`, Cougars account
 # sanity-publish  -> production rebuild when content changes (from the team app; ADR 0004)
 # schedule        -> daily production rebuild, so Studio changes go live (docs/adr/0004)
 # Those two run on the default branch, which the `production` environment refuses, so their only job
@@ -88,8 +88,7 @@ jobs:
         run: |
           sub=$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
             "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/subdomain" | jq -r .result.subdomain)
-          worker=${{ env.SITE_ENV == 'production' && 'cougars' || 'cougars-dev' }}
-          echo "SITE_URL=https://$worker.$sub.workers.dev" >> "$GITHUB_ENV"
+          echo "SITE_URL=https://web.$sub.workers.dev" >> "$GITHUB_ENV"
 
       - name: Build version
         run: echo "PUBLIC_BUILD_VERSION=$(date -u +%Y.%m.%d)+$(git rev-parse --short HEAD)" >> "$GITHUB_ENV"

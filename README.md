@@ -153,7 +153,7 @@ Never the deploy token: this one lives in the Worker.
 
 ### `CLOUDFLARE_API_TOKEN__DEV`
 
-Deploys the `cougars-dev` worker and migrates the `cougars-dev` D1 database on the **Cougars Dev** account.
+Deploys the `web` worker and migrates the `cougars-dev` D1 database on the **Cougars Dev** account.
 Can't touch production: it is a different account.
 
 - **Issued by:** Cloudflare, Cougars Dev account → Manage Account → **Account API Tokens**. Scope **Entire
@@ -219,7 +219,7 @@ inbox, and dev can only ever send from its own test account, never the club's.
        contact email the developer account's, audience **External**.
     3. **Data access → Add or remove scopes**: `.../auth/gmail.send` only (_Send email on your behalf_). Save.
     4. **Branding**: application home page and privacy policy, the site's `/` and `/privacy/` (the dev site's
-       `https://cougars-dev.cougars-dev.workers.dev` until there's a domain; switch them, and the authorised
+       `https://web.cougars-dev.workers.dev` until there's a domain; switch them, and the authorised
        domain, when there is). Save.
     5. **Audience → Publish app**, to **In production**. In _Testing_, Google cancels the tokens after 7 days.
        It stays unverified (Google warns on the consent screen, which is fine: only the club's two accounts ever
@@ -252,7 +252,7 @@ reply ([ADR 0028](docs/adr/0028-turnstile-and-auto-reply.md)). Free. Without the
 enquiries are still saved and emailed to the club, but nobody gets an auto-reply.
 
 - **Issued by:** Cloudflare, one widget per account. Sidebar **Turnstile** (under _Application security_ in the new
-  dashboard) → **Add widget**: name `cougars-website`, hostname the site's (Cougars Dev: `cougars-dev.cougars-dev.workers.dev`;
+  dashboard) → **Add widget**: name `cougars-website`, hostname the site's (Cougars Dev: `cougars-dev.workers.dev`, which covers `web.` and its PR previews;
   Cougars: `batterseacougars.com`), widget mode **Managed**, pre-clearance **No** → **Create**. It shows a **site
   key** (public: it goes in `deploy.yml` as `TURNSTILE_SITE_KEY` for that environment) and a **secret key**:
   `node scripts/secret-set.mjs TURNSTILE_SECRET_KEY` (dev) or `TURNSTILE_SECRET_KEY__PRODUCTION`.

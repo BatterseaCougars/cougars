@@ -1,6 +1,6 @@
 {
   "$schema": "../../node_modules/wrangler/config-schema.json",
-  // The team app (ADR 0022). main deploys it to dev as cougars-team-dev (ADR 0010, scripts/ci/target.mjs); no
+  // The team app (ADR 0022). main deploys it to dev as `team` (ADR 0010, scripts/ci/target.mjs); no
   // production yet. On the local dev server TEAM_ENV is "local" (vite.config.ts) and you're the first admin.
   "name": "cougars-team",
   "main": "./worker/index.ts",

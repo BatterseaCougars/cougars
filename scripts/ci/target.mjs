@@ -2,27 +2,28 @@
 // Point a built site at production or dev (docs/adr/0010-environments-and-deploys.md):
 // make sure that environment's D1 database exists, then rewrite the config that
 // `astro build` generated (apps/web/dist/server/wrangler.json, which `wrangler
-// deploy` uses) with its worker name, database and SITE_ENV. Production also gets its domain (from SITE_URL) as a
+// deploy` uses) with its worker name, database and SITE_ENV. The workers are `web` and `team` in both accounts, so
+// dev is at web.<dev subdomain>.workers.dev and team.<dev subdomain>.workers.dev (ADR 0010). Production also gets its domain (from SITE_URL) as a
 // Workers custom domain: the deploy creates the DNS records and certificate, on both the bare domain and www.
 //
 //   node scripts/ci/target.mjs production|dev      (after `npm run build`)
 //   node scripts/ci/target.mjs dev team            (the team app, after `npm run build -w @cougars/team`: worker
-//                                                   cougars-team-dev on the same D1, ADR 0010; no domain yet)
+//                                                   `team` on the same D1, ADR 0010; no domain yet)
 //
 // Needs CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID for that environment's account.
 import { execFileSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 
 const TARGETS = {
-  production: { worker: "cougars", db: "cougars" },
-  dev: { worker: "cougars-dev", db: "cougars-dev" },
+  production: { db: "cougars" },
+  dev: { db: "cougars-dev" },
 };
 const environment = process.argv[2];
 const team = process.argv[3] === "team";
 const target = TARGETS[environment];
 if (!target) throw new Error(`Usage: target.mjs ${Object.keys(TARGETS).join("|")} [team]`);
 // The team app shares the site's database (ADR 0022), as its own worker
-if (team) target.worker = target.worker.replace("cougars", "cougars-team");
+target.worker = team ? "team" : "web";
 
 const cwd = new URL("../../apps/web/", import.meta.url);
 const GENERATED = team
