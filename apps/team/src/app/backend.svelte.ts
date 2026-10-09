@@ -284,6 +284,9 @@ export const payAll = (memberId: number, via: "transfer" | "cash") =>
 /** Money in (a lump sum): it pays what they owe oldest first, and anything left over is credit for what's next. */
 export const recordPayment = (memberId: number, pence: number, via: "transfer" | "cash") =>
   save(() => api("POST", `/api/members/${memberId}/payments`, { pence, via }), "Payment recorded");
+/** Work a member's dues out again from who came and the fees as they are now. */
+export const recalculateDues = (memberId: number) =>
+  save(() => api("POST", `/api/members/${memberId}/recalculate`), "Dues recalculated");
 /** A member owes for a quarter ("2026-Q3"): at the quarterly rate then, unless an amount is given. */
 export const chargeQuarter = (memberId: number, quarter: string, pence?: number) =>
   save(() => api("POST", `/api/members/${memberId}/charges`, { quarter, pence }), "Charged");

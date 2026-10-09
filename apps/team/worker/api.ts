@@ -20,6 +20,7 @@ import {
   chargeQuarters,
   chargeState,
   chargesFrom,
+  memberExists,
   payAll,
   payCharge,
   removeCharge,
@@ -362,16 +363,19 @@ export const ROUTES: Route[] = [
     // Everything the app shows, in one go: it's a small club. Or a 304 when nothing's changed (ADR 0053).
     handle: async (c) => {
       const db = c.env.DB;
-      const { version, sessionsMadeOn } = await dataVersion(db);
-      const tag = bootstrapTag(buildOf(c.env), version, c.memberId, c.today);
-      if (c.request.headers.get("if-none-match") === tag) return notModified(tag);
-      // The coming training sessions, on the day's first open; the rest of the day's opens skip it
-      if (sessionsMadeOn !== c.today) {
+      // The coming training sessions, on the day's first open; the rest of the day's opens skip it. First, so the
+      // tag is the club as this reply shows it.
+      const today = await dataVersion(db);
+      let { version } = today;
+      if (today.sessionsMadeOn !== c.today) {
         await ensureSessions(db, c.today);
         // ...and whatever the new day makes due (ADR 0007), in case the hourly check hasn't run yet
         await chargeDue(c.env, new Date(c.now));
         await sessionsMade(db, c.today);
+        ({ version } = await dataVersion(db));
       }
+      const tag = bootstrapTag(buildOf(c.env), version, c.memberId, c.today);
+      if (c.request.headers.get("if-none-match") === tag) return notModified(tag);
       const reply = json({
         me: c.memberId,
         actions: [...c.actions],
@@ -979,6 +983,16 @@ export const ROUTES: Route[] = [
     action: "create:Event",
     changes: ["clubEvents"],
     handle: async (c) => json(await createClubEvent(c.env.DB, await body(c.request)), 201),
+  },
+  {
+    method: "POST",
+    path: /^\/api\/members\/(\d+)\/recalculate$/,
+    audit: false,
+    action: "record:Payment",
+    changes: ["charges", "credits"],
+    // Their dues worked out again from who came and the fees as they are now (the wrapper does it, as after any
+    // change to charges); everyone's come out the same way
+    handle: async (c) => (await memberExists(c.env.DB, id(c)), ok()),
   },
   {
     method: "PUT",

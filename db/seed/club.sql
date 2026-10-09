@@ -144,15 +144,14 @@ INSERT OR IGNORE INTO quips (id, kind, text) VALUES
   (72, 'out', 'Noted. We''ll miss the chirping.'),
   (73, 'out', 'Shame. Your spot''s here next time.');
 
--- series_fees: Friday Training's pay-as-you-go fee per session (ADR 0007), from when the app starts charging, so
--- sessions before it aren't charged
+-- series_fees: Friday Training's pay-as-you-go fee per session (ADR 0007), for every night from a year before the
+-- app went live
 INSERT OR IGNORE INTO series_fees (series_id, effective_from, amount_pence) VALUES
-  (1, '2026-10-01', 1200);
+  (1, '2025-10-01', 1200);
 
--- subscription_fees: the quarterly rate (ADR 0007), from the first quarter the app charges, so nobody is charged for
--- quarters before it
+-- subscription_fees: the quarterly rate (ADR 0007), for every quarter from a year before the app went live
 INSERT OR IGNORE INTO subscription_fees (effective_from, amount_pence) VALUES
-  ('2026-10-01', 9000);
+  ('2025-10-01', 9000);
 
 -- The seed may have changed the club's data: the team app reloads it (data_version, ADR 0053)
 INSERT INTO data_version (id, version) VALUES (1, CAST(strftime('%s', 'now') AS INTEGER))

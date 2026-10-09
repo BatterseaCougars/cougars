@@ -42,10 +42,13 @@ upload, reminder emails, and an override of one session's fee.
 **Fees**
 
 - **Trainings have a fee that applies going forward**: a dated schedule per training (`series_fees`: amount,
-  effective_from), set in the training's editor. A session's fee is the one in force on its date, written onto the
-  session (`training_sessions.fee_pence`) the first time it charges anyone, so a later change never alters it. No fee
-  in force: nobody is charged, so the first fee's date decides how far back charging goes. (Overriding one session's
-  fee is not built.)
+  effective_from), set in the training's editor. A session's fee is the one in force on its date
+  (`training_sessions.fee_pence` holds it). A new fee from a later date leaves earlier nights alone; **changing a fee
+  from an earlier date recalculates every night it covers**, paid or not: a night already paid owes the difference
+  when the fee goes up, and its overpayment becomes credit when it goes down. The same goes for a tournament's fee and
+  the quarterly rate (quarters charged by hand keep what the admin said). No fee in force: nobody is charged, so the
+  first fee's date decides how far back charging goes. An admin can also recalculate a member's dues by hand
+  (Payments tab → Recalculate). (Overriding one session's fee is not built.)
 - **Tournament types have a default fee; each edition has its own.** Scheduling an edition copies the type's default
   (`tournament_types.default_fee_pence` → `tournaments.fee_pence`), and the admin can change it there. (Built.)
 - The **quarterly rate** is its own dated schedule (`subscription_fees`), kept on Settings → Quarterly rate; there is
@@ -146,6 +149,6 @@ upload, reminder emails, and an override of one session's fee.
 - 2026-10-08: Overdue Rentals was renamed Unpaid fees in the app and the roadmap; no record of its own.
 - 2026-10-09: Built (#46). No closing the register: charges follow who came, worked out after each change and hourly
   (#11). Calendar quarters, charged by the hourly Cron Trigger; joining mid-quarter pays that quarter; an admin can
-  charge a quarter by hand. A session's fee is written on it when it first charges someone. A lump sum pays the oldest
-  charges first, with credit for what's left. The seed starts charging from 1 October 2026: Friday Training £12 a
-  session, the quarterly rate £90.
+  charge a quarter by hand. A lump sum pays the oldest charges first, with credit for what's left. Changing a fee from
+  an earlier date recalculates what it covers, paid charges too (was: a session kept the fee it first charged at). The
+  seed charges from 1 October 2025: Friday Training £12 a session, the quarterly rate £90.

@@ -114,7 +114,7 @@ describe("who came is charged", () => {
     expect(await chargesOf(dana, reg)).toEqual([]);
   });
 
-  it("Friday Training starts at £12 a session from October (the club's seed)", async () => {
+  it("Friday Training is £12 a session (the club's seed), for every night in the last year", async () => {
     const dana = await w.signedIn("dana@example.com");
     const reg = await memberId(dana, "Reg Player");
     await dana.call("POST", `/api/sessions/${await sessionOn(dana, LAST_FRIDAY)}/register`, {
@@ -125,16 +125,68 @@ describe("who came is charged", () => {
       memberId: reg,
       here: true,
     });
-    expect((await chargesOf(dana, reg)).map((c) => [c.dueOn, c.pence])).toEqual([[LAST_FRIDAY, 1200]]);
+    expect((await chargesOf(dana, reg)).map((c) => [c.dueOn, c.pence])).toEqual([
+      [LAST_FRIDAY, 1200],
+      ["2026-09-25", 1200],
+    ]);
   });
 
-  it("a session keeps the fee it was charged at when the fee changes later", async () => {
+  it("a new fee from a later date leaves nights before it as they were", async () => {
     const dana = await w.signedIn("dana@example.com");
     await fridayFee(dana, 800);
     const reg = await memberId(dana, "Reg Player");
     const session = await sessionOn(dana, LAST_FRIDAY);
     await dana.call("POST", `/api/sessions/${session}/register`, { memberId: reg, here: true });
+    const series = (await boot(dana)).series[0];
+    await dana.call("PUT", `/api/series/${series.id}`, {
+      ...series,
+      fees: [
+        { pence: 800, from: "2026-01-01" },
+        { pence: 1000, from: "2026-10-06" },
+      ],
+    });
+    expect((await chargesOf(dana, reg))[0].pence).toBe(800);
+  });
+
+  it("changing the fee from the start recalculates every night already recorded", async () => {
+    const dana = await w.signedIn("dana@example.com");
+    await fridayFee(dana, 800);
+    const reg = await memberId(dana, "Reg Player");
+    for (const day of ["2026-09-25", LAST_FRIDAY])
+      await dana.call("POST", `/api/sessions/${await sessionOn(dana, day)}/register`, { memberId: reg, here: true });
     await fridayFee(dana, 1000);
+    expect((await chargesOf(dana, reg)).map((c) => c.pence)).toEqual([1000, 1000]);
+  });
+
+  it("a night already paid owes the difference when the fee goes up, and gives credit when it goes down", async () => {
+    const dana = await w.signedIn("dana@example.com");
+    await fridayFee(dana, 800);
+    const reg = await memberId(dana, "Reg Player");
+    await dana.call("POST", `/api/sessions/${await sessionOn(dana, LAST_FRIDAY)}/register`, {
+      memberId: reg,
+      here: true,
+    });
+    await dana.call("POST", `/api/members/${reg}/payments`, { via: "cash" });
+
+    await fridayFee(dana, 1000);
+    expect((await chargesOf(dana, reg))[0]).toMatchObject({ pence: 1000, paidPence: 800, paidOn: null });
+
+    await fridayFee(dana, 500);
+    expect((await chargesOf(dana, reg))[0]).toMatchObject({ pence: 500, paidPence: 500, paidOn: "2026-10-06" });
+    expect((await boot(dana)).credits).toEqual([{ memberId: reg, pence: 300 }]);
+  });
+
+  it("an admin recalculates a member's dues by hand", async () => {
+    const dana = await w.signedIn("dana@example.com");
+    await fridayFee(dana, 800);
+    const reg = await memberId(dana, "Reg Player");
+    await dana.call("POST", `/api/sessions/${await sessionOn(dana, LAST_FRIDAY)}/register`, {
+      memberId: reg,
+      here: true,
+    });
+    // Changed behind the app's back: the recalculation puts it right
+    w.db.raw.exec("UPDATE charges SET amount_pence = 1");
+    expect((await dana.call("POST", `/api/members/${reg}/recalculate`)).status).toBe(200);
     expect((await chargesOf(dana, reg))[0].pence).toBe(800);
   });
 
@@ -191,11 +243,10 @@ describe("the quarterly rate", () => {
 
     await chargeDue(w.env, on("2026-09-15"));
     await chargeDue(w.env, on("2026-10-01"));
-    // Joining mid-quarter pays that quarter; the next is due on its first day, at the rate then (the club's seed
-    // makes it £90 from October). Running again charges nothing more.
+    // Joining mid-quarter pays that quarter; the next is due on its first day. Running again charges nothing more.
     await chargeDue(w.env, on("2026-10-06"));
     expect(await chargesOf(dana, reg)).toEqual([
-      expect.objectContaining({ kind: "quarter", quarter: "2026-Q4", pence: 9000, dueOn: "2026-10-01" }),
+      expect.objectContaining({ kind: "quarter", quarter: "2026-Q4", pence: 6000, dueOn: "2026-10-01" }),
       expect.objectContaining({ kind: "quarter", quarter: "2026-Q3", pence: 6000, dueOn: "2026-09-15" }),
     ]);
   });

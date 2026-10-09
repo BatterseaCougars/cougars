@@ -17,6 +17,7 @@
     chargeQuarter,
     markHere,
     payAll as payEverything,
+    recalculateDues,
     recordPayment,
     saveContact,
     saveMember,
@@ -632,6 +633,13 @@
                     </button>
                     <button class="btn sm" aria-haspopup="dialog" onclick={startCharge}>
                       <Icon name="plus" size={16} />Charge a quarter
+                    </button>
+                    <button
+                      class="btn sm ghost"
+                      title="Work their dues out again from who came and the fees as they are now"
+                      onclick={() => recalculateDues(memberId)}
+                    >
+                      <Icon name="undo" size={16} />Recalculate
                     </button>
                   </span>
                 {/if}

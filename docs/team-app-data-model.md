@@ -74,7 +74,7 @@ each session and tournament, payments are marked against charges, and Unpaid fee
 | `payments`            | member_id, amount_pence, received_on, via (transfer/cash), recorded_by, created_at                                                           |
 | `payment_allocations` | payment_id, charge_id, amount_pence                                                                                                          |
 
-Also: `training_sessions.fee_pence` (written when the session first charges someone),
+Also: `training_sessions.fee_pence` (its training's fee on its day, kept in line by dues.ts),
 `tournament_types.default_fee_pence`, `tournaments.fee_pence` (copied from the type's default when scheduled).
 
 ## Club
