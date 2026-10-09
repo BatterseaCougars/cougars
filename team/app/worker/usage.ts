@@ -10,7 +10,7 @@ import { mailSetup } from "./auth";
 import type { Env } from "./api";
 
 export interface Metric {
-  id: "requests" | "rowsRead" | "rowsWritten";
+  id: "requests" | "rowsRead" | "rowsWritten" | "liveRequests" | "liveTime";
   label: string;
   used: number;
   limit: number;
@@ -36,13 +36,17 @@ export interface Usage {
   cpu?: { limitMs: number; workers: WorkerCpu[] };
 }
 
-/** The Workers free plan's daily limits (docs/roadmap.md). */
-const FREE = { requests: 100_000, rowsRead: 5_000_000, rowsWritten: 100_000 };
+/** The Workers free plan's daily limits (docs/roadmap.md); the live hub's (ADR 0096) are Durable Objects' */
+const FREE = { requests: 100_000, rowsRead: 5_000_000, rowsWritten: 100_000, liveRequests: 100_000, liveTime: 13_000 };
 const LABELS: Record<Metric["id"], string> = {
   requests: "Worker requests",
   rowsRead: "Database rows read",
   rowsWritten: "Database rows written",
+  liveRequests: "Live hub requests",
+  liveTime: "Live hub time (GB-s)",
 };
+/** A Durable Object is billed as 128 MB for every second it's active, in GB-seconds; Cloudflare gives microseconds. */
+const gbSeconds = (activeUs: number) => Math.round((activeUs / 1_000_000) * 0.128);
 /** CPU time a request may use on the free plan; waiting on the database or a fetch doesn't count. */
 const CPU_LIMIT_MS = 10;
 /** When to warn: a fifth of the day still to spend. */
@@ -61,6 +65,8 @@ const QUERY = `query ($account: String!, $day: Date!) {
         dimensions { scriptName }
       }
       d1AnalyticsAdaptiveGroups(limit: 100, filter: { date: $day }) { sum { rowsRead rowsWritten } }
+      durableObjectsInvocationsAdaptiveGroups(limit: 100, filter: { date: $day }) { sum { requests } }
+      durableObjectsPeriodicGroups(limit: 100, filter: { date: $day }) { sum { activeTime } }
     }
   }
 }`;
@@ -76,6 +82,8 @@ interface Answer {
         }[];
         stopped?: { sum: { requests: number }; dimensions: { scriptName: string } }[];
         d1AnalyticsAdaptiveGroups?: { sum: { rowsRead: number; rowsWritten: number } }[];
+        durableObjectsInvocationsAdaptiveGroups?: { sum: { requests: number } }[];
+        durableObjectsPeriodicGroups?: { sum: { activeTime: number } }[];
       }[];
     };
   };
@@ -101,6 +109,8 @@ export async function readUsage(env: Env, now: Date): Promise<Usage> {
       requests: sum(account.workersInvocationsAdaptive, (r) => r.sum.requests),
       rowsRead: sum(account.d1AnalyticsAdaptiveGroups, (r) => r.sum.rowsRead),
       rowsWritten: sum(account.d1AnalyticsAdaptiveGroups, (r) => r.sum.rowsWritten),
+      liveRequests: sum(account.durableObjectsInvocationsAdaptiveGroups, (r) => r.sum.requests),
+      liveTime: gbSeconds(sum(account.durableObjectsPeriodicGroups, (r) => r.sum.activeTime)),
     };
     const metrics = (Object.keys(FREE) as Metric["id"][]).map((id) => ({
       id,

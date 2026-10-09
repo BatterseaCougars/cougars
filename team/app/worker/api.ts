@@ -3,12 +3,14 @@
 import { londonToday } from "../src/lib/dates";
 import { can, type Action } from "../src/access/actions";
 import { all } from "../../../shared/d1";
-import { handleAuth, sessionOf, type AuthEnv } from "./auth";
+import { handleAuth, localHere, sessionOf, type AuthEnv } from "./auth";
+import { AUDIT_PAGE, audit, readAudit } from "./audit";
 import { answer, listEntries, mark, setPlayer, type EntryKind } from "./entries";
-import { closeDraft, openDraft, pick, putOnTeam, resetDraft, takeOffTeam, undoPick } from "./draft";
+import { closeDraft, draftProgress, openDraft, pick, putOnTeam, resetDraft, takeOffTeam, undoPick } from "./draft";
 import { makeFixtures, scoreGame } from "./fixtures";
 import { addGoal, clockGame, holdScoresheet, removeGoal, undoGoal } from "./scoring";
 import { readUsage } from "./usage";
+import { liveStream, notifyLive } from "./live";
 import { readSettings, saveSettings } from "./settings";
 import { addDevMail, devMailList, devToolsHere, removeDevMail } from "./devtools";
 import { setWinners } from "./awards";
@@ -31,9 +33,15 @@ import {
   everydayRoleOf,
   setEverydayRole,
   updateRole,
+  canGrant,
+  memberEmail,
+  memberJoined,
+  memberStanding,
+  quarterlyToday,
+  roleSummary,
 } from "./people";
 import { createQuip, deleteQuip, listQuips, updateQuip } from "./quips";
-import { listTeams, publishTeams, removeTeams, resetSession } from "./teams";
+import { listTeams, publishTeams, removeTeams, resetSession, sessionSignups } from "./teams";
 import {
   createClubEvent,
   setClubEventCancelled,
@@ -54,6 +62,8 @@ import {
   setTeamLook,
   updateSeries,
   updateTournament,
+  deleteTournament,
+  tournamentSummary,
   updateTournamentType,
   updateVenue,
 } from "./schedule";
@@ -66,6 +76,8 @@ export interface Env extends AuthEnv {
   /** Read-only (Account Analytics: Read), for the Usage page and the hourly check (ADR 0059). */
   CLOUDFLARE_ANALYTICS_TOKEN?: string;
   CLOUDFLARE_ACCOUNT_ID?: string;
+  /** The live hub (ADR 0096), wrangler.jsonc durable_objects; a server without one falls back to checking. */
+  LIVE?: DurableObjectNamespace;
 }
 
 export interface Ctx {
@@ -88,11 +100,46 @@ interface Route {
    * in place without reloading the whole club. Every route that isn't a GET says.
    */
   changes?: readonly Slice[];
+  /**
+   * On the record (ADR 0098): a change says what it does to the club's record, or `false` for none. Every route
+   * that isn't a GET says (security.test.ts). The wrapper reads `subject` before the handler and again after; when the
+   * two differ it writes `event` to the audit log, with who did it, both sides, and `about`.
+   */
+  audit?: Audit | false;
   handle: (c: Ctx) => Promise<Response>;
 }
 
+/** What a change puts on the record (ADR 0098). */
+export interface Audit {
+  /** The entry's name: "member.updated". The audit page says each in plain words. */
+  event: string;
+  /** The state the change is to, read the same way before and after. `reply` (the handler's JSON) only after. */
+  subject: (c: Ctx, reply?: Record<string, unknown>) => Promise<unknown>;
+  /** Which member or role it's about ({ memberId } or { roleId }), so the page can name them. */
+  about?: (c: Ctx, reply: Record<string, unknown>) => Record<string, unknown>;
+}
+
+/** A route's member, or the one the reply says was made. */
+const theMember = (c: Ctx, reply?: Record<string, unknown>) => (reply?.id as number | undefined) ?? id(c);
+
 // ─── The club, in parts ───
 // The bootstrap is all of them; a change's reply is the ones it touched. Each is what this member may see (ADR 0036).
+
+// Who may see more than their own (ADR 0036, ADR 0099). Anyone else sees, of anything personal, only their own.
+/** Everyone's roles, and every role's actions: who sets them, and who views the app as someone (ADR 0029). */
+const SEES_ROLES: readonly Action[] = ["manage:Member", "manage:Role", "impersonate:Member"];
+/** Everyone's answers (out as well as in) and the register (no-shows, walk-ins): who runs events and their teams. */
+const SEES_REGISTER: readonly Action[] = [
+  "record:Attendance",
+  "update:Event",
+  "generate:Teams",
+  "publish:Teams",
+  "manage:Member",
+  "manage:Tournament",
+  "run:Draft",
+];
+const holdsAny = (c: Ctx, actions: readonly Action[]) =>
+  c.actions.has("manage:all") || actions.some((a) => c.actions.has(a));
 
 const SLICES = {
   // The role the app opens as, when it isn't your full one (ADR 0037)
@@ -102,10 +149,16 @@ const SLICES = {
     return listMembers(c.env.DB, {
       ratings: can("read:Rating"),
       privateFor: can("manage:Member") ? "all" : c.memberId,
+      rolesFor: holdsAny(c, SEES_ROLES) ? "all" : c.memberId,
       today: c.today,
     });
   },
-  roles: (c: Ctx) => listRoles(c.env.DB),
+  // Every role, for whoever sets them; anyone else, only the roles they could hold as they are: their own, and the
+  // ones that can do less (their everyday role's choices, ADR 0037). What a stronger role can do isn't theirs to see.
+  roles: async (c: Ctx) => {
+    const roles = await listRoles(c.env.DB);
+    return holdsAny(c, SEES_ROLES) ? roles : roles.filter((r) => canGrant(c.actions, r.actions));
+  },
   venues: (c: Ctx) => listVenues(c.env.DB),
   series: (c: Ctx) => listSeries(c.env.DB),
   // A few weeks back, for what's just been held
@@ -113,15 +166,15 @@ const SLICES = {
     withTeams(
       c.env.DB,
       await withEntries(
-        c.env.DB,
+        c,
         "session",
         await listSessions(c.env.DB, new Date(Date.parse(c.today) - 28 * 86_400_000).toISOString().slice(0, 10)),
       ),
     ),
   tournamentTypes: (c: Ctx) => listTournamentTypes(c.env.DB),
   tournaments: async (c: Ctx) =>
-    draftSeenBy(c, await withEntries(c.env.DB, "tournament", await listTournaments(c.env.DB))),
-  clubEvents: async (c: Ctx) => withEntries(c.env.DB, "event", await listClubEvents(c.env.DB, c.now)),
+    teamContactsSeenBy(c, draftSeenBy(c, await withEntries(c, "tournament", await listTournaments(c.env.DB)))),
+  clubEvents: async (c: Ctx) => withEntries(c, "event", await listClubEvents(c.env.DB, c.now)),
   quips: (c: Ctx) => listQuips(c.env.DB),
   // How often live pages check for updates (ADR 0072)
   settings: (c: Ctx) => readSettings(c.env.DB),
@@ -203,6 +256,7 @@ const ENTRY_ROUTES: Route[] = KINDS.flatMap(([path, kind, slice]): Route[] => [
   {
     method: "POST",
     path: new RegExp(`^/api/${path}/(\\d+)/answer$`),
+    audit: false,
     action: "signup:Event",
     changes: [slice],
     // You, in or out
@@ -216,6 +270,7 @@ const ENTRY_ROUTES: Route[] = KINDS.flatMap(([path, kind, slice]): Route[] => [
   {
     method: "POST",
     path: new RegExp(`^/api/${path}/(\\d+)/players$`),
+    audit: false,
     action: "update:Event",
     // A past session's line-up is what a player's "played" counts
     changes: slice === "sessions" ? ["sessions", "members"] : [slice],
@@ -230,6 +285,13 @@ const ENTRY_ROUTES: Route[] = KINDS.flatMap(([path, kind, slice]): Route[] => [
 ]);
 
 export const ROUTES: Route[] = [
+  {
+    method: "GET",
+    path: /^\/api\/live$/,
+    action: "authenticated",
+    // Changes as they happen, as a stream (ADR 0096): only the names of the parts that changed, from the live hub
+    handle: async (c) => liveStream(c.env),
+  },
   {
     method: "GET",
     path: /^\/api\/bootstrap$/,
@@ -253,6 +315,7 @@ export const ROUTES: Route[] = [
   {
     method: "PUT",
     path: /^\/api\/me$/,
+    audit: false,
     action: "authenticated",
     changes: ["members"],
     // Your own phone, position and bio
@@ -261,6 +324,7 @@ export const ROUTES: Route[] = [
   {
     method: "PUT",
     path: /^\/api\/me\/everyday-role$/,
+    audit: false,
     action: "authenticated",
     changes: ["everydayRole"],
     // { roleId: number | null }: the role the app opens as (ADR 0037)
@@ -280,6 +344,11 @@ export const ROUTES: Route[] = [
   {
     method: "POST",
     path: /^\/api\/members\/(\d+)\/quarterly$/,
+    audit: {
+      event: "member.quarterly",
+      subject: (c) => quarterlyToday(c.env.DB, id(c), c.today),
+      about: (c) => ({ memberId: id(c) }),
+    },
     action: "manage:Member",
     changes: ["members"],
     handle: async (c) => {
@@ -292,43 +361,70 @@ export const ROUTES: Route[] = [
   {
     method: "PUT",
     path: /^\/api\/members\/(\d+)\/contact$/,
+    // Their sign-in email: changing it is a way to become them
+    audit: {
+      event: "member.email",
+      subject: (c) => memberEmail(c.env.DB, id(c)),
+      about: (c) => ({ memberId: id(c) }),
+    },
     action: "manage:Member",
     changes: ["members"],
-    handle: async (c) => (await setContact(c.env.DB, id(c), await body(c.request), c.actions), ok()),
+    handle: async (c) => (await setContact(c.env.DB, id(c), await body(c.request), c), ok()),
   },
   {
     method: "POST",
     path: /^\/api\/members$/,
+    audit: {
+      event: "member.added",
+      subject: async (c, reply) => (reply ? memberJoined(c.env.DB, theMember(c, reply)) : null),
+      about: (c, reply) => ({ memberId: theMember(c, reply) }),
+    },
     action: "manage:Member",
     changes: ["members"],
     // { name, email, position }: in the club now, and emailed a link to the app (ADR 0069)
-    handle: async (c) =>
-      json(await addMember(c.env, await body(c.request), new URL(c.request.url).origin, new Date(c.now)), 201),
+    handle: async (c) => json(await addMember(c.env, await body(c.request), new URL(c.request.url).origin, c), 201),
   },
   {
     method: "PUT",
     path: /^\/api\/members\/(\d+)$/,
+    // Whether they're in, and their roles: who can do what
+    audit: {
+      event: "member.updated",
+      subject: (c) => memberStanding(c.env.DB, id(c)),
+      about: (c) => ({ memberId: id(c) }),
+    },
     action: "manage:Member",
     changes: ["members"],
-    handle: async (c) => (await updateMember(c.env.DB, id(c), await body(c.request), c.actions), ok()),
+    handle: async (c) => (await updateMember(c.env.DB, id(c), await body(c.request), c), ok()),
   },
   {
     method: "POST",
     path: /^\/api\/roles$/,
+    audit: {
+      event: "role.created",
+      subject: async (c, reply) => (reply ? roleSummary(c.env.DB, reply.id as number) : null),
+      about: (_, reply) => ({ roleId: reply.id }),
+    },
     action: "manage:Role",
     changes: ["roles"],
-    handle: async (c) => json({ id: await createRole(c.env.DB, await body(c.request), c.actions) }, 201),
+    handle: async (c) => json({ id: await createRole(c.env.DB, await body(c.request), c) }, 201),
   },
   {
     method: "PUT",
     path: /^\/api\/roles\/(\d+)$/,
+    audit: {
+      event: "role.updated",
+      subject: (c) => roleSummary(c.env.DB, id(c)),
+      about: (c) => ({ roleId: id(c) }),
+    },
     action: "manage:Role",
     changes: ["roles", "members"],
-    handle: async (c) => (await updateRole(c.env.DB, id(c), await body(c.request), c.actions), ok()),
+    handle: async (c) => (await updateRole(c.env.DB, id(c), await body(c.request), c), ok()),
   },
   {
     method: "POST",
     path: /^\/api\/venues$/,
+    audit: false,
     action: "manage:Venue",
     changes: ["venues"],
     handle: async (c) => json(await createVenue(c.env.DB, await body(c.request)), 201),
@@ -336,6 +432,7 @@ export const ROUTES: Route[] = [
   {
     method: "PUT",
     path: /^\/api\/venues\/(\d+)$/,
+    audit: false,
     action: "manage:Venue",
     changes: ["venues"],
     handle: async (c) => (await updateVenue(c.env.DB, id(c), await body(c.request)), ok()),
@@ -343,6 +440,7 @@ export const ROUTES: Route[] = [
   {
     method: "POST",
     path: /^\/api\/series$/,
+    audit: false,
     action: "manage:Training",
     changes: ["series", "sessions"],
     handle: async (c) => json(await createSeries(c.env.DB, await body(c.request), c.today), 201),
@@ -350,6 +448,7 @@ export const ROUTES: Route[] = [
   {
     method: "PUT",
     path: /^\/api\/series\/(\d+)$/,
+    audit: false,
     action: "manage:Training",
     changes: ["series", "sessions"],
     handle: async (c) => (await updateSeries(c.env.DB, id(c), await body(c.request), c.today), ok()),
@@ -357,6 +456,7 @@ export const ROUTES: Route[] = [
   {
     method: "POST",
     path: /^\/api\/series\/(\d+)\/more$/,
+    audit: false,
     action: "manage:Training",
     changes: ["sessions"],
     handle: async (c) => (await moreSessions(c.env.DB, id(c), c.today), ok()),
@@ -364,6 +464,7 @@ export const ROUTES: Route[] = [
   {
     method: "POST",
     path: /^\/api\/sessions\/(\d+)\/cancelled$/,
+    audit: false,
     action: "manage:Training",
     changes: ["sessions", "members"],
     handle: async (c) => {
@@ -376,6 +477,7 @@ export const ROUTES: Route[] = [
   {
     method: "POST",
     path: /^\/api\/tournament-types$/,
+    audit: false,
     action: "manage:Tournament",
     changes: ["tournamentTypes"],
     handle: async (c) => json(await createTournamentType(c.env.DB, await body(c.request)), 201),
@@ -383,6 +485,7 @@ export const ROUTES: Route[] = [
   {
     method: "PUT",
     path: /^\/api\/tournament-types\/(\d+)$/,
+    audit: false,
     action: "manage:Tournament",
     changes: ["tournamentTypes"],
     handle: async (c) => (await updateTournamentType(c.env.DB, id(c), await body(c.request)), ok()),
@@ -390,6 +493,7 @@ export const ROUTES: Route[] = [
   {
     method: "POST",
     path: /^\/api\/tournaments$/,
+    audit: false,
     action: "manage:Tournament",
     changes: ["tournaments"],
     handle: async (c) => json(await createTournament(c.env.DB, await body(c.request)), 201),
@@ -397,9 +501,19 @@ export const ROUTES: Route[] = [
   {
     method: "PUT",
     path: /^\/api\/tournaments\/(\d+)$/,
+    audit: false,
     action: "manage:Tournament",
     changes: ["tournaments"],
     handle: async (c) => (await updateTournament(c.env.DB, id(c), await body(c.request)), ok()),
+  },
+  {
+    method: "DELETE",
+    path: /^\/api\/tournaments\/(\d+)$/,
+    audit: { event: "tournament.deleted", subject: (c) => tournamentSummary(c.env.DB, id(c)) },
+    action: "manage:Tournament",
+    changes: ["tournaments"],
+    // Gone, with its teams, sign-ups, games and awards (Settings → Tournaments)
+    handle: async (c) => (await deleteTournament(c.env.DB, id(c)), ok()),
   },
   {
     method: "GET",
@@ -409,8 +523,28 @@ export const ROUTES: Route[] = [
     handle: async (c) => json(await readUsage(c.env, new Date(c.now))),
   },
   {
+    method: "GET",
+    path: /^\/api\/audit$/,
+    action: "read:Audit",
+    // The record, newest first (ADR 0095): ?before=<id> for the page after, ?limit= up to 200
+    handle: async (c) => {
+      const q = new URL(c.request.url).searchParams;
+      const before = q.get("before");
+      const limit = q.get("limit");
+      if ((before && !/^\d+$/.test(before)) || (limit && !/^\d+$/.test(limit)))
+        throw new HttpError(400, "before and limit should be whole numbers.");
+      return json(
+        await readAudit(c.env.DB, {
+          before: before ? Number(before) : null,
+          limit: limit ? Number(limit) : AUDIT_PAGE,
+        }),
+      );
+    },
+  },
+  {
     method: "PUT",
     path: /^\/api\/tournaments\/(\d+)\/winners$/,
+    audit: false,
     action: "manage:Tournament",
     changes: ["tournaments"],
     // { winners: [{ award, teamId | memberId }] }: who won the tournament's awards (ADR 0073)
@@ -419,6 +553,7 @@ export const ROUTES: Route[] = [
   {
     method: "PUT",
     path: /^\/api\/settings$/,
+    audit: false,
     action: "manage:Settings",
     changes: ["settings"],
     // { liveRefreshSeconds }: how often live pages check for updates (ADR 0072)
@@ -434,6 +569,8 @@ export const ROUTES: Route[] = [
   {
     method: "POST",
     path: /^\/api\/dev\/mail$/,
+    // Who gets their own email outside production
+    audit: { event: "dev_mail.changed", subject: (c) => devMailList(c.env) },
     action: "manage:Settings",
     // A club setting, read on its own page (GET /api/dev/mail)
     changes: ["settings"],
@@ -442,6 +579,7 @@ export const ROUTES: Route[] = [
   {
     method: "DELETE",
     path: /^\/api\/dev\/mail$/,
+    audit: { event: "dev_mail.changed", subject: (c) => devMailList(c.env) },
     action: "manage:Settings",
     // A club setting, read on its own page (GET /api/dev/mail)
     changes: ["settings"],
@@ -451,6 +589,7 @@ export const ROUTES: Route[] = [
   {
     method: "POST",
     path: /^\/api\/tournaments\/(\d+)\/draft\/picks$/,
+    audit: false,
     // The captain on the clock, or whoever's running the draft: draft.ts decides
     action: "authenticated",
     changes: ["tournaments"],
@@ -463,6 +602,7 @@ export const ROUTES: Route[] = [
   {
     method: "DELETE",
     path: /^\/api\/tournaments\/(\d+)\/draft\/picks\/last$/,
+    audit: false,
     action: "run:Draft",
     changes: ["tournaments"],
     handle: async (c) => (await undoPick(c.env.DB, id(c)), ok()),
@@ -470,6 +610,7 @@ export const ROUTES: Route[] = [
   {
     method: "POST",
     path: /^\/api\/tournaments\/(\d+)\/fixtures$/,
+    audit: false,
     action: "manage:Tournament",
     changes: ["tournaments"],
     // The round robin and its playoffs, once the teams are set (ADR 0061)
@@ -478,6 +619,7 @@ export const ROUTES: Route[] = [
   {
     method: "PUT",
     path: /^\/api\/tournaments\/(\d+)\/games\/(\d+)$/,
+    audit: false,
     action: "score:Match",
     changes: ["tournaments"],
     // A game's final score; the last group result fills the playoffs
@@ -487,6 +629,7 @@ export const ROUTES: Route[] = [
   {
     method: "POST",
     path: /^\/api\/tournaments\/(\d+)\/games\/(\d+)\/scorer$/,
+    audit: false,
     action: "authenticated",
     changes: ["tournaments"],
     // { action: "claim" | "release" }: Start scoring, or let it go
@@ -495,6 +638,7 @@ export const ROUTES: Route[] = [
   {
     method: "POST",
     path: /^\/api\/tournaments\/(\d+)\/games\/(\d+)\/clock$/,
+    audit: false,
     action: "authenticated",
     changes: ["tournaments"],
     // { action: "start" | "pause" | "end" }
@@ -506,6 +650,7 @@ export const ROUTES: Route[] = [
   {
     method: "POST",
     path: /^\/api\/tournaments\/(\d+)\/games\/(\d+)\/goals$/,
+    audit: false,
     action: "authenticated",
     changes: ["tournaments"],
     // { teamId, scorerId?, assistId? }
@@ -517,6 +662,7 @@ export const ROUTES: Route[] = [
   {
     method: "DELETE",
     path: /^\/api\/tournaments\/(\d+)\/games\/(\d+)\/goals\/last$/,
+    audit: false,
     action: "authenticated",
     changes: ["tournaments"],
     handle: async (c) => (await undoGoal(c.env.DB, id(c), Number(c.params[1]), c), ok()),
@@ -524,6 +670,7 @@ export const ROUTES: Route[] = [
   {
     method: "DELETE",
     path: /^\/api\/tournaments\/(\d+)\/games\/(\d+)\/goals\/(\d+)$/,
+    audit: false,
     action: "authenticated",
     changes: ["tournaments"],
     // An admin takes any goal off a finished game (scoring.ts decides who)
@@ -532,6 +679,7 @@ export const ROUTES: Route[] = [
   {
     method: "POST",
     path: /^\/api\/tournaments\/(\d+)\/draft\/open$/,
+    audit: false,
     action: "run:Draft",
     changes: ["tournaments"],
     // The night of the draft: the captains can pick (ADR 0060)
@@ -540,6 +688,7 @@ export const ROUTES: Route[] = [
   {
     method: "POST",
     path: /^\/api\/tournaments\/(\d+)\/draft\/close$/,
+    audit: false,
     action: "run:Draft",
     changes: ["tournaments"],
     // Everyone's picked (or the rest are left out on purpose): the teams are locked
@@ -548,6 +697,7 @@ export const ROUTES: Route[] = [
   {
     method: "PUT",
     path: /^\/api\/tournaments\/(\d+)\/teams\/(\d+)\/look$/,
+    audit: false,
     // Its captain or an admin: setTeamLook decides
     action: "authenticated",
     changes: ["tournaments"],
@@ -560,6 +710,7 @@ export const ROUTES: Route[] = [
   {
     method: "POST",
     path: /^\/api\/tournaments\/(\d+)\/teams\/(\d+)\/players$/,
+    audit: false,
     action: "manage:Tournament",
     changes: ["tournaments"],
     // A replacement, outside the draft: onto this team (from another, or from outside the tournament)
@@ -572,6 +723,7 @@ export const ROUTES: Route[] = [
   {
     method: "DELETE",
     path: /^\/api\/tournaments\/(\d+)\/teams\/(\d+)\/players\/(\d+)$/,
+    audit: false,
     action: "manage:Tournament",
     changes: ["tournaments"],
     // Off the team, still signed up
@@ -580,6 +732,7 @@ export const ROUTES: Route[] = [
   {
     method: "POST",
     path: /^\/api\/tournaments\/(\d+)\/draft\/reset$/,
+    audit: { event: "draft.reset", subject: (c) => draftProgress(c.env.DB, id(c)) },
     action: "run:Draft",
     changes: ["tournaments"],
     // Start again: the picks (and any fixtures) go, the sign-ups and captains stay
@@ -588,6 +741,7 @@ export const ROUTES: Route[] = [
   {
     method: "POST",
     path: /^\/api\/sessions\/(\d+)\/teams$/,
+    audit: false,
     action: "publish:Teams",
     changes: ["sessions"],
     handle: async (c) => (await publishTeams(c.env.DB, id(c), await body(c.request), c.memberId, c.now), ok()),
@@ -595,6 +749,7 @@ export const ROUTES: Route[] = [
   {
     method: "DELETE",
     path: /^\/api\/sessions\/(\d+)\/teams$/,
+    audit: false,
     action: "publish:Teams",
     changes: ["sessions"],
     // Take the teams down; the sign-ups stay
@@ -603,6 +758,7 @@ export const ROUTES: Route[] = [
   {
     method: "POST",
     path: /^\/api\/sessions\/(\d+)\/reset$/,
+    audit: { event: "session.reset", subject: (c) => sessionSignups(c.env.DB, id(c)) },
     action: "update:Event",
     changes: ["sessions"],
     // Start the session again: no sign-ups, no teams
@@ -611,6 +767,7 @@ export const ROUTES: Route[] = [
   {
     method: "POST",
     path: /^\/api\/quips$/,
+    audit: false,
     action: "manage:Quip",
     changes: ["quips"],
     handle: async (c) => json(await createQuip(c.env.DB, await body(c.request)), 201),
@@ -618,6 +775,7 @@ export const ROUTES: Route[] = [
   {
     method: "PUT",
     path: /^\/api\/quips\/(\d+)$/,
+    audit: false,
     action: "manage:Quip",
     changes: ["quips"],
     handle: async (c) => (await updateQuip(c.env.DB, id(c), await body(c.request)), ok()),
@@ -625,6 +783,7 @@ export const ROUTES: Route[] = [
   {
     method: "DELETE",
     path: /^\/api\/quips\/(\d+)$/,
+    audit: false,
     action: "manage:Quip",
     changes: ["quips"],
     handle: async (c) => (await deleteQuip(c.env.DB, id(c)), ok()),
@@ -632,6 +791,7 @@ export const ROUTES: Route[] = [
   {
     method: "POST",
     path: /^\/api\/sessions\/(\d+)\/register$/,
+    audit: false,
     action: "record:Attendance",
     changes: ["sessions", "members"],
     // The register on the night: here or not
@@ -645,6 +805,7 @@ export const ROUTES: Route[] = [
   {
     method: "POST",
     path: /^\/api\/club-events$/,
+    audit: false,
     action: "create:Event",
     changes: ["clubEvents"],
     handle: async (c) => json(await createClubEvent(c.env.DB, await body(c.request)), 201),
@@ -652,6 +813,7 @@ export const ROUTES: Route[] = [
   {
     method: "PUT",
     path: /^\/api\/club-events\/(\d+)$/,
+    audit: false,
     action: "update:Event",
     changes: ["clubEvents"],
     handle: async (c) => (await updateClubEvent(c.env.DB, id(c), await body(c.request)), ok()),
@@ -659,6 +821,7 @@ export const ROUTES: Route[] = [
   {
     method: "POST",
     path: /^\/api\/club-events\/(\d+)\/cancelled$/,
+    audit: false,
     action: "update:Event",
     changes: ["clubEvents"],
     handle: async (c) => {
@@ -670,14 +833,28 @@ export const ROUTES: Route[] = [
   },
 ];
 
-/** Each event with everyone's answers on it. */
-async function withEntries<T extends { id: number }>(db: D1Database, kind: EntryKind, rows: T[]) {
+/**
+ * Each event with its answers: who's in and who's waiting, for everyone (that's what a sign-up is for); who said
+ * they're out, who didn't turn up and who walked in, only your own, unless you run events (ADR 0099).
+ */
+async function withEntries<T extends { id: number }>(c: Ctx, kind: EntryKind, rows: T[]) {
   const entries = await listEntries(
-    db,
+    c.env.DB,
     kind,
     rows.map((r) => r.id),
   );
-  return rows.map((r) => ({ ...r, ...entries.get(r.id)! }));
+  const all = holdsAny(c, SEES_REGISTER);
+  const own = (ids: number[]) => (all ? ids : ids.filter((id) => id === c.memberId));
+  return rows.map((r) => {
+    const e = entries.get(r.id)!;
+    return { ...r, ...e, out: own(e.out), noShows: own(e.noShows), walkIns: own(e.walkIns) };
+  });
+}
+
+/** How to reach a team that entered from outside the club: for whoever runs tournaments (ADR 0099). */
+function teamContactsSeenBy<T extends { teams: { contact: string }[] }>(c: Ctx, tournaments: T[]): T[] {
+  if (holdsAny(c, ["manage:Tournament"])) return tournaments;
+  return tournaments.map((t) => ({ ...t, teams: t.teams.map((team) => ({ ...team, contact: "" })) }));
 }
 
 /** Each session with its published teams. */
@@ -693,7 +870,8 @@ async function withTeams<T extends { id: number }>(db: D1Database, rows: T[]) {
 async function whoIs(request: Request, env: Env, now: Date): Promise<{ memberId: number; setCookie?: string } | null> {
   const session = await sessionOf(request, env, now);
   if (session) return session;
-  if (env.TEAM_ENV === "local" && env.TEAM_AUTO_ADMIN === "1") {
+  // Only on a private address (ADR 0093): a build that said "local" by mistake still opens to nobody
+  if (localHere(env, request) && env.TEAM_AUTO_ADMIN === "1") {
     const memberId = await firstAdmin(env.DB);
     return memberId == null ? null : { memberId };
   }
@@ -742,8 +920,11 @@ export async function handleApi(
       );
     const actions = await actionsOf(env.DB, memberId);
     const { action } = hit.r;
-    if (action !== "authenticated" && !actions.has("manage:all") && !actions.has(action))
+    if (action !== "authenticated" && !actions.has("manage:all") && !actions.has(action)) {
+      // Refused for want of an action: on the record (ADR 0024), so poking at admin routes is seen
+      await audit(env.DB, now, memberId, "refused", { method: request.method, path: url.pathname, action });
       return json({ error: "Your role can't do that." }, 403);
+    }
     const ctx: Ctx = {
       env,
       request,
@@ -753,13 +934,33 @@ export async function handleApi(
       today: londonToday(now),
       now: now.toISOString(),
     };
+    // On the record (ADR 0098): what the change is to, before it
+    const record = writes && hit.r.audit ? hit.r.audit : null;
+    const before = record ? await record.subject(ctx) : undefined;
     const res = await hit.r.handle(ctx);
+    if (record && res.ok) {
+      const reply = (await res
+        .clone()
+        .json()
+        .catch(() => ({}))) as Record<string, unknown>;
+      const after = await record.subject(ctx, reply);
+      if (JSON.stringify(before ?? null) !== JSON.stringify(after ?? null))
+        await audit(env.DB, now, memberId, record.event, {
+          ...record.about?.(ctx, reply),
+          from: before ?? null,
+          to: after ?? null,
+        });
+    }
     if (writes && res.ok) {
       // A change: every member's bootstrap is out of date (ADR 0054)
       await bumpDataVersion(env.DB);
       // ...and this member gets the parts it touched back, to put in place
       const declared = hit.r.changes ?? [];
       const changes = declared.some((d) => SCHEDULE.includes(d)) ? [...declared, "agenda" as const] : declared;
+      // ...and everyone on a live page hears which parts (ADR 0096), once this reply is on its way
+      const told = notifyLive(env, changes);
+      if (waitUntil) waitUntil(told);
+      else await told;
       if (changes.length) {
         const now = changes.some((s) => ACCESS.includes(s))
           ? { ...ctx, actions: await actionsOf(env.DB, memberId) }

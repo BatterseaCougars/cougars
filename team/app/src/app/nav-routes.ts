@@ -243,6 +243,18 @@ const STATIC_TAIL: Route[] = [
     hint: "What each role can do",
   },
   {
+    id: "audit",
+    path: "/settings/audit",
+    name: "Audit log",
+    tab: "more",
+    page: "audit",
+    action: "read:Audit",
+    icon: "list",
+    group: "Settings",
+    section: "Security",
+    hint: "Who changed what, and when",
+  },
+  {
     id: "usage",
     path: "/settings/usage",
     name: "Usage",
@@ -406,11 +418,26 @@ export function buildRoutes(config: NavConfig): Route[] {
               })),
             ]
           : []),
-        // Each game full screen: its live score for anyone, its scoresheet for the team keeping score (ADR 0071)
+        // Each game's matchup (ADR 0090): both squads, the result, when the captains' sides last met. Under the
+        // fight card
+        ...(t.games ?? []).map((gameId): Route => ({
+          ...base,
+          id: `matchup:${t.id}:${gameId}`,
+          path: `/tournaments/${t.slug}/games/${gameId}`,
+          name: "Matchup",
+          page: "matchup",
+          params: { typeId: t.id, gameId },
+          action: "read:Event",
+          icon: "swords",
+          hidden: true,
+          under: `schedule:${t.id}`,
+        })),
+        // Each game's clock, full screen: its live score for anyone, its scoresheet for whoever keeps time and score
+        // (ADR 0071)
         ...(t.games ?? []).map((gameId): Route => ({
           ...base,
           id: `game:${t.id}:${gameId}`,
-          path: `/tournaments/${t.slug}/games/${gameId}`,
+          path: `/tournaments/${t.slug}/games/${gameId}/live`,
           name: "Game",
           page: "game",
           params: { typeId: t.id, gameId },

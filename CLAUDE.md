@@ -8,8 +8,9 @@ a new ADR that supersedes it, never a quiet edit.
 
 ## Hard rules
 
-- **Free tiers only.** Don't add a paid service or binding (Cloudflare Images, Durable Objects with storage,
-  paid Sanity features, card-payment providers) without asking. Check limits in docs/roadmap.md.
+- **Free tiers only.** Don't add a paid service or binding (Cloudflare Images, Durable Objects that store rows,
+  paid Sanity features, card-payment providers) without asking. Check limits in docs/roadmap.md. A Durable Object
+  that stores nothing (the live hub, ADR 0096) is fine.
 - **Secrets live only in Bitwarden Secrets Manager** ([ADR 0002](docs/adr/0002-secrets-in-bitwarden.md)).
   Never print secret values, never write them to files (`.env`, `.dev.vars`), never commit them. `.env` is for
   local non-secret overrides only. GitHub holds only the Bitwarden tokens (`BWS_ACCESS_TOKEN__PRODUCTION`, `__DEV`). Use

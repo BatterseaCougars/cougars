@@ -9,7 +9,7 @@
   // then two views, Players and Teams: side by side on a wide screen, tabs on anything narrower. The players are a
   // plain list with a Pick on each row on your turn; a name opens the player's card. A captain's own team is the
   // first of the teams, badged "Your team", with their coming pick drawn in.
-  import { goesBy, goesByOf, shortNameOf } from "../lib/names";
+  import { goesBy, goesByOf, shortNameOf, nameOfTeam } from "../lib/names";
   import EmptyState from "../lib/EmptyState.svelte";
   import { can } from "../access/actions";
   import { PLAYERS, type Player, type Position } from "../demo/data";
@@ -28,9 +28,11 @@
   import { editTournament } from "../lib/TournamentEditorPanel.svelte";
   import { currentTournament, typeById } from "../demo/schedule.svelte";
   import { closeDraft, draftPick, makeFixtures, openDraft, resetDraft, undoDraftPick } from "../app/backend.svelte";
-  import { checkForUpdates, everyHowOften } from "../lib/live-updates.svelte";
-  import { formatDayDate, londonISO } from "../lib/dates";
-  import { onTheClock } from "../lib/draft";
+  import { checkForUpdates, everyHowOften, liveFeed } from "../lib/live-updates.svelte";
+  import LiveNote from "../lib/LiveNote.svelte";
+  import { formatDayDate, londonISO, londonToday } from "../lib/dates";
+  import { MIN_TEAM_SIZE, onTheClock, playersNeeded } from "../lib/draft";
+  import { teamsForPlayoffs } from "../lib/fixtures";
   import { navigate } from "../app/router.svelte";
 
   let { typeId }: { typeId: number } = $props();
@@ -89,7 +91,7 @@
     return Infinity;
   };
   const untilMine = $derived(myTeam < 0 || turnIn(myTeam) === Infinity ? -1 : turnIn(myTeam));
-  const teamName = (i: number) => teams[i].name || `Team ${firstName(teams[i].captainMemberId)}`;
+  const teamName = (i: number) => nameOfTeam(teams[i], teams, (id) => (id ? byId(id) : undefined));
 
   // Positions: what a team has, counting its captain; one goalie a team (ADR 0067)
   const membersOf = (i: number) =>
@@ -113,6 +115,8 @@
   const ticker = $derived.by(() => {
     if (!teams.length || phase === "none" || (phase === "closed" && !made)) return [];
     const out: { n: number; team: number; took?: string; ghost?: boolean }[] = [];
+    // Nothing to show (nobody to pick, none picked): no ticker, not a row of empty places
+    if (!made && !pool.length) return [];
     // Before the first few picks, empty places keep the next one in the middle; the picks fill them in
     if (phase !== "closed")
       for (let n = Math.min(picks.length, SHOWN_BEFORE) - SHOWN_BEFORE + 1; n <= 0; n++)
@@ -212,11 +216,15 @@
   };
 
   const moveMs = prefersReducedMotion ? 0 : 360;
-  const when = $derived(
-    tournament?.draftOn
-      ? `${formatDayDate(londonISO(tournament.draftOn, tournament.draftTime ?? "12:00"))}${tournament.draftTime ? ` at ${tournament.draftTime}` : ""}`
-      : "",
-  );
+  // Opening it the first time takes enough to pick from: every team its captain and two more (lib/draft.ts)
+  const needed = $derived(playersNeeded(teams.length));
+  const short = $derived(!made && pool.length < needed);
+  // The playoffs need this many teams (3rd v 4th: four); fewer captains and the fixtures can't be made, so say so first
+  const playoffTeams = $derived(teamsForPlayoffs(tournament?.playoffs ?? []));
+  const tooFew = $derived(teams.length < playoffTeams);
+  const when = $derived(tournament?.draftOn ? formatDayDate(londonISO(tournament.draftOn, "12:00")) : "");
+  // The strip says "today" on the day, rather than the date
+  const whenSaid = $derived(tournament?.draftOn === londonToday() ? "today" : when);
 
   // Closing with members still to pick: say so, and ask before leaving them out
   let confirmLeaveOut = $state(false);
@@ -239,10 +247,9 @@
     if (tournament && (await makeFixtures(tournament.id))) navigate(`/tournaments/${type.slug}/schedule`);
   }
 
-  // While it's open, the other captains' picks show up on the admins' beat (every 10 seconds unless they've changed
-  // it, ADR 0072). Each check is a Worker request and a few small queries (session, roles, data version), so it's
-  // slow enough that a room of phones on one wifi stays inside the per-address limit (ADR 0056) and a draft night is
-  // a small part of the free day (ADR 0058)
+  // While it's open, the other captains' picks show up as they're made, from the hub's stream (ADR 0096), with a
+  // check on the admins' beat as the fallback (ADR 0072). A check is a Worker request and a few small queries
+  // (session, roles, data version); a room of phones on one wifi stays inside the per-address limit (ADR 0056)
   $effect(() => {
     if (open) return checkForUpdates();
   });
@@ -413,13 +420,29 @@
         {:else}
           {#if running && phase === "closed"}
             <button class="btn sm outline" onclick={() => openDraft(tournament.id)}>Reopen</button>
-            {#if !tournament.games?.length}
+            {#if !tournament.games?.length && tooFew}
+              <p class="ask warn">
+                The playoffs need {playoffTeams} teams: choose fewer in the {type.shortName} settings
+              </p>
+            {:else if !tournament.games?.length}
               <button class="btn primary sm" onclick={fixtures}>Make the fixtures</button>
             {/if}
           {:else if running && open}
             <button class="btn sm" class:primary={!pool.length} onclick={close}>Close the draft</button>
           {:else if running}
-            <button class="btn primary sm" onclick={() => openDraft(tournament.id)}>Open the draft</button>
+            {#if short}
+              <!-- Not enough to pick from yet: said beside the button, which waits -->
+              <p class="ask">A team's at least {MIN_TEAM_SIZE}: needs {needed} signed up, {pool.length} so far</p>
+            {:else if tooFew}
+              <!-- Opens all the same; the fixtures after it can't be made until the playoffs fit the teams -->
+              <p class="ask warn">
+                {teams.length} captains, but the playoffs need {playoffTeams} teams: choose fewer in the {type.shortName}
+                settings
+              </p>
+            {/if}
+            <button class="btn primary sm" disabled={short} onclick={() => openDraft(tournament.id)}
+              >Open the draft</button
+            >
           {/if}
           {#if running && open && made}
             <button class="btn ghost sm" onclick={() => undoDraftPick(tournament.id)}
@@ -458,15 +481,17 @@
       {:else if open}
         <span class="turn done">Everyone's picked</span>
       {:else}
-        <span class="turn">{when ? `Draft ${when}` : "Draft date to be set"}</span>
+        <span class="turn">{whenSaid ? `Draft ${whenSaid}` : "Draft date TBC"}</span>
       {/if}
       <div class="tools">
         {#if open}
-          <!-- The club's on a free plan: picks show up on the admins' beat (ADR 0072) -->
+          <!-- Picks show up as they're made while the hub's stream is open; else on the admins' beat (ADR 0096) -->
           <span
             class="updates hint"
-            title="Other captains' picks show up {everyHowOften()}, to keep the club on the free plan"
-            ><Icon name="clock" size={14} /><span class="lbl">Updates {everyHowOften()}</span></span
+            title={liveFeed.on
+              ? "Other captains' picks show up as they're made"
+              : `Other captains' picks show up ${everyHowOften()}, to keep the club on the free plan`}
+            ><Icon name={liveFeed.on ? "live" : "clock"} size={14} /><span class="lbl"><LiveNote /></span></span
           >
         {/if}
         <button class="btn ghost sm" onclick={() => (rulesOpen = true)} aria-label="Rules"
@@ -632,7 +657,7 @@
     teamId={t.id!}
     name={t.name}
     logo={t.logo}
-    fallback="Team {firstName(t.captainMemberId)}"
+    fallback={nameOfTeam({ ...t, name: "" }, teams, (id) => (id ? byId(id) : undefined))}
     bind:open={lookOpen}
   />
 {/if}
@@ -669,6 +694,9 @@
     margin: 0 var(--s-2) 0 0;
     color: var(--fg-body);
     font-size: var(--text-sm);
+  }
+  .ask.warn {
+    color: var(--tone-amber);
   }
   /* A phone says it in fewer words, so the question and both buttons stay on one line */
   .ask .narrow {
@@ -754,15 +782,13 @@
     gap: var(--s-1);
     padding-right: var(--s-3);
   }
+  /* Where the draft stands, in the display face on the page: words, not a block (a filled block reads as a button) */
   .turn {
     display: inline-flex;
     flex-shrink: 0;
     align-items: center;
     gap: var(--s-2);
     height: 2.6rem;
-    padding: 0 var(--s-4);
-    border-radius: var(--r-md);
-    background: var(--surface-3);
     color: var(--fg);
     font-family: var(--font-display);
     font-size: 1.35rem;
@@ -771,10 +797,9 @@
     text-transform: uppercase;
     white-space: nowrap;
   }
-  /* Your pick: said in words, with a live dot; red is the accent, not the fill */
+  /* Live (your pick, or picking for the team on the clock): red words and a pulsing dot, the VCR's REC light */
   .turn.now {
-    background: var(--red-wash);
-    color: var(--red-ink);
+    color: var(--red-hot);
   }
   .dot {
     width: 0.5rem;

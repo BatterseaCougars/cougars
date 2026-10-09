@@ -4,6 +4,14 @@
 import { createTestD1 } from "../../../shared/testing/d1-sqlite";
 import { parseRoster, rosterSql } from "../../../scripts/lib/roster.mjs";
 import { handleApi, type Env } from "./api";
+import { LiveHub } from "./live";
+
+/** A namespace with one object in it, for the fake world: what `env.LIVE` is on a real Worker. */
+const liveNamespace = (hub: LiveHub) =>
+  ({
+    idFromName: (name: string) => name,
+    get: () => ({ fetch: (input: RequestInfo | URL, init?: RequestInit) => hub.fetch(new Request(input, init)) }),
+  }) as unknown as DurableObjectNamespace;
 
 // Tuesday 6 October 2026, midday in London
 export const NOW = new Date("2026-10-06T11:00:00Z");
@@ -20,19 +28,28 @@ export interface Reply {
 export function testWorld(roster: object[]) {
   const db = createTestD1();
   db.raw.exec(rosterSql(parseRoster(JSON.stringify(roster)), NOW));
-  const env: Env = { DB: db, TEAM_ENV: "local" };
+  // The live hub (ADR 0096) as the Worker reaches it: one object, behind a namespace that always finds it
+  const live = new LiveHub();
+  const env: Env = { DB: db, TEAM_ENV: "local", LIVE: liveNamespace(live) };
+
+  interface Options {
+    now?: Date;
+    headers?: Record<string, string>;
+    host?: string;
+  }
 
   /** A browser: it keeps the cookies the app sets. */
   function browser() {
     const jar = new Map<string, string>();
-    async function call(
+    /** The reply as the Worker sent it: for a stream, or its headers. */
+    async function open(
       method: string,
       path: string,
+      { now = NOW, headers = {}, host = "https://team.test" }: Options = {},
       payload?: unknown,
-      { now = NOW, headers = {} }: { now?: Date; headers?: Record<string, string> } = {},
-    ): Promise<Reply> {
+    ): Promise<Response> {
       const res = await handleApi(
-        new Request(`https://team.test${path}`, {
+        new Request(`${host}${path}`, {
           method,
           headers: {
             "content-type": "application/json",
@@ -50,10 +67,14 @@ export function testWorld(roster: object[]) {
         if (attrs.includes("Max-Age=0")) jar.delete(k);
         else jar.set(k, v);
       }
+      return res;
+    }
+    async function call(method: string, path: string, payload?: unknown, options: Options = {}): Promise<Reply> {
+      const res = await open(method, path, options, payload);
       const isJson = res.headers.get("content-type")?.includes("json");
       return { status: res.status, body: isJson ? await res.json() : {}, headers: res.headers };
     }
-    return { call, jar };
+    return { call, open, jar };
   }
 
   /** Ask for a code; the reply (with the code, on a local server). */
@@ -69,5 +90,5 @@ export function testWorld(roster: object[]) {
     return b;
   }
 
-  return { db, env, browser, ask, signedIn };
+  return { db, env, live, browser, ask, signedIn };
 }

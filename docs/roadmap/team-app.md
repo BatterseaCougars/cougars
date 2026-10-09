@@ -211,7 +211,7 @@ first session is free.
       harmless.
 - [ ] Standings (points, then goal difference, then goals for, then head-to-head) and leaderboards (goals, assists,
       points).
-- [ ] Website: a public `/kumite/live` page polling every 10 seconds (no Durable Objects, so free).
+- [ ] Website: a public `/kumite/live` page polling every 10 seconds (or the team app's live hub, ADR 0096).
 - [ ] Finalising a Kumite writes a `kumiteResult` to Sanity (champions, top scorer, best goalie), feeding the hall
       of fame.
 

@@ -37,6 +37,8 @@
     requests: "Every time this app talks to the server. The website's pages are free and don't count.",
     rowsRead: "Rows the app and the website's live pages read from the club's database.",
     rowsWritten: "Sign-ups, picks, saves: every change made.",
+    liveRequests: "Phones opening a live page's stream, and changes sent down them (ADR 0096).",
+    liveTime: "How long the live hub was up today, at 128 MB a second. A 2-hour draft night is about 900.",
   };
 
   let usage = $state<Usage | null>(null);
@@ -57,8 +59,9 @@
     load();
   });
 
-  // How often live pages check for updates (ADR 0072): a game being scored, the tournament's home on the day, the
-  // draft room. Each check is a request, so it's set here, beside what's left of the day
+  // How often live pages check for updates when their stream is down (ADR 0072, 0096): a game being scored, the
+  // tournament's home on the day, the draft room. Each check is a request, so it's set here, beside what's left of
+  // the day
   const CHOICES = [5, 10, 15, 30, 60];
   const canSet = $derived(can(granted(), "manage:Settings"));
   const seconds = $derived(db.settings.liveRefreshSeconds);
@@ -170,9 +173,9 @@
   <section class="live">
     <h2 class="section">Live updates</h2>
     <p class="hint small">
-      A game being scored, the tournament's home on the day, and the draft room check for changes {everyHowOften()}.
-      Every check from every phone is a request against the free daily allowance: faster feels more live, slower lasts
-      the day.
+      A game being scored, the tournament's home on the day, and the draft room hear about changes as they happen, from
+      the live hub. When a phone's stream is down it checks for changes {everyHowOften()} instead. Every check from every
+      phone is a request against the free daily allowance: faster feels more live, slower lasts the day.
     </p>
     {#if canSet}
       <div class="choices" role="radiogroup" aria-label="Check for updates every">
@@ -189,9 +192,10 @@
       </div>
     {/if}
     <p class="hint small">
-      Each phone on a live page makes {n(Math.round(3600 / seconds))} requests an hour. A tournament day, say 30 phones for
-      4 hours, is about {n(tournamentDay)}: {Math.round((tournamentDay / requestLimit) * 100)}% of the {n(requestLimit)} a
-      day. On a paid plan, faster costs nothing extra to speak of.
+      Without its stream, a phone on a live page makes {n(Math.round(3600 / seconds))} requests an hour. A tournament day
+      of that, say 30 phones for 4 hours, is about {n(tournamentDay)}: {Math.round(
+        (tournamentDay / requestLimit) * 100,
+      )}% of the {n(requestLimit)} a day. On a paid plan, faster costs nothing extra to speak of.
     </p>
   </section>
 </div>

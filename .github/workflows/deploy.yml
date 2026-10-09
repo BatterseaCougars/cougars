@@ -163,15 +163,26 @@ jobs:
 
       - name: Smoke test the team app
         if: steps.team.outputs.url
-        # A brand-new worker's workers.dev address can take a few seconds to answer
+        # A brand-new worker's workers.dev address can take a few seconds to answer. Then, with no session, the club
+        # is closed (401): the local-only switches (ADR 0093) are off, as a deploy must have them.
         run: |
+          url="${{ steps.team.outputs.url }}"
           for i in $(seq 12); do
-            code=$(curl -s -o /dev/null -w '%{http_code}' "${{ steps.team.outputs.url }}/api/health")
-            echo "${{ steps.team.outputs.url }}/api/health answered $code"
-            [ "$code" = 200 ] && exit 0
+            code=$(curl -s -o /dev/null -w '%{http_code}' "$url/api/health")
+            echo "$url/api/health answered $code"
+            [ "$code" = 200 ] && break
+            [ "$i" = 12 ] && exit 1
             sleep 5
           done
-          exit 1
+          closed=$(curl -s -o /dev/null -w '%{http_code}' "$url/api/bootstrap")
+          echo "$url/api/bootstrap without a session answered $closed"
+          [ "$closed" = 401 ]
+          live=$(curl -s -o /dev/null -w '%{http_code}' "$url/api/live")
+          echo "$url/api/live without a session answered $live"
+          [ "$live" = 401 ]
+          framed=$(curl -s -o /dev/null -D - "$url/" | grep -ic "^x-frame-options: DENY")
+          echo "$url/ carries X-Frame-Options: $framed"
+          [ "$framed" = 1 ]
 
       - name: Upload preview
         id: preview

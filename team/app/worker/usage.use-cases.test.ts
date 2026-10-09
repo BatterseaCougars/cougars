@@ -1,5 +1,6 @@
 // The club's free Cloudflare allowance (ADR 0059): admins see today's use on the Usage page, and an hourly check
 // emails them once a day when anything passes 80%, or when a request was stopped for using too much CPU (ADR 0063).
+// The live hub's requests and time (ADR 0096) are Durable Objects' own allowance, shown and checked the same way.
 // Cloudflare's analytics API is faked; everything else is real.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Mail } from "../../../shared/email";
@@ -26,6 +27,9 @@ function cloudflare({
     { p50: 800, p99: 2_100 },
   ],
   stopped = [] as number[],
+  liveRequests = 300,
+  // Two hours' draft night, in microseconds as Cloudflare gives it
+  liveActiveUs = 7_200_000_000,
   ok = true,
 } = {}) {
   asked = [];
@@ -45,6 +49,8 @@ function cloudflare({
               })),
               stopped: stopped.map((r, i) => ({ sum: { requests: r }, dimensions: { scriptName: `w${i}` } })),
               d1AnalyticsAdaptiveGroups: [{ sum: { rowsRead, rowsWritten } }],
+              durableObjectsInvocationsAdaptiveGroups: [{ sum: { requests: liveRequests } }],
+              durableObjectsPeriodicGroups: [{ sum: { activeTime: liveActiveUs } }],
             },
           ],
         },
@@ -63,7 +69,7 @@ afterEach(() => vi.unstubAllGlobals());
 const usageAs = async (email: string) => (await w.signedIn(email)).call("GET", "/api/usage");
 
 describe("an admin checks the club's free Cloudflare allowance", () => {
-  it("sees today's Worker requests and database reads and writes against the free limits, and when they reset", async () => {
+  it("sees today's Worker requests, database reads and writes, and the live hub's use against the free limits, and when they reset", async () => {
     cloudflare();
     const res = await usageAs("dana@example.com");
     expect(res.status).toBe(200);
@@ -72,6 +78,9 @@ describe("an admin checks the club's free Cloudflare allowance", () => {
       { id: "requests", label: "Worker requests", used: 40_000, limit: 100_000 },
       { id: "rowsRead", label: "Database rows read", used: 1_000_000, limit: 5_000_000 },
       { id: "rowsWritten", label: "Database rows written", used: 2_000, limit: 100_000 },
+      { id: "liveRequests", label: "Live hub requests", used: 300, limit: 100_000 },
+      // Two hours active at 128 MB
+      { id: "liveTime", label: "Live hub time (GB-s)", used: 922, limit: 13_000 },
     ]);
     // Read with the read-only analytics token, for this account and today (UTC)
     expect(asked[0].auth).toBe("Bearer analytics-token");
@@ -127,6 +136,14 @@ describe("the hourly check", () => {
     expect(await run(new Date(NOW.getTime() + 3_600_000))).toEqual([]);
     // The next day, over again: a new one
     expect(await run(new Date("2026-10-07T11:00:00Z"))).toHaveLength(1);
+  });
+
+  it("emails the admins when the live hub's time passes 80% of its free day", async () => {
+    // 23 hours active: 10,598 GB-s of 13,000
+    cloudflare({ liveActiveUs: 23 * 3_600_000_000 });
+    const sent = await run();
+    expect(sent).toHaveLength(1);
+    expect(sent[0].subject).toBe("Cougars app: Live hub time (GB-s) at 81% of today's free allowance");
   });
 
   it("stays quiet under 80%", async () => {

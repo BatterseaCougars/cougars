@@ -4,7 +4,7 @@
   //   Before: saying you're in, the draft and its captains, the teams, the first game.
   //   During: your turn to keep score, the game on now and the next, the latest results.
   //   After: the champions, the final, every result, and the awards.
-  import { shortNameOf } from "../lib/names";
+  import { shortNameOf, nameOfTeam } from "../lib/names";
   import { can } from "../access/actions";
   import { granted, me } from "../demo/session.svelte";
   import { PLAYERS } from "../demo/data";
@@ -21,7 +21,8 @@
   import ChampionCard from "../lib/ChampionCard.svelte";
   import Awards from "../lib/Awards.svelte";
   import Icon from "../app/shell/Icon.svelte";
-  import { checkForUpdates, everyHowOften } from "../lib/live-updates.svelte";
+  import { checkForUpdates, liveFeed } from "../lib/live-updates.svelte";
+  import LiveNote from "../lib/LiveNote.svelte";
   import { londonToday } from "../lib/dates";
   import { kickOff } from "../lib/fixtures";
 
@@ -32,7 +33,7 @@
   const tournament = $derived(currentTournament(typeId));
   const firstName = (id: number | null) => shortNameOf(PLAYERS.find((p) => p.id === id));
   const teams = $derived(tournament?.teams ?? []);
-  const teamName = (i: number) => teams[i].name || `Team ${firstName(teams[i].captainMemberId)}`;
+  const teamName = (i: number) => nameOfTeam(teams[i], teams, (id) => PLAYERS.find((p) => p.id === id));
   const manage = $derived(can(perms, "manage:Tournament"));
 
   // The games, in brief: what's on now, and the last result; before any, the first game
@@ -51,8 +52,8 @@
   const after = $derived(live ? ahead[0] : ahead[1]);
   const afterLabel = $derived(live ? "Next game" : "After that");
 
-  // Everyone sees the score as it happens: on the day, until the last game's over, a check for changes on the
-  // admins' beat (ADR 0071, 0072)
+  // Everyone sees the score as it happens: on the day, until the last game's over, from the hub's stream, with a
+  // check on the admins' beat as the fallback (ADR 0071, 0072, 0096)
   const following = $derived(
     !!live || (tournament?.heldOn === londonToday() && games.some((g) => g.status !== "done")),
   );
@@ -141,7 +142,7 @@
               : ""}</span
           >
         </span>
-        <a class="btn sm outline" href="/tournaments/{type.slug}/games/{duty.id}"
+        <a class="btn sm outline" href="/tournaments/{type.slug}/games/{duty.id}/live"
           >{holding ? "Open the scoresheet" : "Keep score"}</a
         >
       </div>
@@ -152,9 +153,12 @@
         <a class="btn ghost sm" href={schedule}>Full fight card<Icon name="chevronRight" size={16} /></a>
       </div>
       {#if following}
-        <!-- The club's on a free plan: the scores follow along on the admins' beat (ADR 0072) -->
+        <!-- The scores follow along: live from the hub's stream, else on the admins' beat (ADR 0096) -->
         <p class="updates hint">
-          <Icon name="clock" size={14} />Scores update {everyHowOften()}, to keep the club on the free plan
+          <Icon name={liveFeed.on ? "live" : "clock"} size={14} /><LiveNote
+            what="Scores update"
+            tail=", to keep the club on the free plan"
+          />
         </p>
       {/if}
       {#if now}
