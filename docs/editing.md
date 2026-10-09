@@ -63,13 +63,10 @@ Kumite dates are events with the type _Cougars Kumite_: they also appear on the 
 When someone shares an event's link (WhatsApp, Facebook), the preview shows its cover photo. Without one, the
 site draws a picture with the event's title, date and place, so you don't need to make one.
 
-## Record a Kumite result
+## Kumite results
 
-**Kumite → Results → +**. Fill in the season (e.g. "Winter 2026"), the date it was played, the winning team and
-the top scorer, and optionally pick the Kumite event it belongs to. **Publish**.
-
-The result with the newest date shows as the reigning champions on the honours board; older ones are listed
-underneath. You don't need to put them in order.
+Nothing to do here. The team app records every game, and the website shows the champions, the scores and the
+award winners within a minute of the last game (award winners once an admin confirms them in the app).
 
 ## Update the team
 

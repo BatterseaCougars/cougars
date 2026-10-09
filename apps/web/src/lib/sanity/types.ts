@@ -78,16 +78,6 @@ export interface SiteSettings extends Club, Fridays {
   };
 }
 
-export interface KumiteResult {
-  season: string;
-  /** YYYY-MM-DD. The newest is the reigning champion. */
-  date: string;
-  champions?: string | null;
-  topScorer?: string | null;
-  bestGoalie?: string | null;
-  event?: { title: string; slug: string } | null;
-}
-
 export interface Video {
   _id: string;
   title: string;
@@ -167,5 +157,5 @@ export interface Player {
   photo?: SanityImage | null;
   /** A roster player's record, as of the build (lib/roster.ts): training sessions played, this year and in all,
    * and tournaments played. */
-  stats?: { sessions: number; season: number; tournaments: number };
+  stats?: { sessions: number; season: number; tournaments: number; goals: number; assists: number; titles: number };
 }

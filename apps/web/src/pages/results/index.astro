@@ -1,0 +1,105 @@
+---
+// Every tournament the club has played, newest first, live from the team app's D1 (ADR 0100): the champions and
+// award winners of each, linking to its full result.
+import { env } from "cloudflare:workers";
+import Base from "../../layouts/Base.astro";
+import PageHeader from "../../components/PageHeader.astro";
+import Empty from "../../components/Empty.astro";
+import { cachedEditions, type PublishedSummary } from "../../lib/server/results";
+import { cacheControl } from "../../lib/server/sanity-env";
+
+export const prerender = false;
+
+let results: PublishedSummary[] = [];
+let unavailable = false;
+try {
+  results = await cachedEditions(env.DB);
+} catch (error) {
+  console.error(JSON.stringify({ event: "results.d1_error", error: String(error) }));
+  unavailable = true;
+}
+Astro.response.headers.set("Cache-Control", cacheControl(unavailable));
+if (unavailable) Astro.response.status = 503;
+---
+
+<Base title="Results" card="kumite" description="Every Cougars tournament: the champions, the scores and the awards.">
+  <PageHeader
+    eyebrow="Hall of fame"
+    title="Results"
+    lede="Every tournament we've played: who won, who scored, who stopped them."
+  />
+  <div class="wrap page-body">
+    {unavailable ? (
+      <Empty>The results didn't load. Try again in a minute.</Empty>
+    ) : results.length === 0 ? (
+      <Empty>
+        No results yet. The first champions are crowned at the next <a href="/kumite/">Kumite</a>.
+      </Empty>
+    ) : (
+      <ol class="editions">
+        {results.map((r) => (
+          <li data-reveal>
+            <a href={`/results/${r.id}/`}>
+              <span class="label">
+                {r.season}
+                {r.series ? ` · ${r.series.name}` : ""}
+              </span>
+              <span class="name">{r.name}</span>
+              <span class="champions">
+                {r.championsCrest && (
+                  <img src={`/api/crests/${r.championsCrest}`} alt="" width="32" height="32" loading="lazy" />
+                )}
+                {r.champions ? `Champions: ${r.champions}` : "No champions decided"}
+              </span>
+              {r.awards
+                .filter((a) => a.name !== "Champions" && a.winners.length)
+                .map((a) => (
+                  <span class="muted">
+                    {a.name}: {a.winners.join(", ")}
+                  </span>
+                ))}
+            </a>
+          </li>
+        ))}
+      </ol>
+    )}
+  </div>
+</Base>
+
+<style>
+  .editions {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border-top: 1px solid var(--rule);
+  }
+  .editions a {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding: 1.5rem 0;
+    border-bottom: 1px solid var(--rule);
+    color: inherit;
+    text-decoration: none;
+  }
+  .editions .label {
+    color: var(--red-hot);
+  }
+  .name {
+    font-family: var(--display);
+    font-size: clamp(1.8rem, 3.4vw, 2.6rem);
+    line-height: 1.05;
+    text-transform: uppercase;
+  }
+  .champions {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: clamp(1.1rem, 1.8vw, 1.35rem);
+  }
+  .champions img {
+    width: 1.6em;
+    height: 1.6em;
+    object-fit: contain;
+  }
+</style>

@@ -5,16 +5,7 @@
 import { Image } from "astro:assets";
 import Base from "../layouts/Base.astro";
 import logo from "../assets/cougars.png";
-import {
-  getAlbums,
-  getEvents,
-  getKumiteResults,
-  getPlayers,
-  getSettings,
-  getVideos,
-  kitText,
-  upcoming,
-} from "../lib/sanity/content";
+import { getAlbums, getEvents, getPlayers, getSettings, getVideos, kitText, upcoming } from "../lib/sanity/content";
 import { imageUrl, objectPosition } from "../lib/sanity/images";
 import { clubData } from "../lib/structured-data";
 import WhatsOn from "../components/WhatsOn.astro";
@@ -36,7 +27,6 @@ const players = (await getPlayers()).slice(0, 5);
 const videos = await getVideos();
 // The newest photos across albums as of this build; PhotoStrip then fetches the live ones
 const photos = (await getAlbums()).flatMap((a) => a.photos).slice(0, 12);
-const results = await getKumiteResults();
 const years = new Date().getFullYear() - s.founded;
 // Only a hero photo from the Studio; otherwise the site-wide carbon mesh shows through.
 const heroBg = s.heroImage ? imageUrl(s.heroImage, 2000, 1200) : null;
@@ -228,7 +218,7 @@ const strip: [string, string][] = [
         </a>
       </div>
       <div data-reveal style="--i:1">
-        <HonoursBoard results={results} />
+        <HonoursBoard results={null} />
       </div>
     </div>
   </section>

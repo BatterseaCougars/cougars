@@ -5,7 +5,7 @@
 // - A document: field by field. A missing or blank required field falls back, so a half-filled venue never
 //   blanks the venue name. Fields that are optional in the Studio stay empty when empty: an editor clearing
 //   "Kit for first-timers" or "Fees" means "say nothing", not "show the old text".
-import type { Club, Fridays, KumiteResult, Kumite, Pub, Team, TrainingSlot } from "./types";
+import type { Club, Fridays, Kumite, Pub, Team, TrainingSlot } from "./types";
 
 type Doc = Record<string, unknown>;
 
@@ -68,6 +68,3 @@ export function mergeFridays(fallback: Fridays, doc: unknown): Fridays {
 /** A list from Sanity, or the demo list when there's nothing in Sanity and demo content is on. */
 export const listOr = <T>(items: T[] | null | undefined, demo: T[] | null): T[] =>
   items?.length ? items : (demo ?? []);
-
-/** Newest first by date, so the first is the reigning champion. */
-export const newestFirst = (results: KumiteResult[]) => [...results].sort((a, b) => b.date.localeCompare(a.date));

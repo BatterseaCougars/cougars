@@ -2,6 +2,7 @@
 import Base from "../layouts/Base.astro";
 import KumitePoster from "../components/KumitePoster.astro";
 import EventList from "../components/EventList.astro";
+import HonoursBoard from "../components/HonoursBoard.astro";
 import { getEvents, getSettings, upcoming } from "../lib/sanity/content";
 
 const s = await getSettings();
@@ -67,6 +68,10 @@ const nextUp = next[0];
           </ul>
         </section>
       </div>
+
+      <section class="block" data-reveal>
+        <HonoursBoard results={null} />
+      </section>
 
       {next.length > 1 && (
         <section class="block">

@@ -291,8 +291,8 @@ export const kumite = defineType({
   title: "Kumite",
   type: "document",
   description:
-    "The Cougars Kumite tournament. Kumite dates are added as Events (type “Cougars Kumite”); winners under " +
-    "“Kumite → Results”.",
+    "The Cougars Kumite tournament. Kumite dates are added as Events (type “Cougars Kumite”). Results come from " +
+    "the team app by themselves.",
   fields: [
     defineField({
       name: "intro",

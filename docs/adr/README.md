@@ -5,7 +5,7 @@ record per topic** ([0001](0001-record-decisions.md)). Read the relevant one bef
 
 - **Changing a decision:** update its topic's record in the same change as the code. Rewrite what no longer holds,
   add a dated line to its **History**, and bump _updated_.
-- **A new topic:** copy [template.md](template.md) and take the next unused number (the next is **0100**). Numbers are
+- **A new topic:** copy [template.md](template.md) and take the next unused number (the next is **0101**). Numbers are
   never reused.
 - **An old number** (from a commit, an issue or a chat) that has no file any more was merged into another record.
   `grep -l 0035 docs/adr/*.md` finds it on that record's _Merges_ line.
@@ -46,23 +46,24 @@ record per topic** ([0001](0001-record-decisions.md)). Read the relevant one bef
 
 ## Website
 
-| #                                             | Decision                                                                                                  |
-| --------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| [0009](0009-site-design-direction.md)         | Site design: a Friday night, on carbon, one-page navigation, no news                                      |
-| [0014](0014-sanity-public-content.md)         | Sanity holds the site's editable content; only club facts are editable                                    |
-| [0016](0016-photos-and-videos-read-live.md)   | Photos and videos are read live on the Worker; videos are uploaded on YouTube, into labelled playlists    |
-| [0020](0020-drawn-share-cards.md)             | Share pictures are drawn at build time                                                                    |
-| [0042](0042-website-reads-the-club-agenda.md) | The website's What's on and events page read one club agenda, live                                        |
-| [0043](0043-roster-and-names.md)              | The roster is a build-time snapshot of the club's members, and members go by their chosen name everywhere |
+| #                                                | Decision                                                                                                  |
+| ------------------------------------------------ | --------------------------------------------------------------------------------------------------------- |
+| [0009](0009-site-design-direction.md)            | Site design: a Friday night, on carbon, one-page navigation, no news                                      |
+| [0014](0014-sanity-public-content.md)            | Sanity holds the site's editable content; only club facts are editable                                    |
+| [0016](0016-photos-and-videos-read-live.md)      | Photos and videos are read live on the Worker; videos are uploaded on YouTube, into labelled playlists    |
+| [0020](0020-drawn-share-cards.md)                | Share pictures are drawn at build time                                                                    |
+| [0042](0042-website-reads-the-club-agenda.md)    | The website's What's on and events page read one club agenda, live                                        |
+| [0043](0043-roster-and-names.md)                 | The roster is a build-time snapshot of the club's members, and members go by their chosen name everywhere |
+| [0100](0100-website-reads-tournament-results.md) | The website reads tournament results from D1, live, and names players as they chose                       |
 
 ## Team app: how it works
 
-| #                                            | Decision                                                                                             |
-| -------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| [0057](0057-team-app-loading-and-changes.md) | Team app pages load when opened, and a change replies with the parts of the club it touched          |
-| [0072](0072-live-updates.md)                 | Live pages are pushed to over SSE from a Durable Object; polling at the admins' pace is the fallback |
-| [0065](0065-page-frame-and-admin-actions.md) | One page frame; admin actions live on the thing's own page, not under Settings                       |
-| [0084](0084-sticker-colour-scheme.md)        | The Sticker colour scheme: one yellow main button, red for the brand, tokens for everything          |
+| #                                            | Decision                                                                                                           |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| [0057](0057-team-app-loading-and-changes.md) | Team app pages load when opened, the club is read in one statement, and a change replies with the parts it touched |
+| [0072](0072-live-updates.md)                 | Live pages are pushed to over SSE from a Durable Object; polling at the admins' pace is the fallback               |
+| [0065](0065-page-frame-and-admin-actions.md) | One page frame; admin actions live on the thing's own page, not under Settings                                     |
+| [0084](0084-sticker-colour-scheme.md)        | The Sticker colour scheme: one yellow main button, red for the brand, tokens for everything                        |
 
 ## Team app: the club
 

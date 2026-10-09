@@ -23,7 +23,8 @@ the website was "Sam Jones" in the app.
   read the database, the site falls back to Sanity players or the samples; a build never fails on it.
 - **Only what the website shows leaves the database:** the member's chosen name, position and bio.
 - **Player stats** under the cards on `/team/`: training sessions played this year and in all, and tournaments
-  played, counted as the team app counts them (signed up, not marked a no-show, not cancelled), as of the last build
+  played, counted as the team app counts them (signed up, not marked a no-show, not cancelled); goals, assists and
+  titles from the tournaments on the website ([0100](0100-website-reads-tournament-results.md)); as of the last build
   (`scripts/lib/roster-sql.mjs`).
 - **Picked up, as in the app.** Pressing a card lifts a copy to the middle of the screen, turning to its back on the
   way; Close, the scrim or Escape put it back. Picking it up fetches `/api/players/<id>` (live from D1, active Cougars
@@ -57,3 +58,4 @@ the website was "Sam Jones" in the app.
   stats, and a live refresh when a card is picked up (was 0043).
 - 2026-10-08: The chosen name is used everywhere in the team app too, with the full name kept for sign-in, payments
   and admins (was 0085).
+- 2026-10-09: Goals, assists and titles join the stats, from published tournaments (0100).

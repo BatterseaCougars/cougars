@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createTestD1 } from "../../../../../shared/testing/d1-sqlite";
-import { memberId, publicName, toPlayer } from "../roster";
+import { publicName } from "../../../../../shared/names";
+import { memberId, toPlayer } from "../roster";
 import { livePlayer } from "./players";
 
 describe("the roster on the website", () => {

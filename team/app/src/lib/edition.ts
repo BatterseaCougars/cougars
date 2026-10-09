@@ -1,6 +1,7 @@
 // One edition of a tournament series, as its pages head it: where it stands, worked out from its games (scoring the
 // first starts it, the last one played ends it, whatever the settings say), and when, with its season.
 import type { Tournament } from "../demo/model";
+import { isDone } from "../../../../shared/results";
 import { seasonLabel, seasonOf } from "../../../../shared/seasons";
 import { champion } from "./fixtures";
 import { formatDayDate, londonISO, londonToday } from "./dates";
@@ -22,7 +23,7 @@ export const championOf = (t: Tournament) =>
  */
 export function editionState(t: Tournament): EditionState {
   const games = t.games ?? [];
-  if (t.status === "finished" || (games.length && games.every((g) => g.status === "done"))) return "done";
+  if (isDone(t.status, games)) return "done";
   if (t.status === "live" || games.some((g) => g.status !== "next")) return "live";
   return signupOpen(t, londonToday()) ? "open" : "planned";
 }

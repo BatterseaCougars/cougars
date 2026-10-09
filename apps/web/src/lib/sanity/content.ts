@@ -8,12 +8,12 @@ import * as q from "./queries";
 import { FALLBACK_CLUB, FALLBACK_FRIDAYS, FALLBACK_KUMITE, FALLBACK_PUB, FALLBACK_TEAM } from "./fallback";
 import { liveVideos } from "../server/videos";
 import { videosConfig } from "../server/sanity-env";
-import { demoAlbums, DEMO_EVENTS, DEMO_KUMITE_RESULTS, DEMO_PLAYERS } from "./demo";
+import { demoAlbums, DEMO_EVENTS, DEMO_PLAYERS } from "./demo";
 import { sanityError, toAlbum } from "../server/photos";
 import { guard } from "../../../../../shared/breaker";
 import { toPlayer, type RosterRow } from "../roster";
-import { listOr, mergeClub, mergeFridays, mergeKumite, mergePub, mergeTeam, newestFirst } from "./merge";
-import type { Album, ClubEvent, KumiteResult, Player, SiteSettings, Sponsor, Award } from "./types";
+import { listOr, mergeClub, mergeFridays, mergeKumite, mergePub, mergeTeam } from "./merge";
+import type { Album, ClubEvent, Player, SiteSettings, Sponsor, Award } from "./types";
 
 // Sample content for dev builds: `DEMO_CONTENT=true npm run dev`, PR previews and
 // scripts/deploy-dev.sh. Real Sanity content still wins wherever it exists. Never set for
@@ -103,10 +103,6 @@ export const getSettings = memo(async (): Promise<SiteSettings> => {
   return { ...club, ...fridays, pub, team, kumite };
 });
 
-/** Kumite winners, newest first: the first is the reigning champion. */
-export const getKumiteResults = memo(async () =>
-  newestFirst(await fetchList<KumiteResult>(q.KUMITE_RESULTS, DEMO_KUMITE_RESULTS)),
-);
 // The club's videos as of this build: only the homepage's no-JavaScript fallback uses these. /videos and the
 // homepage reel read them live (lib/server/videos.ts, docs/adr/0016-photos-and-videos-read-live.md).
 export const getVideos = memo(async () => (await liveVideos(videosConfig())).data);

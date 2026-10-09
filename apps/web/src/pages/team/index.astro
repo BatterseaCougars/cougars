@@ -78,6 +78,15 @@ const year = new Date().getFullYear();
                     <th class="label stat" scope="col">
                       Tournaments
                     </th>
+                    <th class="label stat" scope="col">
+                      Goals
+                    </th>
+                    <th class="label stat" scope="col">
+                      Assists
+                    </th>
+                    <th class="label stat" scope="col">
+                      Titles
+                    </th>
                   </>
                 )}
               </tr>
@@ -95,6 +104,9 @@ const year = new Date().getFullYear();
                       <td class="stat">{p.stats?.season ?? "–"}</td>
                       <td class="stat">{p.stats?.sessions ?? "–"}</td>
                       <td class="stat">{p.stats?.tournaments ?? "–"}</td>
+                      <td class="stat">{p.stats?.goals ?? "–"}</td>
+                      <td class="stat">{p.stats?.assists ?? "–"}</td>
+                      <td class="stat">{p.stats?.titles ?? "–"}</td>
                     </>
                   )}
                 </tr>
@@ -189,7 +201,9 @@ const year = new Date().getFullYear();
     .roster th:nth-child(4),
     .roster td:nth-child(4),
     .roster th:nth-child(5),
-    .roster td:nth-child(5) {
+    .roster td:nth-child(5),
+    .roster th:nth-child(7),
+    .roster td:nth-child(7) {
       display: none;
     }
   }

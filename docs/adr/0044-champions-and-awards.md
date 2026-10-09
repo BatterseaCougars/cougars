@@ -44,8 +44,8 @@ who won most of them.
 ## Consequences
 
 - A change to the awards reaches the website at the next build (daily in production), like the roster.
-- The website still takes results from Sanity (`kumiteResult`); taking champions and winners from the club snapshot is
-  a later step.
+- The website shows the champions and the confirmed winners, read from D1 live
+  ([0100](0100-website-reads-tournament-results.md)); provisional picks never leave the app.
 - An award renamed after it was given keeps its winner under the old name until it's given again.
 
 ## History
@@ -54,3 +54,5 @@ who won most of them.
   the club snapshot; winners stayed in Sanity (was 0044).
 - 2026-10-08: Champions worked out from the results; award winners suggested from the data and confirmed by an admin,
   stored in the app (was 0073).
+- 2026-10-09: The website reads champions and confirmed winners from D1 live, not Sanity `kumiteResult`
+  ([0100](0100-website-reads-tournament-results.md)).

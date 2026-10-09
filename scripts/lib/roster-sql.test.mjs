@@ -41,4 +41,71 @@ describe("the website roster's record", () => {
       expect.objectContaining({ name: "Sam Jones", sessions: 2, season: 1, tournaments: 1 }),
     ]);
   });
+
+  it("counts goals, assists and titles from tournaments on the website only: public and done (ADR 0100)", () => {
+    const db = createTestD1().raw;
+    const member = db.prepare(
+      "INSERT INTO members (name, cougar, status, joined_on, created_at) VALUES (?, 1, 'active', '2025-01-01', '2025-01-01')",
+    );
+    const sam = Number(member.run("Sam Jones").lastInsertRowid);
+    const dee = Number(member.run("Dee Fence").lastInsertRowid);
+    /** A tournament where Sam captains one team against Dee's, with one game in the state given. */
+    const cup = (name, { isPublic = 1, game = "done" } = {}) => {
+      const t = Number(
+        db
+          .prepare(
+            `INSERT INTO tournaments (name, held_on, start_time, end_time, public)
+             VALUES (?, '2026-09-12', '10:00', '15:00', ?)`,
+          )
+          .run(name, isPublic).lastInsertRowid,
+      );
+      const team = db.prepare(
+        "INSERT INTO tournament_teams (tournament_id, name, captain_member_id, created_at) VALUES (?, ?, ?, '2026-01-01')",
+      );
+      const ours = Number(team.run(t, "Ours", sam).lastInsertRowid);
+      const theirs = Number(team.run(t, "Theirs", dee).lastInsertRowid);
+      const g = Number(
+        db
+          .prepare(
+            `INSERT INTO tournament_games (tournament_id, stage, round, position, home_team_id, away_team_id, status)
+             VALUES (?, 'group', 1, 1, ?, ?, ?)`,
+          )
+          .run(t, ours, theirs, game).lastInsertRowid,
+      );
+      const goal = (teamId, scorer, assist = null) =>
+        db
+          .prepare(
+            `INSERT INTO tournament_goals (game_id, team_id, scorer_member_id, assist_member_id, created_at)
+             VALUES (?, ?, ?, ?, '2026-01-01')`,
+          )
+          .run(g, teamId, scorer, assist);
+      const champions = (teamId) =>
+        db
+          .prepare("INSERT INTO tournament_award_winners (tournament_id, award, team_id) VALUES (?, 'Champions', ?)")
+          .run(t, teamId);
+      return { ours, theirs, goal, champions };
+    };
+
+    const summer = cup("Summer Cup");
+    summer.goal(summer.ours, sam);
+    summer.goal(summer.ours, sam);
+    summer.goal(summer.theirs, dee, null);
+    summer.goal(summer.ours, null, sam); // a goal nobody named the scorer of, Sam's assist
+    summer.champions(summer.ours);
+    // Kept off the website, and one still being played: neither counts
+    const members = cup("Members' Cup", { isPublic: 0 });
+    members.goal(members.ours, sam);
+    members.champions(members.ours);
+    const today = cup("Today's Cup", { game: "live" });
+    today.goal(today.ours, sam);
+
+    const rows = Object.fromEntries(
+      db
+        .prepare(ROSTER_SQL)
+        .all()
+        .map((r) => [r.name, r]),
+    );
+    expect(rows["Sam Jones"]).toMatchObject({ goals: 2, assists: 1, titles: 1 });
+    expect(rows["Dee Fence"]).toMatchObject({ goals: 1, assists: 0, titles: 0 });
+  });
 });

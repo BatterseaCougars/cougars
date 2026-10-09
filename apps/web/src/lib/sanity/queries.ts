@@ -9,10 +9,6 @@ export const PUB = /* groq */ `*[_id == "pub"][0]{name, about, mapUrl}`;
 export const TEAM = /* groq */ `*[_id == "team"][0]{intro, league, photo}`;
 export const KUMITE = /* groq */ `*[_id == "kumite"][0]{intro, tagline, posterStatement, posterReveal, format, awards}`;
 
-export const KUMITE_RESULTS = /* groq */ `*[_type == "kumiteResult" && defined(season)] | order(date desc){
-  season, date, champions, topScorer, bestGoalie, "event": event->{title, "slug": slug.current}
-}`;
-
 // Overrides for channel videos, and videos that aren't on the channel. Merged and sorted in lib/youtube.ts.
 export const VIDEOS = /* groq */ `*[_type == "video" && defined(youtubeUrl)]{
   _id, _createdAt, youtubeUrl, title, recordedOn, description, hidden, pinned

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { FALLBACK_CLUB, FALLBACK_FRIDAYS, FALLBACK_KUMITE, FALLBACK_PUB, FALLBACK_TEAM } from "./fallback";
-import { listOr, mergeClub, mergeFridays, mergeKumite, mergePub, mergeTeam, newestFirst } from "./merge";
+import { listOr, mergeClub, mergeFridays, mergeKumite, mergePub, mergeTeam } from "./merge";
 
 // Fixtures are shaped like the GROQ projections in queries.ts return them: missing fields come back as null.
 describe("club facts singletons", () => {
@@ -78,12 +78,4 @@ describe("listOr", () => {
     expect(listOr(null, demo)).toEqual(demo);
   });
   it("is empty without demo content", () => expect(listOr([], null)).toEqual([]));
-});
-
-describe("newestFirst", () => {
-  it("puts the newest Kumite result first, whatever order they arrive in", () => {
-    const r = (season: string, date: string) => ({ season, date });
-    const sorted = newestFirst([r("Spring", "2026-03-28"), r("Autumn", "2026-09-26"), r("Winter", "2026-01-31")]);
-    expect(sorted.map((x) => x.season)).toEqual(["Autumn", "Spring", "Winter"]);
-  });
 });

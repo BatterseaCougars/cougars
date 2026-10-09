@@ -21,10 +21,7 @@ export const structure: StructureResolver = (S) =>
         .child(
           S.list()
             .title("Kumite")
-            .items([
-              singleton(S, "kumite", "About the Kumite"),
-              S.documentTypeListItem("kumiteResult").title("Results"),
-            ]),
+            .items([singleton(S, "kumite", "About the Kumite")]),
         ),
       S.listItem()
         .title("Team")

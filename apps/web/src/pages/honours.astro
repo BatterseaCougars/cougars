@@ -1,0 +1,25 @@
+---
+// The champions board, rendered live for its script to swap in (components/HonoursBoard.astro, ADR 0100). A partial:
+// just the component's HTML. The home page and /kumite/ already have its styles.
+import { env } from "cloudflare:workers";
+import HonoursBoard from "../components/HonoursBoard.astro";
+import { cachedEditions, type PublishedSummary } from "../lib/server/results";
+import { cacheControl } from "../lib/server/sanity-env";
+
+export const prerender = false;
+export const partial = true;
+
+let results: PublishedSummary[] = [];
+let unavailable = false;
+try {
+  results = (await cachedEditions(env.DB)).filter((r) => r.series?.slug === "kumite");
+} catch (error) {
+  console.error(JSON.stringify({ event: "honours.d1_error", error: String(error) }));
+  unavailable = true;
+}
+
+Astro.response.headers.set("Cache-Control", cacheControl(unavailable));
+if (unavailable) Astro.response.status = 503;
+---
+
+<HonoursBoard results={results} />
