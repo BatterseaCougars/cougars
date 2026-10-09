@@ -119,7 +119,7 @@ INSERT OR IGNORE INTO quips (id, kind, text) VALUES
   (47, 'training', 'Skates on tonight, {name}'),
   (48, 'training', 'Tonight''s the night, {name}'),
   (49, 'training', 'Game face, {name}'),
-  (50, 'nag', '{nth} look today, {name}. Touch grass.'),
+  (50, 'nag', '{nth} look today, {name}. Save some for the rink.'),
   (51, 'nag', '{nth} visit. It''s not changing, {name}.'),
   (52, 'nag', 'Refreshing won''t make it {day}, {name}'),
   (53, 'nag', '{nth} time today. Go outside, {name}.'),
