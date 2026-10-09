@@ -34,7 +34,8 @@ export function testWorld(roster: object[]) {
 
   interface Options {
     now?: Date;
-    headers?: Record<string, string>;
+    /** Extra headers; `null` leaves one out (a change with no Origin). */
+    headers?: Record<string, string | null>;
     host?: string;
   }
 
@@ -48,14 +49,17 @@ export function testWorld(roster: object[]) {
       { now = NOW, headers = {}, host = "https://team.test" }: Options = {},
       payload?: unknown,
     ): Promise<Response> {
+      // Like a real browser, a change carries the page's Origin
+      const sent: Record<string, string | null> = {
+        "content-type": "application/json",
+        cookie: [...jar].map(([k, v]) => `${k}=${v}`).join("; "),
+        ...(method === "GET" || method === "HEAD" ? {} : { origin: new URL(host).origin }),
+        ...headers,
+      };
       const res = await handleApi(
         new Request(`${host}${path}`, {
           method,
-          headers: {
-            "content-type": "application/json",
-            cookie: [...jar].map(([k, v]) => `${k}=${v}`).join("; "),
-            ...headers,
-          },
+          headers: Object.entries(sent).filter((e): e is [string, string] => e[1] !== null),
           body: payload === undefined ? undefined : JSON.stringify(payload),
         }),
         env,

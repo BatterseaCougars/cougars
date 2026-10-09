@@ -200,6 +200,20 @@ describe("requests from somewhere else", () => {
     expect(ours.status).toBe(200);
   });
 
+  it("refuses a change that says nothing about where it came from (#42)", async () => {
+    const reg = await w.signedIn("reg@example.com");
+    const change = { position: "D", phone: "", bio: "" };
+    const silent = await reg.call("PUT", "/api/me", change, { headers: { origin: null } });
+    expect(silent.status).toBe(403);
+    const typed = await reg.call("PUT", "/api/me", change, { headers: { origin: null, "sec-fetch-site": "none" } });
+    expect(typed.status).toBe(403);
+    const ownPage = await reg.call("PUT", "/api/me", change, {
+      headers: { origin: null, "sec-fetch-site": "same-origin" },
+    });
+    expect(ownPage.status).toBe(200);
+    expect((await reg.call("GET", "/api/bootstrap", undefined, { headers: { origin: null } })).status).toBe(200);
+  });
+
   it("is never framed, sniffed or told where it came from, from the Worker or the asset layer (ADR 0036)", async () => {
     const res = await worker.fetch(
       new Request("https://team.test/api/health"),

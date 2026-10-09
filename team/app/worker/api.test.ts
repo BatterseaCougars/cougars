@@ -28,7 +28,7 @@ async function call(method: string, path: string, payload?: unknown, e: Env = en
   const res = await handleApi(
     new Request(`http://team.test${path}`, {
       method,
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", origin: "http://team.test" },
       body: payload === undefined ? undefined : JSON.stringify(payload),
     }),
     e,

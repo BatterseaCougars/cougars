@@ -12,14 +12,14 @@ export class HttpError extends Error {
 /**
  * Whether a request that changes something comes from the app's own pages. Browsers send Origin on every POST, PUT
  * and DELETE, so another site's form or script is refused even where SameSite cookies would let it through (a
- * sibling subdomain). No Origin at all is a script or a test, not a browser, so it has no cookies to abuse.
+ * sibling subdomain). A change that says nothing about where it came from (no Origin, and no `Sec-Fetch-Site:
+ * same-origin`) is refused too: no browser's fetch sends one, so it can only be a script (#42).
  */
 export function sameOrigin(request: Request): boolean {
   if (request.method === "GET" || request.method === "HEAD") return true;
   const origin = request.headers.get("origin");
   if (origin) return origin === new URL(request.url).origin;
-  const site = request.headers.get("sec-fetch-site");
-  return !site || site === "same-origin" || site === "none";
+  return request.headers.get("sec-fetch-site") === "same-origin";
 }
 
 export const json = (body: unknown, status = 200) =>

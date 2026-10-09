@@ -65,8 +65,8 @@ Cougars, and on the player card), and a closed draft's teams ([0060](0060-the-dr
 So a member manager can't make an admin, demote one, or take over an admin's account by changing its email.
 
 **Changes come only from the app's own pages.** Every POST, PUT and DELETE with an `Origin` header must have the
-app's own origin; with no `Origin`, `Sec-Fetch-Site` must be `same-origin` or `none` if it's sent
-(`sameOrigin` in `worker/http.ts`). Only JSON bodies are accepted. GET requests change nothing (bootstrap's adding
+app's own origin; with no `Origin`, it must carry `Sec-Fetch-Site: same-origin`, and a change with neither is refused:
+every browser's fetch sends one, so only a script sends neither (`sameOrigin` in `worker/http.ts`). Only JSON bodies are accepted. GET requests change nothing (bootstrap's adding
 of future sessions is idempotent).
 
 **Security headers on every page, file and response, from both layers.**
@@ -117,3 +117,5 @@ of future sessions is idempotent).
   gets a content security policy, and the smoke test checks `/` (was 0092).
 - 2026-10-09: Of anything personal, the bootstrap now sends a member only their own: quarterly, roles, role actions,
   outs, no-shows, walk-ins and outside teams' contacts filtered by action (was 0099).
+- 2026-10-09: A change with neither `Origin` nor `Sec-Fetch-Site: same-origin` is refused; before, one with neither
+  (or `Sec-Fetch-Site: none`) got through ([#42](https://github.com/das974/cougars/issues/42)).
