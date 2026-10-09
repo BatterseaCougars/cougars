@@ -307,6 +307,8 @@ export const ROUTES: Route[] = [
         actions: [...c.actions],
         // Dev tools (ADR 0027): outside production, for whoever sets the club's settings
         devTools: devToolsHere(c.env) && (c.actions.has("manage:all") || c.actions.has("manage:Settings")),
+        // Screens on demo data (dues, fees, Upload): on dev and locally to try, never in production (#63)
+        unfinished: devToolsHere(c.env),
         ...(await slices(c, Object.keys(SLICES) as Slice[])),
       });
       return tagged(reply, tag);

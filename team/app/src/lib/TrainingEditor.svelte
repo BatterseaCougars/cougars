@@ -14,6 +14,7 @@
   import PlacePicker from "./PlacePicker.svelte";
   import { formatDayDate, londonISO, londonToday, pounds } from "./dates";
   import { feeOn } from "./dues";
+  import { UNFINISHED } from "../demo/data";
   import { collectedFor } from "../demo/dues.svelte";
   import { WEEKDAYS, addDays, describeRule, weekdayOf } from "./recurrence";
 
@@ -222,19 +223,22 @@
                     form && (form.goalieCapacity = e.currentTarget.value === "" ? null : Number(e.currentTarget.value))}
                 />
               </label>
-              <label class="field span-3">
-                Fee per session (£)
-                <input class="input num" inputmode="decimal" bind:value={feeAmount} />
-              </label>
-              <div class="field span-3">
-                Fee from <DateField id="training-fee-from" aria-label="Fee from" bind:value={feeFrom} />
-              </div>
+              {#if UNFINISHED}
+                <label class="field span-3">
+                  Fee per session (£)
+                  <input class="input num" inputmode="decimal" bind:value={feeAmount} />
+                </label>
+                <div class="field span-3">
+                  Fee from <DateField id="training-fee-from" aria-label="Fee from" bind:value={feeFrom} />
+                </div>
+              {/if}
               <div class="span-12 tuck">
                 <p class="hint small">
-                  Leave places empty for no limit. {current ? `${pounds(current)} now.` : "Free now."} A new fee applies from
-                  its date; sessions already held keep theirs. Subscribers aren't charged.
+                  Leave places empty for no limit.{#if UNFINISHED}
+                    {current ? `${pounds(current)} now.` : "Free now."} A new fee applies from its date; sessions already
+                    held keep theirs. Subscribers aren't charged.{/if}
                 </p>
-                {#if form.fees.length > 1}
+                {#if UNFINISHED && form.fees.length > 1}
                   <p class="hint small">
                     {#each [...form.fees].reverse() as f, i (f.from)}{i ? " · " : ""}{pounds(f.pence)} from {fullDate(
                         f.from,
@@ -348,7 +352,7 @@
                   <p class="hint">Cancelling keeps the session, so whoever signed up can be told.</p>
                 </section>
               {/if}
-              {#if held.length}
+              {#if UNFINISHED && held.length}
                 <section class="nights">
                   <h2>Held</h2>
                   <div class="nights-grid">

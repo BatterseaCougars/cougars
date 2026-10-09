@@ -58,6 +58,10 @@ be checked before it goes live. Ark deploys `main` to dev and production from a 
   ([ADR 0027](0027-email-through-gmail-api.md)). No production deploy, no PR previews and no custom domain for it until
   launch, which gets its own ADR. It deploys with `wrangler deploy`, not a previews-only upload, so the live hub's
   Durable Object migration is applied ([ADR 0072](0072-live-updates.md)).
+- **Team-app screens still on demo data are dev-only.** Dues, Fees, Unpaid fees and Upload have no backend yet; the
+  bootstrap's `unfinished` flag (true unless `SITE_ENV` is `production`) shows them on dev and locally to try, and
+  production leaves them, and every link to them, out ([#63](https://github.com/das974/cougars/issues/63)). Each comes
+  back for everyone when its backend lands.
 - `DEMO_CONTENT` is never set for production by default; the `production` environment's variable turns it on only
   until real content is in Sanity.
 
@@ -88,3 +92,4 @@ be checked before it goes live. Ark deploys `main` to dev and production from a 
 - 2026-10-05: Two Sanity projects, one per environment, so a dev token can't reach live content (0017).
 - 2026-10-05: The Studio publish webhook dropped for a daily production rebuild (ADR 0004).
 - 2026-10-08: The team app deploys to dev from `main` as `cougars-team-dev`; no production until launch (0075).
+- 2026-10-09: Team-app screens still on demo data (dues, fees, Upload) are hidden in production (#63).

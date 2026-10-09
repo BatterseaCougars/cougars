@@ -5,7 +5,7 @@
   // stays in view. Teammates is the everyday view (cards), for everyone.
   import PageHeader from "../lib/PageHeader.svelte";
   import { can } from "../access/actions";
-  import { emailFor, phoneFor, type MemberRow } from "../demo/data";
+  import { UNFINISHED, emailFor, phoneFor, type MemberRow } from "../demo/data";
   import { owedBy } from "../demo/dues.svelte";
   import { granted } from "../demo/session.svelte";
   import { db } from "../demo/store.svelte";
@@ -53,13 +53,18 @@
       valueGetter: (p) => (p.data?.plan === "Subscription" ? "Quarterly" : "Pay as you go"),
     },
     { headerName: "Played", valueGetter: (p) => p.data?.player.played ?? 0, type: "numericColumn" },
-    {
-      headerName: "Owes",
-      valueGetter: (p) => (p.data ? owedBy(p.data.player.id) : 0),
-      valueFormatter: (p) => (p.value > 0 ? pounds(p.value) : ""),
-      cellClass: (p) => (p.value > 0 ? "owes" : ""),
-      type: "numericColumn",
-    },
+    // Dues are still on demo data: not in production (#63)
+    ...(UNFINISHED
+      ? [
+          {
+            headerName: "Owes",
+            valueGetter: (p) => (p.data ? owedBy(p.data.player.id) : 0),
+            valueFormatter: (p) => (p.value > 0 ? pounds(p.value) : ""),
+            cellClass: (p) => (p.value > 0 ? "owes" : ""),
+            type: "numericColumn",
+          } as ColDef<MemberRow>,
+        ]
+      : []),
     {
       headerName: "Email",
       valueGetter: (p) => (p.data && emailFor(p.data.player) !== "No email yet" ? emailFor(p.data.player) : ""),

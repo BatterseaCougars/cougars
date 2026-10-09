@@ -59,6 +59,17 @@ describe("buildRoutes", () => {
     ]);
   });
 
+  it("leaves out screens that run on demo data unless they're switched on (#63)", () => {
+    const unfinished = ["/me/tab", "/settings/fees", "/settings/overdue", "/more/upload"];
+    const paths = (config: NavConfig) => buildRoutes(config).map((r) => r.path);
+    expect(paths(one).filter((p) => unfinished.includes(p))).toEqual([]);
+    expect(
+      paths({ ...one, unfinished: true })
+        .filter((p) => unfinished.includes(p))
+        .sort(),
+    ).toEqual([...unfinished].sort());
+  });
+
   it("leaves paused trainings out", () => {
     const routes = buildRoutes({ ...many, series: [friday, { ...sunday, active: false }] });
     expect(routeFor(routes, "/training/sunday")?.page).not.toBe("training");

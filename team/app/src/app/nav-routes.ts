@@ -35,6 +35,8 @@ export interface Route {
   under?: string;
   /** Full-screen: hides the tabs and shows its own back bar (the game clock). */
   focus?: boolean;
+  /** Still on demo data: only there when the config switches unfinished screens on (#63). */
+  unfinished?: boolean;
 }
 
 export interface Fold {
@@ -72,6 +74,8 @@ export interface NavConfig {
   members?: { id: number; name: string }[];
   /** Outside production: Settings → Dev tools (ADR 0027). */
   devTools?: boolean;
+  /** Outside production: the screens still on demo data (#63). */
+  unfinished?: boolean;
 }
 
 // Outside production only (ADR 0027)
@@ -103,6 +107,7 @@ const STATIC_TAIL: Route[] = [
   },
   {
     id: "upload",
+    unfinished: true,
     path: "/more/upload",
     name: "Upload",
     tab: "more",
@@ -125,6 +130,7 @@ const STATIC_TAIL: Route[] = [
   },
   {
     id: "tab",
+    unfinished: true,
     path: "/me/tab",
     name: "Dues",
     tab: "more",
@@ -184,6 +190,7 @@ const STATIC_TAIL: Route[] = [
   },
   {
     id: "overdue",
+    unfinished: true,
     path: "/settings/overdue",
     name: "Unpaid fees",
     tab: "more",
@@ -196,6 +203,7 @@ const STATIC_TAIL: Route[] = [
   },
   {
     id: "fees",
+    unfinished: true,
     path: "/settings/fees",
     name: "Quarterly rate",
     tab: "more",
@@ -448,7 +456,7 @@ export function buildRoutes(config: NavConfig): Route[] {
         })),
       ];
     }),
-    ...STATIC_TAIL,
+    ...STATIC_TAIL.filter((r) => config.unfinished || !r.unfinished),
     ...(config.devTools ? [DEV_TOOLS_ROUTE] : []),
   ];
 }

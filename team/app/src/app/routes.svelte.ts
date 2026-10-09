@@ -3,7 +3,7 @@ import { can } from "../access/actions";
 import { currentTournament, pastTournaments } from "../demo/schedule.svelte";
 import { granted, me } from "../demo/session.svelte";
 import { db } from "../demo/store.svelte";
-import { DEV_TOOLS } from "../demo/data";
+import { DEV_TOOLS, UNFINISHED } from "../demo/data";
 import { buildFolds, buildRoutes, buildTabs, routeFor, type NavConfig } from "./nav-routes";
 import { navigate, router } from "./router.svelte";
 import { goesBy } from "../lib/names";
@@ -36,6 +36,7 @@ const config = (): NavConfig => ({
   me: me().id,
   members: db.members.filter((m) => m.status === "active").map((m) => ({ id: m.player.id, name: goesBy(m.player) })),
   devTools: DEV_TOOLS,
+  unfinished: UNFINISHED,
 });
 
 export const routes = () => buildRoutes(config());

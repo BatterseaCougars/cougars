@@ -20,7 +20,7 @@
     setQuarterly,
     type AttendanceRow,
   } from "../app/backend.svelte";
-  import { POSITIONS, emailFor, phoneFor, referenceFor, type Position } from "../demo/data";
+  import { POSITIONS, UNFINISHED, emailFor, phoneFor, referenceFor, type Position } from "../demo/data";
   import { chargesFor, owedBy } from "../demo/dues.svelte";
   import { db, markPaid } from "../demo/store.svelte";
   import ChargeRow from "./ChargeRow.svelte";
@@ -536,35 +536,37 @@
             </div>
           </section>
 
-          <section class="in">
-            <div class="head-row">
-              <h2>Fees</h2>
-              <span class="totals hint num">
-                Owes <b class:owes={owed > 0}>{pounds(owed)}</b> · Paid <b>{pounds(paidTotal)}</b>
-              </span>
-            </div>
-            <div class="head-row">
-              <h3 class="eyebrow">Not paid yet</h3>
-              {#if unpaid.length > 1}
-                <span class="seg sm" role="group" aria-label="Mark everything paid">
-                  <button onclick={() => payAll("transfer")}>All paid · transfer</button>
-                  <button onclick={() => payAll("cash")}>Cash</button>
+          {#if UNFINISHED}
+            <section class="in">
+              <div class="head-row">
+                <h2>Fees</h2>
+                <span class="totals hint num">
+                  Owes <b class:owes={owed > 0}>{pounds(owed)}</b> · Paid <b>{pounds(paidTotal)}</b>
                 </span>
-              {/if}
-            </div>
-            <div class="list">
-              {#each unpaid as c (c.id)}<ChargeRow charge={c} editable />{:else}<p class="row hint">
-                  All square.
-                </p>{/each}
-            </div>
-            <h3 class="eyebrow">Paid</h3>
-            <div class="list">
-              {#each paid as c (c.id)}<ChargeRow charge={c} editable />{:else}<p class="row hint">
-                  Nothing paid yet.
-                </p>{/each}
-            </div>
-            {#if paid.length}<p class="hint">Tap Paid to take a payment back if it was marked by mistake.</p>{/if}
-          </section>
+              </div>
+              <div class="head-row">
+                <h3 class="eyebrow">Not paid yet</h3>
+                {#if unpaid.length > 1}
+                  <span class="seg sm" role="group" aria-label="Mark everything paid">
+                    <button onclick={() => payAll("transfer")}>All paid · transfer</button>
+                    <button onclick={() => payAll("cash")}>Cash</button>
+                  </span>
+                {/if}
+              </div>
+              <div class="list">
+                {#each unpaid as c (c.id)}<ChargeRow charge={c} editable />{:else}<p class="row hint">
+                    All square.
+                  </p>{/each}
+              </div>
+              <h3 class="eyebrow">Paid</h3>
+              <div class="list">
+                {#each paid as c (c.id)}<ChargeRow charge={c} editable />{:else}<p class="row hint">
+                    Nothing paid yet.
+                  </p>{/each}
+              </div>
+              {#if paid.length}<p class="hint">Tap Paid to take a payment back if it was marked by mistake.</p>{/if}
+            </section>
+          {/if}
         </div>
       {/if}
     </div>
