@@ -26,7 +26,8 @@ worker.
 
 - A member enters their email. The Worker sets a private **nonce cookie** on that browser and emails a **6-digit
   code**, and nothing else: no link. The code signs in only alongside the nonce cookie, so a forwarded email signs no
-  one in ("open this on the device you signed in from").
+  one in ("open this on the device you signed in from"). The email shows the code first and huge, in the club's
+  colours (`apps/team/worker/sign-in-email.ts`), with a plain-text version saying the same.
 - Codes are sent only to the email on the member's own account. An unknown email gets the same reply, so the form
   doesn't reveal who's a member.
 - Codes are stored hashed (SHA-256), are single-use and expire after 15 minutes.
@@ -102,3 +103,4 @@ worker.
   a private address, a config test and a smoke test (was 0093).
 - 2026-10-09: The same review found one browser holding codes for two members let guesses count against the wrong
   member; asking for another member's code now starts a fresh nonce (was 0094).
+- 2026-10-09: The code email is branded HTML with the code big and split in two (123 456), beside the plain text.

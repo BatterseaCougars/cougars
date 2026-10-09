@@ -13,6 +13,7 @@ import { isProduction, mailPausedUntil, sendMail, type MailConfig } from "@couga
 import { LIMITS, addressOf, enforce } from "./limits";
 import { londonToday } from "../src/lib/dates";
 import { HttpError, body, json, oneOf, text } from "./http";
+import { signInEmail } from "./sign-in-email";
 import { audit } from "./audit";
 
 export interface AuthEnv {
@@ -289,22 +290,9 @@ async function start(request: Request, env: AuthEnv, now: Date, waitUntil?: Wait
   );
   // On your own machine nothing is emailed, even with Gmail set up: the code comes back to the screen
   if (local) return res(theCode);
-  const sending = sendMail(
-    {
-      to: [address],
-      subject: `Your Cougars sign-in code: ${theCode}`,
-      text: [
-        `Your code is ${theCode}`,
-        "",
-        `Type it into the Cougars app, where you asked for it. It works for ${CHALLENGE_MINUTES} minutes.`,
-        "",
-        "If you didn't ask, ignore this email: nobody can use the code without your phone or computer.",
-        "",
-        "Battersea Cougars",
-      ].join("\n"),
-    },
-    await mailSetup(env),
-  ).catch((e) => console.error(JSON.stringify({ event: "sign_in.email_failed", error: String(e) })));
+  const sending = sendMail({ to: [address], ...signInEmail(theCode, CHALLENGE_MINUTES) }, await mailSetup(env)).catch(
+    (e) => console.error(JSON.stringify({ event: "sign_in.email_failed", error: String(e) })),
+  );
   if (waitUntil) waitUntil(sending);
   else await sending;
   return res();

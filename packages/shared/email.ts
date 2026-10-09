@@ -20,6 +20,8 @@ export interface Mail {
   to: string[];
   subject: string;
   text: string;
+  /** An HTML version beside the text one, for clients that show it; the text one is always sent too. */
+  html?: string;
   replyTo?: string;
 }
 
@@ -148,7 +150,9 @@ export async function sendMail(
       safeTo: config.safeTo ?? "nobody@example.invalid",
       allow: config.allow,
     });
-    console.log(JSON.stringify({ event: "mail.logged", to: safe.to, subject: safe.subject, text: safe.text }));
+    console.log(
+      JSON.stringify({ event: "mail.logged", to: safe.to, subject: safe.subject, text: safe.text, html: safe.html }),
+    );
     return { status: "logged", to: safe.to };
   }
   const gmail = config.gmail;
@@ -207,7 +211,7 @@ const base64url = (text: string) => utf8Base64(text).replace(/\+/g, "-").replace
 // RFC 2047 encoded word, so names and subjects can be any language.
 const encoded = (text: string) => (/^[\x20-\x7e]*$/.test(text) ? text : `=?UTF-8?B?${utf8Base64(text)}?=`);
 
-/** The RFC 5322 message: plain UTF-8 text, base64 so long lines and accents survive. */
+/** The RFC 5322 message: UTF-8 text, base64 so long lines and accents survive; with an HTML part beside it if given. */
 export function mime(mail: Mail & { headers?: Record<string, string> }, from: string): string {
   const headers = [
     `From: ${encoded(FROM_NAME)} <${address(from)}>`,
@@ -216,9 +220,29 @@ export function mime(mail: Mail & { headers?: Record<string, string> }, from: st
     `Subject: ${encoded(clean(mail.subject))}`,
     ...Object.entries(mail.headers ?? {}).map(([k, v]) => `${k}: ${encoded(clean(v))}`),
     "MIME-Version: 1.0",
-    'Content-Type: text/plain; charset="UTF-8"',
-    "Content-Transfer-Encoding: base64",
   ];
-  const body = utf8Base64(mail.text.replace(/\r?\n/g, "\r\n")).replace(/.{76}/g, "$&\r\n");
-  return `${headers.join("\r\n")}\r\n\r\n${body}`;
+  const text = part("text/plain", mail.text.replace(/\r?\n/g, "\r\n"));
+  if (!mail.html) return [...headers, text].join("\r\n");
+  // Base64 bodies can't contain "=_", so this boundary never appears inside a part.
+  const boundary = "=_cougars_alt";
+  return [
+    ...headers,
+    `Content-Type: multipart/alternative; boundary="${boundary}"`,
+    "",
+    `--${boundary}`,
+    text,
+    `--${boundary}`,
+    part("text/html", mail.html),
+    `--${boundary}--`,
+    "",
+  ].join("\r\n");
 }
+
+// One body: its headers, a blank line, then the base64 in 76-character lines.
+const part = (type: string, body: string) =>
+  [
+    `Content-Type: ${type}; charset="UTF-8"`,
+    "Content-Transfer-Encoding: base64",
+    "",
+    utf8Base64(body).replace(/.{76}/g, "$&\r\n"),
+  ].join("\r\n");

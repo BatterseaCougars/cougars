@@ -178,6 +178,24 @@ describe("mime", () => {
     expect(new TextDecoder().decode(Uint8Array.from(atob(body), (c) => c.charCodeAt(0)))).toBe("Café ☕");
   });
 
+  it("sends an HTML version beside the text one when there is one", () => {
+    const raw = mime({ ...enquiry, text: "Plain", html: "<p>Café</p>" }, "a@example.com");
+    expect(raw).toMatch(/^Content-Type: multipart\/alternative; boundary="=_cougars_alt"$/m);
+    const parts = raw.split("--=_cougars_alt").slice(1, 3);
+    const decoded = parts.map((p) => {
+      const [head, body] = p.split("\r\n\r\n");
+      return [
+        head.trim(),
+        new TextDecoder().decode(Uint8Array.from(atob(body.replace(/\r\n/g, "")), (c) => c.charCodeAt(0))),
+      ];
+    });
+    expect(decoded[0][0]).toMatch(/^Content-Type: text\/plain/);
+    expect(decoded[0][1]).toBe("Plain");
+    expect(decoded[1][0]).toMatch(/^Content-Type: text\/html/);
+    expect(decoded[1][1]).toBe("<p>Café</p>");
+    expect(raw.trimEnd().endsWith("--=_cougars_alt--")).toBe(true);
+  });
+
   it("keeps form input from adding headers", () => {
     const raw = mime({ ...enquiry, subject: "Hi\r\nBcc: victim@example.com" }, "a@example.com");
     expect(raw).not.toMatch(/^Bcc:/m);

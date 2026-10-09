@@ -27,6 +27,8 @@ with their own inbox, and changing a secret to fix that needs a deploy each time
 - **Two sending accounts.** Production sends as batterseahockey@gmail.com; dev sends as cougars.dev@gmail.com.
   `scripts/gmail-auth.mjs` refuses the club account for dev and any other account for production, and the club's token
   lives only in the `cougars` Secrets Manager project ([0002](0002-secrets-in-bitwarden.md)).
+- Every email has a plain-text body; it may carry an HTML version too (`multipart/alternative`), with inline styles
+  and no images.
 - The enquiry is saved first; the email goes out after the response (`waitUntil`). A failed email is logged and never
   loses the enquiry.
 
@@ -72,3 +74,4 @@ with their own inbox, and changing a secret to fix that needs a deploy each time
   by one safe inbox (was 0027).
 - 2026-10-08: Outside production, active admins and a list kept on Dev tools get their own team app email, so people
   can sign in on dev without a deploy (was 0077).
+- 2026-10-09: An email may carry an HTML version beside its text, first for the sign-in code.

@@ -27,7 +27,7 @@ function lastEmail() {
     .mock.calls.map((c) => String(c[0]))
     .filter((l) => l.includes("mail.logged"))
     .at(-1)!;
-  return JSON.parse(logged) as { to: string[]; subject: string; text: string };
+  return JSON.parse(logged) as { to: string[]; subject: string; text: string; html?: string };
 }
 
 describe("signing in with the code", () => {
@@ -151,6 +151,9 @@ describe("signing in with the code", () => {
     const code = email.subject.match(/(\d{6})$/)![1];
     expect(email.text.startsWith(`Your code is ${code}`)).toBe(true);
     expect(email.text).not.toMatch(/https?:/);
+    // The HTML version shows the same code, big, split in two for reading, and still has no link
+    expect(email.html).toContain(`${code.slice(0, 3)} ${code.slice(3)}`);
+    expect(email.html).not.toMatch(/https?:|<a\b/);
     expect((await verify(phone, code)).status).toBe(200);
   });
 });
