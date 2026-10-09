@@ -79,6 +79,7 @@ Rules ([ADR 0002](docs/adr/0002-secrets-in-bitwarden.md), [ADR 0010](docs/adr/00
 | [`TURNSTILE_SECRET_KEY`](#turnstile)                                      | `cougars-dev` | Cloudflare, Cougars Dev     | Website (dev)                |
 | [`TEAM_ROSTER__PRODUCTION`](#team-roster)                                 | `cougars`     | (the club's roster)         | Deploys (D1 seed)            |
 | [`TEAM_ROSTER`](#team-roster)                                             | `cougars-dev` | (the club's roster)         | Deploys (D1 seed)            |
+| [`GITHUB_APP_PRIVATE_KEY`](#github_app_private_key)                       | `cougars-dev` | GitHub, `Cougars rebuilds`  | Team app (both): rebuilds    |
 
 ### Bitwarden tokens
 
@@ -275,6 +276,29 @@ enquiries are still saved and emailed to the club, but nobody gets an auto-reply
 - **Expires:** no. Once the app is live, members join and are edited in the app; the roster only covers the
   starting players.
 
+### `GITHUB_APP_PRIVATE_KEY`
+
+The private key of the GitHub App **Cougars rebuilds**, owned by the `battersea-cougars` organisation (not a
+person, so it outlives any maintainer). The team Worker signs a short request with it and swaps that for a token
+that lasts an hour, to start a website rebuild when a result changes ([ADR 0100](docs/adr/0100-website-reads-tournament-results.md)).
+One key for both environments: production reads `cougars-dev` too, and nothing needs a different value.
+
+- **Issued by:** GitHub → `battersea-cougars` → Settings → Developer settings → GitHub Apps → Cougars rebuilds →
+  Private keys → Generate. Installed on `battersea-cougars/ark` only, webhook off.
+
+  | Applies to              | Permission           | Why                              |
+  | ----------------------- | -------------------- | -------------------------------- |
+  | `battersea-cougars/ark` | Contents: read/write | Sending a `repository_dispatch`  |
+  | `battersea-cougars/ark` | Metadata: read       | Required by GitHub for every App |
+
+- **Format:** PKCS#8 (`-----BEGIN PRIVATE KEY-----`), which the Workers runtime's WebCrypto imports. GitHub hands
+  out PKCS#1, so convert when storing (never save the file in the repo; `*.pem` is gitignored):
+  `openssl pkcs8 -topk8 -nocrypt -in KEY.pem | node scripts/secret-set.mjs GITHUB_APP_PRIVATE_KEY`
+- **Used by:** the team Worker, with the App's Client ID and installation ID (not secret, below).
+- **Gets there by:** a Worker secret when the team app deploys.
+- **Expires:** no.
+- **Rotate:** generate a new key on the App, store it as above, redeploy, then delete the old key on the App.
+
 ### Settings that aren't secret
 
 | Name                                   | Where                       | What                                                             |
@@ -285,6 +309,8 @@ enquiries are still saved and emailed to the club, but nobody gets an auto-reply
 | `SANITY_STUDIO_SITE_ENV`               | CI (Studio deploy)          | `production` builds the live Studio; unset is the dev project    |
 | `DEMO_CONTENT`                         | `.env`, GitHub variable     | Sample content + `noindex`; `true` on production only pre-launch |
 | `PUBLIC_BUILD_VERSION`                 | Set by CI                   | Shown in `<meta name="generator">`; checked by the smoke test    |
+| `GITHUB_APP_CLIENT_ID`                 | team `wrangler.jsonc`       | `Iv23liuUhxYcTesso0TW`, the Cougars rebuilds App                 |
+| `GITHUB_APP_INSTALLATION_ID`           | team `wrangler.jsonc`       | `169599165`, its installation on `battersea-cougars/ark`         |
 
 ## Docs
 

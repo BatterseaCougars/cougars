@@ -19,3 +19,6 @@ dist/
 db/seed/*.local.*
 apps/web/src/data/*.local.*
 airtable.md
+
+# Private keys (a GitHub App key belongs in Bitwarden, never here)
+*.pem

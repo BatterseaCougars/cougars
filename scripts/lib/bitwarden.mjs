@@ -95,7 +95,10 @@ export function bws(args) {
   if (!token) throw new Error("No Bitwarden token: call ensureToken() first.");
   const env = { ...process.env, BWS_ACCESS_TOKEN: token };
   env.BWS_SERVER_URL ||= "https://vault.bitwarden.eu";
-  const res = spawnSync("bws", [...args, "--output", "json"], { encoding: "utf8", env });
+  // Options before a `--`: after it everything is a plain value, even one that starts with dashes (a PEM key)
+  const end = args.indexOf("--");
+  const argv = end < 0 ? [...args, "--output", "json"] : [...args.slice(0, end), "--output", "json", ...args.slice(end)];
+  const res = spawnSync("bws", argv, { encoding: "utf8", env });
   if (res.error) throw new Error(`Could not run bws: ${res.error.message}. Is the Bitwarden CLI installed?`);
   if (res.status !== 0) throw new Error(`bws failed: ${res.stderr.trim().split("\n")[0]}`);
   return JSON.parse(res.stdout);
@@ -109,8 +112,8 @@ export function setSecret(key, value) {
     throw new Error(`This token can't see the project "${projectName}". Check the machine account's project access.`);
   }
   const existing = bws(["secret", "list", project.id]).find((s) => s.key === key);
-  if (existing) bws(["secret", "edit", existing.id, "--value", value]);
-  else bws(["secret", "create", key, value, project.id]);
+  if (existing) bws(["secret", "edit", existing.id, `--value=${value}`]);
+  else bws(["secret", "create", "--", key, value, project.id]);
   return existing ? "Updated" : "Created";
 }
 
