@@ -42,6 +42,8 @@ with their own inbox, and changing a secret to fix that needs a deploy each time
   the subject names the environment and the real recipients, and `X-Cougars-Original-To` carries them.
 - Allowed outside production, for the team app's emails only: every active Admin (so they can sign in and get to Dev
   tools), plus the addresses in `dev_mail_recipients`. The website's emails still go to the safe inbox only.
+- A sign-in code that goes to its member outside production also goes to the safe inbox as a copy, just in case
+  (one already sent there isn't sent twice).
 - The club's inbox is never allowed, and is refused as the safe address and as the sending account outside
   production.
 - With no Gmail secrets (a laptop, tests) the email is logged, not sent.
@@ -77,3 +79,4 @@ with their own inbox, and changing a secret to fix that needs a deploy each time
 - 2026-10-09: An email may carry an HTML version beside its text, first for the sign-in code.
 - 2026-10-09: The club's enquiry email gets the same branded HTML; the frame is shared (`packages/shared/email-html.ts`), and
   everything a person typed is escaped in it.
+- 2026-10-09: Outside production, a sign-in code sent to its member is copied to the safe inbox.

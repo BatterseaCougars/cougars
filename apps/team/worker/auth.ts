@@ -290,9 +290,15 @@ async function start(request: Request, env: AuthEnv, now: Date, waitUntil?: Wait
   );
   // On your own machine nothing is emailed, even with Gmail set up: the code comes back to the screen
   if (local) return res(theCode);
-  const sending = sendMail({ to: [address], ...signInEmail(theCode, CHALLENGE_MINUTES) }, await mailSetup(env)).catch(
-    (e) => console.error(JSON.stringify({ event: "sign_in.email_failed", error: String(e) })),
-  );
+  const mail = { to: [address], ...signInEmail(theCode, CHALLENGE_MINUTES) };
+  const setup = await mailSetup(env);
+  // Outside production, a code that goes to its member also goes to the dev mailbox, just in case (ADR 0027): the same
+  // email with no allow list lands in the safe inbox. One that went there already isn't sent twice.
+  const copy = !isProduction(env.SITE_ENV) && setup.allow?.includes(address);
+  const sending = (async () => {
+    await sendMail(mail, setup);
+    if (copy) await sendMail(mail, { ...setup, allow: [] });
+  })().catch((e) => console.error(JSON.stringify({ event: "sign_in.email_failed", error: String(e) })));
   if (waitUntil) waitUntil(sending);
   else await sending;
   return res();

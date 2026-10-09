@@ -20,15 +20,14 @@ beforeEach(() => {
 
 const verify = (b: ReturnType<typeof w.browser>, code: string, now?: Date) =>
   b.call("POST", "/api/auth/verify", { code }, { now });
-/** The last email the app wrote (logged, with no Gmail in tests). */
-function lastEmail() {
-  const logged = vi
+/** The emails the app wrote (logged, with no Gmail in tests). */
+const loggedEmails = () =>
+  vi
     .mocked(console.log)
     .mock.calls.map((c) => String(c[0]))
     .filter((l) => l.includes("mail.logged"))
-    .at(-1)!;
-  return JSON.parse(logged) as { to: string[]; subject: string; text: string; html?: string };
-}
+    .map((l) => JSON.parse(l) as { to: string[]; subject: string; text: string; html?: string });
+const lastEmail = () => loggedEmails().at(-1)!;
 
 describe("signing in with the code", () => {
   it("lets a member in, in the browser they asked in, for months", async () => {
@@ -155,6 +154,25 @@ describe("signing in with the code", () => {
     expect(email.html).toContain(`${code.slice(0, 3)} ${code.slice(3)}`);
     expect(email.html).not.toMatch(/https?:|<a\b/);
     expect((await verify(phone, code)).status).toBe(200);
+  });
+
+  it("on dev, an admin gets their own code and the dev mailbox gets a copy, just in case", async () => {
+    Object.assign(env, { TEAM_ENV: undefined, SITE_ENV: "dev", MAIL_SAFE_TO: "dev@example.com" });
+    await w.ask(w.browser(), "dana@example.com");
+    const sent = loggedEmails();
+    expect(sent.map((e) => e.to)).toEqual([["dana@example.com"], ["dev@example.com"]]);
+    expect(sent[1].subject).toContain("for dana@example.com");
+    expect(sent[1].text).toBe(sent[0].text);
+  });
+
+  it("sends no copy when the code already went to the dev mailbox, or in production", async () => {
+    Object.assign(env, { TEAM_ENV: undefined, SITE_ENV: "dev", MAIL_SAFE_TO: "dev@example.com" });
+    await w.ask(w.browser(), "reg@example.com");
+    expect(loggedEmails().map((e) => e.to)).toEqual([["dev@example.com"]]);
+    vi.mocked(console.log).mockClear();
+    Object.assign(env, { SITE_ENV: "production" });
+    await w.ask(w.browser(), "dana@example.com");
+    expect(loggedEmails().map((e) => e.to)).toEqual([["dana@example.com"]]);
   });
 });
 
