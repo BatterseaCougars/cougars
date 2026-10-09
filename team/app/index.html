@@ -14,8 +14,80 @@
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <!-- The splash's own styles, here so it paints before the stylesheet or any script arrives -->
+    <style>
+      body {
+        margin: 0;
+        background: #0e0d0b;
+      }
+      #splash {
+        position: fixed;
+        inset: 0;
+        z-index: 100;
+        display: grid;
+        place-content: center;
+        justify-items: center;
+        gap: 0.75rem;
+        background: #0e0d0b;
+        transition: opacity 160ms ease-out;
+      }
+      #splash.gone {
+        opacity: 0;
+      }
+      #splash img {
+        width: 4.5rem;
+        height: auto;
+      }
+      #splash p {
+        margin: 0;
+        font:
+          600 0.6875rem/1 "Inter Tight",
+          system-ui,
+          sans-serif;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #a6a09a;
+      }
+      /* A short red line running under the name while the club loads */
+      #splash .run {
+        position: relative;
+        width: 4.5rem;
+        height: 2px;
+        overflow: hidden;
+        background: rgb(239 232 225 / 0.07);
+      }
+      #splash .run::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        width: 40%;
+        background: #f4404a;
+        animation: splash-run 1.1s ease-in-out infinite;
+      }
+      @keyframes splash-run {
+        from {
+          transform: translateX(-100%);
+        }
+        to {
+          transform: translateX(250%);
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #splash .run::after {
+          animation: none;
+          width: 100%;
+          opacity: 0.5;
+        }
+      }
+    </style>
   </head>
   <body>
+    <!-- While the club loads (main.ts takes it away once the first screen is up) -->
+    <div id="splash" role="status" aria-label="Loading">
+      <img src="/src/assets/cougars-mark.webp" alt="" width="72" height="72" />
+      <p>Battersea Cougars</p>
+      <div class="run"></div>
+    </div>
     <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>

@@ -11,11 +11,13 @@ try {
   const [{ mount }, { default: App }] = await Promise.all([import("svelte"), import("./App.svelte"), firstPage()]);
   mount(App, { target });
   running.app = true;
+  unsplash();
 } catch (e) {
   if (e instanceof ApiError && e.status === 401) {
     const [{ mount }, { default: SignIn }] = await Promise.all([import("svelte"), import("./pages/SignIn.svelte")]);
     mount(SignIn, { target });
   } else showError(e);
+  unsplash();
 }
 
 // The page you're opening, so the app's first paint has it (each page is its own chunk: app/pages.svelte.ts)
@@ -27,6 +29,16 @@ async function firstPage() {
   ]);
   const all = routes();
   await loadPage((routeFor(all, location.pathname) ?? routeFor(all, "/")!).page);
+}
+
+/** The splash (index.html) fades once the first screen is up, over it, so nothing moves underneath. */
+function unsplash() {
+  const splash = document.getElementById("splash");
+  if (!splash) return;
+  splash.classList.add("gone");
+  splash.addEventListener("transitionend", () => splash.remove(), { once: true });
+  // Reduced motion, or a tab in the background, may never send transitionend
+  setTimeout(() => splash.remove(), 400);
 }
 
 function showError(e: unknown) {
