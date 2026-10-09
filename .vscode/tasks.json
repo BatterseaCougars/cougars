@@ -9,7 +9,7 @@
       "command": "npm run dev -w @cougars/web",
       "isBackground": true,
       "runOptions": { "runOn": "folderOpen" },
-      "presentation": { "group": "dev", "panel": "dedicated", "reveal": "silent", "showReuseMessage": false },
+      "presentation": { "panel": "dedicated", "reveal": "silent", "showReuseMessage": false },
       "problemMatcher": []
     },
     {
@@ -18,7 +18,7 @@
       "command": "npm run dev -w @cougars/team",
       "isBackground": true,
       "runOptions": { "runOn": "folderOpen" },
-      "presentation": { "group": "dev", "panel": "dedicated", "reveal": "silent", "showReuseMessage": false },
+      "presentation": { "panel": "dedicated", "reveal": "silent", "showReuseMessage": false },
       "problemMatcher": []
     },
     {
@@ -27,7 +27,7 @@
       "type": "shell",
       "command": "npm run dev -w @cougars/studio",
       "isBackground": true,
-      "presentation": { "group": "dev", "panel": "dedicated", "showReuseMessage": false },
+      "presentation": { "panel": "dedicated", "showReuseMessage": false },
       "problemMatcher": []
     }
   ]

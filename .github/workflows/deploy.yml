@@ -54,7 +54,10 @@ jobs:
       github.event_name != 'repository_dispatch' && github.event_name != 'schedule' &&
       (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
-    environment: ${{ github.ref == 'refs/heads/release' && 'production' || 'preview' }}
+    environment:
+      name: ${{ github.ref == 'refs/heads/release' && 'production' || 'preview' }}
+      # Read once the job ends, so the Deployments page links each deploy to its site
+      url: ${{ steps.preview.outputs.url || steps.deploy.outputs.url }}
     env:
       SITE_ENV: ${{ github.ref == 'refs/heads/release' && 'production' || 'dev' }}
       # Production's address; target.mjs attaches it to the worker. Dev stays on workers.dev (a separate account).

@@ -1,0 +1,41 @@
+{
+  // Run and Debug (Ctrl+Shift+D): pick a server and press ▶. Each opens its own terminal, named below; stop it with
+  // the debug toolbar's ■ or by closing the terminal. Ports are fixed (README, Ports), so a server that's already up
+  // (the folder-open tasks in tasks.json start web and team) refuses a second copy: stop that one first.
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Web (:4500)",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "npm run dev -w @cougars/web",
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "Team app (:4510)",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "npm run dev -w @cougars/team",
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "Studio (:4520)",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "npm run dev -w @cougars/studio",
+      "cwd": "${workspaceFolder}"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Web + Team app",
+      "configurations": ["Web (:4500)", "Team app (:4510)"],
+      "stopAll": true
+    },
+    {
+      "name": "All three",
+      "configurations": ["Web (:4500)", "Team app (:4510)", "Studio (:4520)"],
+      "stopAll": true
+    }
+  ]
+}
