@@ -7,6 +7,23 @@ import { rateLimit, type CacheLike } from "../../../shared/rate-limit";
 
 export const LIVE_LIMIT = { limit: 240, windowSeconds: 60 };
 
+/**
+ * On every live response (ADR 0092): never shown in another site's frame, no sniffing a type, and only the origin
+ * to other sites. Prerendered pages get the same from public/_headers; middleware.test.ts keeps the two the same.
+ */
+export const SITE_HEADERS: Record<string, string> = {
+  "content-security-policy": "frame-ancestors 'none'",
+  "x-frame-options": "DENY",
+  "x-content-type-options": "nosniff",
+  "referrer-policy": "strict-origin-when-cross-origin",
+};
+
+export function secured(res: Response): Response {
+  const out = new Response(res.body, res);
+  for (const [k, v] of Object.entries(SITE_HEADERS)) out.headers.set(k, v);
+  return out;
+}
+
 /** A 429 if this address has made too many live requests this minute, else null. */
 export async function tooMany(cache: CacheLike | null, ip: string, now = Date.now()): Promise<Response | null> {
   if (!cache) return null;
@@ -23,5 +40,5 @@ export const onRequest = defineMiddleware(async (context, next) => {
   // At build time there's no visitor, and outside a Worker (astro dev) no Cache API
   if (context.isPrerendered || typeof caches === "undefined") return next();
   const ip = context.request.headers.get("cf-connecting-ip") ?? "unknown";
-  return (await tooMany(await caches.open("live-rate-limit"), ip)) ?? next();
+  return (await tooMany(await caches.open("live-rate-limit"), ip)) ?? secured(await next());
 });

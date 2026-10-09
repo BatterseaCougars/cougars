@@ -1,6 +1,8 @@
 # 0035. Sessions are random tokens stored hashed, and sign-in is a code with no link
 
-- **Status:** Accepted. Amends [0023](0023-device-bound-sign-in.md).
+- **Status:** Accepted. Amends [0023](0023-device-bound-sign-in.md). Amended by
+  [0093](0093-local-only-switches-need-a-private-address.md) (the local switches need a private address) and
+  [0094](0094-one-member-a-browser-at-a-time.md) (a browser's codes are one member's).
 - **Date:** 2026-10-06
 
 ## Context

@@ -1,0 +1,8 @@
+# Security headers for everything the asset layer serves without the Worker (the app's page and files). The same set
+# as SECURITY_HEADERS in worker/index.ts, which covers /api/* and the app's other paths; security.test.ts keeps them
+# the same. Decision: docs/adr/0092-security-headers-from-the-asset-layer-too.md.
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: same-origin

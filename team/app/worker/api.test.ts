@@ -221,7 +221,6 @@ describe("the schedule", () => {
       dateConfirmed: true,
       signupClosesOn: "2027-06-05",
       draftOn: "2027-06-09",
-      draftTime: "19:30",
       teams: [team("Reg Player"), team("Dana Admin")],
     };
     expect((await call("PUT", `/api/tournaments/${date.id}`, details)).status).toBe(200);

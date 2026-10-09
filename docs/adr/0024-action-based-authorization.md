@@ -1,7 +1,7 @@
 # 0024. Permissions are actions; roles are data built from actions
 
 - **Status:** Accepted. Extended by [0036](0036-api-security.md): responses are filtered per caller, and no one
-  grants what they don't hold.
+  grants what they don't hold; and by [0095](0095-the-audit-log-has-a-page.md): the audit log has a page.
 - **Date:** 2026-10-06
 
 ## Context

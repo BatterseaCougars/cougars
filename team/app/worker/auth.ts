@@ -13,6 +13,7 @@ import { isProduction, mailPausedUntil, sendMail, type MailConfig } from "../../
 import { LIMITS, addressOf, enforce } from "./limits";
 import { londonToday } from "../src/lib/dates";
 import { HttpError, body, json, oneOf, text } from "./http";
+import { audit } from "./audit";
 
 export interface AuthEnv {
   DB: D1Database;
@@ -66,6 +67,24 @@ function code(): string {
 }
 
 const isHttps = (request: Request) => new URL(request.url).protocol === "https:";
+
+/** An address only this machine or its network can reach: loopback, a private range, or a name that can't be public. */
+export function privateHost(hostname: string): boolean {
+  const h = hostname.replace(/^\[|\]$/g, "").toLowerCase();
+  if (h === "localhost" || h.endsWith(".localhost") || h === "::1" || h.endsWith(".test")) return true;
+  const m = h.match(/^(\d+)\.(\d+)\.\d+\.\d+$/);
+  if (!m) return false;
+  const [a, b] = [Number(m[1]), Number(m[2])];
+  return a === 127 || a === 10 || (a === 192 && b === 168) || (a === 172 && b >= 16 && b <= 31);
+}
+
+/**
+ * Whether this is your own machine's server (ADR 0093): `vite` says so (TEAM_ENV "local"), and the request came to a
+ * private address. A build never says so; and if one ever did by mistake, a public address still gets nothing local
+ * (no code on screen, no first admin without signing in).
+ */
+export const localHere = (env: { TEAM_ENV?: string }, request: Request) =>
+  env.TEAM_ENV === "local" && privateHost(new URL(request.url).hostname);
 /**
  * A cookie's name here. On https it carries the __Host- prefix: the browser then insists on Secure, Path=/ and no
  * Domain, so no sibling subdomain can set or shadow it. Plain http (a local server on the LAN) can't use it.
@@ -87,15 +106,6 @@ function setCookie(request: Request, base: "session" | "nonce", value: string, m
 }
 
 const addMs = (now: Date, ms: number) => new Date(now.getTime() + ms).toISOString();
-
-async function audit(db: D1Database, now: Date, memberId: number | null, action: string, detail: object = {}) {
-  await run(db, `INSERT INTO audit_log (at, member_id, action, detail) VALUES (?, ?, ?, ?)`, [
-    now.toISOString(),
-    memberId,
-    action,
-    JSON.stringify(detail),
-  ]);
-}
 
 const TOO_MANY_TRIES = "Too many tries from here. Wait a few minutes.";
 
@@ -234,9 +244,10 @@ async function start(request: Request, env: AuthEnv, now: Date, waitUntil?: Wait
   const address = email(await body(request));
   // Gmail is paused (circuit breaker, ADR 0055): no code could reach anyone, so say so now. The same for everyone,
   // member or not, so it gives nothing away.
-  if (env.TEAM_ENV !== "local" && mailConfig(env).gmail && (await mailPausedUntil()))
+  const local = localHere(env, request);
+  if (!local && mailConfig(env).gmail && (await mailPausedUntil()))
     throw new HttpError(503, "Email isn't sending right now, so a code can't reach you. Try again in a few minutes.");
-  const nonce = cookie(request, cookieName(request, "nonce")) ?? token();
+  let nonce = cookie(request, cookieName(request, "nonce")) ?? token();
   const res = (devCode?: string) =>
     withCookies(json({ ok: true, message: SAME_REPLY, ...(devCode ? { devCode } : {}) }), [
       setCookie(request, "nonce", nonce, CHALLENGE_MINUTES * 60),
@@ -248,6 +259,14 @@ async function start(request: Request, env: AuthEnv, now: Date, waitUntil?: Wait
     [address],
   );
   if (!member) return res();
+  // One member a browser at a time (ADR 0094): asking for another account's code starts a fresh nonce, so the earlier
+  // account's codes die with the old one, and every guess under a nonce counts against the one account it's for
+  const another = await first(
+    env.DB,
+    `SELECT 1 FROM login_challenges WHERE nonce_hash = ? AND used_at IS NULL AND expires_at > ? AND member_id != ?`,
+    [await sha256(nonce), now.toISOString(), member.id],
+  );
+  if (another) nonce = token();
   const counts = await first<{ hour: number; day: number }>(
     env.DB,
     `SELECT sum(created_at > ?) AS hour, count(*) AS day FROM login_challenges WHERE member_id = ? AND created_at > ?`,
@@ -269,7 +288,7 @@ async function start(request: Request, env: AuthEnv, now: Date, waitUntil?: Wait
     [member.id, await sha256(theCode), await sha256(nonce), addMs(now, CHALLENGE_MINUTES * 60_000), now.toISOString()],
   );
   // On your own machine nothing is emailed, even with Gmail set up: the code comes back to the screen
-  if (env.TEAM_ENV === "local") return res(theCode);
+  if (local) return res(theCode);
   const sending = sendMail(
     {
       to: [address],

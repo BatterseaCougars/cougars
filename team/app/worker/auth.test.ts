@@ -155,6 +155,17 @@ describe("signing in with the code", () => {
   });
 });
 
+describe("one member a browser at a time (ADR 0094)", () => {
+  it("asking for another account's code ends the first account's codes in that browser", async () => {
+    const shared = w.browser();
+    const reg = (await w.ask(shared, "reg@example.com")).devCode;
+    const dana = (await w.ask(shared, "dana@example.com")).devCode;
+    expect((await verify(shared, reg)).status).toBe(400);
+    expect((await verify(shared, dana)).status).toBe(200);
+    expect((await shared.call("GET", "/api/bootstrap")).body.actions).toContain("manage:all");
+  });
+});
+
 describe("signing out and being let go", () => {
   it("signs this browser out and no other", async () => {
     const phone = await w.signedIn("reg@example.com");
@@ -179,6 +190,23 @@ describe("signing out and being let go", () => {
     expect((await w.browser().call("GET", "/api/bootstrap")).status).toBe(200);
     env.TEAM_ENV = "dev";
     expect((await w.browser().call("GET", "/api/bootstrap")).status).toBe(401);
+  });
+
+  it("gives nothing local on a public address, even to a build that says it's local by mistake (ADR 0093)", async () => {
+    Object.assign(env, { TEAM_ENV: "local", TEAM_AUTO_ADMIN: "1", SITE_ENV: "dev", MAIL_SAFE_TO: "dev@example.com" });
+    const deployed = { host: "https://cougars-team.example.workers.dev" };
+    expect((await w.browser().call("GET", "/api/bootstrap", undefined, deployed)).status).toBe(401);
+    const reply = await w.browser().call("POST", "/api/auth/start", { email: "reg@example.com" }, deployed);
+    expect(reply.status).toBe(200);
+    expect(reply.body.devCode).toBeUndefined();
+    // Your own machine, by any of its addresses, is still local
+    for (const host of [
+      "http://localhost:4510",
+      "http://192.168.1.20:4510",
+      "http://10.0.0.5:4510",
+      "http://[::1]:4510",
+    ])
+      expect((await w.browser().call("GET", "/api/bootstrap", undefined, { host })).status, host).toBe(200);
   });
 });
 

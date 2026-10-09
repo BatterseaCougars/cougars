@@ -27,6 +27,7 @@ export const ACTIONS = {
   "manage:Member": "Approve and edit members",
   "impersonate:Member": "View the app as a member (read-only)",
   "manage:Role": "Edit roles",
+  "read:Audit": "See the audit log: who changed what, and when",
   "edit:Content": "Edit website content",
   "manage:Quip": "Edit the quips Home says when you sign up",
   "manage:all": "Everything",

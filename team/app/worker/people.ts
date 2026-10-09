@@ -17,7 +17,7 @@ export interface MemberJson {
   cougar: boolean;
   status: "pending" | "active" | "inactive";
   paymentReference: string | null;
-  /** Highest first: Admin, then newer roles, Member last. */
+  /** Highest first: Admin, then newer roles, Member last. Only your own, unless you manage members or roles (ADR 0099). */
   roles: string[];
   bio: string;
   /** How their name shows on the website; null: first name and initial. */
@@ -26,7 +26,7 @@ export interface MemberJson {
   phone: string | null;
   /** Training sessions they came to: in, not a no-show, held before today and not cancelled. */
   played: number;
-  /** A Quarterly Member today: a subscription covers it (ADR 0034). */
+  /** A Quarterly Member today: a subscription covers it (ADR 0034). Only your own, unless you manage members. */
   quarterly: boolean;
 }
 
@@ -60,11 +60,14 @@ export async function listMembers(
   {
     ratings,
     privateFor,
+    rolesFor,
     today,
   }: {
     ratings: boolean;
-    /** Whose email, phone and payment reference to send: everyone's (a member manager) or just your own. */
+    /** Whose email, phone, payment reference and quarterly status to send: everyone's (a member manager) or your own. */
     privateFor: "all" | number;
+    /** Whose roles to send: everyone's (who manages members or roles, or views as them) or just your own (ADR 0099). */
+    rolesFor: "all" | number;
     today: string;
   },
 ): Promise<MemberJson[]> {
@@ -100,6 +103,7 @@ export async function listMembers(
   );
   // Who's asking to join, and who's left, is for member managers; so is how to reach anyone but yourself
   const mine = (id: number) => privateFor === "all" || privateFor === id;
+  const rolesShown = (id: number) => rolesFor === "all" || rolesFor === id;
   return rows.map((m) => ({
     id: m.id,
     name: m.name,
@@ -109,14 +113,21 @@ export async function listMembers(
     cougar: Boolean(m.cougar),
     status: m.status,
     paymentReference: mine(m.id) ? m.payment_reference : null,
-    roles: m.roles ? m.roles.split(",") : [],
+    roles: rolesShown(m.id) && m.roles ? m.roles.split(",") : [],
     bio: m.bio,
     // Public anyway (the website roster), so everyone may see it
     webName: m.web_name,
     phone: mine(m.id) ? m.phone : null,
     played: m.played,
-    quarterly: Boolean(m.quarterly),
+    // Whether they pay quarterly is between them and whoever manages members (ADR 0099)
+    quarterly: mine(m.id) && Boolean(m.quarterly),
   }));
+}
+
+/** Who's making a change: what they can do (the grant rules) and when. The record is the route's (api.ts, ADR 0098). */
+export interface By {
+  actions: ReadonlySet<Action>;
+  now: string;
 }
 
 // ─── You can't grant what you don't have (ADR 0036) ───
@@ -160,7 +171,8 @@ export async function firstAdmin(db: D1Database): Promise<number | null> {
  * an email with a link to the app that fills in their address on the sign-in screen. The email going astray doesn't
  * undo the add: `emailed` says whether it went, so the admin can tell them another way.
  */
-export async function addMember(env: AuthEnv, o: Record<string, unknown>, origin: string, now: Date) {
+export async function addMember(env: AuthEnv, o: Record<string, unknown>, origin: string, by: By) {
+  const now = new Date(by.now);
   const name = text(o, "name", { max: 80 });
   const address = email(o);
   const position = oneOf(o, "position", ["F", "D", "G"] as const);
@@ -200,12 +212,8 @@ export async function addMember(env: AuthEnv, o: Record<string, unknown>, origin
 }
 
 /** An admin edits a member: position, rating, cougar, status and roles. */
-export async function updateMember(
-  db: D1Database,
-  id: number,
-  o: Record<string, unknown>,
-  caller: ReadonlySet<Action>,
-) {
+export async function updateMember(db: D1Database, id: number, o: Record<string, unknown>, by: By) {
+  const caller = by.actions;
   const existing = await first<{ id: number }>(db, "SELECT id FROM members WHERE id = ?", [id]);
   if (!existing) throw new HttpError(404, "No such member.");
   await mayChange(db, caller, id);
@@ -238,9 +246,9 @@ export async function updateMember(
     )
       throw new HttpError(403, "You can't give someone a role that can do more than you.");
   }
-  // Never leave the club without an admin
+  // Never leave the club without an admin: neither by taking the role off the last one nor by making them inactive
   const admin = known.find((k) => k.name === "Admin");
-  if (admin && !ids.includes(admin.id)) {
+  if (admin && (!ids.includes(admin.id) || status !== "active")) {
     const others = await first<{ n: number }>(
       db,
       `SELECT count(*) n FROM member_roles mr JOIN members m ON m.id = mr.member_id
@@ -275,7 +283,8 @@ function roleFields(o: Record<string, unknown>) {
   return { name, description, actions: [...new Set(actions as Action[])] };
 }
 
-export async function createRole(db: D1Database, o: Record<string, unknown>, caller: ReadonlySet<Action>) {
+export async function createRole(db: D1Database, o: Record<string, unknown>, by: By) {
+  const caller = by.actions;
   const f = roleFields(o);
   if (!canGrant(caller, f.actions)) throw new HttpError(403, "A role can't do more than you can.");
   if (await first(db, "SELECT 1 FROM roles WHERE name = ?", [f.name])) throw new HttpError(409, "That name is taken.");
@@ -288,7 +297,8 @@ export async function createRole(db: D1Database, o: Record<string, unknown>, cal
   return id;
 }
 
-export async function updateRole(db: D1Database, id: number, o: Record<string, unknown>, caller: ReadonlySet<Action>) {
+export async function updateRole(db: D1Database, id: number, o: Record<string, unknown>, by: By) {
+  const caller = by.actions;
   const role = await first<{ is_system: number }>(db, "SELECT is_system FROM roles WHERE id = ?", [id]);
   if (!role) throw new HttpError(404, "No such role.");
   if (role.is_system) throw new HttpError(409, "The Admin role can't be changed.");
@@ -365,10 +375,10 @@ export async function setEverydayRole(
  * An admin sets how to reach a member: the email they sign in with (ADR 0023), and a phone. A blank email means
  * none; an email is one member's only.
  */
-export async function setContact(db: D1Database, id: number, o: Record<string, unknown>, caller: ReadonlySet<Action>) {
+export async function setContact(db: D1Database, id: number, o: Record<string, unknown>, by: By) {
   if (!(await first(db, "SELECT 1 FROM members WHERE id = ?", [id]))) throw new HttpError(404, "No such member.");
   // Their email signs them in: changing a more powerful member's would be a way to become them
-  await mayChange(db, caller, id);
+  await mayChange(db, by.actions, id);
   const email = text(o, "email", { optional: true, max: 254 }).toLowerCase() || null;
   if (email && !/^[^\s@,<>]+@[^\s@,<>]+\.[^\s@,<>]+$/.test(email))
     throw new HttpError(400, "That doesn't look like an email address.");
@@ -433,4 +443,45 @@ export async function attendanceOf(db: D1Database, id: number, year: string, tod
     walkIn: Boolean(r.walkIn),
     cancelled: Boolean(r.cancelled),
   }));
+}
+
+// ─── What the record compares (ADR 0098) ───
+// Each reads one thing a change can touch, the same way before and after, so the route's audit writes an entry only
+// when it really changed, with both sides.
+
+/** A member's standing: whether they're in, and their roles (sorted). Null: no such member. */
+export async function memberStanding(db: D1Database, id: number) {
+  const m = await first<{ status: string; roles: string | null }>(
+    db,
+    `SELECT status, (SELECT group_concat(r.name) FROM member_roles mr JOIN roles r ON r.id = mr.role_id
+                      WHERE mr.member_id = m.id) roles FROM members m WHERE id = ?`,
+    [id],
+  );
+  return m && { status: m.status, roles: m.roles ? m.roles.split(",").sort() : [] };
+}
+
+/** The email a member signs in with. */
+export const memberEmail = async (db: D1Database, id: number) =>
+  (await first<{ email: string | null }>(db, "SELECT email FROM members WHERE id = ?", [id]))?.email ?? null;
+
+/** A member's name and email, for one just added. */
+export const memberJoined = (db: D1Database, id: number) =>
+  first<{ name: string; email: string | null }>(db, "SELECT name, email FROM members WHERE id = ?", [id]);
+
+/** Whether a member is a Quarterly Member today (ADR 0034). */
+export const quarterlyToday = async (db: D1Database, id: number, today: string) =>
+  Boolean(
+    await first(
+      db,
+      "SELECT 1 FROM subscriptions WHERE member_id = ? AND starts_on <= ? AND (ends_on IS NULL OR ends_on >= ?)",
+      [id, today, today],
+    ),
+  );
+
+/** A role's name and what it can do (sorted). Null: no such role. */
+export async function roleSummary(db: D1Database, id: number) {
+  const role = await first<{ name: string }>(db, "SELECT name FROM roles WHERE id = ?", [id]);
+  if (!role) return null;
+  const actions = await all<{ action: string }>(db, "SELECT action FROM role_actions WHERE role_id = ?", [id]);
+  return { name: role.name, actions: actions.map((a) => a.action).sort() };
 }

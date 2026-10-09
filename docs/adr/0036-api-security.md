@@ -1,6 +1,8 @@
 # 0036. Every API response sends only what that caller may see, decided on the server
 
-- **Status:** Accepted. Extends [0024](0024-action-based-authorization.md).
+- **Status:** Accepted. Extends [0024](0024-action-based-authorization.md). Amended by
+  [0092](0092-security-headers-from-the-asset-layer-too.md): the headers come from the asset layer too, with a
+  content security policy; and by [0099](0099-bootstrap-sends-only-your-own.md): of anything personal, only your own.
 - **Date:** 2026-10-06
 
 ## Context
