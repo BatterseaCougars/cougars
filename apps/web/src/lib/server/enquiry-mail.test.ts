@@ -27,4 +27,25 @@ describe("enquiryMail", () => {
     const mail = enquiryMail({ ...enquiry, experience: null, message: null }, 8, "club@example.com");
     expect(mail.text).not.toMatch(/Phone|Hockey|Message/);
   });
+
+  it("has a branded HTML version with the details and a button to reply", () => {
+    const mail = enquiryMail({ ...enquiry, phone: "07700 900123" }, 7, "club@example.com", "They've had the reply.");
+    expect(mail.html).toContain("Cougars");
+    expect(mail.html).toContain("Jo Bloggs");
+    expect(mail.html).toContain('href="tel:07700900123"');
+    expect(mail.html).toContain('href="mailto:jo@example.com');
+    expect(mail.html).toContain("Skated / played a bit");
+    expect(mail.html).toContain("They&#39;ve had the reply.");
+    expect(mail.html).toContain("Enquiry #7");
+  });
+
+  it("never lets what the enquirer typed become HTML", () => {
+    const mail = enquiryMail(
+      { ...enquiry, name: '<img src=x onerror="alert(1)">', message: "<script>bad()</script>\nline two" },
+      9,
+      "club@example.com",
+    );
+    expect(mail.html).not.toMatch(/<img|<script/);
+    expect(mail.html).toContain("&lt;script&gt;bad()&lt;/script&gt;<br>line two");
+  });
 });

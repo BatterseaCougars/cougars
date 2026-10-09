@@ -45,7 +45,8 @@ const slot = s.training[0];
         <span class="label">
           Phone <em>optional</em>
         </span>
-        <input name="phone" type="tel" maxlength="40" autocomplete="tel" />
+        <input name="phone" type="tel" maxlength="40" autocomplete="tel" inputmode="tel" />
+        <small class="err" data-for="phone"></small>
       </label>
       <fieldset class="field">
         <legend class="label">Played before?</legend>

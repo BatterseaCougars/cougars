@@ -75,3 +75,5 @@ with their own inbox, and changing a secret to fix that needs a deploy each time
 - 2026-10-08: Outside production, active admins and a list kept on Dev tools get their own team app email, so people
   can sign in on dev without a deploy (was 0077).
 - 2026-10-09: An email may carry an HTML version beside its text, first for the sign-in code.
+- 2026-10-09: The club's enquiry email gets the same branded HTML; the frame is shared (`packages/shared/email-html.ts`), and
+  everything a person typed is escaped in it.

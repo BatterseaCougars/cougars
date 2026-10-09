@@ -31,6 +31,20 @@ describe("parseEnquiry", () => {
     if (!r.ok) expect(Object.keys(r.errors).sort()).toEqual(["email", "experience", "name"]);
   });
 
+  it("accepts a phone number written the usual ways", () => {
+    for (const phone of ["07700 900123", "+44 7700 900123", "(020) 7946-0018", "020.7946.0018"]) {
+      const r = parseEnquiry(form({ name: "Sam", email: "sam@example.com", phone }));
+      expect(r.ok && r.enquiry.phone).toBe(phone);
+    }
+  });
+
+  it("turns away a phone number that isn't one", () => {
+    for (const phone of ["asdfghjkl", "12345", "call me", "0770090012345678"]) {
+      const r = parseEnquiry(form({ name: "Sam", email: "sam@example.com", phone }));
+      expect(r).toEqual({ ok: false, errors: { phone: "Please enter a phone number, or leave it empty." } });
+    }
+  });
+
   it("truncates over-long input", () => {
     const r = parseEnquiry(form({ name: "x".repeat(500), email: "a@b.co", message: "y".repeat(5000) }));
     expect(r.ok && r.enquiry.name.length).toBe(100);

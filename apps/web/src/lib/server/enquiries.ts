@@ -20,6 +20,12 @@ export type ParseResult = { ok: true; enquiry: Enquiry } | { ok: false; errors: 
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+/** A phone number as people write one: digits with spaces, dashes, dots or brackets, maybe a leading +; 7–15 digits. */
+export function isPhone(value: string): boolean {
+  const digits = value.replace(/\D/g, "").length;
+  return /^\+?[\d\s().-]+$/.test(value) && digits >= 7 && digits <= 15;
+}
+
 function text(form: FormData, key: string, max: number): string {
   const value = form.get(key);
   return typeof value === "string" ? value.trim().slice(0, max) : "";
@@ -36,6 +42,7 @@ export function parseEnquiry(form: FormData): ParseResult {
   const errors: Record<string, string> = {};
   if (!name) errors.name = "Please tell us your name.";
   if (!EMAIL_RE.test(email)) errors.email = "Please enter a valid email address.";
+  if (phone && !isPhone(phone)) errors.phone = "Please enter a phone number, or leave it empty.";
   if (experience && !(experience in EXPERIENCE)) errors.experience = "Please pick an option.";
   if (Object.keys(errors).length) return { ok: false, errors };
 
