@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Lists one app's deploy on GitHub's Deployments page, linked to where it runs (ADR 0010).
-# The job's own environment (`preview`, `production`) links the website; the team app and the Studio each get an
-# environment of their own here, so every app is one click from the Deployments page. Also adds the link to the run's
-# summary. Usage: link-deployment.sh <environment> <url> [production]. Needs GH_TOKEN with deployments: write.
+# Each app is its own environment there (`web (dev)`, `team (dev)`, `studio (production)`...), so every app is one
+# click from the Deployments page; the jobs themselves list nothing (`deployment: false`). Also adds the link to the
+# run's summary. Usage: link-deployment.sh <environment> <url> [production]. Needs GH_TOKEN with deployments: write.
 set -euo pipefail
 name=$1 url=$2 production=${3:+true}
 

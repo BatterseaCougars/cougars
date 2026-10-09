@@ -4,23 +4,34 @@ name: Deploy
 # (docs/adr/0010-environments-and-deploys.md):
 # pull request    -> dev: a preview version of `web`, commented on the PR
 # main            -> dev: workers `web` and `team`, Cougars Dev account
-# release         -> production: worker `web`, Cougars account
-# sanity-publish  -> production rebuild when content changes (from the team app; ADR 0004)
+# release         -> production: worker `web` and the hosted Studio, Cougars account
+# website-rebuild -> that environment's website rebuilt: a result changed in the team app (ADR 0100), sent by its
+#                    GitHub App with client_payload.environment "dev" or "production"
 # schedule        -> daily production rebuild, so Studio changes go live (docs/adr/0004)
 # Those two run on the default branch, which the `production` environment refuses, so their only job
-# (`rebuild`) starts this workflow again on `release`, where the real production deploy runs.
+# (`rebuild`) starts this workflow again: on `release` for production, on `main` for dev.
 # GitHub environment `production` (release only) holds BWS_ACCESS_TOKEN__PRODUCTION; `preview` holds
 # BWS_ACCESS_TOKEN__DEV, which can't read production secrets.
+#
+# Each app is its own job, and a push or PR deploys only the apps its files touch (`changes`). Jobs use their
+# environment's secrets without listing a deploy (`deployment: false`); scripts/ci/link-deployment.sh lists each app
+# on the Deployments page under its own name, linked to where it runs.
 on:
   push:
     branches: [main, release]
   pull_request:
     branches: [main]
   repository_dispatch:
-    types: [sanity-publish]
+    types: [website-rebuild]
   schedule:
     - cron: "30 4 * * *" # daily, 04:30 UTC
   workflow_dispatch:
+    inputs:
+      apps:
+        description: Which apps to deploy
+        type: choice
+        options: [all, web, team]
+        default: all
 
 concurrency:
   group: deploy-${{ github.event_name == 'pull_request' && github.ref || github.ref == 'refs/heads/release' && 'production' || (github.event_name == 'repository_dispatch' || github.event_name == 'schedule') && 'rebuild' || 'dev' }}
@@ -29,36 +40,83 @@ concurrency:
 permissions:
   contents: read
   pull-requests: write
-  deployments: write # scripts/ci/link-deployment.sh: the team app and Studio get their own links
+  deployments: write # scripts/ci/link-deployment.sh
 
 jobs:
-  # A Studio publish or the daily schedule: deploy what's live by running this workflow on `release`.
+  # A changed result (dev or production) or the daily schedule (production): deploy the website from the environment's
+  # branch by running this workflow again there.
   rebuild:
     if: github.event_name == 'repository_dispatch' || github.event_name == 'schedule'
     runs-on: ubuntu-latest
     permissions:
       actions: write
     steps:
-      - name: Rebuild production from release
+      - name: Rebuild the website from its branch
         env:
           GH_TOKEN: ${{ github.token }}
+          ENVIRONMENT: ${{ github.event.client_payload.environment || 'production' }}
         run: |
-          if gh api "repos/${{ github.repository }}/branches/release" --silent 2>/dev/null; then
-            gh workflow run deploy.yml --repo "${{ github.repository }}" --ref release
+          if [ "$ENVIRONMENT" = "dev" ]; then
+            gh workflow run deploy.yml --repo "${{ github.repository }}" --ref main -f apps=web
+          elif gh api "repos/${{ github.repository }}/branches/release" --silent 2>/dev/null; then
+            gh workflow run deploy.yml --repo "${{ github.repository }}" --ref release -f apps=web
           else
             echo "No release branch yet: nothing is live, nothing to rebuild."
           fi
 
-  deploy:
+  # Which apps this run deploys. A push or PR: the apps its files touch (shared code, the database, the lockfile and
+  # this workflow count for every app). A manual run: the `apps` input.
+  changes:
     # Forks don't get secrets; their PRs are covered by pr.yml. Rebuild triggers only start `rebuild`.
     if: >-
       github.event_name != 'repository_dispatch' && github.event_name != 'schedule' &&
       (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
+    outputs:
+      web: ${{ steps.apps.outputs.web }}
+      team: ${{ steps.apps.outputs.team }}
+      studio: ${{ steps.apps.outputs.studio }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: apps
+        env:
+          EVENT: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
+          APPS: ${{ inputs.apps || 'all' }}
+        run: |
+          shared='package\.json|package-lock\.json|\.nvmrc|packages/shared/|db/|\.github/workflows/deploy\.yml|\.github/actions/'
+          declare -A pattern=(
+            [web]="^(apps/web/|scripts/|$shared)"
+            [team]="^(apps/team/|scripts/ci/|$shared)"
+            [studio]="^(apps/studio/|$shared)"
+          )
+          # A PR is checked out as a merge commit: its first parent is the base. A new branch has no `before`.
+          base=
+          [ "$EVENT" = pull_request ] && base=$(git rev-parse HEAD^1)
+          [ "$EVENT" = push ] && git cat-file -e "$BEFORE^{commit}" 2>/dev/null && base=$BEFORE
+          if [ -n "$base" ]; then
+            files=$(git diff --name-only "$base" HEAD)
+            echo "Changed since ${base:0:7}:"; echo "$files"
+          fi
+          for app in web team studio; do
+            if [ -n "$base" ]; then
+              grep -qE "${pattern[$app]}" <<<"$files" && on=true || on=false
+            else
+              [ "$APPS" = all ] || [ "$APPS" = "$app" ] && on=true || on=false
+            fi
+            echo "$app: $on"
+            echo "$app=$on" >> "$GITHUB_OUTPUT"
+          done
+
+  web:
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
+    runs-on: ubuntu-latest
     environment:
       name: ${{ github.ref == 'refs/heads/release' && 'production' || 'preview' }}
-      # Read once the job ends, so the Deployments page links each deploy to its site
-      url: ${{ steps.preview.outputs.url || steps.deploy.outputs.url }}
+      deployment: false
     env:
       SITE_ENV: ${{ github.ref == 'refs/heads/release' && 'production' || 'dev' }}
       # Production's address; target.mjs attaches it to the worker. Dev stays on workers.dev (a separate account).
@@ -70,19 +128,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
-
-      - name: Install Bitwarden Secrets Manager CLI
-        run: |
-          curl -fsSL -o /tmp/bws.zip "https://github.com/bitwarden/sdk-sm/releases/download/bws-v2.1.0/bws-x86_64-unknown-linux-gnu-2.1.0.zip"
-          sudo unzip -o /tmp/bws.zip -d /usr/local/bin
-
-      - name: Load secrets from Bitwarden
-        run: node scripts/env-pull.mjs --github-env --environment "$SITE_ENV"
-        env:
+      - uses: ./.github/actions/secrets
+        with:
+          environment: ${{ env.SITE_ENV }}
           # Each GitHub environment holds only its own: BWS_ACCESS_TOKEN__PRODUCTION or BWS_ACCESS_TOKEN__DEV
-          BWS_ACCESS_TOKEN: ${{ secrets.BWS_ACCESS_TOKEN__PRODUCTION || secrets.BWS_ACCESS_TOKEN__DEV }}
+          token: ${{ secrets.BWS_ACCESS_TOKEN__PRODUCTION || secrets.BWS_ACCESS_TOKEN__DEV }}
 
-      # Dev (no domain of its own) lives at <worker>.<account subdomain>.workers.dev
+      # Dev (no domain of its own) lives at web.<account subdomain>.workers.dev
       - name: Site URL
         if: env.SITE_URL == ''
         run: |
@@ -105,6 +157,7 @@ jobs:
 
       # Not live yet, so no migrations (ADR 0050): the database is rebuilt from db/schema.sql, keeping its data, and
       # topped up with the club's seed. Each environment has its own database, so a PR rebuilds dev, never production.
+      # The team app shares it, so its job waits for this one.
       - name: Rebuild D1 from the schema
         working-directory: apps/web
         # D1 commands don't follow the build's config redirect, so name the generated config
@@ -131,9 +184,9 @@ jobs:
           url=$(echo "$out" | grep -oE 'https://[^ ]+\.workers\.dev' | head -1)
           echo "url=${SITE_URL:-$url}" >> "$GITHUB_OUTPUT"
 
-      # Secrets the Worker reads at request time: the live video list (ADR 0016). PR previews share dev's.
       # Secrets the Worker reads at request time, from this environment's Secrets Manager project (README#secrets).
-      # One that isn't there yet is skipped: the site does without (no live YouTube; emails logged, not sent; no auto-replies).
+      # PR previews share dev's. One that isn't there yet is skipped: the site does without (no live YouTube; emails
+      # logged, not sent; no auto-replies).
       - name: Worker secrets
         if: github.event_name != 'pull_request'
         working-directory: apps/web
@@ -146,17 +199,75 @@ jobs:
             fi
           done
 
-      # The team app (ADR 0010): its own worker on dev's account and D1, from main only. Production waits for launch.
-      - name: Deploy the team app
-        id: team
-        if: github.event_name == 'push' && env.SITE_ENV == 'dev'
+      - name: Upload preview
+        id: preview
+        if: github.event_name == 'pull_request'
+        working-directory: apps/web
         run: |
-          npm run build -w @cougars/team
-          node scripts/ci/target.mjs dev team
-          cd apps/team
+          out=$(npx wrangler versions upload --preview-alias "pr-${{ github.event.number }}" --message "$PUBLIC_BUILD_VERSION" 2>&1 | tee /dev/stderr)
+          url=$(echo "$out" | grep -oE 'https://pr-[^ ]+\.workers\.dev' | head -1)
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+
+      - name: Smoke test
+        run: node scripts/ci/smoke-test.mjs "${{ steps.preview.outputs.url || steps.deploy.outputs.url }}" "$PUBLIC_BUILD_VERSION"
+
+      - name: Link the website
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          scripts/ci/link-deployment.sh "web (${{ github.event_name == 'pull_request' && 'PR preview' || env.SITE_ENV }})" \
+            "${{ steps.preview.outputs.url || steps.deploy.outputs.url }}" ${{ env.SITE_ENV == 'production' && 'production' || '' }}
+
+      - name: Comment preview URL
+        if: steps.preview.outputs.url
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          message: "Preview: ${{ steps.preview.outputs.url }} (`${{ env.PUBLIC_BUILD_VERSION }}`)"
+
+  # The team app (ADR 0010): its own worker on dev's account and D1, from main only. Production waits for launch, and
+  # PRs get no preview (a Worker with a Durable Object can't have preview versions). After `web` when both run, so
+  # the database is rebuilt first.
+  team:
+    needs: [changes, web]
+    if: >-
+      !cancelled() && needs.changes.outputs.team == 'true' && needs.web.result != 'failure' &&
+      github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment:
+      name: preview
+      deployment: false
+    env:
+      SITE_ENV: dev
+      BWS_SERVER_URL: ${{ vars.BWS_SERVER_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - uses: ./.github/actions/secrets
+        with:
+          environment: dev
+          token: ${{ secrets.BWS_ACCESS_TOKEN__DEV }}
+
+      - name: Build version
+        run: echo "PUBLIC_BUILD_VERSION=$(date -u +%Y.%m.%d)+$(git rev-parse --short HEAD)" >> "$GITHUB_ENV"
+
+      - name: Build
+        run: npm run build -w @cougars/team
+
+      - name: Target dev
+        run: node scripts/ci/target.mjs dev team
+
+      # `wrangler deploy`, not a previews-only upload, so the live hub's Durable Object migration is applied (ADR 0072)
+      - name: Deploy
+        id: deploy
+        working-directory: apps/team
+        run: |
           out=$(npx wrangler deploy -c dist/cougars_team/wrangler.json --message "$PUBLIC_BUILD_VERSION" 2>&1 | tee /dev/stderr)
           echo "url=$(echo "$out" | grep -oE 'https://[^ ]+\.workers\.dev' | head -1)" >> "$GITHUB_OUTPUT"
-          for name in GMAIL_CLIENT_ID GMAIL_CLIENT_SECRET GMAIL_REFRESH_TOKEN CLOUDFLARE_ANALYTICS_TOKEN; do
+
+      - name: Worker secrets
+        working-directory: apps/team
+        run: |
+          for name in GMAIL_CLIENT_ID GMAIL_CLIENT_SECRET GMAIL_REFRESH_TOKEN CLOUDFLARE_ANALYTICS_TOKEN GITHUB_APP_PRIVATE_KEY; do
             if [ -n "${!name}" ]; then
               printf '%s' "${!name}" | npx wrangler secret put "$name" -c dist/cougars_team/wrangler.json
             else
@@ -164,12 +275,11 @@ jobs:
             fi
           done
 
-      - name: Smoke test the team app
-        if: steps.team.outputs.url
-        # A brand-new worker's workers.dev address can take a few seconds to answer. Then, with no session, the club
-        # is closed (401): the local-only switches (ADR 0023) are off, as a deploy must have them.
+      # A brand-new worker's workers.dev address can take a few seconds to answer. Then, with no session, the club is
+      # closed (401): the local-only switches (ADR 0023) are off, as a deploy must have them.
+      - name: Smoke test
         run: |
-          url="${{ steps.team.outputs.url }}"
+          url="${{ steps.deploy.outputs.url }}"
           for i in $(seq 12); do
             code=$(curl -s -o /dev/null -w '%{http_code}' "$url/api/health")
             echo "$url/api/health answered $code"
@@ -188,41 +298,32 @@ jobs:
           [ "$framed" = 1 ]
 
       - name: Link the team app
-        if: steps.team.outputs.url
         env:
           GH_TOKEN: ${{ github.token }}
-        run: scripts/ci/link-deployment.sh "team app (dev)" "${{ steps.team.outputs.url }}"
+        run: scripts/ci/link-deployment.sh "team (dev)" "${{ steps.deploy.outputs.url }}"
 
-      - name: Upload preview
-        id: preview
-        if: github.event_name == 'pull_request'
-        working-directory: apps/web
-        run: |
-          out=$(npx wrangler versions upload --preview-alias "pr-${{ github.event.number }}" --message "$PUBLIC_BUILD_VERSION" 2>&1 | tee /dev/stderr)
-          url=$(echo "$out" | grep -oE 'https://pr-[^ ]+\.workers\.dev' | head -1)
-          echo "url=$url" >> "$GITHUB_OUTPUT"
-
-      - name: Smoke test
-        run: node scripts/ci/smoke-test.mjs "${{ steps.preview.outputs.url || steps.deploy.outputs.url }}" "$PUBLIC_BUILD_VERSION"
-
-      # The job's environment already links the website on the Deployments page; the run's summary lists it too
-      - name: Website link
-        run: |
-          echo "- **website ($SITE_ENV)**: ${{ steps.preview.outputs.url || steps.deploy.outputs.url }}" >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Comment preview URL
-        if: steps.preview.outputs.url
-        uses: marocchino/sticky-pull-request-comment@v2
+  # The Studio (https://battersea-cougars.sanity.studio) ships with production: from `release` only
+  # (docs/adr/0010-environments-and-deploys.md). Cougars Dev's Studio runs locally (port 4520), not hosted.
+  studio:
+    needs: changes
+    if: needs.changes.outputs.studio == 'true' && github.ref == 'refs/heads/release'
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      deployment: false
+    env:
+      BWS_SERVER_URL: ${{ vars.BWS_SERVER_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - uses: ./.github/actions/secrets
         with:
-          message: "Preview: ${{ steps.preview.outputs.url }} (`${{ env.PUBLIC_BUILD_VERSION }}`)"
+          environment: production
+          token: ${{ secrets.BWS_ACCESS_TOKEN__PRODUCTION }}
 
-      # The Studio (https://battersea-cougars.sanity.studio) ships with production: on push to `release` only
-      # (docs/adr/0010-environments-and-deploys.md). Cougars Dev's Studio runs locally (port 4520), not hosted.
-      # In this job, not its own: a second `production` job would list a deploy without the website's link.
       # SANITY_DEPLOY_TOKEN, not SANITY_STUDIO_*: the Studio build bundles SANITY_STUDIO_* variables into the
       # public JavaScript.
       - name: Deploy Studio
-        if: github.event_name == 'push' && env.SITE_ENV == 'production'
         run: npm run deploy -w @cougars/studio -- --yes
         env:
           # The live project (packages/shared/sanity.ts, ADR 0010)
@@ -230,7 +331,6 @@ jobs:
           SANITY_AUTH_TOKEN: ${{ env.SANITY_DEPLOY_TOKEN }}
 
       - name: Link the Studio
-        if: github.event_name == 'push' && env.SITE_ENV == 'production'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: scripts/ci/link-deployment.sh studio https://battersea-cougars.sanity.studio production
+        run: scripts/ci/link-deployment.sh "studio (production)" https://battersea-cougars.sanity.studio production

@@ -38,10 +38,15 @@ be checked before it goes live. Ark deploys `main` to dev and production from a 
 | Push to `release`        | production  | `web` and the hosted Studio                                                 |
 | Daily, 04:30 UTC         | production  | `web`, rebuilt from `release` ([ADR 0004](0004-astro-workers-sanity-d1.md)) |
 
-- **Every app is linked from GitHub's Deployments page.** The deploy job's environment (`preview`, `production`)
-  links the website; `scripts/ci/link-deployment.sh` gives the team app (`team app (dev)`) and the Studio (`studio`)
-  environments of their own, and each run's summary lists every link. The Studio deploys in the production job, not a
-  job of its own, so no `production` deploy is listed without the website's link.
+- **One job per app, and only the apps a change touches.** `deploy.yml`'s `changes` job reads the files a push or PR
+  changed: `apps/web/` and `scripts/` deploy the website, `apps/team/` the team app, `apps/studio/` the Studio, and
+  shared code, `db/`, the lockfile and the workflow itself deploy every app. A manual run picks with its `apps` input;
+  a rebuild deploys the website only. The team app waits for the website when both run, since the website's job
+  rebuilds the shared database.
+- **Every app is linked from GitHub's Deployments page**, under its own name: `web (dev)`, `web (PR preview)`,
+  `web (production)`, `team (dev)`, `studio (production)` (`scripts/ci/link-deployment.sh`), and each run's summary
+  lists them. Jobs read their GitHub environment's secrets with `deployment: false`, so `preview` and `production`
+  list nothing of their own.
 - **Never deploy production by hand.** Going live is on purpose: fast-forward `release` to `main`
   (`git push origin main:release`). GitHub enforces it: the `production` environment accepts deployments from
   `release` only, and the `preview` environment holds only the dev Bitwarden token ([ADR 0002](0002-secrets-in-bitwarden.md)).
@@ -104,3 +109,5 @@ be checked before it goes live. Ark deploys `main` to dev and production from a 
   the Studio deploy moves into the production job.
 - 2026-10-09: Workers renamed `web` and `team` in both accounts (were `cougars`, `cougars-dev`, `cougars-team-dev`), so
   dev is `web.cougars-dev.workers.dev`, not `cougars-dev.cougars-dev.workers.dev`.
+- 2026-10-09: One job per app (`web`, `team`, `studio`); a push or PR deploys only the apps its files touch. Each app
+  is listed as its own environment, and the jobs no longer list `preview` or `production` deploys.
