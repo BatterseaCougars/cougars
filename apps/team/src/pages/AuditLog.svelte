@@ -69,6 +69,10 @@
         return `${who} asked to join`;
       case "member.added":
         return `${who} added ${about} (${str(to?.email)})`;
+      case "members.imported": {
+        const added = (to?.added as string[] | undefined) ?? [];
+        return `${who} imported ${added.length} member${added.length === 1 ? "" : "s"} from a file: ${list(added)}`;
+      }
       case "member.updated": {
         const changes: string[] = [];
         if (from?.status !== to?.status) changes.push(`${str(from?.status)} → ${str(to?.status)}`);

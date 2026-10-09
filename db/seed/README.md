@@ -28,6 +28,8 @@ none, and roles are added, never removed. So what admins change in the app alway
 - Local: `npm run db:rebuild:local && npm run db:seed:local` (local D1 is shared by the website and the team app).
 - Dev and production: the "Seed the team roster" step in `.github/workflows/deploy.yml`, after the rebuild.
 
-Changing the roster: edit the local copy, then put it back in Secrets Manager (both names) with the command in
-[README.md#team-roster](../../README.md#team-roster). Once the app is live, add and edit members in the app
-instead.
+Changing the roster: edit the local copy, then put it back in Secrets Manager with the command in
+[README.md#team-roster](../../README.md#team-roster). Production's roster (`TEAM_ROSTER__PRODUCTION`) is only its
+admins; everyone else comes in through **Members → Manage → Import members** in the team app, which takes a CSV
+(columns `name`, `email`, `position`, `rating`, `cougar`, `roles`) or this same JSON
+([ADR 0069](../../docs/adr/0069-members.md)). After that, add and edit members in the app.

@@ -20,8 +20,11 @@ settings, entered in the app, which will become production.
   default; a column that's gone is dropped and said so), and tops up the club seed. Local runs it with
   `npm run db:rebuild:local`; dev runs it on every deploy, in place of `wrangler d1 migrations apply`.
 - Tests build their database from the same schema and seed.
-- At launch, dev's data becomes production's, `schema.sql` becomes the first migration, and from then on changes
-  are migrations again, additive only (the rule before this ADR).
+- **Production starts fresh, not as a copy of dev.** Its first deploy builds it from the schema and the club seed, and
+  the roster (`TEAM_ROSTER__PRODUCTION`) holds only the admins. They bring the members in with Import members
+  ([0069](0069-members.md)). Dev keeps its data for trying things.
+- At launch `schema.sql` becomes the first migration, and from then on changes are migrations again, additive only
+  (the rule before this ADR).
 
 ## Consequences
 
@@ -34,3 +37,5 @@ settings, entered in the app, which will become production.
 ## History
 
 - 2026-10-07: Until launch, the database is a schema and a seed, not migrations.
+- 2026-10-09: Production starts fresh (schema, club seed, its two admins) and is filled by an import, instead of
+  becoming a copy of dev's data.

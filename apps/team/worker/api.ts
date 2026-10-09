@@ -56,6 +56,7 @@ import {
   quarterlyToday,
   roleSummary,
 } from "./people";
+import { checkImport, importMembers } from "./member-import";
 import { createQuip, deleteQuip, updateQuip } from "./quips";
 import { teamsFrom, publishTeams, removeTeams, resetSession, sessionSignups } from "./teams";
 import { onTheWebsite, tournamentOfPath, wantRebuild, type WebsiteEnv } from "./website";
@@ -459,6 +460,26 @@ export const ROUTES: Route[] = [
     changes: ["members"],
     // { name, email, position }: in the club now, and emailed a link to the app (ADR 0069)
     handle: async (c) => json(await addMember(c.env, await body(c.request), new URL(c.request.url).origin, c), 201),
+  },
+  {
+    method: "POST",
+    path: /^\/api\/members\/import$/,
+    audit: {
+      event: "members.imported",
+      subject: async (_c, reply) => ({ added: (reply?.added as string[] | undefined) ?? [] }),
+    },
+    action: "manage:Member",
+    changes: ["members"],
+    // { file, apply }: a CSV or the roster's JSON. Not applied, it says who it would add, who's in already and what's
+    // wrong, and changes nothing; applied, it adds them all at once. Nobody is emailed.
+    handle: async (c) => {
+      const b = await body(c.request);
+      return json(
+        b.apply === true
+          ? await importMembers(c.env.DB, b.file, c.actions, new Date(c.now))
+          : await checkImport(c.env.DB, b.file, c.actions),
+      );
+    },
   },
   {
     method: "PUT",
@@ -965,6 +986,16 @@ export const ROUTES: Route[] = [
   },
   {
     method: "POST",
+    path: /^\/api\/members\/(\d+)\/recalculate$/,
+    audit: false,
+    action: "record:Payment",
+    changes: ["charges", "credits"],
+    // Their dues worked out again from who came and the fees as they are now (the wrapper does it, as after any
+    // change to charges); everyone's come out the same way
+    handle: async (c) => (await memberExists(c.env.DB, id(c)), ok()),
+  },
+  {
+    method: "POST",
     path: /^\/api\/members\/(\d+)\/payments$/,
     audit: {
       event: "member.paid",
@@ -983,16 +1014,6 @@ export const ROUTES: Route[] = [
     action: "create:Event",
     changes: ["clubEvents"],
     handle: async (c) => json(await createClubEvent(c.env.DB, await body(c.request)), 201),
-  },
-  {
-    method: "POST",
-    path: /^\/api\/members\/(\d+)\/recalculate$/,
-    audit: false,
-    action: "record:Payment",
-    changes: ["charges", "credits"],
-    // Their dues worked out again from who came and the fees as they are now (the wrapper does it, as after any
-    // change to charges); everyone's come out the same way
-    handle: async (c) => (await memberExists(c.env.DB, id(c)), ok()),
   },
   {
     method: "PUT",

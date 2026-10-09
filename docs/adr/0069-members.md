@@ -33,6 +33,21 @@ live at once.
 - **The email failing doesn't undo the add.** The reply says `emailed: false` and the admin is told to send the link
   themselves.
 
+**Importing members**
+
+- Members' **Manage** button (one button, [0065](0065-page-frame-and-admin-actions.md)) has two tools: Add a member
+  (above) and **Import members**, a side drawer. The admin chooses a file: a spreadsheet saved as CSV whose first row
+  names the columns (`name` needed; `email`, `position` F/D/G, `rating` 0–100 (50 if blank), `cougar` yes/no, `roles`
+  separated by `;`), or the roster's JSON ([db/seed/README.md](../../db/seed/README.md)).
+- `POST /api/members/import` with `{ file }` checks it and changes nothing: who'd be added, who's already in the club
+  (same email, or same name: skipped and left as they are, as the roster seed does) and what's wrong, by row (a bad
+  position or rating, an unknown role, a role that can do more than the importer, the same name or email twice).
+  With `apply: true` it adds them, refusing a file with any problem.
+- **All or nothing, in one D1 batch** (insert, payment reference, roles per member): the free plan allows 50 queries
+  per request, and a half-imported file would be worse than none. Up to 500 rows a file.
+- **Nobody is emailed.** An import is for bringing the club in at launch; the admins say when the app's ready, and
+  everyone signs in with the email in the file. On the record as `members.imported`, with the names.
+
 **The members table**
 
 - The table is **Settings → Members** (`/settings/members`, Club section, `manage:Member`). Teammates is cards only,
@@ -59,6 +74,8 @@ live at once.
 
 - Adding a member needs no new secret or service: the same Gmail sender, inside its free quota.
 - Approving someone who asked to join still sends nothing; it could send the same email.
+- Production starts with only its admins and is filled by an import ([0050](0050-schema-and-seed-until-launch.md)).
+  Someone imported without an email can't sign in until an admin adds one.
 - An admin's table has the room it needs and its header never scrolls away; members never see a toggle they can't use.
 - A narrow desktop window with long emails still scrolls the table sideways. Hiding the settings list on this page
   would give it about 250px more, at the cost of the title moving between settings pages.
@@ -75,3 +92,5 @@ live at once.
   (was 0080).
 - 2026-10-08: The member sheet stopped saving each field as it changed; details and attendance save with a Save button
   (was 0082).
+- 2026-10-09: Members' Add button became Manage, with Import members: a CSV (or the roster's JSON), checked first, then
+  added all at once with nobody emailed.

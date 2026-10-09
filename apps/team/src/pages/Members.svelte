@@ -11,6 +11,10 @@
   import { db } from "../demo/store.svelte";
   import MemberSheet from "../lib/MemberSheet.svelte";
   import AddMemberSheet from "../lib/AddMemberSheet.svelte";
+  import ImportMembersDrawer from "../lib/ImportMembersDrawer.svelte";
+  import Sheet from "../lib/Sheet.svelte";
+  import Drawer from "../lib/Drawer.svelte";
+  import { phone } from "../lib/viewport.svelte";
   import Icon from "../app/shell/Icon.svelte";
   import SearchField from "../lib/SearchField.svelte";
   import { pounds } from "../lib/dates";
@@ -20,8 +24,15 @@
 
   const ratings = $derived(can(granted(), "read:Rating"));
   const seesDues = $derived(can(granted(), "read:Dues") || can(granted(), "record:Payment"));
-  // Adding someone to the club (ADR 0069)
+  // Manage (ADR 0065): adding someone to the club (ADR 0069), or bringing many in from a file
+  let manageOpen = $state(false);
   let adding = $state(false);
+  let importing = $state(false);
+  // A tool opens its own drawer: the sheet gets out of the way first
+  function go(run: () => void) {
+    manageOpen = false;
+    run();
+  }
   let filter = $state<"all" | "F" | "D" | "G">("all");
   let query = $state("");
   let open = $state<number | null>(null);
@@ -82,8 +93,12 @@
     onclear={() => (filter = "all")}
   >
     {#snippet actions()}
-      <button class="btn sm primary" aria-haspopup="dialog" onclick={() => (adding = true)}
-        ><Icon name="userPlus" size={16} />Member</button
+      <button
+        class="btn sm ghost icon"
+        aria-haspopup="dialog"
+        aria-label="Manage members"
+        title="Manage"
+        onclick={() => (manageOpen = true)}><Icon name="settings" size={18} /></button
       >
     {/snippet}
     {#snippet toolbar()}
@@ -111,7 +126,31 @@
   </div>
 </div>
 
+{#snippet manageTools()}
+  <div class="tools">
+    <button class="tool" onclick={() => go(() => (adding = true))}>
+      <Icon name="userPlus" size={22} />
+      <span class="tool-text"><strong>Add a member</strong><span>One person, emailed a link to the app.</span></span>
+      <Icon name="chevronRight" size={18} />
+    </button>
+    <button class="tool" onclick={() => go(() => (importing = true))}>
+      <Icon name="upload" size={22} />
+      <span class="tool-text"
+        ><strong>Import members</strong><span>Many at once, from a spreadsheet saved as CSV.</span></span
+      >
+      <Icon name="chevronRight" size={18} />
+    </button>
+  </div>
+{/snippet}
+
+{#if phone.current}
+  <Sheet bind:open={manageOpen} title="Manage members">{@render manageTools()}</Sheet>
+{:else}
+  <Drawer bind:open={manageOpen} title="Manage members">{@render manageTools()}</Drawer>
+{/if}
+
 <AddMemberSheet bind:open={adding} />
+<ImportMembersDrawer bind:open={importing} />
 
 {#if open != null}
   {#key open}
@@ -133,5 +172,40 @@
   .table :global(.owes) {
     color: var(--red-hot);
     font-weight: 500;
+  }
+  /* Manage's tools, as on Training */
+  .tools {
+    display: grid;
+    gap: var(--s-2);
+  }
+  .tool {
+    display: flex;
+    align-items: center;
+    gap: var(--s-4);
+    min-height: 4.25rem;
+    padding: var(--s-3) var(--s-4);
+    border: 0;
+    border-radius: var(--r-lg);
+    background: var(--surface-2);
+    color: var(--fg-muted);
+    font: inherit;
+    text-align: left;
+  }
+  .tool:active {
+    background: var(--surface-3);
+  }
+  .tool-text {
+    display: grid;
+    flex: 1;
+    gap: 0.15rem;
+    min-width: 0;
+  }
+  .tool-text strong {
+    color: var(--fg);
+    font-size: var(--text-md);
+    font-weight: 600;
+  }
+  .tool-text span {
+    font-size: var(--text-sm);
   }
 </style>

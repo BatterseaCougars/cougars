@@ -14,8 +14,9 @@ Not live yet, so there are no migrations ([ADR 0050](../docs/adr/0050-schema-and
   up to a private temp file), the tables are made again, the rows go back (new columns take their defaults), then
   the club seed tops up. Local: `npm run db:rebuild:local`. Dev: every deploy (`.github/workflows/deploy.yml`), or
   `node scripts/env-pull.mjs -- bash scripts/deploy-dev.sh`.
-- Dev's data is the club's: at launch it becomes production, and `schema.sql` becomes the first migration. From
-  then on, migrations, additive only.
+- Production starts fresh: schema, club seed, and a roster of just its admins, who bring the members in with Import
+  members in the team app ([ADR 0050](../docs/adr/0050-schema-and-seed-until-launch.md)). At launch `schema.sql`
+  becomes the first migration. From then on, migrations, additive only.
 
 ## Conventions
 

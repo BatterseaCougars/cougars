@@ -222,6 +222,32 @@ export const addMember = async (name: string, email: string, position: string) =
   return r;
 };
 
+/** What an import file would do (worker/member-import.ts): who'd be added, who's in already, what's wrong. */
+export interface ImportCheck {
+  add: {
+    row: number;
+    name: string;
+    email: string | null;
+    position: Position;
+    rating: number;
+    cougar: boolean;
+    roles: string[];
+  }[];
+  skip: { row: number; name: string; why: string }[];
+  problems: { row: number; name: string; why: string }[];
+}
+/** Checks a CSV or roster JSON without changing anything. Throws what's wrong with the file as a whole. */
+export const checkImport = (file: string) => api<ImportCheck>("POST", "/api/members/import", { file });
+/** Adds everyone the file would add, all at once; nobody is emailed. */
+export const importMembers = async (file: string) => {
+  const r = await save(
+    () => api<{ added: string[]; skipped: number }>("POST", "/api/members/import", { file, apply: true }),
+    "",
+  );
+  if (r) say(`${r.added.length} member${r.added.length === 1 ? "" : "s"} added.`, false);
+  return r;
+};
+
 export const saveMember = (m: MemberRow) =>
   save(() =>
     api("PUT", `/api/members/${m.player.id}`, {

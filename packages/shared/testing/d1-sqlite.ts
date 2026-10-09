@@ -13,6 +13,14 @@ export function createTestD1(): D1Database & { raw: Database.Database } {
 
   const prepare = (sql: string) => {
     let params: unknown[] = [];
+    const runNow = () => {
+      const info = sqlite.prepare(sql).run(...params);
+      return {
+        success: true,
+        results: [],
+        meta: { last_row_id: Number(info.lastInsertRowid), changes: info.changes },
+      };
+    };
     const stmt = {
       bind(...p: unknown[]) {
         params = p;
@@ -25,16 +33,14 @@ export function createTestD1(): D1Database & { raw: Database.Database } {
         return sqlite.prepare(sql).get(...params) ?? null;
       },
       async run() {
-        const info = sqlite.prepare(sql).run(...params);
-        return {
-          success: true,
-          results: [],
-          meta: { last_row_id: Number(info.lastInsertRowid), changes: info.changes },
-        };
+        return runNow();
       },
+      runNow,
     };
     return stmt;
   };
+  // As D1's: in order, in one transaction, all or nothing
+  const batch = async (stmts: { runNow: () => unknown }[]) => sqlite.transaction(() => stmts.map((s) => s.runNow()))();
 
-  return { prepare, raw: sqlite } as unknown as D1Database & { raw: Database.Database };
+  return { prepare, batch, raw: sqlite } as unknown as D1Database & { raw: Database.Database };
 }
