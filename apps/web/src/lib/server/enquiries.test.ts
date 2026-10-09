@@ -1,7 +1,14 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { createTestD1 } from "@cougars/shared/testing/d1-sqlite";
-import { readFileSync } from "node:fs";
-import { AUTO_REPLY_CAPS, autoReplyAllowed, isSpam, markAutoReplied, parseEnquiry, saveEnquiry } from "./enquiries";
+import {
+  AUTO_REPLY_CAPS,
+  autoReplyAllowed,
+  expireEnquiries,
+  isSpam,
+  markAutoReplied,
+  parseEnquiry,
+  saveEnquiry,
+} from "./enquiries";
 
 const form = (fields: Record<string, string>) => {
   const f = new FormData();
@@ -92,23 +99,26 @@ describe("auto-reply caps", () => {
   });
 });
 
-describe("12-month retention (db/retention/expire-enquiries.sql, run by deploy.yml)", () => {
-  const expire = readFileSync(new URL("../../../../../db/retention/expire-enquiries.sql", import.meta.url), "utf8");
-
-  it("deletes enquiries older than 12 months, except from people who joined", () => {
+describe("12-month retention: the website's daily cron (src/worker.ts)", () => {
+  it("deletes enquiries older than 12 months, except from people who joined", async () => {
     const db = createTestD1();
-    const add = (email: string, monthsAgo: number, status = "new") =>
+    const now = new Date("2026-10-09T03:17:00.000Z");
+    const add = (email: string, sent: string, status = "new") =>
       db.raw
-        .prepare(
-          "INSERT INTO enquiries (name, email, status, created_at) VALUES ('Sam', ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ', 'now', ?))",
-        )
-        .run(email, status, `-${monthsAgo} months`);
-    add("recent@example.com", 11);
-    add("old@example.com", 13);
-    add("old-contacted@example.com", 13, "contacted");
-    add("old-joined@example.com", 13, "joined");
-    db.raw.exec(expire);
+        .prepare("INSERT INTO enquiries (name, email, status, created_at) VALUES ('Sam', ?, ?, ?)")
+        .run(email, status, sent);
+    add("recent@example.com", "2025-11-09T10:00:00.000Z");
+    add("a-year-ago-today@example.com", "2025-10-09T10:00:00.000Z");
+    add("old@example.com", "2025-09-09T10:00:00.000Z");
+    add("old-contacted@example.com", "2025-09-09T10:00:00.000Z", "contacted");
+    add("old-joined@example.com", "2025-09-09T10:00:00.000Z", "joined");
+
+    expect(await expireEnquiries(db, now)).toBe(2);
     const left = db.raw.prepare("SELECT email FROM enquiries ORDER BY email").all();
-    expect(left).toEqual([{ email: "old-joined@example.com" }, { email: "recent@example.com" }]);
+    expect(left).toEqual([
+      { email: "a-year-ago-today@example.com" },
+      { email: "old-joined@example.com" },
+      { email: "recent@example.com" },
+    ]);
   });
 });

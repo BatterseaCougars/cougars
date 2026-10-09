@@ -35,9 +35,9 @@ emailed to the club inbox ([ADR 0027](0027-email-through-gmail-api.md)). The clu
 **Enquiries are deleted 12 months after they're sent**, unless the person joined (`status = 'joined'`). The privacy
 page says so.
 
-- The rule is one SQL file, `db/retention/expire-enquiries.sql`, run by `deploy.yml` on every deploy. Production
-  deploys daily (the daily rebuild, [ADR 0004](0004-astro-workers-sanity-d1.md)), so it runs daily there. A test
-  runs the same file against the test database.
+- The website's Worker deletes them itself, on a daily cron (03:17 UTC, `apps/web/wrangler.jsonc` triggers):
+  `expireEnquiries` in `apps/web/src/lib/server/enquiries.ts`, called from `apps/web/src/worker.ts`, which is Astro's
+  handler plus the cron. It runs whether or not anything deploys. A test drives the same function.
 - The copies in the club's Gmail (enquiry emails and auto-replies) are deleted by hand once a month: the website's
   Gmail access can only send. The steps are in docs/editing.md.
 
@@ -50,11 +50,11 @@ page says so.
   name back as a new member; edit the roster too if that happens while the roster still matters.
 - Two copies to keep in step while the roster matters: the local file and Secrets Manager (both names). Seeding by
   name assumes no two players share a name.
-- No Worker cron or extra service for retention. If production stopped deploying daily, deletion would pause until
-  the next deploy.
+- One cron trigger on the website's Worker (free; the free plan allows 5 per account). It belongs to the website, not
+  the team app, so it runs before the team app is in production.
 - Nothing sets `joined` yet, so every enquiry goes after 12 months; the team app will mark joiners when it turns
   enquiries into members.
-- Changing the retention period means changing the SQL file, the privacy page and this record together.
+- Changing the retention period means changing `KEEP_ENQUIRIES_MONTHS`, the privacy page and this record together.
 
 ## History
 
@@ -63,3 +63,5 @@ page says so.
   non-personal data in migrations (was 0033).
 - 2026-10-07: Migrations replaced by schema plus seed until launch, so the non-personal seed is `db/seed/club.sql` and
   the scripts run after the rebuild ([ADR 0050](0050-schema-and-seed-until-launch.md)).
+- 2026-10-09: Enquiries deleted by a daily cron on the website's Worker, not a SQL file run on deploys: deploys are per
+  app and only on change now (ADR 0010), so they're no clock.

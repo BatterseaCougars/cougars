@@ -88,3 +88,16 @@ export async function autoReplyAllowed(db: D1Database, email: string, now = new 
 export async function markAutoReplied(db: D1Database, id: number, now = new Date()): Promise<void> {
   await run(db, "UPDATE enquiries SET auto_replied_at = ? WHERE id = ?", [now.toISOString(), id]);
 }
+
+/** Months an enquiry is kept, unless the person joined: the privacy page promises it (pages/privacy.astro, ADR 0029). */
+export const KEEP_ENQUIRIES_MONTHS = 12;
+
+/** Delete enquiries sent more than 12 months ago, unless the person joined. Run daily by the cron (src/worker.ts). */
+export async function expireEnquiries(db: D1Database, now = new Date()): Promise<number> {
+  const cutoff = new Date(now);
+  cutoff.setUTCMonth(cutoff.getUTCMonth() - KEEP_ENQUIRIES_MONTHS);
+  const result = await run(db, "DELETE FROM enquiries WHERE status <> 'joined' AND created_at < ?", [
+    cutoff.toISOString(),
+  ]);
+  return result.meta.changes;
+}

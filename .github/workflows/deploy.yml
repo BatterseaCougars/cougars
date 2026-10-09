@@ -195,13 +195,6 @@ jobs:
       - name: Target ${{ env.SITE_ENV }}
         run: node scripts/ci/target.mjs "$SITE_ENV"
 
-      # The privacy page promises enquiries are deleted after 12 months (unless the person joined). Production
-      # deploys daily, so this runs daily there. D1 commands don't follow the build's config redirect, so name the
-      # generated config.
-      - name: Delete expired enquiries
-        working-directory: apps/web
-        run: npx wrangler d1 execute DB --remote --file ../../db/retention/expire-enquiries.sql -c dist/server/wrangler.json
-
       - name: Deploy
         id: deploy
         if: github.event_name != 'pull_request'

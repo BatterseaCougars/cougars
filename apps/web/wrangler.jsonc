@@ -3,9 +3,12 @@
   "name": "cougars",
   "compatibility_date": "2026-10-01",
   "compatibility_flags": ["nodejs_compat"],
-  "main": "@astrojs/cloudflare/entrypoints/server",
+  // Astro's handler plus the daily enquiry clean-up (src/worker.ts)
+  "main": "./src/worker.ts",
   "assets": { "directory": "./dist", "binding": "ASSETS" },
   "observability": { "enabled": true },
+  // Daily, 03:17 UTC: delete enquiries past 12 months (ADR 0029). Free (cron triggers: 5 per account).
+  "triggers": { "crons": ["17 3 * * *"] },
   "vars": {
     // Only scripts/ci/target.mjs sets "production" (on release); anything else never emails a real person.
     "SITE_ENV": "dev",
