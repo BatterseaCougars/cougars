@@ -1,7 +1,7 @@
 <script lang="ts">
   // A player's card, picked up: it lifts from where it lies, turns over sideways and comes up to the middle of the
   // screen, showing its dark back: who they are, their number tonight, and a line or two about them. (An admin on
-  // Teammates gets MemberSheet instead.) Closing puts it back the same way. Its actions sit as icons in the card's top band. Someone who runs events can take
+  // Teammates gets MemberSheet instead.) Closing is the same turn back, in one move. Its actions sit as icons in the card's top band. Someone who runs events can take
   // the player off the session from here (two taps, so a stray one can't). Without motion it just appears. Once it lands it drops its 3D turn, so fields and
   // menus on the back behave like any others.
   import { goesBy, shortName } from "./names";
@@ -60,9 +60,13 @@
     return { destroy: () => node.remove() };
   }
 
-  // Where the page's card is, as a transform from the zoomed card's own place
+  // The turn, as two keyframes with the same transform functions in the same order, so the browser interpolates
+  // each (travel, size, turn) together. With different lists it goes through matrices, and the card turned first,
+  // then flew: two moves instead of one
+  const UP = "translate(0px, 0px) scale(1) rotateY(180deg)";
+  // Where the page's card is, as a transform from the zoomed card's own place, facing front
   function fromSource(el: HTMLElement) {
-    if (!source?.isConnected) return "scale(0.6) rotateY(0deg)";
+    if (!source?.isConnected) return "translate(0px, 0px) scale(0.6) rotateY(0deg)";
     const a = source.getBoundingClientRect();
     const b = el.getBoundingClientRect();
     const dx = a.left + a.width / 2 - (b.left + b.width / 2);
@@ -70,27 +74,42 @@
     return `translate(${dx}px, ${dy}px) scale(${a.width / b.width}) rotateY(0deg)`;
   }
 
-  onMount(() => {
+  let opening: Animation | undefined;
+  onMount(async () => {
     closeBtn?.focus({ preventScroll: true });
     if (!flipper || prefersReducedMotion) return void (settled = true);
-    const open = flipper.animate([{ transform: fromSource(flipper) }, { transform: "rotateY(180deg)" }], {
+    // After the portal has moved the card to <body> (the same flush; before anything's painted): measured in the
+    // page, under a transformed ancestor, its start was off in a corner
+    await tick();
+    opening = flipper.animate([{ transform: fromSource(flipper) }, { transform: UP }], {
       duration: DURATION,
       easing: EASE,
     });
-    open.onfinish = () => (settled = true);
+    opening.onfinish = () => (settled = true);
   });
 
+  // Closing: the opening turn in reverse, as one move: it turns back to its front as it shrinks home. A card on
+  // the page hides itself while this one's up (PlayerCard), and takes over the moment this one lands on it. A
+  // name in a list (the draft's pool) stays as it is: there's nothing to land on, and the soft-landing ease run
+  // backwards would park the card by the row for the last stretch, so it fades out over that instead
   async function close() {
     if (closing) return;
     closing = true;
+    opening?.cancel();
     settled = false;
     await tick();
     if (!flipper || prefersReducedMotion) return onclose();
-    const back = flipper.animate([{ transform: "rotateY(180deg)" }, { transform: fromSource(flipper) }], {
-      duration: DURATION - 80,
-      easing: EASE,
-      fill: "forwards",
-    });
+    const lands = !!source?.isConnected && getComputedStyle(source).visibility === "hidden";
+    const back = flipper.animate(
+      lands
+        ? [{ transform: UP }, { transform: fromSource(flipper) }]
+        : [
+            { transform: UP, opacity: 1, offset: 0 },
+            { opacity: 1, offset: 0.45 },
+            { transform: fromSource(flipper), opacity: 0, offset: 1 },
+          ],
+      { duration: DURATION - 80, easing: EASE, fill: "forwards" },
+    );
     back.onfinish = () => onclose();
   }
 

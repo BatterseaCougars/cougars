@@ -147,6 +147,8 @@
       you: p.memberId === me().id,
     })),
   );
+  // What just happened, for everyone on the page (the log's behind a button): the last pick, with its team
+  const lastPick = $derived(log.at(-1) ?? null);
   // In a drawer from the strip, by round
   let logOpen = $state(false);
   // The rules, in a drawer beside it
@@ -461,7 +463,7 @@
       </div>
     {/if}
 
-    <!-- Where you stand, as one badge; on your turn, who you've picked and End turn. Always the same height -->
+    <!-- Where you stand, as one badge, and the tools. Always the same height. How to pick is in Rules, not here -->
     <div class="strip">
       {#if phase === "closed"}
         <span class="turn done">Teams set</span>
@@ -473,11 +475,6 @@
         {:else if canPick}<span class="turn now"><i class="dot"></i>Picking for {teamName(clock)}</span>
         {:else if myTeam >= 0 && untilMine > 0}<span class="turn num">You pick in {untilMine}</span>
         {:else if myTeam >= 0}<span class="turn done">Your picks are done</span>{/if}
-        {#if canPick}
-          <p class="end hint">
-            {chosenPlayer ? "Happy? End your turn to lock them in." : "Pick a player, then end your turn."}
-          </p>
-        {/if}
       {:else if open}
         <span class="turn done">Everyone's picked</span>
       {:else}
@@ -503,6 +500,32 @@
       </div>
     </div>
 
+    <!-- The last pick, as one line everyone sees: the team's crest and name, then who they took. Always one line
+         high, so a pick arriving moves nothing; the new one flies in -->
+    {#if open || (phase === "closed" && made)}
+      <div class="last" aria-live="polite">
+        {#if lastPick}
+          {#key lastPick.n}
+            <span class="last-pick" in:fly={{ y: 6, duration: flyMs, easing: easeOut }}>
+              <TeamCrest
+                name={teamName(lastPick.team)}
+                logo={teams[lastPick.team].logo}
+                tone={teamTone(lastPick.team)}
+                size="1.75rem"
+              />
+              <span class="lt display">{teamName(lastPick.team)}</span>
+              <span class="hint">picked</span>
+              <span class="lp"
+                >{lastPick.name}{#if lastPick.you}<small>you</small>{/if}</span
+              >
+            </span>
+          {/key}
+        {:else}
+          <span class="hint">Nobody's picked yet.</span>
+        {/if}
+      </div>
+    {/if}
+
     <!-- The ticker: the picks just made, then every pick to come -->
     {#if ticker.length}
       <div class="ticker" bind:this={tickerEl} aria-label="Picks">
@@ -514,6 +537,7 @@
             class:done={!t.ghost && t.n <= made}
             class:up={t.n === made + 1}
             class:now={live && t.n === made + 1}
+            class:me={live && t.n === made + 1 && mine}
             style:--d={Math.min(Math.abs(t.n - (made + 1)), 4)}
             animate:flip={{ duration: moveMs }}
             aria-hidden={t.ghost ? "true" : undefined}
@@ -525,7 +549,8 @@
                     >{teamName(t.team)}</span
                   >{/if}</span
               >
-              {#if live && t.n === made + 1}<span class="badge red clock">On the clock</span>
+              {#if live && t.n === made + 1 && mine}<span class="badge red clock"><i class="dot"></i>Your pick</span>
+              {:else if live && t.n === made + 1}<span class="badge clock">On the clock</span>
               {:else}<span class="meta num">{tickMeta(t)}</span>{/if}
             {/if}
           </div>
@@ -730,14 +755,6 @@
     min-height: 2.6rem;
     min-width: 0;
   }
-  .end {
-    flex: 1;
-    min-width: 0;
-    overflow: hidden;
-    text-align: right;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-  }
 
   /* End turn: floats at the bottom centre over the page, above the tabs on a phone; the page keeps room for it at
      the bottom so it never covers the last player */
@@ -810,6 +827,39 @@
   }
   .turn.done {
     color: var(--fg-muted);
+  }
+
+  /* The last pick: one line, the same height with or without one */
+  .last {
+    display: flex;
+    align-items: center;
+    min-height: 2.25rem;
+    min-width: 0;
+  }
+  .last-pick {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s-2);
+    min-width: 0;
+  }
+  .last-pick .lt {
+    font-size: 1.15rem;
+    line-height: 1;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .last-pick .lp {
+    overflow: hidden;
+    font-weight: 600;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  .last-pick small {
+    margin-left: var(--s-1);
+    color: var(--fg-muted);
+    font-size: var(--text-xs);
+    font-weight: 400;
   }
 
   /* The ticker, as a carousel: the pick on the clock sits in the middle, larger and brought forward; the picks
@@ -891,6 +941,24 @@
     box-shadow:
       inset 0 1px 0 rgb(255 255 255 / 0.05),
       0 0 0 1px var(--border-strong);
+  }
+  /* Your turn: the REC light. The card's edge and the word You go red and the badge pulses; another team's turn
+     stays neutral, so yours is never taken for theirs at a glance */
+  .tick.now.me {
+    background: color-mix(in srgb, var(--red-hot) 7%, var(--panel-bg));
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.05),
+      0 0 0 1px var(--red-hot),
+      0 0 1.5rem color-mix(in srgb, var(--red-hot) 30%, transparent);
+  }
+  .tick.now.me .who {
+    color: var(--red-hot);
+  }
+  .clock .dot {
+    width: 0.35rem;
+    height: 0.35rem;
+    margin-right: 0.3rem;
+    background: currentColor;
   }
   .clock {
     justify-self: start;
@@ -1114,14 +1182,15 @@
     display: flex;
     justify-content: flex-end;
   }
-  /* Pick: the app's small button, quiet in the list; the row you point at makes it the main button (blue) */
+  /* Pick: the app's small button, quiet in the list. It goes blue only under the pointer, not when the row is: the
+     row has two actions (the name opens the card), and the button lighting up for the row said the wrong one */
   .pick {
     min-width: 4.5rem;
     height: 1.9rem;
     border-color: var(--border-strong);
     font-weight: 600;
   }
-  .prow:hover .pick,
+  .pick:hover:not(:disabled),
   .pick:focus-visible,
   .pick[aria-pressed="true"] {
     border-color: var(--action);
@@ -1183,9 +1252,6 @@
     flex-shrink: 0;
     gap: var(--s-1);
     margin-left: auto;
-  }
-  .end + .tools {
-    margin-left: 0;
   }
   .rules {
     display: grid;
