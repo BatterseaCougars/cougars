@@ -48,7 +48,7 @@ difference between the best possible split and a very good one is smaller than t
 - The search is not guaranteed optimal for every roster. On 360 random rosters the restarts left 4 a little short of
   the best of 30 runs, each by under a point of average rating, which the ratings can't tell apart anyway. The
   brute-force test is the check that it isn't missing by much.
-- `.github/kb/js-solver-port.md` stays as reference for the LP model and is not the plan.
+- The glpk.js port note (`.github/kb/js-solver-port.md`) is deleted; the LP model is still in the archive.
 
 ## History
 

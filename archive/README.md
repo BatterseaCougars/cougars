@@ -5,5 +5,5 @@ It is **not maintained or deployed**. It's kept as a reference while the feature
 (see the team app in `team/app`):
 
 - Data model: `team-manager/lib/airtable.ts` (players, sessions, attendance, teams)
-- Team-balancing solver: `team-manager/lib/solver_lp.py`, and its browser-side JavaScript port in
-  `.github/kb/js-solver-port.md` (glpk.js; no server needed, so no cost)
+- Team-balancing solver: `team-manager/lib/solver_lp.py` (the team app balances teams its own way,
+  [ADR 0102](../docs/adr/0102-balanced-teams-by-swap-search.md))
