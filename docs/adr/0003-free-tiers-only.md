@@ -19,19 +19,19 @@ keeps no rows; D1 stays the only source of truth ([ADR 0072](0072-live-updates.m
 
 ## Budget
 
-| Service                   | Free allowance                                                | Expected use                                                                |
-| ------------------------- | ------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| Cloudflare Workers        | 100k dynamic requests a day; static assets free and unlimited | Form posts, photo pages, team-app API, live Kumite                          |
-| Workers CPU               | 10 ms per request and per cron run; waiting on I/O is free    | 1–5 ms; watched on the Usage page (ADR 0059)                                |
-| Durable Objects           | 100k requests, 13,000 GB-s a day (SQLite classes only)        | One live hub (ADR 0072): a draft night ~900 GB-s                            |
-| D1                        | 5 GB storage, 5M rows read a day                              | Tiny                                                                        |
-| Cron Triggers             | Free                                                          | Friday series, quarterly dues                                               |
-| Sanity                    | Free plan: 1M CDN, 250k API requests a month; see below       | A handful of editors; live photo reads                                      |
-| Bitwarden Secrets Manager | Free plan, 3 machine accounts                                 | 1                                                                           |
-| GitHub Actions            | 2,000 minutes a month (private repo)                          | About 2 minutes per deploy, per project                                     |
-| YouTube Data API          | 10,000 units a day per Google Cloud project                   | Video reads; an upload costs about 1,600 units                              |
-| Gmail API                 | Free, about 500 emails a day                                  | Sign-in codes, enquiries, dues reminders                                    |
-| Web Push                  | Free (browser push services)                                  | Team-app notifications ([#24](https://github.com/das974/cougars/issues/24)) |
+| Service                   | Free allowance                                                | Expected use                                                                          |
+| ------------------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| Cloudflare Workers        | 100k dynamic requests a day; static assets free and unlimited | Form posts, photo pages, team-app API, live Kumite                                    |
+| Workers CPU               | 10 ms per request and per cron run; waiting on I/O is free    | 1–5 ms; watched on the Usage page (ADR 0059)                                          |
+| Durable Objects           | 100k requests, 13,000 GB-s a day (SQLite classes only)        | One live hub (ADR 0072): a draft night ~900 GB-s                                      |
+| D1                        | 5 GB storage, 5M rows read a day                              | Tiny                                                                                  |
+| Cron Triggers             | Free                                                          | Friday series, quarterly dues                                                         |
+| Sanity                    | Free plan: 1M CDN, 250k API requests a month; see below       | A handful of editors; live photo reads                                                |
+| Bitwarden Secrets Manager | Free plan, 3 machine accounts                                 | 1                                                                                     |
+| GitHub Actions            | 2,000 minutes a month (private repo)                          | About 2 minutes per deploy, per project                                               |
+| YouTube Data API          | 10,000 units a day per Google Cloud project                   | Video reads; an upload costs about 1,600 units                                        |
+| Gmail API                 | Free, about 500 emails a day                                  | Sign-in codes, enquiries, dues reminders                                              |
+| Web Push                  | Free (browser push services)                                  | Team-app notifications ([#24](https://github.com/BatterseaCougars/cougars/issues/24)) |
 
 Sanity Free, checked on [sanity.io/pricing](https://www.sanity.io/pricing) on 2026-10-05: 20 seats, 2 datasets
 (public only), 10k documents, 1M API CDN requests and 250k API requests a month, 100 GB of assets, 100 GB of
@@ -41,7 +41,7 @@ YouTube uploads from an unverified Google Cloud project are locked to private un
 API compliance audit (free). The team app applied for it at the start.
 
 Publishing the team app to the app stores would add Apple's developer fee (about $99 a year) and Google's ($25
-once); that needs the club's agreement first ([#26](https://github.com/das974/cougars/issues/26)).
+once); that needs the club's agreement first ([#26](https://github.com/BatterseaCougars/cougars/issues/26)).
 
 ## Consequences
 

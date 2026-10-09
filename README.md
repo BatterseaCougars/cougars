@@ -2,7 +2,7 @@
 
 Website and team app for the Battersea Cougars inline hockey club: two projects in one repo
 ([ADR 0006](docs/adr/0006-one-repo-two-projects.md)). The website is live; the team app is next. What's planned is in
-[GitHub milestones](https://github.com/das974/cougars/milestones).
+[GitHub milestones](https://github.com/BatterseaCougars/cougars/milestones).
 
 | Part                   | What                                                                      | Where                 |
 | ---------------------- | ------------------------------------------------------------------------- | --------------------- |
@@ -291,7 +291,7 @@ enquiries are still saved and emailed to the club, but nobody gets an auto-reply
 - [docs/setup.md](docs/setup.md): one-time account setup (Cloudflare, Sanity, Bitwarden, GitHub)
 - [docs/testing.md](docs/testing.md): how we test (use cases first, the fake world)
 - [docs/editing.md](docs/editing.md): guide for club editors (no coding)
-- [Milestones](https://github.com/das974/cougars/milestones): what's next, per project, as GitHub issues
+- [Milestones](https://github.com/BatterseaCougars/cougars/milestones): what's next, per project, as GitHub issues
 - [docs/adr/](docs/adr/README.md): architecture decisions, and why
 - [db/README.md](db/README.md): database conventions
 - [docs/team-app-data-model.md](docs/team-app-data-model.md): the team app's tables

@@ -120,7 +120,7 @@ of future sessions is idempotent).
 - 2026-10-09: Of anything personal, the bootstrap now sends a member only their own: quarterly, roles, role actions,
   outs, no-shows, walk-ins and outside teams' contacts filtered by action (was 0099).
 - 2026-10-09: A change with neither `Origin` nor `Sec-Fetch-Site: same-origin` is refused; before, one with neither
-  (or `Sec-Fetch-Site: none`) got through ([#42](https://github.com/das974/cougars/issues/42)).
+  (or `Sec-Fetch-Site: none`) got through ([#42](https://github.com/BatterseaCougars/cougars/issues/42)).
 - 2026-10-09: The bootstrap's filtering moved into its SQL (`club.ts`, [0057](0057-team-app-loading-and-changes.md)):
   someone else's private fields, outs, no-shows, walk-ins and contacts are no longer read and then dropped in code.
   The draft's hiding (ADR 0060) and which roles you see stay in code.

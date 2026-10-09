@@ -17,7 +17,8 @@ the Sanity helpers and the Europe/London date code. Gwenda's ark repo solves the
 
 ## Decision
 
-- **One repo with npm workspaces**, laid out the usual way:
+- **One repo, `BatterseaCougars/cougars`**, owned by the club's GitHub organisation rather than a person, so it
+  outlives any one maintainer. npm workspaces, laid out the usual way:
   - `apps/` holds what deploys, each its own workspace: `apps/web` (the Astro site, `@cougars/web`, port 4500),
     `apps/studio` (Sanity Studio, `@cougars/studio`, port 4520) and `apps/team` (the team app, `@cougars/team`, port
     4510).
@@ -54,3 +55,4 @@ the Sanity helpers and the Europe/London date code. Gwenda's ark repo solves the
   free-tier budget moved to [0003](0003-free-tiers-only.md).
 - 2026-10-09: The website stays in `apps/` and the team app joins it (`apps/team`); `shared/` becomes the workspace
   package `packages/shared` (`@cougars/shared`). The move to `website/` is dropped (#36).
+- 2026-10-09: The repo moved from `das974/cougars` to the club's organisation, `BatterseaCougars/cougars`.
