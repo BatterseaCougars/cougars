@@ -375,10 +375,13 @@ CREATE INDEX tournament_team_players_team ON tournament_team_players (team_id);
 
 -- One number for "the club's data has changed": one more on every change through the team app, the seed and the
 -- roster, so the app's bootstrap can answer "nothing's changed" (ETag, ADR 0053). It starts from the time it was
--- made, so a remade database never repeats an old version.
+-- made, so a remade database never repeats an old version. Beside it, the London day the coming training sessions
+-- were last made (team/app/worker/schedule.ts ensureSessions): the day's first open of the app makes them, the rest
+-- skip it, read in the same row (ADR 0057).
 CREATE TABLE data_version (
   id INTEGER PRIMARY KEY CHECK (id = 1),
-  version INTEGER NOT NULL
+  version INTEGER NOT NULL,
+  sessions_made_on TEXT
 );
 
 -- Who won a tournament's awards (team/app/worker/awards.ts, ADR 0044): a team (Champions) or a player on one of its

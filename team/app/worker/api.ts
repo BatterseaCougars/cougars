@@ -17,7 +17,7 @@ import { ensureAgenda, fromRow as agendaItem, type AgendaRow } from "../../../sh
 import { readClub, type Part, type Parts, type Viewer } from "./club";
 import { HttpError, body, json, sameOrigin } from "./http";
 import { LIMITS, addressOf, enforce } from "./limits";
-import { bootstrapTag, buildOf, bumpDataVersion, dataVersion, notModified, tagged } from "./version";
+import { bootstrapTag, buildOf, bumpDataVersion, dataVersion, notModified, sessionsMade, tagged } from "./version";
 import {
   actionsOf,
   addMember,
@@ -330,9 +330,14 @@ export const ROUTES: Route[] = [
     // Everything the app shows, in one go: it's a small club. Or a 304 when nothing's changed (ADR 0053).
     handle: async (c) => {
       const db = c.env.DB;
-      const tag = bootstrapTag(buildOf(c.env), await dataVersion(db), c.memberId, c.today);
+      const { version, sessionsMadeOn } = await dataVersion(db);
+      const tag = bootstrapTag(buildOf(c.env), version, c.memberId, c.today);
       if (c.request.headers.get("if-none-match") === tag) return notModified(tag);
-      await ensureSessions(db, c.today);
+      // The coming training sessions, on the day's first open; the rest of the day's opens skip it
+      if (sessionsMadeOn !== c.today) {
+        await ensureSessions(db, c.today);
+        await sessionsMade(db, c.today);
+      }
       const reply = json({
         me: c.memberId,
         actions: [...c.actions],

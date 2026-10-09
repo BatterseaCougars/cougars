@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { QuotaError, guard, resetBreakers } from "../../../shared/breaker";
 import type { CacheLike } from "../../../shared/rate-limit";
 import { LIMITS } from "./limits";
-import { testWorld } from "./testing";
+import { NOW, testWorld } from "./testing";
 
 const ROSTER = [
   { name: "Dana Admin", position: "D", rating: 75, email: "dana@example.com", roles: ["Admin"] },
@@ -65,7 +65,20 @@ describe("reopening the app", () => {
     await reg.call("GET", "/api/bootstrap"); // the day's first open also makes the coming training sessions
     const asks = vi.spyOn(w.db, "prepare");
     expect((await reg.call("GET", "/api/bootstrap")).status).toBe(200);
-    expect(asks.mock.calls.length).toBeLessThanOrEqual(8);
+    expect(asks.mock.calls.length).toBeLessThanOrEqual(5);
+  });
+
+  it("makes the coming training sessions on the day's first open, and rolls them on each new day", async () => {
+    const reg = await w.signedIn("reg@example.com");
+    const lastSession = () =>
+      (w.db.raw.prepare("SELECT max(held_on) last FROM training_sessions").get() as { last: string | null }).last;
+    await reg.call("GET", "/api/bootstrap");
+    const today = lastSession();
+    expect(today).not.toBeNull();
+
+    const nextWeek = new Date(NOW.getTime() + 7 * 86_400_000);
+    await reg.call("GET", "/api/bootstrap", undefined, { now: nextWeek });
+    expect(lastSession()! > today!).toBe(true);
   });
 
   it("doesn't count a refused change as a change", async () => {

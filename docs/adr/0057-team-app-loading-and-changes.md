@@ -58,9 +58,11 @@ already loaded only when shown, but registered all of its community modules: 1.1
 
 ## Consequences
 
-- Opening the app costs a handful of statements, not one per part of the club. A test holds it to 8 or fewer
-  (`load.use-cases.test.ts`); the rest, which still run one after another, are signing in, the data version, and
-  making the coming training sessions (`ensureSessions`, which writes on a read and is next to go).
+- Opening the app costs five statements, one after another: the session, its actions, the data version, the agenda
+  check and the club. A test holds it to that (`load.use-cases.test.ts`).
+- The coming training sessions (`ensureSessions`) are made on the day's first open only: `data_version` keeps the
+  London day they were last made, read with the version, so every other open skips them. Saving a training series
+  still makes its sessions straight away.
 - A new part of the club is a query in `club.ts` and a shaping function in its domain module, not a `list...` function
   that reads for itself.
 - D1 limits a statement to 100 KB (it's 12 KB) and a row to 2 MB (the whole club is a few tens of KB).
@@ -86,3 +88,5 @@ already loaded only when shown, but registered all of its community modules: 1.1
 - 2026-10-09: The declared slices also drive the live hub's change events (ADR 0072).
 - 2026-10-09: The club read in one statement (`club.ts`), filtered for whoever's asking in SQL; opening the app went
   from 29 statements to 7.
+- 2026-10-09: The coming training sessions are made on the day's first open, not every open (`sessions_made_on`);
+  opening the app went from 7 statements to 5.

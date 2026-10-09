@@ -11,8 +11,23 @@ import { first, run } from "../../../shared/d1";
 // On your own machine, the Worker's code reloads on every change, and with it this
 const STARTED = Date.now().toString(36);
 
-export async function dataVersion(db: D1Database): Promise<number> {
-  return (await first<{ version: number }>(db, "SELECT version FROM data_version WHERE id = 1"))?.version ?? 0;
+/** The club's data version, and the London day the coming training sessions were last made (null: never). */
+export async function dataVersion(db: D1Database): Promise<{ version: number; sessionsMadeOn: string | null }> {
+  const row = await first<{ version: number; sessions_made_on: string | null }>(
+    db,
+    "SELECT version, sessions_made_on FROM data_version WHERE id = 1",
+  );
+  return { version: row?.version ?? 0, sessionsMadeOn: row?.sessions_made_on ?? null };
+}
+
+/** The coming training sessions are made for this day: later opens of the app skip making them. */
+export async function sessionsMade(db: D1Database, today: string): Promise<void> {
+  await run(
+    db,
+    `INSERT INTO data_version (id, version, sessions_made_on) VALUES (1, CAST(strftime('%s', 'now') AS INTEGER), ?)
+     ON CONFLICT (id) DO UPDATE SET sessions_made_on = excluded.sessions_made_on`,
+    [today],
+  );
 }
 
 /** After a change: every member's bootstrap is out of date. */
