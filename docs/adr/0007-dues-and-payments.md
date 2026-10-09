@@ -19,7 +19,7 @@ Two kinds of member are easy to confuse because both carry the club's name: **Co
 quarterly rate; **the Cougars** are the club's official team, who play together on one team called "Cougars" when
 training teams are made (as the old app did, `archive/team-manager`).
 
-Most of this is decided but **not built yet** (the Team app: Dues and payments milestone). What exists today: the
+Most of this is decided but **not built yet** (#46). What exists today: the
 `subscriptions` table, `members.cougar`, `members.payment_reference` and its rules, `tournament_types.default_fee_pence`
 and `tournaments.fee_pence`, and the register (`training_sessions.register_closed_at`, `attendance.attended` and
 `walk_in`). The dues screens (a member's tab, Unpaid fees, charges on the member sheet) run on demo data only
