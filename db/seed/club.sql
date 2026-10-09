@@ -85,8 +85,8 @@ INSERT OR IGNORE INTO tournament_types (id, slug, name, short_name, icon, tone, 
   (1, 'kumite', 'The Cougars Kumite', 'Kumite', 'swords', 'red', 'round_robin', 3, 1, 0, 12, 'draft', 1, 0, '[{"name":"Champions","about":"The team on top of the table at the end of the day."},{"name":"Top scorer","about":"Most goals across every game."},{"name":"Best goalie","about":"Voted by the skaters they stopped."},{"name":"The Dim Mak","about":"Fastest goal from a faceoff. One touch. Lights out."}]', 1, '', '19:30', '21:30');
 
 -- tournaments
-INSERT OR IGNORE INTO tournaments (id, type_id, name, location, held_on, start_time, end_time, capacity, status, champions, fee_pence, public, date_confirmed, signup_closes_on, draft_on, season, points_win, points_draw, points_loss, game_minutes, kind, awards) VALUES
-  (1, 1, 'The Cougars Kumite', '', '2027-06-12', '11:00', '16:00', NULL, 'planned', NULL, 0, 1, 0, NULL, NULL, NULL, 3, 1, 0, 12, 'draft', '[{"name":"Champions","about":"The team on top of the table at the end of the day."},{"name":"Top scorer","about":"Most goals across every game."},{"name":"Best goalie","about":"Voted by the skaters they stopped."},{"name":"The Dim Mak","about":"Fastest goal from a faceoff. One touch. Lights out."}]');
+INSERT OR IGNORE INTO tournaments (id, type_id, name, location, held_on, start_time, end_time, capacity, status, champions, fee_pence, public, signup_closes_on, draft_on, season, points_win, points_draw, points_loss, game_minutes, kind, awards) VALUES
+  (1, 1, 'The Cougars Kumite', '', '2027-08-31', '11:00', '16:00', NULL, 'planned', NULL, 0, 1, NULL, NULL, 'summer', 3, 1, 0, 12, 'draft', '[{"name":"Champions","about":"The team on top of the table at the end of the day."},{"name":"Top scorer","about":"Most goals across every game."},{"name":"Best goalie","about":"Voted by the skaters they stopped."},{"name":"The Dim Mak","about":"Fastest goal from a faceoff. One touch. Lights out."}]');
 
 -- quips
 INSERT OR IGNORE INTO quips (id, kind, text) VALUES

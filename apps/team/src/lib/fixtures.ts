@@ -97,7 +97,6 @@ export function startingNow<
     heldOn: today,
     startTime: hhmm(start),
     endTime: hhmm(start + length),
-    dateConfirmed: true,
     season: null,
     signupOpensOn: earliest(t.signupOpensOn, today),
     signupClosesOn: earliest(t.signupClosesOn, today),

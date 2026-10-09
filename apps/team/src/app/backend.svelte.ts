@@ -370,7 +370,6 @@ const tournamentBody = (t: Tournament) => ({
   capacity: t.capacity,
   status: t.status,
   feePence: t.feePence,
-  dateConfirmed: t.dateConfirmed,
   season: t.season,
   public: t.public,
   signupOpensOn: t.signupOpensOn,

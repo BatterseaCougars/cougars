@@ -65,14 +65,14 @@ describe("opening the app", () => {
     expect(dates.every((d: string) => new Date(`${d}T12:00:00Z`).getUTCDay() === 5)).toBe(true);
   });
 
-  it("has the first Kumite in summer 2027, its date to be confirmed", async () => {
+  it("has the first Kumite in summer 2027, its day not set yet", async () => {
     const b = await boot();
     expect(b.tournamentTypes.map((t: { name: string }) => t.name)).toEqual(["The Cougars Kumite"]);
     expect(b.tournaments).toEqual([
       expect.objectContaining({
         name: "The Cougars Kumite",
-        heldOn: "2027-06-12",
-        dateConfirmed: false,
+        season: "summer",
+        heldOn: "2027-08-31",
         status: "planned",
       }),
     ]);
@@ -218,7 +218,7 @@ describe("the schedule", () => {
       ...date,
       kind: "draft",
       heldOn: "2027-06-12",
-      dateConfirmed: true,
+      season: null,
       signupClosesOn: "2027-06-05",
       draftOn: "2027-06-09",
       teams: [team("Reg Player"), team("Dana Admin")],
@@ -299,21 +299,17 @@ describe("the schedule", () => {
   it("an admin plans a Kumite for next summer before anyone knows the day", async () => {
     const date = (await boot()).tournaments[0];
     const put = (changes: object) => call("PUT", `/api/tournaments/${date.id}`, { ...date, ...changes });
-    // Just a season: its day is the season's last, so it sorts after summer's dates and isn't confirmed
-    expect((await put({ season: "summer", heldOn: "2027-08-31", dateConfirmed: true })).status).toBe(200);
-    expect((await boot()).tournaments[0]).toMatchObject({
-      season: "summer",
-      heldOn: "2027-08-31",
-      dateConfirmed: false,
-    });
+    // Just a season: its day is the season's last, so it sorts after summer's dates
+    expect((await put({ season: "summer", heldOn: "2027-08-31" })).status).toBe(200);
+    expect((await boot()).tournaments[0]).toMatchObject({ season: "summer", heldOn: "2027-08-31" });
     // Winter runs into the next year
     expect((await put({ season: "winter", heldOn: "2028-02-29" })).status).toBe(200);
     // A made-up day, or a season that isn't one, is refused
     expect((await put({ season: "summer", heldOn: "2027-07-01" })).status).toBe(400);
     expect((await put({ season: "monsoon", heldOn: "2027-08-31" })).status).toBe(400);
-    // Then the day is set: no season, confirmed
-    expect((await put({ season: null, heldOn: "2027-06-12", dateConfirmed: true })).status).toBe(200);
-    expect((await boot()).tournaments[0]).toMatchObject({ season: null, heldOn: "2027-06-12", dateConfirmed: true });
+    // Then the day is set: no season, just the day
+    expect((await put({ season: null, heldOn: "2027-06-12" })).status).toBe(200);
+    expect((await boot()).tournaments[0]).toMatchObject({ season: null, heldOn: "2027-06-12" });
   });
 
   it("an admin schedules a one-off tournament in no series, then puts it in one", async () => {
@@ -415,10 +411,10 @@ describe("the schedule", () => {
     });
     expect(e.status).toBe(201);
     const b = await boot();
-    // In date order; a new one's date is confirmed unless it says otherwise
-    expect(b.tournaments.map((x: { name: string; dateConfirmed: boolean }) => [x.name, x.dateConfirmed])).toEqual([
-      ["Winter Kumite", true],
-      ["The Cougars Kumite", false],
+    // In date order: a day, or a season's last
+    expect(b.tournaments.map((x: { name: string; season: string | null }) => [x.name, x.season])).toEqual([
+      ["Winter Kumite", null],
+      ["The Cougars Kumite", "summer"],
     ]);
     expect(b.clubEvents.map((x: { title: string }) => x.title)).toEqual(["Kit day"]);
   });

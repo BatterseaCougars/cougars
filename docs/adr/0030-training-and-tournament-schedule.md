@@ -70,11 +70,13 @@ Tournaments (the schedule, a card per tournament), Tournament Series (the series
 ### A tournament's date
 
 - `held_on`, `start_time`, `end_time`, `capacity`, `fee_pence` (fixed once charged), `public` (on the website) and
-  `status` (planned, open, live, finished). `date_confirmed = 0` shows _Date to be confirmed_.
-- **A date can be just a season**: spring, summer, autumn or winter and a year (the UK's, by month; winter is
-  December to February), in `tournaments.season`. `held_on` stays required and holds the season's last day, which is
-  never shown: it decides where the date sorts and keeps it coming up until the season is over. A season counts as
-  unconfirmed and shows as "Summer 2027". The rules are in `packages/shared/seasons.ts`, used by the app, its API and the
+  `status` (planned, open, live, finished).
+- **A date is a day, or just a season, never both**: spring, summer, autumn or winter and a year (the UK's, by month;
+  winter is December to February), in `tournaments.season`. `held_on` stays required and holds the season's last day,
+  which is never shown: it decides where the date sorts and keeps it coming up until the season is over. A season is
+  the only "to be confirmed" there is (`dateTbc` on the agenda) and shows as "Summer 2027"; setting a day clears it.
+  There's no separate "TBC" tick on a day: one that's set is the day. The forms pick the season and year as one choice,
+  this season and the next three. The rules are in `packages/shared/seasons.ts`, used by the app, its API and the
   website.
 - **Sign-up closes** (`signup_closes_on`) at the end of that day (London). After it the server refuses "I'm in"
   (409); saying out is still fine, and an admin can still add someone. Empty: open up to the day. When it opens is
@@ -143,3 +145,5 @@ Tournaments (the schedule, a card per tournament), Tournament Series (the series
   on the day, the editor replacing teams on save) were superseded the same day by ADR 0060.
 - 2026-10-07: The calendar and the website read one agenda pushed from all three sources (ADR 0042).
 - 2026-10-09: The draft has a day, not a time; sign-up opens on a day; a series has usual hours (ADR 0074).
+- 2026-10-09: `date_confirmed` dropped: a TBC tick beside a set day left it showing TBC. A date is a day or a season;
+  the quick form asks the season first, the day optional; season and year are one pick.

@@ -123,7 +123,6 @@ describe("starting a game on another day than the tournament's", () => {
       heldOn: "2026-10-09",
       startTime: "18:06",
       endTime: "23:06",
-      dateConfirmed: true,
       season: null,
     });
   });

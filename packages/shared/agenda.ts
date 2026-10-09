@@ -119,7 +119,6 @@ async function tournamentItems(db: D1Database, filter: string, params: unknown[]
         heldOn: string;
         startTime: string;
         endTime: string;
-        dateConfirmed: number;
         season: Season | null;
         public: number;
         status: string;
@@ -132,7 +131,7 @@ async function tournamentItems(db: D1Database, filter: string, params: unknown[]
     db,
     `SELECT t.id, t.type_id typeId, t.name title, t.venue_id venueId, t.location name, t.map_url mapUrl,
             y.venue_id seriesVenueId, COALESCE(y.location, '') seriesName, COALESCE(y.map_url, '') seriesMapUrl,
-            t.held_on heldOn, t.start_time startTime, t.end_time endTime, t.date_confirmed dateConfirmed, t.season,
+            t.held_on heldOn, t.start_time startTime, t.end_time endTime, t.season,
             t.public, t.status, t.kind, t.signup_closes_on signupClosesOn, t.draft_on draftOn,
             t.draft_state draftState
      FROM tournaments t LEFT JOIN tournament_types y ON y.id = t.type_id ${filter}`,
@@ -159,7 +158,8 @@ async function tournamentItems(db: D1Database, filter: string, params: unknown[]
         endsAt: londonISO(t.heldOn, t.endTime),
         day: t.heldOn,
         allDay: false,
-        dateTbc: !t.dateConfirmed,
+        // Just a season: no day yet
+        dateTbc: !!t.season,
         season: t.season ? seasonLabel(t.season, t.heldOn) : null,
         public: !!t.public,
         audience: "everyone",

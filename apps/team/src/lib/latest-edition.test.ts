@@ -24,7 +24,6 @@ const edition = (id: number, heldOn: string, o: Partial<Tournament> = {}) =>
     startTime: "11:00",
     endTime: "16:00",
     status: "planned",
-    dateConfirmed: true,
     season: null,
     pointsWin: 3,
     pointsDraw: 1,
@@ -40,10 +39,10 @@ const edition = (id: number, heldOn: string, o: Partial<Tournament> = {}) =>
   }) as unknown as Tournament;
 
 describe("the edition a series opens on", () => {
-  it("the next one, once it's announced, even on a tentative date, over one already played", () => {
+  it("the next one, once it's announced, even as just a season, over one already played", () => {
     // Played, though its day's still ahead and nobody marked it finished
     const done = edition(1, "2027-06-12", { games: [played(1)] as never });
-    const next = edition(2, "2027-09-01", { dateConfirmed: false });
+    const next = edition(2, "2027-11-30", { season: "autumn" });
     const all = [done, next];
     expect(latestOf(all, TODAY)?.id).toBe(2);
     expect(previousOf(all, next)?.id).toBe(1);

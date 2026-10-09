@@ -14,7 +14,9 @@
   import PlayerCard from "../lib/PlayerCard.svelte";
   import PlayerCardZoom from "../lib/PlayerCardZoom.svelte";
   import RegisterDrawer from "../lib/RegisterDrawer.svelte";
-  import { publishTeams, removeTeams, resetSession, setPlayer } from "../app/backend.svelte";
+  import { publishTeams, removeTeams, resetSession, saving, setPlayer } from "../app/backend.svelte";
+  import EditorPanel from "../lib/EditorPanel.svelte";
+  import TrainingEditor from "../lib/TrainingEditor.svelte";
   import Sheet from "../lib/Sheet.svelte";
   import Drawer from "../lib/Drawer.svelte";
   import { phone } from "../lib/viewport.svelte";
@@ -127,7 +129,7 @@
     if (show) return;
     if (prefersReducedMotion) return commit(made);
     // Bring the players into view first, so their cards start from where you can see them
-    document.querySelector(teams ? ".teams-head" : ".list-head")?.scrollIntoView({ block: "start" });
+    showIfHidden(teams ? ".teams-head" : ".list-head");
     await tick();
     const ids = made.flatMap((t) => t.players);
     const from = ids.map((id) => playerRect(id));
@@ -153,7 +155,7 @@
         if (pending) commit(pending);
         pending = null;
         await tick();
-        document.querySelector(".teams-head")?.scrollIntoView({ block: "start" });
+        showIfHidden(".teams-head");
       },
       target: (i) => document.querySelector(`.team [data-player="${ids[i]}"]`),
       landed: (i) => undealt.delete(ids[i]),
@@ -163,6 +165,16 @@
     deck = null;
     gathering = false;
     undealt.clear();
+  }
+  // Scrolled to only when it's off screen: on a desktop the teams are usually in view already, and a needless scroll
+  // docks the page header (lib/PageHeader.svelte), swapping the toolbar under you
+  function showIfHidden(selector: string) {
+    const el = document.querySelector(selector);
+    if (!el) return;
+    const { top, bottom } = el.getBoundingClientRect();
+    const chrome = parseFloat(getComputedStyle(el).scrollMarginTop) || 0;
+    if (top >= chrome && bottom <= window.innerHeight) return;
+    el.scrollIntoView({ block: "start" });
   }
   // The pile: over the middle of the teams (or of Who's in) where that's on screen, else the window's middle
   function deckPoint() {
@@ -189,21 +201,22 @@
     document.body.append(node);
     return { destroy: () => node.remove() };
   }
-  // A team maker moves a player between teams; it's saved there and then
+  // A team maker moves a player between teams, or onto one from Not on a team (from ""); it's saved there and then
   const arranging = $derived(can(perms, "generate:Teams") && can(perms, "publish:Teams"));
   function move(id: number, fromName: string, toName: string) {
     if (fromName === toName) return;
     const list = withoutLeavers();
     const from = list.find((t) => t.name === fromName);
     const to = list.find((t) => t.name === toName);
-    if (!from || !to) return;
-    from.players = from.players.filter((p) => p !== id);
+    if ((fromName && !from) || !to) return;
+    if (from) from.players = from.players.filter((p) => p !== id);
     to.players = [...to.players, id];
     commit(list, `${shortName(byId(id))} to ${to.name}`);
   }
   const nextTeam = (name: string) => {
     const i = ordered?.findIndex((t) => t.name === name) ?? -1;
-    return ordered && i >= 0 ? ordered[(i + 1) % ordered.length].name : name;
+    // From Not on a team: the first team
+    return ordered && i >= 0 ? ordered[(i + 1) % ordered.length].name : (ordered?.[0]?.name ?? name);
   };
 
   // Dragging a player by their grip: pointer events, so it works with a finger as well as a mouse. The row follows
@@ -261,8 +274,12 @@
   // Making teams from who's in, once someone's in: the one button always on show for a team maker
   const canGenerate = $derived(arranging && next.going.length > 0);
   const canManage = $derived(
-    can(perms, "update:Event") || can(perms, "record:Attendance") || (!!teams && can(perms, "publish:Teams")),
+    can(perms, "manage:Training") ||
+      (!!session &&
+        (can(perms, "update:Event") || can(perms, "record:Attendance") || (!!teams && can(perms, "publish:Teams")))),
   );
+  // The training's own settings (days, times, place, fee), opened over this page (ADR 0065)
+  let settingsOpen = $state(false);
   // A tool that opens something else, or runs at once: the sheet gets out of the way first
   function go(run: () => void) {
     manageOpen = false;
@@ -343,6 +360,33 @@
   {/if}
 {/snippet}
 
+<!-- A team maker's row: a grip to drag them to a team (from "" when they're not on one yet) -->
+{#snippet arrangeRow(id: number, from: string)}
+  <div
+    class="row arrange"
+    class:lifting={drag?.id === id && dragged}
+    class:gone={hasLeft(id)}
+    class:undealt={undealt.has(id)}
+    data-player={id}
+  >
+    <button
+      class="grip"
+      aria-label="Move {goesBy(byId(id))}: drag to a team, or press Enter for the next team"
+      onpointerdown={(e) => grab(e, id, from)}
+      onpointermove={follow}
+      onpointerup={drop}
+      onpointercancel={() => ((drag = null), (over = null))}
+      onclick={(e) => nudge(e, id, from)}
+    >
+      <Icon name="grip" size={20} />
+    </button>
+    <Person player={byId(id)} showRating={ratings} />
+    {#if hasLeft(id)}<span class="badge">Out</span>
+    {:else if id === who.id}<span class="badge green">You</span>{/if}
+    {#if byId(id).cougar}<span class="badge red">Cougar</span>{/if}
+  </div>
+{/snippet}
+
 <div class="page">
   <PageHeader
     title={series.name}
@@ -359,9 +403,13 @@
           {!teams ? "Make teams" : confirming === "remake" ? "Tap again" : "Remake teams"}</button
         >
       {/if}
-      {#if session && canManage}
-        <button class="btn sm ghost" aria-haspopup="dialog" onclick={() => (manageOpen = true)}
-          ><Icon name="settings" size={16} /> Manage</button
+      {#if canManage}
+        <button
+          class="btn sm ghost icon"
+          aria-haspopup="dialog"
+          aria-label="Manage {series.shortName}"
+          title="Manage"
+          onclick={() => (manageOpen = true)}><Icon name="settings" size={18} /></button
         >
       {/if}
     {/snippet}
@@ -485,29 +533,7 @@
             <div class="list">
               {#each team.players as id (id)}
                 {#if arranging}
-                  <div
-                    class="row arrange"
-                    class:lifting={drag?.id === id && dragged}
-                    class:gone={hasLeft(id)}
-                    class:undealt={undealt.has(id)}
-                    data-player={id}
-                  >
-                    <button
-                      class="grip"
-                      aria-label="Move {goesBy(byId(id))}: drag to a team, or press Enter for the next team"
-                      onpointerdown={(e) => grab(e, id, team.name)}
-                      onpointermove={follow}
-                      onpointerup={drop}
-                      onpointercancel={() => ((drag = null), (over = null))}
-                      onclick={(e) => nudge(e, id, team.name)}
-                    >
-                      <Icon name="grip" size={20} />
-                    </button>
-                    <Person player={byId(id)} showRating={ratings} />
-                    {#if hasLeft(id)}<span class="badge">Out</span>
-                    {:else if id === who.id}<span class="badge green">You</span>{/if}
-                    {#if byId(id).cougar}<span class="badge red">Cougar</span>{/if}
-                  </div>
+                  {@render arrangeRow(id, team.name)}
                 {:else}
                   {@render player(id)}
                 {/if}
@@ -516,6 +542,23 @@
           </section>
         {/each}
       </div>
+
+      {#if unplaced.length}
+        <!-- In, but signed up after the teams were made (a walk-in, say): nobody's forgotten. A team maker drags them
+             onto a team, or slots them all in from the warning above -->
+        <section class="unplaced">
+          <h2 class="section-title">Not on a team</h2>
+          {#if arranging}
+            <p class="hint">Signed up after the teams were made. Drag them onto a team, or slot them all in.</p>
+            <div class="list">
+              {#each unplaced as id (id)}{@render arrangeRow(id, "")}{/each}
+            </div>
+          {:else}
+            <p class="hint">Signed up after the teams were made. They'll be put on a team.</p>
+            {@render players(unplaced)}
+          {/if}
+        </section>
+      {/if}
 
       {#if drag && dragged}
         <!-- The row being dragged, following the pointer -->
@@ -538,7 +581,16 @@
 
 {#snippet manageTools()}
   <div class="tools">
-    {#if can(perms, "record:Attendance")}
+    {#if can(perms, "manage:Training")}
+      <button class="tool" onclick={() => go(() => (settingsOpen = true))}>
+        <Icon name="settings" size={22} />
+        <span class="tool-text"
+          ><strong>Training settings</strong><span>Its days, times, place and fee, for every session.</span></span
+        >
+        <Icon name="chevronRight" size={18} />
+      </button>
+    {/if}
+    {#if session && can(perms, "record:Attendance")}
       <button class="tool" onclick={() => go(() => (registering = true))}>
         <Icon name="userPlus" size={22} />
         <span class="tool-text"
@@ -547,7 +599,7 @@
         <Icon name="chevronRight" size={18} />
       </button>
     {/if}
-    {#if teams && can(perms, "publish:Teams")}
+    {#if session && teams && can(perms, "publish:Teams")}
       <button class="tool" class:armed={confirming === "teams"} onclick={() => twice("teams", takeDown)}>
         <Icon name="x" size={22} />
         <span class="tool-text"
@@ -557,7 +609,7 @@
         >
       </button>
     {/if}
-    {#if can(perms, "update:Event")}
+    {#if session && can(perms, "update:Event")}
       <button class="tool" class:armed={confirming === "reset"} onclick={() => twice("reset", reset)}>
         <Icon name="undo" size={22} />
         <span class="tool-text"
@@ -570,16 +622,31 @@
   </div>
 {/snippet}
 
-{#if session && canManage}
+{#if canManage}
   {#if phone.current}
     <Sheet bind:open={manageOpen} title="Manage {series.shortName}">{@render manageTools()}</Sheet>
   {:else}
     <Drawer
       bind:open={manageOpen}
       title="Manage {series.shortName}"
-      sub={formatDayDate(sessionBookable(session).startsAt)}>{@render manageTools()}</Drawer
+      sub={session ? formatDayDate(sessionBookable(session).startsAt) : undefined}>{@render manageTools()}</Drawer
     >
   {/if}
+{/if}
+
+{#if settingsOpen}
+  <EditorPanel
+    eyebrow="Training · {describeRule(series)}"
+    title={series.name}
+    icon={series.icon}
+    tone={series.tone}
+    onclose={() => (settingsOpen = false)}
+  >
+    <TrainingEditor seriesId={series.id} />
+    {#snippet footer()}
+      <button class="btn primary" type="submit" form="training-form" disabled={saving.busy > 0}>Save</button>
+    {/snippet}
+  </EditorPanel>
 {/if}
 
 {#if deck}
@@ -757,6 +824,13 @@
     box-shadow: var(--shadow-pop);
     cursor: grabbing;
     pointer-events: none;
+  }
+  /* Not on a team: under the teams, its heading as theirs, the rows at a team's width */
+  .unplaced {
+    margin-top: var(--s-6);
+  }
+  .unplaced .list {
+    max-width: 40rem;
   }
   /* The teams side by side where there's room, each a column of rows */
   .teams-grid {

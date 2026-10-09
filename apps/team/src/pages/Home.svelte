@@ -330,7 +330,7 @@
             <a class="status" href="/tournaments/{type.slug}">
               <Icon name={type.icon} size={18} />
               <span class="grow"
-                >{w.tbc
+                >{!w.day
                   ? `${w.season}: the date's being set`
                   : signupOpen(t, londonToday())
                     ? "Sign-up's open"

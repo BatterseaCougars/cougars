@@ -41,7 +41,7 @@
   import { londonToday, pounds } from "./dates";
   import { navigate } from "../app/router.svelte";
   import { seriesToOpen } from "../pages/TournamentSeries.svelte";
-  import { SEASONS, seasonEnd, seasonOf, seasonYear, type Season } from "@cougars/shared/seasons";
+  import { seasonEnd, seasonLabel, seasonOf, seasonsFrom, seasonYear, type Season } from "@cougars/shared/seasons";
 
   let {
     dateId,
@@ -68,7 +68,6 @@
     name: string;
     /** Optional: empty while it's just a season (ADR 0030) */
     heldOn: string;
-    dateConfirmed: boolean;
     /** Always: the season it's in, which a day sets */
     season: Season;
     seasonYear: number;
@@ -99,7 +98,8 @@
   // A new date's season: next summer, unless this one is still to come
   const thisYear = Number(londonToday().slice(0, 4));
   const nextSummer = londonToday() <= seasonEnd("summer", thisYear) ? thisYear : thisYear + 1;
-  const YEARS = [0, 1, 2, 3].map((n) => thisYear + n);
+  // The seasons a date can be in: this one and the next few
+  const SEASONS_AHEAD = 4;
 
   function formOf(t: Tournament | undefined): DateForm {
     if (t)
@@ -109,7 +109,6 @@
         name: t.name,
         // A season's day is only its stand-in, never shown
         heldOn: t.season ? "" : t.heldOn,
-        dateConfirmed: t.season ? true : t.dateConfirmed,
         season: t.season ?? seasonOf(t.heldOn).season,
         seasonYear: t.season ? seasonYear(t.season, t.heldOn) : seasonOf(t.heldOn).year,
         startTime: t.startTime,
@@ -139,7 +138,6 @@
       typeId: null,
       name: "",
       heldOn: "",
-      dateConfirmed: true,
       season: "summer",
       seasonYear: nextSummer,
       startTime: "11:00",
@@ -210,8 +208,8 @@
   // Come from the quick questions: their answers, filled in
   // svelte-ignore state_referenced_locally
   if (!dateId && start) {
+    pickSeason(start.season, start.seasonYear);
     if (start.heldOn) pickDay(start.heldOn);
-    date.dateConfirmed = start.dateConfirmed;
     date.startTime = start.startTime;
     date.endTime = start.endTime;
     date.draftOn = start.draftOn;
@@ -229,7 +227,8 @@
   $effect(() => {
     if (dateId || !start) return;
     start.heldOn = date.heldOn;
-    start.dateConfirmed = date.dateConfirmed;
+    start.season = date.season;
+    start.seasonYear = date.seasonYear;
     start.startTime = date.startTime;
     start.endTime = date.endTime;
     start.draftOn = date.draftOn;
@@ -267,9 +266,17 @@
       if (s.season !== season || s.year !== year) date.heldOn = "";
     }
   }
-  const yearOptions = $derived(
-    [...new Set([date.seasonYear, ...YEARS])].sort().map((y) => ({ value: String(y), label: String(y) })),
+  // "Summer 2027": this season and the next few, and the one it's in if that's further out or gone
+  const seasonOptions = $derived(
+    [...seasonsFrom(londonToday(), SEASONS_AHEAD), { season: date.season, year: date.seasonYear }]
+      .map(({ season, year }) => ({ value: `${season} ${year}`, label: seasonLabel(season, seasonEnd(season, year)) }))
+      .filter((o, i, all) => all.findIndex((x) => x.value === o.value) === i)
+      .sort((a, b) => seasonEndOf(a.value).localeCompare(seasonEndOf(b.value))),
   );
+  function seasonEndOf(value: string) {
+    const [season, year] = value.split(" ");
+    return seasonEnd(season as Season, Number(year));
+  }
 
   const members = $derived(
     db.members.filter((m) => m.status === "active").sort((a, b) => goesBy(a.player).localeCompare(goesBy(b.player))),
@@ -327,7 +334,6 @@
     capacity: d.capacity || null,
     status: d.status,
     feePence: Math.round(Number(d.fee || 0) * 100),
-    dateConfirmed: !!d.heldOn && d.dateConfirmed,
     public: d.public,
     signupOpensOn: d.signupOpensOn || null,
     signupClosesOn: d.signupClosesOn || null,
@@ -421,35 +427,18 @@
                 Season
                 <Select
                   id="date-season"
-                  value={date.season}
-                  onchange={(v) => pickSeason(v, date.seasonYear)}
-                  options={SEASONS.map((s) => ({ value: s, label: s[0].toUpperCase() + s.slice(1) }))}
+                  value={`${date.season} ${date.seasonYear}`}
+                  onchange={(v) => {
+                    const [season, year] = v.split(" ");
+                    pickSeason(season as Season, Number(year));
+                  }}
+                  options={seasonOptions}
                   aria-label="Season"
                 />
               </div>
+              <!-- The day, once it's known; until then it's just the season -->
               <div class="field">
-                Year
-                <Select
-                  id="date-year"
-                  value={String(date.seasonYear)}
-                  onchange={(v) => pickSeason(date.season, Number(v))}
-                  options={yearOptions}
-                  aria-label="Year"
-                />
-              </div>
-              <!-- The day, once it's known; TBC at the end of its label, for a day that isn't fixed yet -->
-              <div class="field">
-                <div class="label-row">
-                  <label for="date-day">Date <span class="hint">· optional</span></label>
-                  <label class="check tbc"
-                    ><input
-                      type="checkbox"
-                      disabled={!date.heldOn}
-                      checked={!!date.heldOn && !date.dateConfirmed}
-                      onchange={(e) => (date.dateConfirmed = !e.currentTarget.checked)}
-                    /> TBC</label
-                  >
-                </div>
+                <label for="date-day">Date <span class="hint">· optional</span></label>
                 <DateField
                   id="date-day"
                   placeholder="Not set: just the season"
@@ -709,22 +698,6 @@
     .cols {
       grid-template-columns: minmax(0, 1fr);
     }
-  }
-  /* A field's label with TBC at the end of the column, the row no taller than a plain label */
-  .label-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--s-3);
-    height: 1.25rem;
-  }
-  .tbc {
-    gap: var(--s-2);
-    font-size: var(--text-sm);
-  }
-  .tbc input {
-    width: 1rem;
-    height: 1rem;
   }
   /* An award: its name, then what it's for (wider), and remove */
   .award {

@@ -495,7 +495,6 @@ export type TournamentListRow = {
   status: string;
   champions: string | null;
   feePence: number;
-  dateConfirmed: number;
   season: Season | null;
   public: number;
   signupOpensOn: string | null;
@@ -536,7 +535,6 @@ export function tournamentsFrom(
       t,
       teams.some((team) => team.tournamentId === t.id),
     ),
-    dateConfirmed: Boolean(t.dateConfirmed),
     public: Boolean(t.public),
     awards: parseAwards(t.awards),
     playoffs: parsePlayoffs(t.playoffs),
@@ -563,7 +561,7 @@ export function draftStateOf(t: { kind: string; draftOn: string | null; draftSta
 
 async function tournamentFields(db: D1Database, o: Record<string, unknown>) {
   const heldOn = date(o, "heldOn")!;
-  // Just a season so far (ADR 0030): its day is the season's last, and it isn't confirmed
+  // Just a season so far (ADR 0030): its day is the season's last; otherwise the day is the day
   const season = o.season == null || o.season === "" ? null : o.season;
   if (season !== null && !isSeason(season))
     throw new HttpError(400, "season should be spring, summer, autumn or winter.");
@@ -587,8 +585,6 @@ async function tournamentFields(db: D1Database, o: Record<string, unknown>) {
     int(o, "capacity", { min: 1, max: 500, nullable: true }),
     oneOf(o, "status", ["planned", "open", "live", "finished"] as const),
     int(o, "feePence", { max: 100_000 }),
-    // Unconfirmed: shown as "Date TBC"; the date only decides where it sorts. Confirmed unless said otherwise.
-    season || o.dateConfirmed === false ? 0 : 1,
     season,
     // Shown on the website unless said otherwise
     o.public === false ? 0 : 1,
@@ -812,9 +808,9 @@ export async function createTournament(db: D1Database, given: Record<string, unk
   const res = await run(
     db,
     `INSERT INTO tournaments (type_id, name, venue_id, location, map_url, held_on, start_time, end_time, capacity, status, fee_pence,
-       date_confirmed, season, public, signup_opens_on, signup_closes_on, draft_on, points_win, points_draw, points_loss,
+       season, public, signup_opens_on, signup_closes_on, draft_on, points_win, points_draw, points_loss,
        game_minutes, kind, awards, playoffs)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [typeId, ...fields],
   );
   const id = Number(res.meta.last_row_id);
@@ -841,7 +837,7 @@ export async function updateTournament(db: D1Database, id: number, o: Record<str
   const res = await run(
     db,
     `UPDATE tournaments SET type_id = ?, name = ?, venue_id = ?, location = ?, map_url = ?, held_on = ?, start_time = ?, end_time = ?, capacity = ?,
-       status = ?, fee_pence = ?, date_confirmed = ?, season = ?, public = ?, signup_opens_on = ?, signup_closes_on = ?, draft_on = ?,
+       status = ?, fee_pence = ?, season = ?, public = ?, signup_opens_on = ?, signup_closes_on = ?, draft_on = ?,
        points_win = ?, points_draw = ?, points_loss = ?, game_minutes = ?, kind = ?, awards = ?, playoffs = ?
      WHERE id = ?`,
     [typeId, ...fields, id],

@@ -33,3 +33,15 @@ export function seasonOf(day: string): { season: Season; year: number } {
   if (month === 12) return { season: "winter", year };
   return { season: SEASONS[Math.floor((month - 3) / 3)], year };
 }
+
+/** The season a day is in and the next ones, `count` in all: what a tournament's date can be picked from. */
+export function seasonsFrom(day: string, count: number): { season: Season; year: number }[] {
+  let { season, year } = seasonOf(day);
+  const out = [];
+  for (let i = 0; i < count; i++) {
+    out.push({ season, year });
+    if (season === "winter") year++;
+    season = SEASONS[(SEASONS.indexOf(season) + 1) % 4];
+  }
+  return out;
+}

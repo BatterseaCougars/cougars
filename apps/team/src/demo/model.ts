@@ -155,9 +155,7 @@ export interface Tournament extends Entries {
   status: TournamentStatus;
   champions?: string | null;
   feePence: number;
-  /** False: "Date TBC". The date still decides where it sorts. */
-  dateConfirmed: boolean;
-  /** Just a season so far, "Summer 2027" (ADR 0030): heldOn is then the season's last day, never shown. */
+  /** Just a season so far, "Summer 2027" (ADR 0030): heldOn is then the season's last day, never shown. Null: heldOn is the day. */
   season: Season | null;
   /** Listed on the website. */
   public: boolean;

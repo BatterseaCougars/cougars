@@ -1,31 +1,42 @@
 <script lang="ts" module>
   import { londonToday } from "./dates";
-  /** What the quick form asks: the day and hours, when sign-up opens, the draft's day, the captains in pick order. */
+  import { seasonEnd, type Season } from "@cougars/shared/seasons";
+  /**
+   * What the quick form asks: the season, the day if it's known, the hours, when sign-up opens, the draft's day, the
+   * captains in pick order.
+   */
   export interface QuickValues {
+    season: Season;
+    seasonYear: number;
+    /** Empty: just the season (ADR 0030) */
     heldOn: string;
-    dateConfirmed: boolean;
     startTime: string;
     endTime: string;
     signupOpensOn: string;
     draftOn: string;
     captains: number[];
   }
-  /** A new one's answers: its series' usual hours (ADR 0074), sign-up opening today. */
-  export const blankQuick = (series?: { defaultStartTime: string; defaultEndTime: string }): QuickValues => ({
-    heldOn: "",
-    dateConfirmed: true,
-    startTime: series?.defaultStartTime ?? "11:00",
-    endTime: series?.defaultEndTime ?? "16:00",
-    signupOpensOn: londonToday(),
-    draftOn: "",
-    captains: [],
-  });
+  /** A new one's answers: next summer, its series' usual hours (ADR 0074), sign-up opening today. */
+  export function blankQuick(series?: { defaultStartTime: string; defaultEndTime: string }): QuickValues {
+    const year = Number(londonToday().slice(0, 4));
+    return {
+      season: "summer",
+      seasonYear: londonToday() <= seasonEnd("summer", year) ? year : year + 1,
+      heldOn: "",
+      startTime: series?.defaultStartTime ?? "11:00",
+      endTime: series?.defaultEndTime ?? "16:00",
+      signupOpensOn: londonToday(),
+      draftOn: "",
+      captains: [],
+    };
+  }
 </script>
 
 <script lang="ts">
-  // The next date in a series, as a few questions (ADR 0074): when it is (its day, and its hours, the series' usual
-  // ones filled in, ADR 0074), when sign-up opens (ADR 0074), when the draft is, who the captains are. Only the day
-  // is needed; the draft's day shows as TBC and the captains as "to be named" until they're set. The rest (place,
+  // The next date in a series, as a few questions (ADR 0074): when it is (its season, its day once that's known, and
+  // its hours, the series' usual ones filled in, ADR 0074), when sign-up opens (ADR 0074), when the draft is, who the
+  // captains are. Only the season is needed; the draft's day shows as TBC and the captains as "to be named" until
+  // they're set. The rest (place,
   // fee, rules, awards) comes from the series; Advanced opens the full editor with these filled in.
   import TimeSelect from "./TimeSelect.svelte";
   import DateField from "../lib/DateField.svelte";
@@ -38,6 +49,8 @@
   import PersonPicker from "./PersonPicker.svelte";
   import { goesBy } from "./names";
   import { pounds } from "./dates";
+  import Select from "./Select.svelte";
+  import { seasonLabel, seasonOf, seasonsFrom } from "@cougars/shared/seasons";
 
   let {
     type,
@@ -56,6 +69,30 @@
   const nameOf = (id: number) => members.find((m) => m.id === id)?.name ?? "";
   const taken = $derived(new Set(values.captains));
 
+  // "Summer 2027": this season and the next few (as the full editor offers)
+  const seasonOptions = $derived(
+    seasonsFrom(londonToday(), 4).map(({ season, year }) => ({
+      value: `${season} ${year}`,
+      label: seasonLabel(season, seasonEnd(season, year)),
+    })),
+  );
+  // The day it sorts by: its own, else its season's last
+  const day = $derived(values.heldOn || seasonEnd(values.season, values.seasonYear));
+  // A day sets its season; a season the day isn't in clears the day
+  function pickDay(d: string) {
+    values.heldOn = d;
+    if (d) ({ season: values.season, year: values.seasonYear } = seasonOf(d));
+  }
+  function pickSeason(v: string) {
+    const [season, year] = v.split(" ");
+    values.season = season as Season;
+    values.seasonYear = Number(year);
+    if (values.heldOn) {
+      const s = seasonOf(values.heldOn);
+      if (s.season !== values.season || s.year !== values.seasonYear) values.heldOn = "";
+    }
+  }
+
   async function create(e: SubmitEvent) {
     e.preventDefault();
     const t: Tournament = {
@@ -66,14 +103,13 @@
       venueId: null,
       location: "",
       mapUrl: "",
-      heldOn: values.heldOn,
-      season: null,
+      heldOn: day,
+      season: values.heldOn ? null : values.season,
       startTime: values.startTime,
       endTime: values.endTime,
       capacity: 24,
       status: "planned",
       feePence: type.defaultFeePence,
-      dateConfirmed: values.dateConfirmed,
       public: true,
       signupOpensOn: values.signupOpensOn || null,
       signupClosesOn: null,
@@ -107,22 +143,25 @@
     <h3 class="q-title"><span class="n num">1</span>When is it?</h3>
     <div class="fields">
       <div class="field">
-        Day <DateField
+        Season <Select
+          id="quick-season"
+          value={`${values.season} ${values.seasonYear}`}
+          onchange={pickSeason}
+          options={seasonOptions}
+          aria-label="Season"
+        />
+      </div>
+      <div class="field">
+        <span>Day <span class="opt">· optional</span></span>
+        <DateField
           id="quick-day"
           aria-label="Day"
-          required
+          placeholder="Not set: just the season"
           min={londonToday()}
-          bind:value={values.heldOn}
+          bind:value={() => values.heldOn, (v) => pickDay(v)}
           aria-describedby="quick-day-hint"
         />
       </div>
-      <label class="check tbc"
-        ><input
-          type="checkbox"
-          checked={!values.dateConfirmed}
-          onchange={(e) => (values.dateConfirmed = !e.currentTarget.checked)}
-        /> Not fixed yet (TBC)</label
-      >
     </div>
     <div class="fields">
       <div class="field time">
@@ -145,7 +184,7 @@
           id="quick-signup"
           aria-label="Sign-up opens"
           required
-          max={values.heldOn || undefined}
+          max={day}
           bind:value={values.signupOpensOn}
         />
       </div>
@@ -163,7 +202,7 @@
             aria-label="Draft day"
             placeholder="TBC"
             min={londonToday()}
-            max={values.heldOn || undefined}
+            max={day}
             bind:value={values.draftOn}
           />
         </div>
@@ -256,15 +295,6 @@
   }
   .fields .field.time {
     flex-basis: 8rem;
-  }
-  .tbc {
-    gap: var(--s-2);
-    min-height: var(--control-h);
-    font-size: var(--text-sm);
-  }
-  .tbc input {
-    width: 1rem;
-    height: 1rem;
   }
   .hint {
     margin: 0;

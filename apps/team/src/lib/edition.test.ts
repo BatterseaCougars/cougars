@@ -19,7 +19,6 @@ const cup = (o: Partial<Tournament> = {}) =>
     heldOn: "2027-06-12",
     startTime: "11:00",
     endTime: "16:00",
-    dateConfirmed: false,
     season: null,
     pointsWin: 3,
     pointsDraw: 1,
@@ -46,12 +45,13 @@ describe("editionState: by the games, not the settings", () => {
 });
 
 describe("editionWhen", () => {
-  it("the day once it's set, or once it's been played; the season always", () => {
-    expect(editionWhen(cup())).toMatchObject({ day: null, tbc: true, season: "Summer 2027" });
-    expect(editionWhen(cup({ games: [game(1, "done")] as never }))).toMatchObject({
-      tbc: false,
+  it("the day once there is one; just the season until then; the season always", () => {
+    expect(editionWhen(cup({ heldOn: "2027-08-31", season: "summer" }))).toMatchObject({
+      day: null,
+      hours: null,
       season: "Summer 2027",
     });
-    expect(editionWhen(cup({ games: [game(1, "done")] as never })).day).toBeTruthy();
+    expect(editionWhen(cup())).toMatchObject({ hours: "11:00–16:00", season: "Summer 2027" });
+    expect(editionWhen(cup()).day).toBeTruthy();
   });
 });

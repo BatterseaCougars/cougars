@@ -35,27 +35,25 @@ export const EDITION_LABEL: Record<EditionState, string> = {
   planned: "Coming up",
 };
 
-/** When: the day (once it's set, or it's been played), the season always, and the hours. */
+/** When: the day and hours once there's a day (null while it's just a season), and the season always. */
 export function editionWhen(t: Tournament) {
-  const played = editionState(t) === "done" || editionState(t) === "live";
   const season = seasonLabel(t.season ?? seasonOf(t.heldOn).season, t.heldOn);
-  const dated = !t.season && (t.dateConfirmed || played);
+  const dated = !t.season;
   return {
     day: dated ? formatDayDate(londonISO(t.heldOn, t.startTime)) : null,
     season,
     hours: dated ? `${t.startTime}–${t.endTime}` : null,
-    tbc: !dated && !t.season,
   };
 }
 
 /**
  * Which edition of a series to open on, by what's happened rather than the dates: the one under way, else the next one
- * that isn't done (a tentative date or just a season is enough; one whose fixed day passed unplayed isn't), else the
+ * that isn't done (just a season is enough; one whose fixed day passed unplayed isn't), else the
  * last one played.
  */
 export function latestOf(editions: Tournament[], today: string): Tournament | undefined {
   const mine = [...editions].sort((a, b) => a.heldOn.localeCompare(b.heldOn));
-  const ahead = (t: Tournament) => editionState(t) !== "done" && (!t.dateConfirmed || !!t.season || t.heldOn >= today);
+  const ahead = (t: Tournament) => editionState(t) !== "done" && (!!t.season || t.heldOn >= today);
   return (
     mine.find((t) => editionState(t) === "live") ??
     mine.find(ahead) ??

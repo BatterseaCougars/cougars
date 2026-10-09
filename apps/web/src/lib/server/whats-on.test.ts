@@ -39,8 +39,8 @@ describe("what's on", () => {
       ["Kit day", "2026-10-12T09:00:00Z", true],
       ["Friday Training", "2026-10-16T18:30:00.000Z", false],
       ["Friday Training", "2026-10-23T18:30:00.000Z", true],
-      // The Kumite goes by its own name, its date not yet fixed
-      ["The Cougars Kumite", "2027-06-12T10:00:00.000Z", false],
+      // The Kumite goes by its own name, just a season so far: sorted at its end
+      ["The Cougars Kumite", "2027-08-31T10:00:00.000Z", false],
     ]);
     expect(items.find((i) => i.title === "The Cougars Kumite")).toMatchObject({ kind: "tournament", dateTbc: true });
     expect(items[1]).toMatchObject({ venue: "The pub", description: "Drinks." });

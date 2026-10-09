@@ -12,15 +12,12 @@ export const seriesById = (id: number) => db.series.find((s) => s.id === id);
 export const typeById = (id: number | null) => db.tournamentTypes.find((t) => t.id === id);
 
 /**
- * When a tournament is, for a line of text: "Sat 12 June · 11:00–16:00", "Summer 2027" while it's just a season, or
- * "Date TBC" until it's confirmed.
+ * When a tournament is, for a line of text: "Sat 12 June · 11:00–16:00", or "Summer 2027" while it's just a season.
  */
 export const whenOf = (t: Tournament) =>
   t.season
     ? seasonLabel(t.season, t.heldOn)
-    : t.dateConfirmed
-      ? `${formatDayDate(londonISO(t.heldOn, t.startTime))} · ${t.startTime}–${t.endTime}`
-      : "Date TBC";
+    : `${formatDayDate(londonISO(t.heldOn, t.startTime))} · ${t.startTime}–${t.endTime}`;
 
 // Where each thing really is (ADR 0030): its saved venue, else its own name and map link, else its series' place
 export const seriesPlace = (s: TrainingSeries) =>
@@ -87,7 +84,7 @@ export function tournamentBookable(t: Tournament): Bookable {
     ...where(tournamentPlace(t)),
     signup: signupOpen(t, londonToday()),
     capacity: t.capacity,
-    dateTbc: !t.dateConfirmed,
+    dateTbc: !!t.season,
     season: t.season ? { name: t.season, year: seasonYear(t.season, t.heldOn) } : undefined,
     href: type ? `/tournaments/${type.slug}` : undefined,
     entries: t,

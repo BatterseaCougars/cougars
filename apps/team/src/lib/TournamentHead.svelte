@@ -39,7 +39,7 @@
   const place = $derived(tournament ? tournamentPlace(tournament)?.name : undefined);
   // How long till the day, beside it: today, tomorrow, in N days. Only for a fixed day that's still to come
   const countdown = $derived.by(() => {
-    if (!tournament || !when?.day || when.tbc || stage === "done") return "";
+    if (!tournament || !when?.day || stage === "done") return "";
     const days = Math.round((Date.parse(tournament.heldOn) - Date.parse(londonToday())) / 86_400_000);
     return days < 0 ? "" : days === 0 ? "Today" : days === 1 ? "Tomorrow" : `In ${days} days`;
   });
@@ -107,13 +107,12 @@
           <span class="where">&nbsp;</span>
         {:else if tournament && when}
           <span class="day-line"
-            ><span class="day display">{when.day ?? (when.tbc ? "Date to be confirmed" : when.season)}</span
-            >{#if countdown}<span class="countdown display" class:today={countdown === "Today"}>{countdown}</span
+            ><span class="day display">{when.day ?? when.season}</span>{#if countdown}<span
+                class="countdown display"
+                class:today={countdown === "Today"}>{countdown}</span
               >{/if}</span
           >
-          <span class="where"
-            >{[when.day || when.tbc ? when.season : "", when.hours, place].filter(Boolean).join(" · ")}</span
-          >
+          <span class="where">{[when.day ? when.season : "", when.hours, place].filter(Boolean).join(" · ")}</span>
         {:else}
           <span class="day-line"><span class="aside">No {type.shortName} scheduled yet.</span></span>
           <span class="where">&nbsp;</span>
@@ -131,8 +130,12 @@
             >
           {/if}
           {#if tools.length}
-            <button class="btn sm ghost" aria-haspopup="dialog" onclick={() => (menuOpen = true)}
-              ><Icon name="settings" size={16} /> Manage</button
+            <button
+              class="btn sm ghost icon"
+              aria-haspopup="dialog"
+              aria-label="Manage the {type.shortName}"
+              title="Manage"
+              onclick={() => (menuOpen = true)}><Icon name="settings" size={18} /></button
             >
           {/if}
         </div>

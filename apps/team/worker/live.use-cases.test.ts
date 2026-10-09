@@ -88,7 +88,6 @@ async function draftNight() {
     name: "Winter Cup 2026",
     location: "",
     heldOn: "2026-12-12",
-    dateConfirmed: true,
     startTime: "11:00",
     endTime: "16:00",
     capacity: 24,

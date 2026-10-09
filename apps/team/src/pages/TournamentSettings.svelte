@@ -21,7 +21,7 @@
   );
   const when = (t: Tournament) => {
     const w = editionWhen(t);
-    return { day: w.day ?? (w.tbc ? "Date TBC" : w.season), season: w.day || w.tbc ? w.season : "" };
+    return { day: w.day ?? w.season, season: w.day ? w.season : "" };
   };
   // A draft: members say they're in, then captains pick; otherwise teams enter
   const signUp = (t: Tournament) =>

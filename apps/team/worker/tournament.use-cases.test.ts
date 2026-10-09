@@ -70,7 +70,6 @@ async function admin() {
         name: "Winter Cup 2026",
         location: "",
         heldOn: "2026-12-12",
-        dateConfirmed: true,
         startTime: "11:00",
         endTime: "16:00",
         capacity: 24,
@@ -130,25 +129,25 @@ describe("a tournament, from setting it up to the draft", () => {
     ]);
   });
 
-  it("an admin schedules the next one with just its day: the draft's date and the captains can come later", async () => {
+  it("an admin schedules the next one with just its season: the day, the draft's date and the captains can come later", async () => {
     const dana = await admin();
     const typeId = await dana.makeSeries();
     const res = await dana.call("POST", "/api/tournaments", {
       typeId,
       name: "Summer Cup",
-      heldOn: "2027-07-10",
-      dateConfirmed: false,
+      heldOn: "2027-08-31",
+      season: "summer",
       teams: [],
     });
     expect(res.status).toBe(201);
     const t = (await dana.sees()).tournaments.find((x: Json) => x.id === res.body.id);
-    // Its day, to be confirmed, at the series' usual time; no draft date or captains yet; the series' fee, rules and
-    // awards; sign-up not open
+    // Just its season, at the series' usual time; no draft date or captains yet; the series' fee, rules and awards;
+    // sign-up not open
     expect(t).toMatchObject({
       startTime: "19:30",
       endTime: "21:30",
-      heldOn: "2027-07-10",
-      dateConfirmed: false,
+      heldOn: "2027-08-31",
+      season: "summer",
       draftOn: null,
       kind: "draft",
       feePence: 1000,

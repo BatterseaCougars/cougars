@@ -182,7 +182,6 @@ CREATE TABLE tournaments (
   champions TEXT,
   fee_pence INTEGER NOT NULL DEFAULT 0,
   public INTEGER NOT NULL DEFAULT 1,
-  date_confirmed INTEGER NOT NULL DEFAULT 1,
   -- Sign-up opens by itself on this day (ADR 0074), unless an admin opened it by hand (status 'open')
   signup_opens_on TEXT,
   signup_closes_on TEXT,
