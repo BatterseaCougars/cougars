@@ -24,7 +24,6 @@ History line, never a quiet edit; a new topic (a service, a rule, a pattern, a t
 - **Not live yet: no migrations.** The database is `db/schema.sql` plus `db/seed/club.sql`; change them and run
   `npm run db:rebuild:local` (dev rebuilds on deploy), which keeps the data. Production starts fresh (schema, club
   seed, its admins from `TEAM_ROSTER__PRODUCTION`) and admins import the members; migrations start at launch ([ADR 0050](docs/adr/0050-schema-and-seed-until-launch.md), db/README.md).
-- `archive/` is read-only reference. Don't import from it.
 
 ## Web app (apps/web)
 

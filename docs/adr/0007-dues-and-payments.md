@@ -17,7 +17,7 @@ than a volunteer-run club needs.
 
 Two kinds of member are easy to confuse because both carry the club's name: **Cougars Quarterly Members** pay the
 quarterly rate; **the Cougars** are the club's official team, who play together on one team called "Cougars" when
-training teams are made (as the old app did, `archive/team-manager`).
+training teams are made (as the old app did).
 
 Built in #46: fees, charges, payments, a member's Dues, Unpaid fees and the charges on the member sheet all read and
 write D1 (`apps/team/worker/dues.ts`, with the sums in `apps/team/src/lib/dues.ts`). Not built yet: the bank-statement

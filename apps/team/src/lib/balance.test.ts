@@ -18,7 +18,7 @@ function roster(n: number, tweak: (p: Player, i: number) => Player = (p) => p): 
   );
 }
 
-/** The old app's full-session fixture (archive/team-manager/tests/solver.test.ts): 18 players, 6 defenders. */
+/** The old app's full-session fixture (its tests/solver.test.ts, in git history): 18 players, 6 defenders. */
 const FULL_SESSION: Player[] = (
   [
     ["F", 80, false],

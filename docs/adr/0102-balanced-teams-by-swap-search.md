@@ -6,7 +6,7 @@
 ## Context
 
 The old team manager balanced Friday teams with a two-phase integer linear programme (PuLP and the CBC solver,
-`archive/team-manager/lib/solver_lp.py`, documented in `lib/SOLVER.md` beside it) on a paid server. Its rules: 3 to 7
+`archive/team-manager/lib/solver_lp.py` and `lib/SOLVER.md`, in git history before 2026-10-09) on a paid server. Its rules: 3 to 7
 a side, the fewest teams that allows; the Cougar players together on one team called Cougars; a defender and a
 forward on every team where there are enough; then sizes within one, defenders spread evenly, and ratings balanced
 by rank, in that order, as weights of 1000, 500 and 1. It had an 8 and 12 second time limit per phase and fell
@@ -48,7 +48,7 @@ difference between the best possible split and a very good one is smaller than t
 - The search is not guaranteed optimal for every roster. On 360 random rosters the restarts left 4 a little short of
   the best of 30 runs, each by under a point of average rating, which the ratings can't tell apart anyway. The
   brute-force test is the check that it isn't missing by much.
-- The glpk.js port note (`.github/kb/js-solver-port.md`) is deleted; the LP model is still in the archive.
+- The glpk.js port note and the archived app are deleted; the LP model is in git history.
 
 ## History
 

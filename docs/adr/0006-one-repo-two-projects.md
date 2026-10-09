@@ -33,7 +33,7 @@ the Sanity helpers and the Europe/London date code. Gwenda's ark repo solves the
 - **The roadmap is GitHub milestones**, not a doc: each milestone is prefixed with its project (`Website:` or
   `Team app:`; `Housekeeping` is for both), and every piece of work is an issue in one. A checklist in a doc went stale as soon as work moved
   faster than it was ticked.
-- The old app stays in `archive/team-manager/` as read-only reference. Nothing imports from `archive/`.
+- The old app is not in the tree; it's in git history (`archive/team-manager/`, before 2026-10-09).
 - **The team generator runs in the browser** ([ADR 0102](0102-balanced-teams-by-swap-search.md)), so there is no
   server to pay for ([ADR 0003](0003-free-tiers-only.md)).
 
@@ -54,6 +54,7 @@ the Sanity helpers and the Europe/London date code. Gwenda's ark repo solves the
 - 2026-10-09: The website stays in `apps/` and the team app joins it (`apps/team`); `shared/` becomes the workspace
   package `packages/shared` (`@cougars/shared`). The move to `website/` is dropped (#36).
 - 2026-10-09: The repo moved from `das974/cougars` to the club's organisation, `BatterseaCougars/cougars`.
+- 2026-10-09: `archive/team-manager/` was deleted; everything we kept from it is built, and history has the rest.
 - 2026-10-09: The glpk.js port was dropped for a swap search ([0102](0102-balanced-teams-by-swap-search.md)).
 - 2026-10-09: The organisation became `battersea-cougars` and the repo `ark`, the name of every monorepo built this
   way (like gwenda-hackney/ark): `battersea-cougars/ark`.

@@ -1,6 +1,6 @@
 // Balanced teams for a training session (ADR 0102). A greedy deal to start, then every single move and every swap
 // of two players is tried until none makes the teams more balanced. The old app's rules, from
-// archive/team-manager/lib/solver_lp.py: 3 to 7 a side, the Cougar players together on one team called "Cougars", a
+// the old app's solver_lp.py (in git history): 3 to 7 a side, the Cougar players together on one team called "Cougars", a
 // keeper and a defender on every team where there are enough, and ratings balanced.
 import type { Player, Position } from "../demo/data";
 

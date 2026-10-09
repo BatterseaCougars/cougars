@@ -198,7 +198,7 @@ export function applySlices(b: Slices) {
   if (b.subscriptionFees) fill(SUBSCRIPTION_FEES, b.subscriptionFees);
 }
 
-/** The old app's names: the Cougar players' team is "Cougars", the rest are colours (archive/team-manager). */
+/** The old app's names: the Cougar players' team is "Cougars", the rest are colours. */
 export const TEAM_NAMES = ["Cougars", "White", "Black", "Red", "Gold"];
 /** Display order, also from the old app: Cougars, then Black, then White. */
 export const TEAM_ORDER: Record<string, number> = { Cougars: 0, Black: 1, White: 2, Red: 3, Gold: 4 };

@@ -4,15 +4,14 @@ Website and team app for the Battersea Cougars inline hockey club: two projects 
 ([ADR 0006](docs/adr/0006-one-repo-two-projects.md)). The website is live; the team app is next. What's planned is in
 [GitHub milestones](https://github.com/battersea-cougars/ark/milestones).
 
-| Part                   | What                                                                      | Where                 |
-| ---------------------- | ------------------------------------------------------------------------- | --------------------- |
-| `apps/web`             | Public website: Astro, deployed as a Cloudflare Worker with static assets | http://localhost:4500 |
-| `apps/studio`          | Sanity Studio, where the club edits content                               | http://localhost:4520 |
-| `db/`                  | D1 (SQLite) migrations                                                    |                       |
-| `shared/`              | Code used by more than one app (D1 helpers, test fixtures)                |                       |
-| `scripts/`             | Secrets loading (Bitwarden) and CI helpers                                |                       |
-| `apps/team`            | Team app: mobile-first Svelte PWA (clickable demo shell for now)          | http://localhost:4510 |
-| `archive/team-manager` | The old Next.js + Airtable team picker, kept as **reference only**        |                       |
+| Part          | What                                                                      | Where                 |
+| ------------- | ------------------------------------------------------------------------- | --------------------- |
+| `apps/web`    | Public website: Astro, deployed as a Cloudflare Worker with static assets | http://localhost:4500 |
+| `apps/studio` | Sanity Studio, where the club edits content                               | http://localhost:4520 |
+| `db/`         | D1 (SQLite) migrations                                                    |                       |
+| `shared/`     | Code used by more than one app (D1 helpers, test fixtures)                |                       |
+| `scripts/`    | Secrets loading (Bitwarden) and CI helpers                                |                       |
+| `apps/team`   | Team app: mobile-first Svelte PWA (clickable demo shell for now)          | http://localhost:4510 |
 
 Running cost is £0: every service is on a free tier (see [ADR 0003](docs/adr/0003-free-tiers-only.md)).
 
