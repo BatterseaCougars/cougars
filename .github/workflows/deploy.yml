@@ -29,6 +29,7 @@ concurrency:
 permissions:
   contents: read
   pull-requests: write
+  deployments: write # scripts/ci/link-deployment.sh: the team app and Studio get their own links
 
 jobs:
   # A Studio publish or the daily schedule: deploy what's live by running this workflow on `release`.
@@ -187,6 +188,12 @@ jobs:
           echo "$url/ carries X-Frame-Options: $framed"
           [ "$framed" = 1 ]
 
+      - name: Link the team app
+        if: steps.team.outputs.url
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: scripts/ci/link-deployment.sh "team app (dev)" "${{ steps.team.outputs.url }}"
+
       - name: Upload preview
         id: preview
         if: github.event_name == 'pull_request'
@@ -199,39 +206,32 @@ jobs:
       - name: Smoke test
         run: node scripts/ci/smoke-test.mjs "${{ steps.preview.outputs.url || steps.deploy.outputs.url }}" "$PUBLIC_BUILD_VERSION"
 
+      # The job's environment already links the website on the Deployments page; the run's summary lists it too
+      - name: Website link
+        run: |
+          echo "- **website ($SITE_ENV)**: ${{ steps.preview.outputs.url || steps.deploy.outputs.url }}" >> "$GITHUB_STEP_SUMMARY"
+
       - name: Comment preview URL
         if: steps.preview.outputs.url
         uses: marocchino/sticky-pull-request-comment@v2
         with:
           message: "Preview: ${{ steps.preview.outputs.url }} (`${{ env.PUBLIC_BUILD_VERSION }}`)"
 
-  # The Studio (https://battersea-cougars.sanity.studio) ships with production: on push to `release` only
-  # (docs/adr/0010-environments-and-deploys.md). Cougars Dev's Studio runs locally (port 4520), not hosted.
-  studio:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/release'
-    runs-on: ubuntu-latest
-    environment: production
-    env:
-      BWS_SERVER_URL: ${{ vars.BWS_SERVER_URL }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/setup
-
-      - name: Install Bitwarden Secrets Manager CLI
-        run: |
-          curl -fsSL -o /tmp/bws.zip "https://github.com/bitwarden/sdk-sm/releases/download/bws-v2.1.0/bws-x86_64-unknown-linux-gnu-2.1.0.zip"
-          sudo unzip -o /tmp/bws.zip -d /usr/local/bin
-
-      - name: Load secrets from Bitwarden
-        run: node scripts/env-pull.mjs --github-env --environment production
-        env:
-          BWS_ACCESS_TOKEN: ${{ secrets.BWS_ACCESS_TOKEN__PRODUCTION }}
-
+      # The Studio (https://battersea-cougars.sanity.studio) ships with production: on push to `release` only
+      # (docs/adr/0010-environments-and-deploys.md). Cougars Dev's Studio runs locally (port 4520), not hosted.
+      # In this job, not its own: a second `production` job would list a deploy without the website's link.
       # SANITY_DEPLOY_TOKEN, not SANITY_STUDIO_*: the Studio build bundles SANITY_STUDIO_* variables into the
       # public JavaScript.
       - name: Deploy Studio
+        if: github.event_name == 'push' && env.SITE_ENV == 'production'
         run: npm run deploy -w @cougars/studio -- --yes
         env:
           # The live project (packages/shared/sanity.ts, ADR 0010)
           SANITY_STUDIO_SITE_ENV: production
           SANITY_AUTH_TOKEN: ${{ env.SANITY_DEPLOY_TOKEN }}
+
+      - name: Link the Studio
+        if: github.event_name == 'push' && env.SITE_ENV == 'production'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: scripts/ci/link-deployment.sh studio https://battersea-cougars.sanity.studio production

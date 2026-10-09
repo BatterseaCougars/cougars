@@ -38,6 +38,10 @@ be checked before it goes live. Ark deploys `main` to dev and production from a 
 | Push to `release`        | production  | `cougars` and the hosted Studio                                                 |
 | Daily, 04:30 UTC         | production  | `cougars`, rebuilt from `release` ([ADR 0004](0004-astro-workers-sanity-d1.md)) |
 
+- **Every app is linked from GitHub's Deployments page.** The deploy job's environment (`preview`, `production`)
+  links the website; `scripts/ci/link-deployment.sh` gives the team app (`team app (dev)`) and the Studio (`studio`)
+  environments of their own, and each run's summary lists every link. The Studio deploys in the production job, not a
+  job of its own, so no `production` deploy is listed without the website's link.
 - **Never deploy production by hand.** Going live is on purpose: fast-forward `release` to `main`
   (`git push origin main:release`). GitHub enforces it: the `production` environment accepts deployments from
   `release` only, and the `preview` environment holds only the dev Bitwarden token ([ADR 0002](0002-secrets-in-bitwarden.md)).
@@ -93,3 +97,5 @@ be checked before it goes live. Ark deploys `main` to dev and production from a 
 - 2026-10-05: The Studio publish webhook dropped for a daily production rebuild (ADR 0004).
 - 2026-10-08: The team app deploys to dev from `main` as `cougars-team-dev`; no production until launch (0075).
 - 2026-10-09: Team-app screens still on demo data (dues, fees, Upload) are hidden in production (#63).
+- 2026-10-09: Every app gets a link on the Deployments page: the team app and the Studio as their own environments;
+  the Studio deploy moves into the production job.
