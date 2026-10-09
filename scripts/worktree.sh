@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Parallel work streams, each in its own git worktree with its own ports, so they
-# can be previewed side by side (docs/roadmap.md).
+# can be previewed side by side.
 #
 #   bash scripts/worktree.sh add <stream>      # create .worktrees/<stream> on branch <stream>
 #   bash scripts/worktree.sh dev <stream>      # run its website (with dev secrets if unlocked)

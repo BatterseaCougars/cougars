@@ -30,7 +30,7 @@ cut-off times, and neither showed a tournament's draft night or sign-up deadline
   Worker.
 - **`/events`** is rendered live (`prerender = false`) with the same component: the next 4 training sessions (they're
   every week) and every public tournament and one-off event. Past events with their own pages (`/events/<slug>`)
-  still come from Sanity, listed below, as does the Kumite page's poster, until they move over (roadmap T2).
+  still come from Sanity, listed below, as does the Kumite page's poster, until they move over.
 - Only public rows reach the website: a training series' and a tournament's `public`, and an event's _Show on the
   website_, on by default. Cancelled ones stay listed, marked, so nobody turns up to nothing.
 - Reads are cached like every live read: fresh a minute, the last good copy kept an hour
@@ -52,7 +52,7 @@ cut-off times, and neither showed a tournament's draft night or sign-up deadline
 - Future training sessions exist only once the team app has made them, 12 weeks ahead, when it loads. There is no
   Cron Trigger for it, so the website shows Fridays as long as someone opens the app every few months.
 - Two calendars until the rest moves over: past event pages and the Kumite poster still come from Sanity `event`
-  documents (roadmap T2: import them once, then retire the type).
+  documents (to import once, then retire the type).
 
 ## History
 

@@ -1,6 +1,6 @@
 // The app's working copy of the club's data, filled from D1 (demo/data.ts hydrate) and replaced by
 // app/backend.svelte.ts after each change. Fees, charges and payments still live here only: they come with dues
-// (T4, docs/roadmap/team-app.md).
+// (the Dues and payments milestone).
 import { londonToday } from "../lib/dates";
 import type { Charge } from "../lib/dues";
 import type { Team } from "../lib/snake";

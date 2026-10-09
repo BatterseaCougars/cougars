@@ -2,7 +2,7 @@
 
 `team-manager/` is the original Friday-session team picker (Next.js + Airtable + Python LP solver on Fly.io).
 It is **not maintained or deployed**. It's kept as a reference while the features are rebuilt on the new stack
-(see [docs/roadmap/team-app.md](../docs/roadmap/team-app.md)):
+(see the team app in `team/app`):
 
 - Data model: `team-manager/lib/airtable.ts` (players, sessions, attendance, teams)
 - Team-balancing solver: `team-manager/lib/solver_lp.py`, and its browser-side JavaScript port in

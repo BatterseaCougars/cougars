@@ -1,4 +1,4 @@
-// Stand-in for the team generator until the glpk.js solver port lands (T3). It keeps the old solver's rules
+// Stand-in for the team generator until the glpk.js solver port lands (#37). It keeps the old solver's rules
 // (archive/team-manager/lib/solver_lp.py): 3 to 7 a side, the Cougar players together on one team called
 // "Cougars", a defender on every team where there are enough, and ratings balanced. Greedy, not optimal.
 import type { Player } from "../demo/data";

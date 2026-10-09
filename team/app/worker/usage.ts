@@ -36,7 +36,7 @@ export interface Usage {
   cpu?: { limitMs: number; workers: WorkerCpu[] };
 }
 
-/** The Workers free plan's daily limits (docs/roadmap.md); the live hub's (ADR 0072) are Durable Objects' */
+/** The Workers free plan's daily limits (ADR 0003); the live hub's (ADR 0072) are Durable Objects' */
 const FREE = { requests: 100_000, rowsRead: 5_000_000, rowsWritten: 100_000, liveRequests: 100_000, liveTime: 13_000 };
 const LABELS: Record<Metric["id"], string> = {
   requests: "Worker requests",

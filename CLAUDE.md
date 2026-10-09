@@ -10,7 +10,7 @@ History line, never a quiet edit; a new topic (a service, a rule, a pattern, a t
 ## Hard rules
 
 - **Free tiers only.** Don't add a paid service or binding (Cloudflare Images, Durable Objects that store rows,
-  paid Sanity features, card-payment providers) without asking. Check limits in docs/roadmap.md. A Durable Object
+  paid Sanity features, card-payment providers) without asking. Check limits in [ADR 0003](docs/adr/0003-free-tiers-only.md). A Durable Object
   that stores nothing (the live hub, ADR 0072) is fine.
 - **Secrets live only in Bitwarden Secrets Manager** ([ADR 0002](docs/adr/0002-secrets-in-bitwarden.md)).
   Never print secret values, never write them to files (`.env`, `.dev.vars`), never commit them. `.env` is for
@@ -28,9 +28,9 @@ History line, never a quiet edit; a new topic (a service, a rule, a pattern, a t
 
 ## Web app (apps/web)
 
-These rules are for the website only. The team app (`team/app`, from team-app T0) is a Svelte 5 SPA on its own
+These rules are for the website only. The team app (`team/app`) is a Svelte 5 SPA on its own
 Worker ([ADR 0022](docs/adr/0022-team-app-svelte-pwa.md)); its permissions follow
-[ADR 0024](docs/adr/0024-action-based-authorization.md). Roadmaps: [docs/roadmap.md](docs/roadmap.md).
+[ADR 0024](docs/adr/0024-action-based-authorization.md). The roadmap is [GitHub milestones](https://github.com/das974/cougars/milestones): new work is an issue in one ([ADR 0006](docs/adr/0006-one-repo-two-projects.md)).
 
 - Astro 7 + `@astrojs/cloudflare` 14 (Workers with static assets, not Pages).
 - Pages are prerendered (`output: "static"`). Server routes opt out with `export const prerender = false`.

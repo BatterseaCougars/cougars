@@ -71,7 +71,7 @@ export interface MemberRow {
 }
 export const MEMBERS: MemberRow[] = [];
 
-/** The quarterly subscription, from a date. Set up with dues (T4). */
+/** The quarterly subscription, from a date. Set up with dues (#46). */
 export const FEES: { kind: string; amountPence: number; from: string; superseded?: boolean }[] = [];
 
 /** What /api/bootstrap sends (team/app/worker/api.ts). */

@@ -1,5 +1,5 @@
 // A sample Kumite: four teams, a round robin, some games played. Points and tiebreaks are placeholders until
-// the club confirms them (team-app roadmap T5, open questions).
+// the club confirms them (an open question).
 import { roundRobin } from "../lib/fixtures";
 import { PLAYERS } from "./data";
 

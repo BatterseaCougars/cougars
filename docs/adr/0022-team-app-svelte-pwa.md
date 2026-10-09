@@ -28,7 +28,7 @@ folder **before** it tries the port, so it broke the running server's page even 
   full-page More, a collapsible rail on desktop.
 - **A PWA**: manifest, icons and a service worker that caches the app shell. Screens that must work offline (the game
   clock) keep their data in IndexedDB and sync when there's signal.
-- A store app, if we want one, wraps the same build with Capacitor (team-app T9).
+- A store app, if we want one, wraps the same build with Capacitor (#26).
 - CLAUDE.md's Astro rules apply to the website only. Shared rules (D1 through `shared/d1.ts`, Europe/London dates,
   tests) apply to both.
 - **The dev server bundles every library up front** (`team/app/vite.config.ts`):

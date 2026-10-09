@@ -39,7 +39,7 @@ eventually edit events, players and Kumite results, so it's the natural owner of
 - No GitHub token in Sanity, and nothing to renew yearly.
 - The daily rebuild matters for content as well as YouTube uploads; if it fails, Studio changes don't go live.
 - Server routes run in workerd, so Node-only libraries don't work there. Editors only ever touch the Studio.
-- The team app picks up the rebuild trigger and its token later (`docs/roadmap.md`).
+- The team app picks up the rebuild trigger and its token later.
 
 ## History
 

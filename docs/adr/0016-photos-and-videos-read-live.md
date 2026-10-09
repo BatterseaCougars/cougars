@@ -16,7 +16,7 @@ them in playlists by kind (Friday Hockey, Kumite, and Website for anything else)
 playlists. The YouTube Data API v3 is free up to 10,000 quota units a day per Google Cloud project; listing a
 playlist costs 1 unit per 50 videos.
 
-Uploading through the app was planned (team-app roadmap T7) and dropped: it needs a long-lived OAuth refresh token
+Uploading through the app was planned and dropped: it needs a long-lived OAuth refresh token
 that can post as the club, a consent screen, YouTube's API compliance audit (weeks; until then API uploads are locked
 to Private), and about 1,600 quota units per upload. The YouTube app and Studio already do uploads well, on any phone.
 

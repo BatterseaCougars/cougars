@@ -17,7 +17,7 @@ script, a scraper or a stuck browser could spend it, and through the website the
 
 Per-minute limits per address don't protect a day: one stuck tab at the team API's 600 a minute would spend the day's
 requests in under three hours, and a request our Worker refuses has already run, so it still counts. Cloudflare's
-free rate-limiting rule blocks before the Worker, but only on a custom domain (M5).
+free rate-limiting rule blocks before the Worker, but only on a custom domain (#57).
 
 `astro dev` treated Sanity like a build: any failure, a spent quota included, was an error page.
 
@@ -89,7 +89,7 @@ loudly, so a broken deploy never replaces the live site; live server routes alre
 - The Cache API only works on a custom domain; on `*.workers.dev` the rate limits and the shared pause do nothing.
 - Not atomic: a burst can go slightly over a limit. Cloudflare's own rate limiting would be exact, but its free-plan
   terms haven't been checked; this costs nothing.
-- Still to do: Cloudflare's free rate-limiting rule once there's a custom domain (M5). The daily allowance is watched
+- Still to do: Cloudflare's free rate-limiting rule once there's a custom domain (#57). The daily allowance is watched
   on the Usage page ([0059](0059-usage-page-and-check.md)).
 
 ## History

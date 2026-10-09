@@ -1,7 +1,7 @@
 <script lang="ts">
   // A tournament's full schedule (ADR 0061): the round robin by round, then the playoffs, which show their places
   // (1st v 2nd) until the table fills them in. Admins make the fixtures (again, until a game has a result); whoever
-  // scores games enters final scores. Goal by goal, with the clock, is live scoring (T5).
+  // scores games enters final scores. Goal by goal, with the clock, is live scoring.
   import EmptyState from "../lib/EmptyState.svelte";
   import { can } from "../access/actions";
   import { granted } from "../demo/session.svelte";

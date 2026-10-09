@@ -1,4 +1,4 @@
-# Club facts, checked (M1)
+# Club facts, checked
 
 Every factual claim the website makes about the club, checked with the developer on 2026-10-05. For each:
 **Confirmed?** is yes, changed or pending, and **Correct value** says what changed or what's still needed.

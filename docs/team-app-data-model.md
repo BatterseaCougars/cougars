@@ -1,11 +1,11 @@
 # Team app data model
 
-The D1 tables the team app needs, by milestone. Conventions are in [db/README.md](../db/README.md): snake_case
+The D1 tables the team app needs, by area. Conventions are in [db/README.md](../db/README.md): snake_case
 plural tables, `INTEGER PRIMARY KEY AUTOINCREMENT`, ISO text dates (`*_on` a date, `*_at` an instant), `_pence`
 integers, 0/1 booleans, free-text status with a comment. The demo in `team/app/src/demo/model.ts` uses the same
 shapes in memory.
 
-## People and access (T1)
+## People and access
 
 [ADR 0023](adr/0023-sign-in-and-sessions.md), [ADR 0024](adr/0024-action-based-authorization.md),
 [ADR 0024](adr/0024-action-based-authorization.md).
@@ -20,7 +20,7 @@ shapes in memory.
 | `member_roles`     | member_id, role_id                                                                                                                                                                                                   |
 | `audit_log`        | at, member_id, action (sign_in, sign_out, access.requested…), detail (JSON, never a secret) (`0008`)                                                                                                                 |
 
-## Schedule (T2, T5)
+## Schedule
 
 [ADR 0030](adr/0030-training-and-tournament-schedule.md).
 
@@ -39,7 +39,7 @@ Where each is held ([ADR 0030](adr/0030-training-and-tournament-schedule.md)): `
 (`venue`, or `location` on tournaments) and `map_url`; none of them, its series' place. One rule for both apps:
 `placeOf` in `shared/places.ts`.
 
-## Sign-up, register and teams (T2, T3)
+## Sign-up, register and teams
 
 | Table                  | Columns                                                                                                                                    |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -48,7 +48,7 @@ Where each is held ([ADR 0030](adr/0030-training-and-tournament-schedule.md)): `
 | `session_team_players` | team_id, member_id                                                                                                                         |
 | `club_event_entries`   | event_id, member_id, signup, signed_up_at                                                                                                  |
 
-## Tournaments (T5, T6)
+## Tournaments
 
 | Table                     | Columns                                                                                                                                      |
 | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -60,7 +60,7 @@ Where each is held ([ADR 0030](adr/0030-training-and-tournament-schedule.md)): `
 | `matches`                 | tournament_id, round, home_team_id, away_team_id, status (next/live/done)                                                                    |
 | `match_events`            | match_id, client_id (unique, made on the phone), kind (start/pause/resume/period/goal/end/undo), team_id, scorer_id, assist_id, clock_ms, at |
 
-## Dues (T4)
+## Dues
 
 [ADR 0007](adr/0007-dues-and-payments.md), amended by [ADR 0007](adr/0007-dues-and-payments.md): fees belong to
 each session and tournament, payments are marked against charges, and Unpaid fees is the unpaid charges.
@@ -77,7 +77,7 @@ each session and tournament, payments are marked against charges, and Unpaid fee
 Also: `training_sessions.fee_pence` (written when the register closes, or an admin's override),
 `tournament_types.default_fee_pence`, `tournaments.fee_pence` (copied from the type's default when scheduled).
 
-## Club (T1)
+## Club
 
 | Table          | Columns                                                                                                                                                                                       |
 | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

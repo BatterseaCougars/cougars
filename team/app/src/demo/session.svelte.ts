@@ -1,4 +1,4 @@
-// Who's signed in, and who they're viewing the app as. Real sessions arrive in T1 (ADR 0023); impersonation is
+// Who's signed in, and who they're viewing the app as. Real sessions are ADR 0023; impersonation is
 // ADR 0024: an admin sees exactly what a member sees, read-only. An everyday role is ADR 0024: someone with more than
 // Member can run the app as a lesser role, and switch up to their full role until they switch back or close the app.
 import type { Action } from "../access/actions";

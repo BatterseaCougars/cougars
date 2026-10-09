@@ -2,7 +2,7 @@
 // (docs/adr/0016-photos-and-videos-read-live.md). Three layers, cheapest first:
 //   1. This isolate's memory. Workers keep an isolate alive between requests, so most views stop here.
 //   2. Cloudflare's edge cache (Cache API), shared by every isolate in a data centre. It only works on a custom
-//      domain (roadmap M5); on *.workers.dev its calls do nothing, which is fine.
+//      domain; on *.workers.dev its calls do nothing, which is fine.
 //   3. The source itself. Concurrent misses share one fetch.
 // If the source fails, the last good value is served for up to `staleMs`, so a YouTube outage or a spent quota
 // shows yesterday's list rather than nothing. Every live read goes through here (ADR 0053); the sources themselves

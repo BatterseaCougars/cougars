@@ -36,7 +36,7 @@ Don't mock our own code. If a test needs to stub one of our functions, it's test
 
 ## The fake world
 
-`shared/testing/fake-world.ts` (built with the first API handlers in team-app T1) gives each test a fresh world:
+`shared/testing/fake-world.ts` gives each test a fresh world:
 
 | Service        | Faked as                                                                      |
 | -------------- | ----------------------------------------------------------------------------- |

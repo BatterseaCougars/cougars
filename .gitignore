@@ -11,7 +11,7 @@ dist/
 .dev.vars*
 !.env.example
 
-# Git worktrees for parallel streams (docs/roadmap.md)
+# Git worktrees for parallel streams
 .worktrees/
 
 # Personal data never goes in this public repo. The team roster lives in Bitwarden (TEAM_ROSTER) and in a local

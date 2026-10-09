@@ -33,7 +33,7 @@
         </figure>
       {/each}
     </div>
-    <button class="btn primary block" disabled>Upload {files.length} (arrives in T7)</button>
+    <button class="btn primary block" disabled>Upload {files.length} (coming soon)</button>
   {/if}
 
   <!-- Videos are uploaded on YouTube itself, signed in with your own access to the club channel (ADR 0016). -->

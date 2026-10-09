@@ -75,7 +75,7 @@ export interface TrainingSession extends Entries {
   /** Who came, once the register is closed. */
   attended?: number[];
   /** From the register on the night: who came without signing up (they're added to `going`), and who signed up
-   * but didn't come (they stay in `going`). Browser-only until attendance is stored (T2). */
+   * but didn't come (they stay in `going`). Browser-only until attendance is stored. */
   walkIns?: number[];
   noShows?: number[];
   registerClosedAt?: string | null;

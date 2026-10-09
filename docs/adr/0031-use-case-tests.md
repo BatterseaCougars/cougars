@@ -38,7 +38,7 @@ How to write them: [docs/testing.md](../testing.md).
 - The fake world is code we have to keep honest: when a provider behaves differently from the fake, the fake gets
   fixed first, with a test.
 - Use cases are slower than unit tests (a migrated SQLite per world), still well under a second each.
-- The team app's demo store gets no use-case tests; they start with its first API handlers (team-app T1).
+- The team app's demo store gets no use-case tests; they started with its first API handlers.
 
 ## History
 

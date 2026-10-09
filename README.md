@@ -1,9 +1,8 @@
 # Battersea Cougars
 
 Website and team app for the Battersea Cougars inline hockey club: two projects in one repo
-([ADR 0006](docs/adr/0006-one-repo-two-projects.md)). The website is live; the team app is next
-([roadmap](docs/roadmap/team-app.md)). In team-app T0, `apps/web` and `apps/studio` move to `website/`, and the team
-app lands in `team/app`.
+([ADR 0006](docs/adr/0006-one-repo-two-projects.md)). The website is live; the team app is next. What's planned is in
+[GitHub milestones](https://github.com/das974/cougars/milestones).
 
 | Part                   | What                                                                      | Where                 |
 | ---------------------- | ------------------------------------------------------------------------- | --------------------- |
@@ -15,7 +14,7 @@ app lands in `team/app`.
 | `team/app`             | Team app: mobile-first Svelte PWA (clickable demo shell for now)          | http://localhost:4510 |
 | `archive/team-manager` | The old Next.js + Airtable team picker, kept as **reference only**        |                       |
 
-Running cost is £0: every service is on a free tier (see [docs/roadmap.md](docs/roadmap.md)).
+Running cost is £0: every service is on a free tier (see [ADR 0003](docs/adr/0003-free-tiers-only.md)).
 
 ## Quick start
 
@@ -292,11 +291,10 @@ enquiries are still saved and emailed to the club, but nobody gets an auto-reply
 - [docs/setup.md](docs/setup.md): one-time account setup (Cloudflare, Sanity, Bitwarden, GitHub)
 - [docs/testing.md](docs/testing.md): how we test (use cases first, the fake world)
 - [docs/editing.md](docs/editing.md): guide for club editors (no coding)
-- [docs/roadmap.md](docs/roadmap.md): what's next, per project ([website](docs/roadmap/website.md),
-  [team app](docs/roadmap/team-app.md)), and the free-tier budget
+- [Milestones](https://github.com/das974/cougars/milestones): what's next, per project, as GitHub issues
 - [docs/adr/](docs/adr/README.md): architecture decisions, and why
 - [db/README.md](db/README.md): database conventions
-- [docs/team-app-data-model.md](docs/team-app-data-model.md): the team app's tables, by milestone
+- [docs/team-app-data-model.md](docs/team-app-data-model.md): the team app's tables
 - [CLAUDE.md](CLAUDE.md): conventions for contributors and AI agents
 
 ## Ports (devcontainer)
@@ -306,7 +304,7 @@ Cougars owns ports **4500-4529** so it doesn't clash with other projects on the 
 
 ## Worktrees (parallel streams)
 
-Parallel work streams ([website roadmap](docs/roadmap/website.md)) each get a git worktree under `.worktrees/`, with their own
+Parallel work streams each get a git worktree under `.worktrees/`, with their own
 dependencies, local D1 database and ports, so each can be previewed while `main` runs on 4500:
 
 ```sh

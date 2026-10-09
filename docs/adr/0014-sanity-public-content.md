@@ -27,7 +27,7 @@ any fact, one in Sanity and one in D1, would drift.
   _Kit for first-timers_ is filled in.
 - **Kumite results are documents** (`kumiteResult`: season, date, champions, top scorer, optional event). The
   newest by date is the reigning champion.
-- **The team app may write public content to Sanity through its API** (Kumite results, roster cards; team-app T8),
+- **The team app may write public content to Sanity through its API** (Kumite results, roster cards; #53),
   with a write token per project ([ADR 0010](0010-environments-and-deploys.md)) documented in the README when it lands. Schemas avoid anything that would block an API write
   (read-only fields, values only the Studio can make).
 - **Ops-only data lives in D1**: enquiries, attendance, payments, ratings. It is never shown publicly as is.
