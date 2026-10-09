@@ -88,7 +88,7 @@ node scripts/env-pull.mjs --status            # lists secret names (dev)
 
 ## 4. GitHub
 
-In `BatterseaCougars/cougars` → **Settings**:
+In `battersea-cougars/ark` → **Settings**:
 
 1. **Environments**:
    - `production`: deployment branches **`release` only**. Secret `BWS_ACCESS_TOKEN__PRODUCTION`.

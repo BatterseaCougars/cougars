@@ -60,7 +60,7 @@ be checked before it goes live. Ark deploys `main` to dev and production from a 
   Durable Object migration is applied ([ADR 0072](0072-live-updates.md)).
 - **Team-app screens still on demo data are dev-only.** Dues, Fees, Unpaid fees and Upload have no backend yet; the
   bootstrap's `unfinished` flag (true unless `SITE_ENV` is `production`) shows them on dev and locally to try, and
-  production leaves them, and every link to them, out ([#63](https://github.com/BatterseaCougars/cougars/issues/63)). Each comes
+  production leaves them, and every link to them, out ([#63](https://github.com/battersea-cougars/ark/issues/63)). Each comes
   back for everyone when its backend lands.
 - `DEMO_CONTENT` is never set for production by default; the `production` environment's variable turns it on only
   until real content is in Sanity.
