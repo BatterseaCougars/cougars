@@ -363,7 +363,7 @@
 </script>
 
 <div class="editor">
-  <div class="seg tabs" role="tablist" aria-label="Tournament date">
+  <div class="tablist" role="tablist" aria-label="Tournament date">
     {#each tabs as t (t.id)}
       <button
         type="button"
@@ -665,27 +665,6 @@
     display: grid;
     gap: var(--s-5);
     container-type: inline-size;
-  }
-  .tabs {
-    justify-self: start;
-    max-width: 100%;
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-  .tabs > button {
-    flex: none;
-    min-width: 6.5rem;
-  }
-  /* Four tabs don't fit a phone at full width: they share it instead of stretching the form */
-  @media (max-width: 599px) {
-    .tabs {
-      justify-self: stretch;
-    }
-    .tabs > button {
-      flex: 1 1 auto;
-      min-width: 0;
-      padding: 0 var(--s-2);
-    }
   }
   /* Fields three to a row, wrapping on, so every field lines up with the ones above it */
   .cols {

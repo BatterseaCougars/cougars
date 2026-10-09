@@ -19,7 +19,6 @@ export const ICONS = {
   userPlus: "M10 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21a8 8 0 0 1 13.5-5.8M19 14v6M16 17h6",
   pound: "M17 6.5A4 4 0 0 0 9.5 8v4.5c0 3-1.5 5.5-3.5 6.5h12M6.5 12.5h8",
   key: "M15 9a3 3 0 1 0 0-.01M13 11 4 20M7 17l2 2M9.5 14.5l2 2",
-  tape: "M3 6h18v12H3zM8 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM16 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM10 12h4M6 18l2-2h8l2 2",
   open: "M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5",
   chevronLeft: "M15 5l-7 7 7 7",
   chevronRight: "M9 5l7 7-7 7",
@@ -39,6 +38,11 @@ export const ICONS = {
   grip: "M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01",
   filter: "M4 6h16M7 12h10M10 18h4",
   pin: "M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11Zm0-8.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z",
+  // Picks: positions, how money came in, which way an adjustment goes
+  shield: "M12 3 5 6v5.5c0 4.3 2.9 7.9 7 9.5 4.1-1.6 7-5.2 7-9.5V6z",
+  net: "M3 20V8l3-3h12l3 3v12M3 20h18M3 8h18M8 8v12M13 8v12M18 8v12M3 14h18",
+  bank: "M3 9.5 12 4l9 5.5M4 9.5h16M6 9.5v8M10 9.5v8M14 9.5v8M18 9.5v8M3 20h18",
+  minus: "M5 12h14",
   // Schedule icons, picked per training and tournament
   stick:
     "M15 3l-6.5 13.5a2 2 0 0 1-1.8 1.1H4.5a1 1 0 0 0-1 1V20a1 1 0 0 0 1 1h4.3a2 2 0 0 0 1.8-1.1L18 4.5M17 18.5a2 1.2 0 1 0 4 0 2 1.2 0 1 0-4 0",

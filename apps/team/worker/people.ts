@@ -6,6 +6,7 @@ import { HttpError, bool, int, oneOf, text } from "./http";
 import { email, giveReference, mailSetup, type AuthEnv } from "./auth";
 import { sendMail } from "@cougars/shared/email";
 import { londonToday } from "../src/lib/dates";
+import { QUARTER, nextQuarter, quarterOf, quarterStart } from "./dues";
 
 export interface MemberJson {
   id: number;
@@ -28,6 +29,8 @@ export interface MemberJson {
   played: number;
   /** A Quarterly Member today: a subscription covers it (ADR 0007). Only your own, unless you manage members. */
   quarterly: boolean;
+  /** Quarterly next quarter: what they chose, or their membership running on. Only your own. */
+  quarterlyNext: boolean;
 }
 
 export interface RoleJson {
@@ -74,6 +77,7 @@ export function membersFrom(
     phone: string | null;
     played: number;
     quarterly: number;
+    quarterlyNext: number;
   }[],
 ): MemberJson[] {
   return rows.map((m) => ({
@@ -92,6 +96,7 @@ export function membersFrom(
     phone: m.phone,
     played: m.played,
     quarterly: Boolean(m.quarterly),
+    quarterlyNext: Boolean(m.quarterlyNext),
   }));
 }
 
@@ -241,6 +246,11 @@ export async function updateMember(db: D1Database, id: number, o: Record<string,
     status,
     id,
   ]);
+  // The name they go by (ADR 0043), when it's sent: an admin can set or clear it as they can on their profile
+  if ("webName" in o) {
+    const webName = o.webName === null ? "" : text(o, "webName", { optional: true, max: 40 }).trim();
+    await run(db, "UPDATE members SET web_name = ? WHERE id = ?", [webName || null, id]);
+  }
   await run(db, "DELETE FROM member_roles WHERE member_id = ?", [id]);
   for (const roleId of ids) await run(db, "INSERT INTO member_roles (member_id, role_id) VALUES (?, ?)", [id, roleId]);
 }
@@ -431,6 +441,44 @@ export const memberJoined = (db: D1Database, id: number) =>
   first<{ name: string; email: string | null }>(db, "SELECT name, email FROM members WHERE id = ?", [id]);
 
 /** Whether a member is a Quarterly Member today (ADR 0007). */
+/**
+ * A member chooses next quarter's plan (ADR 0007): Quarterly, or pay as you go. Only next quarter, and only before it
+ * starts, by today's date here, whatever the app showed. This quarter's plan is fixed; an admin can still change it.
+ */
+export async function choosePlan(db: D1Database, id: number, o: Record<string, unknown>, today: string, now: string) {
+  if (typeof o.quarter !== "string" || !QUARTER.test(o.quarter))
+    throw new HttpError(400, "quarter should be like 2027-Q1.");
+  if (typeof o.quarterly !== "boolean") throw new HttpError(400, "quarterly should be true or false.");
+  const next = nextQuarter(quarterOf(today));
+  if (o.quarter !== next)
+    throw new HttpError(
+      409,
+      o.quarter <= quarterOf(today)
+        ? `${o.quarter} has started: its plan is fixed. Ask an admin if it's wrong.`
+        : `Only next quarter (${next}) is open.`,
+    );
+  const starts = quarterStart(next);
+  const lastDay = new Date(Date.parse(`${starts}T12:00:00Z`) - 86_400_000).toISOString().slice(0, 10);
+  // Whatever starts next quarter or later goes; then next quarter is covered or not
+  await run(db, "DELETE FROM subscriptions WHERE member_id = ? AND starts_on >= ?", [id, starts]);
+  const running = await first<{ id: number }>(
+    db,
+    "SELECT id FROM subscriptions WHERE member_id = ? AND starts_on < ? AND (ends_on IS NULL OR ends_on >= ?)",
+    [id, starts, lastDay],
+  );
+  if (o.quarterly) {
+    if (running) await run(db, "UPDATE subscriptions SET ends_on = NULL WHERE id = ?", [running.id]);
+    else
+      await run(db, "INSERT INTO subscriptions (member_id, starts_on, created_at) VALUES (?, ?, ?)", [id, starts, now]);
+  } else if (running) await run(db, "UPDATE subscriptions SET ends_on = ? WHERE id = ?", [lastDay, running.id]);
+}
+
+/** A member's plan for next quarter, as the audit log records it. */
+export const planNext = async (db: D1Database, id: number, today: string) => {
+  const next = nextQuarter(quarterOf(today));
+  return { quarter: next, quarterly: await quarterlyToday(db, id, quarterStart(next)) };
+};
+
 export const quarterlyToday = async (db: D1Database, id: number, today: string) =>
   Boolean(
     await first(

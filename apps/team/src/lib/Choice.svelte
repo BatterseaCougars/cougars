@@ -61,11 +61,20 @@
 {/snippet}
 
 {#if inline}
-  <div class="seg block wrap-seg {className}" class:sm={size === "sm"} {id} role="group" aria-label={ariaLabel}>
+  <!-- The brand's Pick: separate tiles, the chosen one lit red; with hints, tiles with a line under each -->
+  <div
+    class="seg block wrap-seg {className}"
+    class:sm={size === "sm"}
+    class:tiles={options.some((o) => o.hint)}
+    {id}
+    role="group"
+    aria-label={ariaLabel}
+  >
     {#each options as o (o.value)}
-      <button type="button" aria-pressed={o.value === value} disabled={o.disabled} onclick={() => choose(o)}
-        >{o.label}</button
-      >
+      <button type="button" aria-pressed={o.value === value} disabled={o.disabled} onclick={() => choose(o)}>
+        {#if o.icon}<Icon name={o.icon} size={o.hint ? 22 : 18} />{/if}
+        {#if o.hint}<span class="name">{o.label}</span><span class="sub">{o.hint}</span>{:else}{o.label}{/if}
+      </button>
     {/each}
   </div>
 {:else}

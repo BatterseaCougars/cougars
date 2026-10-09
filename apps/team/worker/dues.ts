@@ -5,26 +5,14 @@
 // are charged the quarterly rate for each quarter a subscription covers; an admin can charge a quarter by hand.
 import { all, first, run, type Param } from "@cougars/shared/d1";
 import { can, type Action } from "../src/access/actions";
-import { feeOn, type DatedFee } from "../src/lib/dues";
+import { QUARTER, feeOn, nextQuarter, quarterOf, quarterStart, type DatedFee } from "../src/lib/dues";
 import { londonToday } from "../src/lib/dates";
 import { HttpError } from "./http";
 import { bumpDataVersion } from "./version";
 
 // ─── Quarters ───
 
-/** "2026-Q4" for any day in October to December 2026. */
-export const quarterOf = (day: string) => `${day.slice(0, 4)}-Q${Math.floor((Number(day.slice(5, 7)) - 1) / 3) + 1}`;
-const QUARTER = /^(\d{4})-Q([1-4])$/;
-/** Its first day: 2026-Q4 → 2026-10-01. */
-export function quarterStart(q: string) {
-  const [, year, n] = q.match(QUARTER)!;
-  return `${year}-${String((Number(n) - 1) * 3 + 1).padStart(2, "0")}-01`;
-}
-/** The quarter after: 2026-Q4 → 2027-Q1. */
-function nextQuarter(q: string) {
-  const [, year, n] = q.match(QUARTER)!;
-  return n === "4" ? `${Number(year) + 1}-Q1` : `${year}-Q${Number(n) + 1}`;
-}
+export { QUARTER, nextQuarter, quarterOf, quarterStart } from "../src/lib/dues";
 
 // ─── Who owes what ───
 
@@ -32,17 +20,28 @@ function nextQuarter(q: string) {
 const subscribed = (member: string, day: string) =>
   `EXISTS (SELECT 1 FROM subscriptions sub WHERE sub.member_id = ${member} AND sub.starts_on <= ${day}
      AND (sub.ends_on IS NULL OR sub.ends_on >= ${day}))`;
+/**
+ * Whether a member is charged for the quarter a day is in (by their membership or by hand): that pays for every
+ * training night in it, before they joined too, so those nights cost nothing.
+ */
+const quarterCharged = (member: string, day: string) =>
+  `EXISTS (SELECT 1 FROM charges q WHERE q.member_id = ${member}
+     AND q.quarter = substr(${day}, 1, 4) || '-Q' || ((CAST(substr(${day}, 6, 2) AS INTEGER) + 2) / 3))`;
 const unpaid = "NOT EXISTS (SELECT 1 FROM payment_allocations pa WHERE pa.charge_id = c.id)";
 /** Not paid in full: a charge that no longer counts can go, and what part of it was paid is credit again. */
 const notPaidUp =
   "c.amount_pence > COALESCE((SELECT SUM(pa.amount_pence) FROM payment_allocations pa WHERE pa.charge_id = c.id), 0)";
 
-/** Who should be charged for a session: everyone in who wasn't a no-show (walk-ins too), but Quarterly Members. */
+/**
+ * Who should be charged for a session: everyone in who wasn't a no-show (walk-ins too), but Quarterly Members and
+ * anyone charged for that quarter.
+ */
 const SESSIONS_DUE = `
   SELECT a.member_id, s.id event_id, s.fee_pence amount, s.held_on due_on
   FROM attendance a JOIN training_sessions s ON s.id = a.session_id
   WHERE s.held_on <= ? AND s.cancelled_at IS NULL AND s.fee_pence > 0
-    AND a.signup = 'in' AND COALESCE(a.attended, 1) = 1 AND NOT ${subscribed("a.member_id", "s.held_on")}`;
+    AND a.signup = 'in' AND COALESCE(a.attended, 1) = 1 AND NOT ${subscribed("a.member_id", "s.held_on")}
+    AND NOT ${quarterCharged("a.member_id", "s.held_on")}`;
 /** Who should be charged for a tournament: everyone in, Quarterly Members too. */
 const TOURNAMENTS_DUE = `
   SELECT e.member_id, t.id event_id, t.fee_pence amount, t.held_on due_on
@@ -81,9 +80,13 @@ export async function chargeAttendance(db: D1Database, today: string, now: strin
       [today],
     );
   }
-  // What each costs now
+  // What each costs now: a night their quarter pays for, nothing (so what they'd paid for it is credit)
   for (const [column, fee] of [
-    ["session_id", "SELECT fee_pence FROM training_sessions WHERE id = c.session_id"],
+    [
+      "session_id",
+      `SELECT CASE WHEN ${quarterCharged("c.member_id", "s.held_on")} THEN 0 ELSE s.fee_pence END
+       FROM training_sessions s WHERE s.id = c.session_id`,
+    ],
     ["tournament_id", "SELECT fee_pence FROM tournaments WHERE id = c.tournament_id"],
   ])
     await count(
@@ -193,9 +196,10 @@ export async function chargeQuarters(db: D1Database, today: string, now: string)
 /** The hourly check (and the day's first open of the app): whatever a new day makes due. */
 export async function chargeDue(env: { DB: D1Database }, now: Date) {
   const today = londonToday(now);
+  // Quarters first: a quarter pays for its training nights
   const changed =
-    (await chargeAttendance(env.DB, today, now.toISOString())) +
-    (await chargeQuarters(env.DB, today, now.toISOString()));
+    (await chargeQuarters(env.DB, today, now.toISOString())) +
+    (await chargeAttendance(env.DB, today, now.toISOString()));
   // Someone's dues changed: every member's bootstrap is out of date (ADR 0053)
   if (changed) await bumpDataVersion(env.DB);
 }
@@ -284,6 +288,8 @@ export async function addQuarterCharge(
     `INSERT INTO charges (member_id, quarter, amount_pence, due_on, created_at, created_by) VALUES (?, ?, ?, ?, ?, ?)`,
     [memberId, o.quarter, pence as number, dueOn, now, by],
   );
+  // Its training nights are paid for now
+  await chargeAttendance(db, londonToday(new Date(now)), now);
   return { id: Number(res.meta.last_row_id) };
 }
 
@@ -291,7 +297,7 @@ export async function addQuarterCharge(
  * Take back a quarter charged by hand by mistake. Every other charge follows something: who came, or a quarterly
  * membership, so that's what to change.
  */
-export async function removeCharge(db: D1Database, id: number) {
+export async function removeCharge(db: D1Database, id: number, now: string) {
   const c = await first<{ byHand: number; paid: number }>(
     db,
     `SELECT c.created_by IS NOT NULL byHand, NOT ${unpaid} paid FROM charges c WHERE c.id = ?`,
@@ -299,8 +305,11 @@ export async function removeCharge(db: D1Database, id: number) {
   );
   if (!c) throw new HttpError(404, "No such charge.");
   if (!c.byHand) throw new HttpError(409, "It follows who came, or their quarterly membership: change that instead.");
+  // A quarter or an adjustment, added by hand
   if (c.paid) throw new HttpError(409, "It's paid: mark it unpaid first.");
   await run(db, "DELETE FROM charges WHERE id = ?", [id]);
+  // Its training nights are owed again
+  await chargeAttendance(db, londonToday(new Date(now)), now);
 }
 
 const via = (o: Record<string, unknown>) => {
@@ -346,6 +355,52 @@ export async function settle(db: D1Database, memberId?: number): Promise<number>
 }
 
 /** { pence, via }: money in, by transfer or cash, paying what they owe oldest first; the rest is credit. */
+/** A day given, or today: never in the future. */
+function pastDay(v: unknown, now: string, field: string, future: string): string {
+  const today = londonToday(new Date(now));
+  const day = v == null || v === "" ? today : v;
+  if (typeof day !== "string" || !DAY.test(day) || Number.isNaN(Date.parse(day)))
+    throw new HttpError(400, `${field} should be a day, like 2026-10-02.`);
+  if (day > today) throw new HttpError(400, future);
+  return day;
+}
+
+/**
+ * { pence, reason, on? }: an admin adjusts what someone owes, saying why (ADR 0007). More (pence above nothing) is a
+ * charge; less is like money in, paying what they owe oldest first. Either is a line on their ledger.
+ */
+export async function addAdjustment(
+  db: D1Database,
+  memberId: number,
+  o: Record<string, unknown>,
+  by: number,
+  now: string,
+) {
+  const reason = typeof o.reason === "string" ? o.reason.trim().replace(/\s+/g, " ") : "";
+  if (!reason) throw new HttpError(400, "Say why: it's on their ledger.");
+  if (reason.length > 120) throw new HttpError(400, "Keep the reason short: 120 characters.");
+  const pence = o.pence;
+  if (!Number.isInteger(pence) || pence === 0 || Math.abs(pence as number) > 1_000_000)
+    throw new HttpError(400, "How much, in pence? More than nothing.");
+  const on = pastDay(o.on, now, "on", "An adjustment can't be from the future.");
+  await memberExists(db, memberId);
+  const res =
+    (pence as number) > 0
+      ? await run(
+          db,
+          `INSERT INTO charges (member_id, reason, amount_pence, due_on, created_at, created_by) VALUES (?, ?, ?, ?, ?, ?)`,
+          [memberId, reason, pence as number, on, now, by],
+        )
+      : await run(
+          db,
+          `INSERT INTO payments (member_id, amount_pence, received_on, via, reason, recorded_by, created_at)
+           VALUES (?, ?, ?, 'adjustment', ?, ?, ?)`,
+          [memberId, -(pence as number), on, reason, by, now],
+        );
+  await settle(db, memberId);
+  return { id: Number(res.meta.last_row_id), pence: pence as number, reason, on };
+}
+
 export async function recordPayment(
   db: D1Database,
   memberId: number,
@@ -356,11 +411,13 @@ export async function recordPayment(
   const how = via(o);
   if (!Number.isInteger(o.pence) || (o.pence as number) <= 0 || (o.pence as number) > 1_000_000)
     throw new HttpError(400, "How much, in pence?");
+  // The day it came in: today unless they say, never in the future
+  const receivedOn = pastDay(o.receivedOn, now, "receivedOn", "A payment can't be from the future.");
   await memberExists(db, memberId);
   await run(
     db,
     `INSERT INTO payments (member_id, amount_pence, received_on, via, recorded_by, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
-    [memberId, o.pence as number, londonToday(new Date(now)), how, by, now],
+    [memberId, o.pence as number, receivedOn, how, by, now],
   );
   await settle(db, memberId);
 }
@@ -408,14 +465,17 @@ export async function payCharge(db: D1Database, id: number, o: Record<string, un
   if (left.length) await pay(db, left[0].member_id, left, how, by, now);
 }
 
-/** { via, pence? }: with an amount, a lump sum paid oldest first; without, Mark all paid (one payment for it all). */
-export async function payAll(db: D1Database, memberId: number, o: Record<string, unknown>, by: number, now: string) {
-  if (o.pence != null) return recordPayment(db, memberId, o, by, now);
-  const how = via(o);
-  await memberExists(db, memberId);
-  // Their credit first, then one payment for the rest
-  await settle(db, memberId);
-  await pay(db, memberId, await owing(db, "c.member_id", memberId), how, by, now);
+/**
+ * A payment recorded by mistake, taken back from the ledger: what it paid is owed again, and any credit they still have
+ * pays it, oldest first.
+ */
+export async function removePayment(db: D1Database, id: number) {
+  const p = await first<{ member_id: number }>(db, "SELECT member_id FROM payments WHERE id = ?", [id]);
+  if (!p) throw new HttpError(404, "No such payment.");
+  await run(db, "DELETE FROM payment_allocations WHERE payment_id = ?", [id]);
+  await run(db, "DELETE FROM payments WHERE id = ?", [id]);
+  await settle(db, p.member_id);
+  return p.member_id;
 }
 
 /**
@@ -436,8 +496,8 @@ export async function unpayCharge(db: D1Database, id: number) {
 export interface ChargeJson {
   id: number;
   memberId: number;
-  kind: "session" | "tournament" | "quarter";
-  /** The session's or tournament's id; null for a quarter. */
+  kind: "session" | "tournament" | "quarter" | "adjustment";
+  /** The session's or tournament's id; null for a quarter or an adjustment. */
   refId: number | null;
   quarter: string | null;
   /** What it was for: the training or tournament's name; null for a quarter. */
@@ -473,6 +533,14 @@ export const chargeState = (db: D1Database, id: number) =>
      FROM charges c LEFT JOIN training_sessions s ON s.id = c.session_id
        LEFT JOIN training_series ts ON ts.id = s.series_id LEFT JOIN tournaments t ON t.id = c.tournament_id
      WHERE c.id = ?`,
+    [id],
+  );
+
+/** A payment as the audit log records it. */
+export const paymentState = (db: D1Database, id: number) =>
+  first<{ memberId: number; pence: number; receivedOn: string; via: string }>(
+    db,
+    "SELECT member_id memberId, amount_pence pence, received_on receivedOn, via FROM payments WHERE id = ?",
     [id],
   );
 

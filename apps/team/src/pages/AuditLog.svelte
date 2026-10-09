@@ -42,7 +42,7 @@
     void load();
   });
 
-  const label = (a: unknown) => (typeof a === "string" && a in ACTIONS ? ACTIONS[a as Action] : String(a));
+  const label = (a: unknown) => (typeof a === "string" && a in ACTIONS ? ACTIONS[a as Action].name : String(a));
   const list = (v: unknown) => (Array.isArray(v) && v.length ? v.map(label).join(", ") : "nothing");
   const str = (v: unknown) => (typeof v === "string" && v ? v : "none");
   const pence = (v: unknown) => (typeof v === "number" ? pounds(v) : "?");
@@ -82,6 +82,8 @@
       }
       case "member.email":
         return `${who} changed ${about}'s sign-in email: ${str(d.from)} → ${str(d.to)}`;
+      case "member.plan":
+        return `${who} chose ${to?.quarterly ? "Quarterly" : "pay as you go"} for ${str(to?.quarter)}`;
       case "member.quarterly":
         return d.to ? `${who} made ${about} a Quarterly Member` : `${who} ended ${about}'s quarterly membership`;
       // Dues (ADR 0007): a charge reads { memberId, what (a training, tournament or quarter), pence, dueOn, paid }
@@ -92,8 +94,18 @@
           ? `${who} marked ${about}'s ${what} paid (${str(to.paid)})`
           : `${who} took back ${about}'s payment for ${what}`;
       }
-      case "member.paid":
-        return `${who} marked everything ${about} owed paid (${Array.isArray(d.from) ? d.from.length : 0} charges)`;
+      // A lump sum: what they owed before and after, charge by charge ({ id, left })
+      case "member.paid": {
+        const owed = (v: unknown) =>
+          Array.isArray(v) ? v.reduce((s, c) => s + Number((c as { left?: number }).left ?? 0), 0) : 0;
+        return `${who} recorded a payment from ${about}, paying off ${pence(owed(d.from) - owed(d.to))}`;
+      }
+      case "dues.adjusted": {
+        const p = Number(to?.pence ?? 0);
+        return `${who} ${p > 0 ? "added" : "took"} ${pence(Math.abs(p))} ${p > 0 ? "to" : "off"} what ${about} owes: ${str(to?.reason)}`;
+      }
+      case "payment.removed":
+        return `${who} took back ${about}'s payment of ${pence(from?.pence)} (${str(from?.via)}, ${str(from?.receivedOn)})`;
       case "charge.added":
         return `${who} charged ${about} ${pence(to?.pence)} for ${str(to?.what)}`;
       case "charge.removed":

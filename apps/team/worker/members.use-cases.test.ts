@@ -63,3 +63,34 @@ describe("an admin adds a member", () => {
     expect((await reg.call("POST", "/api/members", NEWBIE)).status).toBe(403);
   });
 });
+
+describe("an admin edits the name a member goes by", () => {
+  const members = async (who: Awaited<ReturnType<typeof w.signedIn>>) =>
+    (await who.call("GET", "/api/bootstrap")).body.members as { id: number; name: string; webName: string | null }[];
+
+  it("sets it for them, and it shows everywhere in place of their full name", async () => {
+    const dana = await w.signedIn("dana@example.com");
+    const reg = (await members(dana)).find((m) => m.name === "Reg Player")!;
+    expect((await dana.call("PUT", `/api/members/${reg.id}`, { ...reg, webName: "The Wall" })).status).toBe(200);
+
+    const seen = (await members(await w.signedIn("reg@example.com"))).find((m) => m.id === reg.id);
+    expect(seen).toMatchObject({ name: "Reg Player", webName: "The Wall" });
+  });
+
+  it("clears it, and they go by their full name again", async () => {
+    const dana = await w.signedIn("dana@example.com");
+    const reg = (await members(dana)).find((m) => m.name === "Reg Player")!;
+    await dana.call("PUT", `/api/members/${reg.id}`, { ...reg, webName: "The Wall" });
+    await dana.call("PUT", `/api/members/${reg.id}`, { ...reg, webName: "  " });
+    expect((await members(dana)).find((m) => m.id === reg.id)?.webName).toBeNull();
+  });
+
+  it("leaves it alone when a change doesn't mention it", async () => {
+    const dana = await w.signedIn("dana@example.com");
+    const reg = (await members(dana)).find((m) => m.name === "Reg Player")!;
+    await dana.call("PUT", `/api/members/${reg.id}`, { ...reg, webName: "The Wall" });
+    const { webName: _, ...rest } = reg;
+    await dana.call("PUT", `/api/members/${reg.id}`, { ...rest, rating: 61 });
+    expect((await members(dana)).find((m) => m.id === reg.id)?.webName).toBe("The Wall");
+  });
+});

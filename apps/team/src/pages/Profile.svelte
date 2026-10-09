@@ -1,8 +1,9 @@
 <script lang="ts">
   // Your profile. You change your phone, position and bio (the back of your player card), and how your name shows
   // on the website's roster; your name and email are an admin's to change, since sign-in and the roster go by them.
+  import Icon from "../app/shell/Icon.svelte";
   import { goesBy, shortName } from "../lib/names";
-  import { POSITIONS, emailFor, phoneFor, type Position } from "../demo/data";
+  import { POSITIONS, POSITION_ICONS, emailFor, phoneFor, type Position } from "../demo/data";
   import { fullRole, impersonating, me, realGranted, session, setElevated, shownRoles } from "../demo/session.svelte";
   import { db } from "../demo/store.svelte";
   import Choice from "../lib/Choice.svelte";
@@ -84,7 +85,7 @@
         <div class="seg block" role="group" aria-labelledby="position">
           {#each Object.entries(POSITIONS) as [v, label] (v)}
             <button type="button" aria-pressed={form.position === v} onclick={() => (form.position = v as Position)}>
-              {label}
+              <Icon name={POSITION_ICONS[v as Position]} size={18} />{label}
             </button>
           {/each}
         </div>
@@ -144,9 +145,6 @@
 
 <style>
   /* Your name on the website: four choices, one of them your full name, so they wrap on a phone */
-  .seg.wrap {
-    flex-wrap: wrap;
-  }
   .seg.wrap > button {
     flex: 1 1 auto;
   }

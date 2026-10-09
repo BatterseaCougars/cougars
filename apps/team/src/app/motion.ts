@@ -26,7 +26,7 @@ export function zoom(_node: Element, { out = false } = {}) {
 }
 
 /**
- * Desktop settings list: slides out from behind the dock like a tape ejecting, blurred to sharp. `delay` staggers its
+ * Desktop settings list: slides out from behind the dock, blurred to sharp. `delay` staggers its
  * rows. Leaving, it's gone at once: the next page is already there, and the list sliding back lay over it.
  */
 export function eject(_node: Element, { delay = 0, out = false, x = 28 } = {}) {

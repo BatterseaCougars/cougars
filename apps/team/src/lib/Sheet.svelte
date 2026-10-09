@@ -28,6 +28,9 @@
     if (open && !dialog.open) dialog.showModal();
     else if (!open && dialog.open) dialog.close();
   });
+  // A tap on the dimmed page closes it: pressed and let go there. Selecting a field's text and letting go outside the
+  // sheet is a click on the dialog too, and mustn't close it.
+  let downOutside = false;
   function closed() {
     open = false;
     onclose?.();
@@ -39,7 +42,11 @@
   class="bottom-sheet"
   aria-label={title}
   onclose={closed}
-  onclick={(e) => e.target === dialog && (open = false)}
+  onpointerdown={(e) => (downOutside = e.target === dialog)}
+  onclick={(e) => {
+    if (e.target === dialog && downOutside) open = false;
+    downOutside = false;
+  }}
 >
   <div class="body">
     <div class="head">

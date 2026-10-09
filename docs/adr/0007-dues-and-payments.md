@@ -48,7 +48,7 @@ upload, reminder emails, and an override of one session's fee.
   when the fee goes up, and its overpayment becomes credit when it goes down. The same goes for a tournament's fee and
   the quarterly rate (quarters charged by hand keep what the admin said). No fee in force: nobody is charged, so the
   first fee's date decides how far back charging goes. An admin can also recalculate a member's dues by hand
-  (Payments tab → Recalculate). (Overriding one session's fee is not built.)
+  (Dues tab → Recalculate). (Overriding one session's fee is not built.)
 - **Tournament types have a default fee; each edition has its own.** Scheduling an edition copies the type's default
   (`tournament_types.default_fee_pence` → `tournaments.fee_pence`), and the admin can change it there. (Built.)
 - The **quarterly rate** is its own dated schedule (`subscription_fees`), kept on Settings → Quarterly rate; there is
@@ -60,6 +60,12 @@ upload, reminder emails, and an override of one session's fee.
 - **A quarterly membership is a subscription**, in its own table: `subscriptions` (member_id, starts_on, ends_on). A
   member with a subscription covering a date is a Quarterly Member on that date; anyone without one pays as they go,
   and nothing about it is stored on `members`.
+- **Members choose next quarter's plan themselves.** Once a quarter the club asks its members whether to pay as they
+  go or be Quarterly next quarter. On their Dues page a member sees this quarter's plan (fixed once it's started; an
+  admin can still change it, from today) and chooses next quarter's, until it starts: Quarterly adds a subscription
+  from its first day, or keeps theirs running; pay as you go ends theirs on this quarter's last day. **The server
+  checks the date** (`PUT /api/me/plan`, London time): only next quarter, and only before it starts, whatever the app
+  showed, so a page left open past the start can't change it. It's on the record (`member.plan`).
 - **The Cougars are `members.cougar`**: whether someone is on the official team. Admins set it on the member sheet; the
   roster seed sets it when it first adds a player (`"cougar": true`) and never changes it after. The team generator
   puts every Cougar on one team first, then balances the rest by rating.
@@ -77,7 +83,9 @@ upload, reminder emails, and an override of one session's fee.
   never taken off by this.
 - **A charge is one person for one session, tournament or quarter** (`charges`: member, session or tournament or
   quarter `2026-Q4`, amount, due_on, created_by when made by hand). Quarterly Members aren't charged for training
-  sessions. Tournament entrants are all charged from its day, Quarterly Members included.
+  sessions, and **a quarter charged pays for every training night in it**, by membership or by hand: joining
+  mid-quarter pays the whole quarter, so the nights before they joined are covered too. A night already paid that a
+  quarter then covers is credit; a quarter taken back puts its nights back. Tournament entrants are all charged from its day, Quarterly Members included.
 - **Quarters are calendar quarters** (January, April, July, October). The hourly Cron Trigger charges each Quarterly
   Member the rate in force for every quarter a subscription covers, up to the current one: due on the quarter's first
   day, or the day they joined (joining mid-quarter pays the full quarter). A subscription taken back the day it was
@@ -88,14 +96,20 @@ upload, reminder emails, and an override of one session's fee.
 
 **Payments**
 
-- **Payments are marked against charges.** On a member's sheet an admin ticks what they paid for (transfer or cash),
-  or "Mark all paid", and can untick a mistake; each tick is a payment (`payments`) allocated to that charge
-  (`payment_allocations`). Each tick saves as it's made ([0069](0069-members.md)).
+- **Dues are a ledger.** A member's dues (their own Dues page, and the Dues tab on their card for admins) read like a
+  bank statement: every charge and payment by date, newest first, with what they owe after each (below nothing,
+  credit). Its header stays in view as it scrolls. Payments are allocated to charges behind it
+  (`payment_allocations`) but aren't ticked off charge by charge.
+- **Adjustments, with why.** Whoever records payments can adjust what someone owes, for whatever reason, saying why
+  (Adjust on the Dues tab): adding to it is a charge with a `reason`; taking some off is like money in (a payment,
+  `via = 'adjustment'`, with its `reason`), paying their oldest charges first. Each is a line on their ledger, can be
+  taken back from it, and is on the record (`dues.adjusted`).
+- **A payment is dated the day it came in**: today unless the admin picks an earlier day, never the future.
 - **A lump sum pays the oldest first (FIFO).** "Record a payment" on the member sheet takes any amount: it pays their
   oldest charges not yet paid in full, then part of the next. What's left over is **credit**, which pays each new
   charge as it comes (also oldest payment first). A charge part paid this way shows what's paid and what's to go.
-  Taking back a payment on any charge takes back the whole payment, with everything else it paid for; any other credit
-  then pays again, oldest first. A charge that stops counting (unticked) goes unless it's paid in full; what part of
+  A payment recorded by mistake is taken back from the ledger (two taps): what it paid is owed again, and any other
+  credit then pays again, oldest first. A charge that stops counting (unticked) goes unless it's paid in full; what part of
   it was paid is credit again.
 - A **bank-statement upload** (later) creates payments by reference and allocates them oldest first, which the admin
   can then re-point. Matching is by the whole reference, never by the name in it.
@@ -104,12 +118,15 @@ upload, reminder emails, and an override of one session's fee.
 
 - A member's **Dues**: what they owe, each session and tournament they were charged for and whether it's paid, and the
   bank details with their reference.
+- **Owing is a badge, not a nag.** The Dues tab carries what you owe as a badge until it's paid. Home says it only
+  once something's really late (a Misconduct, over 60 days), as a row under the session card, never above it: the
+  session you came to sign up for leads the page. Settling up before signing up is an open question (#66).
 - **What a session collected** is the sum of its paid charges, shown beside what it was due (the training's editor).
 - Who sees everyone's charges: `read:Dues` or `record:Payment`. Anyone else sees only their own (ADR 0036).
-- Marking a payment, taking one back, Mark all paid, a quarter charged or taken back by hand, and a new quarterly rate
+- Marking a payment, taking one back, a lump sum, a quarter charged or taken back by hand, and a new quarterly rate
   are on the record ([0095](0095-audit-log.md)).
 - **Unpaid fees** (`read:Dues`), the club's aged-receivables report, is just the unpaid charges, summed per member and
-  bucketed by each charge's age: **Due back** (0–30 days), **Late** (31–60), **Very late** (61–90), **Lost tape**
+  bucketed by each charge's age: **Minor** (0–30 days), **Major** (31–60), **Misconduct** (61–90), **Ejected**
   (over 90). Column totals, a drill-down to each member's charges, and CSV export. A reminder email is planned, not
   built.
 
@@ -152,3 +169,15 @@ upload, reminder emails, and an override of one session's fee.
   charge a quarter by hand. A lump sum pays the oldest charges first, with credit for what's left. Changing a fee from
   an earlier date recalculates what it covers, paid charges too (was: a session kept the fee it first charged at). The
   seed charges from 1 October 2025: Friday Training £12 a session, the quarterly rate £90.
+- 2026-10-09: The age buckets are hockey penalties (Minor, Major, Misconduct, Ejected), not the prototype's video-shop
+  Due back / Late / Very late / Lost tape.
+- 2026-10-09: Mark all paid went: Record a payment does the same with the amount. A payment always says how much. The
+  member sheet's Payments tab is Dues, as the member's own page is called.
+- 2026-10-09: A quarter charged covers its training nights (was: only nights from the day the membership started, so
+  a member made Quarterly mid-quarter, or charged a quarter by hand, paid the quarter and its nights).
+- 2026-10-09: Dues are a ledger, charges and payments by date with a running balance (was: Not paid yet and Payment
+  history lists, with Transfer and Cash on each charge). A payment is taken back from the ledger, by itself.
+- 2026-10-09: Members choose next quarter's plan on their Dues page (where their money is), until it starts; the server checks the date.
+- 2026-10-09: Adjustments, either way, each with its reason; a payment has the day it came in.
+- 2026-10-09: Home stopped showing your dues every visit (red until paid, then an all-clear); the Dues tab's badge says
+  it, and Home only once a charge is over 60 days, below the lead session.

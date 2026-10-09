@@ -172,7 +172,7 @@
 
 <div class="editor">
   {#if form}
-    <div class="seg tabs" role="tablist" aria-label="Training">
+    <div class="tablist" role="tablist" aria-label="Training">
       {#each tabs as t (t.id)}
         <button
           type="button"
@@ -455,13 +455,6 @@
     display: grid;
     gap: var(--s-5);
     container-type: inline-size;
-  }
-  .tabs {
-    justify-self: start;
-  }
-  .tabs > button {
-    flex: none;
-    min-width: 6.5rem;
   }
   /* Twelve columns, as Gwenda's Build tab: fields span 3, 4, 8 or 12 */
   .grid {

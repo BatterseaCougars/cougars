@@ -322,11 +322,13 @@ CREATE TABLE charges (
   session_id INTEGER REFERENCES training_sessions (id) ON DELETE CASCADE,
   tournament_id INTEGER REFERENCES tournaments (id) ON DELETE CASCADE,
   quarter TEXT,
+  -- An adjustment an admin adds, and why (ADR 0007)
+  reason TEXT,
   amount_pence INTEGER NOT NULL,
   due_on TEXT NOT NULL,
   created_at TEXT NOT NULL,
   created_by INTEGER REFERENCES members (id),
-  CHECK ((session_id IS NOT NULL) + (tournament_id IS NOT NULL) + (quarter IS NOT NULL) = 1)
+  CHECK ((session_id IS NOT NULL) + (tournament_id IS NOT NULL) + (quarter IS NOT NULL) + (reason IS NOT NULL) = 1)
 );
 
 CREATE INDEX charges_member ON charges (member_id);
@@ -334,13 +336,15 @@ CREATE UNIQUE INDEX charges_session ON charges (session_id, member_id) WHERE ses
 CREATE UNIQUE INDEX charges_tournament ON charges (tournament_id, member_id) WHERE tournament_id IS NOT NULL;
 CREATE UNIQUE INDEX charges_quarter ON charges (quarter, member_id) WHERE quarter IS NOT NULL;
 
--- Money in, by transfer or cash, and the charges it paid for
+-- Money in, by transfer or cash, or an adjustment taking some off what they owe (with why); and the charges it paid for
 CREATE TABLE payments (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   member_id INTEGER NOT NULL REFERENCES members (id) ON DELETE CASCADE,
   amount_pence INTEGER NOT NULL,
   received_on TEXT NOT NULL,
+  -- transfer, cash or adjustment
   via TEXT NOT NULL,
+  reason TEXT,
   recorded_by INTEGER REFERENCES members (id),
   created_at TEXT NOT NULL
 );

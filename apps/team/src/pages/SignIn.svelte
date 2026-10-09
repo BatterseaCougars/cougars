@@ -2,6 +2,8 @@
   // Signing in (ADR 0023): your email, then the 6-digit code from the email, typed here, where you asked for it.
   // Someone new asks to join instead, and an admin lets them in. Shown by main.ts whenever nobody's signed in; it
   // reloads the app once they are. It reads nothing of the club's.
+  import Icon from "../app/shell/Icon.svelte";
+  import { POSITION_ICONS } from "../demo/data";
   import { api } from "../app/api";
   import mark from "../assets/cougars-mark.webp";
 
@@ -141,7 +143,7 @@
           <div class="seg block" role="group" aria-labelledby="join-position">
             {#each [["F", "Forward"], ["D", "Defence"], ["G", "Keeper"]] as [v, label] (v)}
               <button type="button" aria-pressed={join.position === v} onclick={() => (join.position = v)}>
-                {label}
+                <Icon name={POSITION_ICONS[v as "F" | "D" | "G"]} size={18} />{label}
               </button>
             {/each}
           </div>

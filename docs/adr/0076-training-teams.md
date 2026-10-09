@@ -1,4 +1,4 @@
-# 0076. Training teams: a Team maker role, made by dragging, saved as you change them
+# 0076. Training teams: a Session lead role, made by dragging, saved as you change them
 
 - **Status:** Accepted
 - **Date:** 2026-10-08 · updated 2026-10-09
@@ -15,9 +15,11 @@ without taking players off a team behind the team maker's back.
 
 ## Decision
 
-- **A seeded role, Team maker** (db/seed/club.sql): see the calendar, say in or out, see ratings, make and publish
-  teams. An admin gives it to members on the Roles screen like any other role. Moving players needs both
-  `generate:Teams` and `publish:Teams`, since each move is a publish; Team maker and Admin have both.
+- **A seeded role, Session lead** (db/seed/club.sql), for whoever runs Friday night: see the calendar, say in or out,
+  run the register (`record:Attendance`), see ratings, make and publish teams. One role, not a Door and a Team maker,
+  because on a Friday the same person does both. An admin gives it to members on the Roles screen like any other role.
+  Moving players needs both `generate:Teams` and `publish:Teams`, since each move is a publish; Session lead and Admin
+  have both.
 - **No drafts, no Publish.** Every change a team maker makes is saved straight away, and everyone sees it: making the
   teams, remaking them, moving a player, slotting in late sign-ups, and keeping the teams without whoever's out. Each
   save says what happened in the app's save note ("Reno to Cougars"), which shows wherever you've scrolled.
@@ -47,3 +49,4 @@ without taking players off a team behind the team maker's back.
   draft in the team maker's browser until they pressed Publish, in a banner at the top of the page (was 0076).
 - 2026-10-08: Drafts and Publish went: the banner was out of sight of the moves, so a move looked done but wasn't.
   Every change saves at once, a tap on the grip no longer moves anyone, and the warning moved over the counts (was 0079).
+- 2026-10-09: Door (the register) and Team maker became one role, Session lead; anyone who had either has it.

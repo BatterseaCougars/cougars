@@ -1,8 +1,13 @@
 <script lang="ts">
   // Unpaid fees, the aged-receivables report (ADR 0007): every unpaid charge, added up per member and by how
-  // long it's been owed. Marking a charge paid on a member's profile takes it off here.
+  // long it's been owed. Marking a charge paid on a member's profile takes it off here. A tap on someone opens their
+  // card over the page, as on Teammates: admins get the member sheet on its Dues tab.
   import Icon from "../app/shell/Icon.svelte";
   import PageHeader from "../lib/PageHeader.svelte";
+  import MemberSheet from "../lib/MemberSheet.svelte";
+  import PlayerCardZoom from "../lib/PlayerCardZoom.svelte";
+  import { can } from "../access/actions";
+  import { granted } from "../demo/session.svelte";
   import { PLAYERS, referenceFor } from "../demo/data";
   import { db } from "../demo/store.svelte";
   import { BUCKETS, BUCKET_HINT, aged } from "../lib/dues";
@@ -19,6 +24,12 @@
   const grand = $derived(totals.reduce((a, b) => a + b, 0));
   const max = $derived(Math.max(1, ...totals));
   const tone = ["", "amber", "red", "red"];
+
+  const perms = $derived(granted());
+  const admin = $derived(can(perms, "manage:Member"));
+  // Whose card is open; someone who's left the club has no card, so their row doesn't open
+  let open = $state<number | null>(null);
+  const opened = $derived(db.members.find((m) => m.player.id === open));
 
   /** The report as a spreadsheet: one row per member, a column per bucket. */
   function exportCsv() {
@@ -42,7 +53,7 @@
   <PageHeader
     title="Unpaid fees"
     eyebrow="Aged receivables"
-    subtitle="Who owes what, and how long it's been out. Be kind, rewind."
+    subtitle="Who owes what, and for how long. Settle up before the gong."
   />
 
   <div class="total">
@@ -68,14 +79,20 @@
 
   <div class="list">
     {#each rows as r (r.memberId)}
-      <a class="row" href="/more/teammates/{r.memberId}">
+      <button
+        type="button"
+        class="row"
+        aria-haspopup="dialog"
+        disabled={!db.members.some((m) => m.player.id === r.memberId)}
+        onclick={() => (open = r.memberId)}
+      >
         <span class="grow"><span class="title">{r.player.name}</span><span class="sub num">{r.reference}</span></span>
         <span class="badge {tone[r.oldest]}">{BUCKETS[r.oldest]}</span>
         <span class="num amt">{pounds(r.total)}</span>
         <Icon name="chevronRight" size={18} />
-      </a>
+      </button>
     {:else}
-      <p class="row hint">Nobody owes anything. Be kind, rewind.</p>
+      <p class="row hint">Nobody owes a penny. Honour is satisfied.</p>
     {/each}
   </div>
 
@@ -85,6 +102,19 @@
     </div>
   {/if}
 </div>
+
+{#if opened && admin}
+  {#key opened.player.id}
+    <MemberSheet memberId={opened.player.id} tab="dues" onclose={() => (open = null)} />
+  {/key}
+{:else if opened}
+  <PlayerCardZoom
+    player={opened.player}
+    showRating={can(perms, "read:Rating")}
+    bio={opened.player.bio}
+    onclose={() => (open = null)}
+  />
+{/if}
 
 <style>
   .total {

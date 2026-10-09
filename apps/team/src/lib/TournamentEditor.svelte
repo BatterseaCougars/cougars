@@ -83,7 +83,7 @@
 
 <div class="editor">
   {#if form}
-    <div class="seg tabs" role="tablist" aria-label="Series defaults">
+    <div class="tablist" role="tablist" aria-label="Series defaults">
       {#each TABS as t (t.id)}
         <button
           type="button"
@@ -231,13 +231,6 @@
     display: grid;
     gap: var(--s-5);
     container-type: inline-size;
-  }
-  .tabs {
-    justify-self: start;
-  }
-  .tabs > button {
-    flex: none;
-    min-width: 6.5rem;
   }
   /* Fields three to a row, wrapping on, so every field lines up with the ones above it; span-2 takes two */
   .cols {

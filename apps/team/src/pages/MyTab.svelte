@@ -1,18 +1,42 @@
 <script lang="ts">
-  // Your dues (ADR 0007): every session and tournament you were charged for, and whether it's paid.
-  import ChargeRow from "../lib/ChargeRow.svelte";
+  // Your dues (ADR 0007): what you owe, your plan (this quarter's, and next quarter's to choose), how to pay, and the
+  // ledger: every charge and payment, with what you owed after each.
+  import Ledger from "../lib/Ledger.svelte";
+  import Icon from "../app/shell/Icon.svelte";
   import { referenceFor } from "../demo/data";
   import { chargesFor, creditOf, owedBy } from "../demo/dues.svelte";
-  import { me } from "../demo/session.svelte";
-  import { pounds } from "../lib/dates";
+  import { impersonating, me } from "../demo/session.svelte";
+  import { db } from "../demo/store.svelte";
+  import { choosePlan } from "../app/backend.svelte";
+  import { feeOn, nextQuarter, quarterMonths, quarterOf, quarterStart } from "../lib/dues";
+  import { formatDayDate, londonToday, pounds } from "../lib/dates";
 
   const who = $derived(me());
-  const charges = $derived(chargesFor(who.id));
-  const unpaid = $derived(charges.filter((c) => !c.paidOn));
-  const paid = $derived(charges.filter((c) => c.paidOn));
+  const unpaid = $derived(chargesFor(who.id).filter((c) => !c.paidOn));
   const owed = $derived(owedBy(who.id));
   // Paid in and not yet spent: it pays your next charge
   const credit = $derived(creditOf(who.id));
+  // Viewing as someone else: look, don't change
+  const locked = impersonating();
+
+  // Your plan (ADR 0007): this quarter's is fixed; next quarter's is yours to choose until it starts. Today is checked
+  // every minute, so a page left open moves on; the server checks it too, and says no to a quarter that's started.
+  let today = $state(londonToday());
+  $effect(() => {
+    const t = setInterval(() => (today = londonToday()), 60_000);
+    return () => clearInterval(t);
+  });
+  const thisQuarter = $derived(quarterOf(today));
+  const next = $derived(nextQuarter(thisQuarter));
+  const nextStarts = $derived(quarterStart(next));
+  const myRow = $derived(db.members.find((m) => m.player.id === who.id));
+  const rate = $derived(feeOn(db.fees, nextStarts));
+  // What a night costs then, on the main training (the first that's running)
+  const nightly = $derived.by(() => {
+    const series = db.series.find((s) => s.active);
+    return series ? feeOn(series.fees, nextStarts) : 0;
+  });
+  const planName = (p: string | undefined) => (p === "Subscription" ? "Quarterly Member" : "Pay as you go");
 </script>
 
 <div class="page">
@@ -42,20 +66,70 @@
     <p class="hint">Always use your reference, so your payment is matched to you. Sample bank details.</p>
   </div>
 
-  {#if unpaid.length}
-    <h2 class="section-title">Not paid yet</h2>
+  <section class="plan">
+    <h2 class="section-title">Your plan</h2>
     <div class="list">
-      {#each unpaid as c (c.id)}<ChargeRow charge={c} />{/each}
+      <div class="row">
+        <span class="grow">
+          <span class="title">This quarter · {quarterMonths(thisQuarter)}</span>
+          <span class="sub">Fixed now it's started; ask an admin if it's wrong.</span>
+        </span>
+        <!-- The plan at a glance: its icon and name, as next quarter's tiles show them -->
+        <span class="badge plan-badge">
+          <Icon name={myRow?.plan === "Subscription" ? "calendar" : "skate"} size={14} />{planName(myRow?.plan)}
+        </span>
+      </div>
+      <div class="row next">
+        <span class="grow">
+          <span class="title">Next quarter · {quarterMonths(next)}</span>
+          <span class="sub">Yours to change until it starts on {formatDayDate(`${nextStarts}T12:00:00Z`)}.</span>
+        </span>
+        <div class="seg block tiles" role="group" aria-label="Next quarter's plan">
+          {#each [["Pay as you go", false], ["Subscription", true]] as const as [plan, quarterly] (plan)}
+            <button
+              type="button"
+              disabled={locked}
+              aria-pressed={myRow?.planNext === plan}
+              onclick={() => myRow?.planNext !== plan && choosePlan(next, quarterly)}
+            >
+              <Icon name={quarterly ? "calendar" : "skate"} size={22} />
+              <span class="name">{quarterly ? "Quarterly" : "Pay as you go"}</span>
+              <span class="sub"
+                >{quarterly
+                  ? `${rate ? `${pounds(rate)} · ` : ""}every training night`
+                  : `${nightly ? `${pounds(nightly)} ` : ""}a night you come`}</span
+              >
+            </button>
+          {/each}
+        </div>
+      </div>
     </div>
-  {/if}
+    <p class="hint">Quarterly covers every training night in the quarter; tournaments are paid on their own.</p>
+  </section>
 
-  <h2 class="section-title">Payment history</h2>
-  <div class="list">
-    {#each paid as c (c.id)}<ChargeRow charge={c} />{:else}<p class="row hint">No payments yet.</p>{/each}
-  </div>
+  <h2 class="section-title">Charges and payments</h2>
+  <Ledger memberId={who.id} />
 </div>
 
 <style>
+  .plan {
+    display: grid;
+    gap: var(--s-3);
+  }
+  .plan .section-title {
+    margin: var(--s-4) 0 0;
+  }
+  .plan-badge {
+    height: 1.75rem;
+    color: var(--fg);
+    font-size: var(--text-sm);
+  }
+  .row.next {
+    flex-wrap: wrap;
+  }
+  .row.next .seg {
+    flex: 1 1 24rem;
+  }
   .total {
     display: grid;
     gap: var(--s-2);

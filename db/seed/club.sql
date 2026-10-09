@@ -7,9 +7,8 @@
 INSERT OR IGNORE INTO roles (id, name, description, is_system) VALUES
   (1, 'Member', 'Everyone approved', 0),
   (2, 'Contributor', 'Uploads photos and videos', 0),
-  (3, 'Door', 'Runs the register on Fridays', 0),
-  (4, 'Admin', 'Runs the club', 1),
-  (5, 'Team maker', 'Makes and publishes the teams for training', 0);
+  (3, 'Session lead', 'Runs Friday night: the register and the teams', 0),
+  (4, 'Admin', 'Runs the club', 1);
 
 -- role_actions
 INSERT OR IGNORE INTO role_actions (role_id, action) VALUES
@@ -22,11 +21,9 @@ INSERT OR IGNORE INTO role_actions (role_id, action) VALUES
   (2, 'upload:Photo'),
   (2, 'upload:Video'),
   (3, 'record:Attendance'),
-  (5, 'read:Event'),
-  (5, 'signup:Event'),
-  (5, 'read:Rating'),
-  (5, 'generate:Teams'),
-  (5, 'publish:Teams'),
+  (3, 'read:Rating'),
+  (3, 'generate:Teams'),
+  (3, 'publish:Teams'),
   (4, 'manage:all');
 
 -- venues

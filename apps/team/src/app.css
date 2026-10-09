@@ -3,7 +3,7 @@
  *
  * The club's carbon mesh sits fixed behind everything, well knocked back, with a faint red light at the top.
  * Panels are solid, so text never sits on texture; only the chrome (bars, the dock, the filters band) is frosted
- * glass, and the mesh shows through the page around the panels, not through them ("Tape Deck", 2026-10-07).
+ * glass, and the mesh shows through the page around the panels, not through them.
  * Things are told apart by tinted fills, frost and space, not by outlines: the few hairlines left are the rules
  * between a list's rows and a panel's sections. The main button is cream (the logo's white half); red is the
  * brand, the current nav item and the focus ring. One easing curve, --ease, for everything that moves (motion.ts
@@ -795,51 +795,154 @@ button.row:hover:not(:disabled) {
   outline-offset: 2px;
 }
 
-/* Segmented control: a sunken track (the same track as the desktop page pills); the selected segment is a lit
-   tile. .block stretches it across a form; .sm is the one for a row or a bar. */
+/* ─── Pick ─── One of a few: Position, Plan, How they paid. Separate solid tiles, never a sunken track. The chosen one
+   is lit the way the switch is: the club's red, as a wash, its icon in red-hot and the poster title's red slash under
+   it. Never yellow (that's the main button) and never solid red (that's an armed danger). Every tile weighs the same,
+   so choosing one moves nothing. An icon says what each one is; `tiles` adds a second line (a price, what it means). */
 .seg {
   display: inline-flex;
-  gap: 2px;
-  padding: 3px;
-  border-radius: var(--r-md);
-  background: var(--field-bg);
-  box-shadow: var(--field-edge);
+  flex-wrap: wrap;
+  gap: var(--s-2);
 }
 .seg.block {
   display: flex;
 }
 .seg > button {
-  flex: 1;
-  min-height: 2.1rem;
+  position: relative;
+  flex: 1 1 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-2);
+  min-height: var(--control-h);
   padding: 0 var(--s-4);
   border: 0;
-  border-radius: var(--r-sm);
-  background: none;
-  color: var(--fg-muted);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  color: var(--fg-body);
   font-size: var(--text-sm);
   font-weight: 500;
   white-space: nowrap;
+  transition:
+    background-color var(--t-fast) var(--ease-in-out),
+    color var(--t-fast) var(--ease-in-out);
+}
+.seg > button svg {
+  color: var(--fg-muted);
   transition: color var(--t-fast) var(--ease-in-out);
 }
+.seg > button:hover:not([aria-pressed="true"], :disabled) {
+  background: var(--surface-3);
+  color: var(--fg);
+}
+.seg > button[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--red) 18%, var(--surface-2));
+  color: var(--fg);
+}
+.seg > button[aria-pressed="true"] svg {
+  color: var(--red-hot);
+}
+/* The poster title's slash, under the chosen one */
+.seg > button[aria-pressed="true"]::after {
+  content: "";
+  position: absolute;
+  left: var(--s-4);
+  bottom: 0;
+  width: 1.75rem;
+  height: 3px;
+  transform: skewX(-24deg);
+  transform-origin: left;
+  background: var(--red);
+}
+.seg > button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
 .seg.sm > button {
-  min-height: 1.85rem;
+  min-height: var(--control-h-sm);
   padding: 0 var(--s-3);
   font-size: var(--text-xs);
 }
-.seg > button:hover:not([aria-pressed="true"], [aria-selected="true"]) {
+.seg.sm > button[aria-pressed="true"]::after {
+  left: var(--s-3);
+  width: 1.25rem;
+}
+/* Tiles: an icon, a name and a line under it, for a choice that needs saying (Plan: "£90 · every training night") */
+.seg.tiles > button {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  justify-items: start;
+  column-gap: var(--s-3);
+  min-height: 4rem;
+  padding: var(--s-3) var(--s-4);
+  text-align: left;
+  white-space: normal;
+}
+.seg.tiles > button > svg {
+  grid-row: span 2;
+}
+.seg.tiles > button > .name {
+  color: inherit;
+  font-size: var(--text-base);
+}
+.seg.tiles > button > .sub {
+  color: var(--fg-muted);
+  font-size: var(--text-xs);
+}
+
+/* ─── Tabs ─── A card's or an editor's sections (Details, Attendance, Dues): the club's italic capitals, the one
+   you're on in fg with the poster title's red slash under it. Words on the page, not boxes. */
+.tablist {
+  display: flex;
+  gap: var(--s-1);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.tablist > button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  flex: none;
+  height: 2.5rem;
+  padding: 0 var(--s-3);
+  border: 0;
+  background: none;
+  color: var(--fg-muted);
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-style: italic;
+  font-weight: 400;
+  letter-spacing: 0.03em;
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+  transition: color var(--t-fast) var(--ease-in-out);
+}
+.tablist > button:hover {
+  color: var(--fg-body);
+}
+.tablist > button[aria-selected="true"] {
   color: var(--fg);
 }
-/* The chosen one: a lighter tile in the track, cream text; no outline (no pill in a pill), not a cream block */
-.seg > button[aria-pressed="true"],
-.seg > button[aria-selected="true"] {
-  background: color-mix(in srgb, var(--fg) 14%, var(--surface-2));
-  color: var(--fg);
-  font-weight: 600;
-  box-shadow: 0 1px 2px rgb(0 0 0 / 0.35);
-}
-.seg.red > button[aria-pressed="true"] {
+.tablist > button[aria-selected="true"]::after {
+  content: "";
+  position: absolute;
+  left: var(--s-3);
+  right: var(--s-3);
+  bottom: 0;
+  height: 4px;
+  transform: skewX(-24deg);
   background: var(--red);
-  color: #fff;
+}
+/* A figure on a tab (Dues £298): upright numbers in the text face */
+.tablist > button .num {
+  font-family: var(--font);
+  font-size: var(--text-sm);
+  font-style: normal;
+  font-weight: 600;
+  letter-spacing: 0;
 }
 
 .input {
@@ -912,6 +1015,7 @@ input[type="checkbox"] {
 .badge {
   display: inline-flex;
   align-items: center;
+  gap: var(--s-1);
   height: 1.5rem;
   padding: 0 var(--s-2);
   border-radius: var(--r-sm);
@@ -937,7 +1041,7 @@ input[type="checkbox"] {
   content: "";
   width: 0.4rem;
   height: 0.4rem;
-  margin-right: var(--s-2);
+  margin-right: var(--s-1);
   border-radius: 50%;
   background: currentColor;
   animation: pulse 1.4s var(--ease-in-out) infinite;

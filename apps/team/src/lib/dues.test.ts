@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { aged, bucketOf, collected, feeOn, owed, type Charge } from "./dues";
+import { aged, bucketOf, collected, feeOn, ledger, owed, type Charge, type Payment } from "./dues";
 
 const charge = (over: Partial<Charge>): Charge => ({
   id: 1,
@@ -85,5 +85,40 @@ describe("collected", () => {
       charge({ id: 5, memberId: 3, kind: "tournament", refId: 7, pence: 1500 }),
     ];
     expect(collected(charges, "session", 7)).toEqual({ due: 3000, paid: 2000, people: 3, paidPeople: 2 });
+  });
+});
+
+describe("ledger", () => {
+  const pay = (id: number, pence: number, receivedOn: string): Payment => ({
+    id,
+    memberId: 1,
+    pence,
+    receivedOn,
+    via: "transfer",
+  });
+  const summary = (lines: ReturnType<typeof ledger>) => lines.map((l) => [l.kind, l.on, l.pence, l.balance]);
+
+  it("runs a balance from the oldest, shown newest first; below nothing is credit", () => {
+    const lines = ledger(
+      [charge({ id: 1, dueOn: "2026-09-25", pence: 1200 }), charge({ id: 2, dueOn: "2026-10-02", pence: 1200 })],
+      [pay(1, 3000, "2026-09-28")],
+    );
+    expect(summary(lines)).toEqual([
+      ["charge", "2026-10-02", 1200, -600],
+      ["payment", "2026-09-28", 3000, -1800],
+      ["charge", "2026-09-25", 1200, 1200],
+    ]);
+  });
+
+  it("on one day, the charge comes before its payment, so a night paid on the night nets out", () => {
+    const lines = ledger([charge({ id: 9, dueOn: "2026-10-02", pence: 1200 })], [pay(1, 1200, "2026-10-02")]);
+    expect(summary(lines)).toEqual([
+      ["payment", "2026-10-02", 1200, 0],
+      ["charge", "2026-10-02", 1200, 1200],
+    ]);
+  });
+
+  it("nothing yet: no lines", () => {
+    expect(ledger([], [])).toEqual([]);
   });
 });

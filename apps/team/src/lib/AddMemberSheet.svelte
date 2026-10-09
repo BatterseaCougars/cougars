@@ -1,8 +1,9 @@
 <script lang="ts">
   // An admin adds someone to the club, in a sheet over Teammates (ADR 0065, 0069): name, email, position. They're in
   // straight away, and the app emails them a link to itself; they sign in with that email.
+  import Icon from "../app/shell/Icon.svelte";
   import Sheet from "./Sheet.svelte";
-  import { POSITIONS, type Position } from "../demo/data";
+  import { POSITIONS, POSITION_ICONS, type Position } from "../demo/data";
   import { addMember } from "../app/backend.svelte";
 
   let { open = $bindable(false) }: { open?: boolean } = $props();
@@ -38,10 +39,10 @@
     </label>
     <div class="field">
       <span id="add-member-position">Position</span>
-      <div class="seg" role="group" aria-labelledby="add-member-position">
+      <div class="seg block" role="group" aria-labelledby="add-member-position">
         {#each Object.entries(POSITIONS) as [v, label] (v)}
           <button type="button" aria-pressed={form.position === v} onclick={() => (form.position = v as Position)}
-            >{label}</button
+            ><Icon name={POSITION_ICONS[v as Position]} size={18} />{label}</button
           >
         {/each}
       </div>

@@ -488,8 +488,12 @@
         <h2 class="section-title">Who's in · first come, first served</h2>
         {#if next.going.length || next.waitlist.length}
           <div class="seg sm" role="group" aria-label="Show players as">
-            <button aria-pressed={view === "cards"} onclick={() => setView("cards")}>Cards</button>
-            <button aria-pressed={view === "list"} onclick={() => setView("list")}>List</button>
+            <button aria-pressed={view === "cards"} onclick={() => setView("cards")}
+              ><Icon name="teams" size={16} />Cards</button
+            >
+            <button aria-pressed={view === "list"} onclick={() => setView("list")}
+              ><Icon name="list" size={16} />List</button
+            >
           </div>
         {/if}
       </div>

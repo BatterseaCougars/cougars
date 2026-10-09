@@ -72,7 +72,7 @@ record per topic** ([0001](0001-record-decisions.md)). Read the relevant one bef
 | ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------- |
 | [0069](0069-members.md)                          | Admins add members; the members table is in Settings; a member's details save with a button                      |
 | [0030](0030-training-and-tournament-schedule.md) | The schedule lives in D1: training repeats as a series, tournaments are scheduled one by one and own their rules |
-| [0076](0076-training-teams.md)                   | Training teams: a Team maker role, made by dragging, saved as you change them                                    |
+| [0076](0076-training-teams.md)                   | Training teams: a Session lead role, made by dragging, saved as you change them                                  |
 | [0007](0007-dues-and-payments.md)                | Dues are charges per session and tournament, paid by bank transfer with a name reference                         |
 
 ## Team app: tournaments

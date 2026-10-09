@@ -18,7 +18,7 @@ git ignores (`db/seed/*.local.*`).
 ```
 
 - `position`: `F`, `D` or `G`. `rating`: 0–100, for balancing teams; only `read:Rating` sees it.
-- `email`, `roles` and `cougar` are optional. Everyone gets Member; `roles` adds more (Admin, Contributor, Door).
+- `email`, `roles` and `cougar` are optional. Everyone gets Member; `roles` adds more (Admin, Contributor, Session lead).
 - `cougar: true`: on the club's official team, the Cougars. Teams are made with the Cougars together on one team.
 
 `scripts/seed-roster.mjs` turns it into SQL that **only adds**: a player already in `members` (same name, any

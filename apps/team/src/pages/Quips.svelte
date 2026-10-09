@@ -45,7 +45,7 @@
           <button aria-pressed={g.group === group} onclick={() => setGroup(g.group)}>{g.label}</button>
         {/each}
       </div>
-      <div class="seg kinds" role="tablist" aria-label="When it's said">
+      <div class="tablist" role="tablist" aria-label="When it's said">
         {#each kinds as k (k.kind)}
           <button role="tab" aria-selected={k.kind === kind} onclick={() => (kind = k.kind)}>
             {k.label} <span class="count num">{db.quips.filter((q) => q.kind === k.kind).length}</span>
@@ -107,11 +107,6 @@
 </div>
 
 <style>
-  .kinds {
-    display: flex;
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
   code {
     color: var(--fg);
     font-size: 0.95em;

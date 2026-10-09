@@ -1,5 +1,14 @@
 <script lang="ts" module>
-  export type SelectOption<T extends string = string> = { value: T; label: string; disabled?: boolean };
+  import type { IconName } from "../app/shell/icons";
+  export type SelectOption<T extends string = string> = {
+    value: T;
+    label: string;
+    disabled?: boolean;
+    /** On a member's pick (Choice): what it is, at a glance */
+    icon?: IconName;
+    /** On a member's pick: a line under it (a price, what it covers) */
+    hint?: string;
+  };
 </script>
 
 <script lang="ts" generics="T extends string">

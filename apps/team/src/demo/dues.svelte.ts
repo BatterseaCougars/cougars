@@ -32,6 +32,9 @@ export function labelFor(c: Charge): ChargeLabel {
       tone: type?.tone ?? "red",
     };
   }
+  // An admin's adjustment, by its reason
+  if (c.kind === "adjustment")
+    return { title: c.title ?? "Adjustment", at: londonISO(c.dueOn, "12:00"), icon: "settings", tone: "amber" };
   // "2026-Q4" → "Quarterly membership, Q4 2026"
   const [year, q] = (c.quarter ?? "").split("-");
   return { title: `Quarterly membership, ${q} ${year}`, at: londonISO(c.dueOn, "12:00"), icon: "pound", tone: "green" };

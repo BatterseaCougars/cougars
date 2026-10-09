@@ -1,11 +1,11 @@
-// Friday's teams (ADR 0076): only some people make them. Making and publishing teams is a role, Team maker, that an
+// Friday's teams (ADR 0076): only some people make them. Making and publishing teams is a role, Session lead, that an
 // admin gives a member; everyone else sees the teams once they're out. Driven through the real Worker handlers
 // (ADR 0031).
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { testWorld } from "./testing";
 
 const ROSTER = [
-  { name: "Tess Teams", position: "F", rating: 60, email: "tess@example.com", roles: ["Team maker"] },
+  { name: "Tess Teams", position: "F", rating: 60, email: "tess@example.com", roles: ["Session lead"] },
   { name: "Dana Admin", position: "D", rating: 75, email: "dana@example.com", roles: ["Admin"] },
   { name: "Mo Member", position: "D", rating: 55, email: "mo@example.com" },
 ];

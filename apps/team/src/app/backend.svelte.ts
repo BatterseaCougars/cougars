@@ -21,6 +21,7 @@ import {
   SETTINGS,
   CHARGES,
   CREDITS,
+  PAYMENTS,
   SUBSCRIPTION_FEES,
 } from "../demo/data";
 import type { Position, Slices } from "../demo/data";
@@ -72,6 +73,9 @@ const COPY: Record<keyof Slices, () => void> = {
   },
   credits: () => {
     db.credits = structuredClone(CREDITS);
+  },
+  payments: () => {
+    db.payments = structuredClone(PAYMENTS);
   },
   subscriptionFees: () => {
     db.fees = structuredClone(SUBSCRIPTION_FEES);
@@ -177,6 +181,9 @@ export const saveProfile = (p: { position: Position; phone: string; bio: string;
   save(() => api("PUT", "/api/me", p));
 /** The role the app opens as (ADR 0024); null for your full role. */
 export const saveEverydayRole = (roleId: number | null) => save(() => api("PUT", "/api/me/everyday-role", { roleId }));
+/** Your plan for next quarter, until it starts: the server checks the date (ADR 0007). */
+export const choosePlan = (quarter: string, quarterly: boolean) =>
+  save(() => api("PUT", "/api/me/plan", { quarter, quarterly }), "Plan saved");
 /** Make someone a Quarterly Member from today, or end it (ADR 0007). */
 export const setQuarterly = (memberId: number, quarterly: boolean) =>
   save(() => api("POST", `/api/members/${memberId}/quarterly`, { quarterly }));
@@ -252,6 +259,7 @@ export const saveMember = (m: MemberRow) =>
   save(() =>
     api("PUT", `/api/members/${m.player.id}`, {
       name: m.player.name,
+      webName: m.player.webName ?? "",
       position: m.player.position,
       rating: m.player.rating,
       cougar: m.player.cougar,
@@ -299,17 +307,15 @@ const seriesBody = (s: TrainingSeries) => ({
   fees: s.fees,
 });
 // ─── Dues (ADR 0007) ───
-/** A charge is paid, by transfer or in cash. */
-export const payCharge = (chargeId: number, via: "transfer" | "cash") =>
-  save(() => api("POST", `/api/charges/${chargeId}/payment`, { via }), "");
-/** Marked paid by mistake. */
-export const unpayCharge = (chargeId: number) => save(() => api("DELETE", `/api/charges/${chargeId}/payment`), "");
-/** Everything a member owes, paid at once. */
-export const payAll = (memberId: number, via: "transfer" | "cash") =>
-  save(() => api("POST", `/api/members/${memberId}/payments`, { via }), "All paid");
+/** A payment recorded by mistake, taken back from the ledger. */
+export const removePayment = (paymentId: number) =>
+  save(() => api("DELETE", `/api/payments/${paymentId}`), "Taken back");
 /** Money in (a lump sum): it pays what they owe oldest first, and anything left over is credit for what's next. */
-export const recordPayment = (memberId: number, pence: number, via: "transfer" | "cash") =>
-  save(() => api("POST", `/api/members/${memberId}/payments`, { pence, via }), "Payment recorded");
+export const recordPayment = (memberId: number, pence: number, via: "transfer" | "cash", receivedOn?: string) =>
+  save(() => api("POST", `/api/members/${memberId}/payments`, { pence, via, receivedOn }), "Payment recorded");
+/** An adjustment, with why: pence above nothing adds to what they owe, below takes some off (ADR 0007). */
+export const adjustDues = (memberId: number, pence: number, reason: string, on: string) =>
+  save(() => api("POST", `/api/members/${memberId}/adjustments`, { pence, reason, on }), "Adjusted");
 /** Work a member's dues out again from who came and the fees as they are now. */
 export const recalculateDues = (memberId: number) =>
   save(() => api("POST", `/api/members/${memberId}/recalculate`), "Dues recalculated");

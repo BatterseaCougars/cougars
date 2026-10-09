@@ -3,10 +3,10 @@
   // A member, opened for an admin (Teammates: a tap on their card or row, or a link to /more/teammates/:id). It
   // fills the space the page has, beside the dock and under the top bar (on a phone, the whole screen), the way
   // Gwenda's editors do: a header with who they are and a close button top right, then a body that scrolls on its
-  // own. Details and attendance on the left, money on the right; one column when it's narrow. The card they were
+  // own. Tabs along the header's foot: Details, Attendance and Dues, each with the whole card. The card they were
   // tapped on turns away as it opens, and back as it closes. Their details and attendance are a draft until Save, in
-  // a footer that stays at the bottom (as Gwenda's editors have); closing with changes asks first. Fees (marking a
-  // charge paid) still save as they're tapped.
+  // a footer that stays at the bottom (as Gwenda's editors have); closing with changes asks first. Dues (a payment, a
+  // quarter charged, taken back) save as they're made.
   import { onMount, tick } from "svelte";
   import Icon from "../app/shell/Icon.svelte";
   import { pageColumnStyle } from "./page-column";
@@ -16,9 +16,9 @@
     attendanceOf,
     chargeQuarter,
     markHere,
-    payAll as payEverything,
     recalculateDues,
     recordPayment,
+    adjustDues,
     saveContact,
     saveMember,
     setQuarterly,
@@ -29,8 +29,10 @@
   import { db } from "../demo/store.svelte";
   import { granted } from "../demo/session.svelte";
   import { can } from "../access/actions";
-  import ChargeRow from "./ChargeRow.svelte";
-  import Drawer from "./Drawer.svelte";
+  import Ledger from "./Ledger.svelte";
+  import Sheet from "./Sheet.svelte";
+  import MoneyField from "./MoneyField.svelte";
+  import DateField from "./DateField.svelte";
   import { feeOn, leftOn } from "./dues";
   import { formatDayDate, londonISO, londonToday, pounds } from "./dates";
   import { initials } from "./initials";
@@ -49,11 +51,14 @@
   let {
     memberId,
     source,
+    tab = "details",
     onclose,
   }: {
     memberId: number;
     /** The card that was tapped: it turns away as this opens. None (a row, a link) and this just grows in. */
     source?: HTMLElement;
+    /** Which tab it opens on: Unpaid fees opens it on their dues */
+    tab?: "details" | "attendance" | "dues";
     onclose: () => void;
   } = $props();
 
@@ -63,6 +68,7 @@
   // (Teammates and Members key it), so they're read once, as it opens, and again after a save.
   const current = () => ({
     name: member.player.name,
+    webName: member.player.webName ?? "",
     role: member.roles[0] ?? "Member",
     plan: member.plan,
     position: member.player.position,
@@ -94,16 +100,29 @@
     if (!canSave) return false;
     busy = true;
     try {
-      const d = { ...draft, name: tidyName(draft.name), email: draft.email.trim(), phone: draft.phone.trim() };
+      const d = {
+        ...draft,
+        name: tidyName(draft.name),
+        webName: tidyName(draft.webName),
+        email: draft.email.trim(),
+        phone: draft.phone.trim(),
+      };
       const results: unknown[] = [];
       if (
         d.name !== saved.name ||
+        d.webName !== saved.webName ||
         d.role !== saved.role ||
         d.position !== saved.position ||
         d.rating !== saved.rating ||
         d.cougar !== saved.cougar
       ) {
-        Object.assign(member.player, { name: d.name, position: d.position, rating: d.rating, cougar: d.cougar });
+        Object.assign(member.player, {
+          name: d.name,
+          webName: d.webName || null,
+          position: d.position,
+          rating: d.rating,
+          cougar: d.cougar,
+        });
         member.roles = d.role === "Member" ? ["Member"] : [d.role, "Member"];
         results.push(await saveMember(member));
       }
@@ -200,8 +219,6 @@
   }
 
   const charges = $derived(chargesFor(memberId));
-  const unpaid = $derived(charges.filter((c) => !c.paidOn));
-  const paid = $derived(charges.filter((c) => c.paidOn));
   const owed = $derived(owedBy(memberId));
   // Everything paid towards their charges, part payments too, and money not yet spent on one
   const paidTotal = $derived(charges.reduce((s, c) => s + c.pence - leftOn(c), 0));
@@ -211,7 +228,6 @@
   const perms = $derived(granted());
   const seesDues = $derived(can(perms, "read:Dues") || can(perms, "record:Payment"));
   const recordsPayments = $derived(can(perms, "record:Payment"));
-  const payAll = (via: "transfer" | "cash") => payEverything(memberId, via);
 
   // Charging a quarter by hand: this one or one of the last four, at today's quarterly rate unless changed
   const quarterKey = (n: number) => `${Math.floor(n / 4)}-Q${(n % 4) + 1}`;
@@ -242,19 +258,45 @@
   // A payment of any amount (a lump sum): it pays the oldest charges first, and what's left over is credit
   let paying = $state(false);
   // Below the details: their attendance, or (for whoever sees dues) their payments
-  let bodyTab = $state<"attendance" | "payments">("attendance");
+  // The Dues tab's pinned totals: how tall, so each list's heading pins just under them
+  let moneyHeight = $state(0);
+  // svelte-ignore state_referenced_locally
+  let bodyTab = $state<"details" | "attendance" | "dues">(tab);
   let payAmount = $state("");
   let payVia = $state<"transfer" | "cash">("transfer");
+  // The day it came in: today unless it was earlier (a transfer that landed last week)
+  let payOn = $state(londonToday());
   function startPayment() {
     payAmount = owed ? String(owed / 100) : "";
     payVia = "transfer";
+    payOn = londonToday();
     paying = true;
+  }
+  // An adjustment (ADR 0007): add to or take off what they owe, saying why
+  let adjusting = $state(false);
+  let adjustWay = $state<"more" | "less">("less");
+  let adjustAmount = $state("");
+  let adjustReason = $state("");
+  let adjustOn = $state(londonToday());
+  function startAdjust() {
+    adjustWay = "less";
+    adjustAmount = "";
+    adjustReason = "";
+    adjustOn = londonToday();
+    adjusting = true;
+  }
+  async function addAdjust(e: SubmitEvent) {
+    e.preventDefault();
+    const pence = Math.round(Number(adjustAmount) * 100);
+    if (!Number.isFinite(pence) || pence <= 0 || !adjustReason.trim()) return;
+    if (await adjustDues(memberId, adjustWay === "more" ? pence : -pence, adjustReason.trim(), adjustOn))
+      adjusting = false;
   }
   async function addPayment(e: SubmitEvent) {
     e.preventDefault();
     const pence = Math.round(Number(payAmount) * 100);
     if (!Number.isFinite(pence) || pence <= 0) return;
-    if (await recordPayment(memberId, pence, payVia)) paying = false;
+    if (await recordPayment(memberId, pence, payVia, payOn)) paying = false;
   }
 
   // Opening is one turn: the tapped card lifts, grows towards the middle and turns edge-on; the panel carries the
@@ -438,279 +480,354 @@
           <Icon name="x" size={18} />
         </button>
       </div>
-
-      <div class="stack">
-        {#if !gone}
-          <div class="details ph-layer" class:out={ready} aria-hidden="true" onanimationend={() => (gone = true)}>
-            {#each ["role", "plan", "position", "rating", "team", "email", "phone"] as k (k)}<i class="ph field-ph {k}"
-              ></i>{/each}
-          </div>
-        {/if}
-        {#if ready}
-          <div class="details in">
-            <label class="field role">
-              Role
-              <Select
-                id="member-role"
-                value={draft.role}
-                onchange={(v) => (draft.role = v)}
-                options={db.roles.map((r) => ({ value: r.name, label: r.name }))}
-              />
-            </label>
-            <label class="field plan">
-              Plan
-              <Select
-                id="member-plan"
-                value={draft.plan}
-                onchange={(v) => (draft.plan = v as typeof draft.plan)}
-                options={[
-                  { value: "Pay as you go", label: "Pay as you go" },
-                  { value: "Subscription", label: "Quarterly Member" },
-                ]}
-              />
-            </label>
-            <div class="field position">
-              <span id="member-position">Position</span>
-              <div class="seg" role="group" aria-labelledby="member-position">
-                {#each Object.entries(POSITIONS) as [v, label] (v)}
-                  <button
-                    type="button"
-                    aria-pressed={draft.position === v}
-                    onclick={() => (draft.position = v as Position)}
-                  >
-                    {label}
-                  </button>
-                {/each}
-              </div>
-            </div>
-            <label class="field rating">
-              Rating
-              <input
-                class="input num"
-                type="number"
-                min="0"
-                max="100"
-                step="1"
-                aria-invalid={!ratingOk}
-                bind:value={draft.rating}
-              />
-            </label>
-            <div class="field team">
-              <span id="member-team">Cougars team</span>
-              <!-- On or off: a switch, with what it means beside it -->
-              <button
-                type="button"
-                class="switch"
-                role="switch"
-                aria-checked={draft.cougar}
-                aria-labelledby="member-team"
-                onclick={() => (draft.cougar = !draft.cougar)}
-              >
-                <span class="track" aria-hidden="true"></span>
-                <span>{draft.cougar ? "On the Cougars" : "Not on it"}</span>
-              </button>
-            </div>
-            <label class="field email">
-              Email (they sign in with it)
-              <input class="input" type="email" autocomplete="off" placeholder="None yet" bind:value={draft.email} />
-            </label>
-            <label class="field phone">
-              Phone
-              <input class="input" type="tel" autocomplete="off" bind:value={draft.phone} />
-            </label>
-          </div>
-        {/if}
+      <!-- Details, attendance and dues: each gets the whole card below the header -->
+      <div class="tablist" role="tablist" aria-label="{shortName(member.player)}'s card">
+        {#each [["details", "Details"], ["attendance", "Attendance"], ...(seesDues ? [["dues", "Dues"]] : [])] as [id, label] (id)}
+          <button
+            type="button"
+            role="tab"
+            id="member-tab-{id}"
+            aria-selected={bodyTab === id}
+            aria-controls="member-panel"
+            onclick={() => (bodyTab = id as typeof bodyTab)}
+          >
+            {label}{#if id === "dues" && owed > 0}<span class="tab-owed num">{pounds(owed)}</span>{/if}
+          </button>
+        {/each}
       </div>
     </header>
 
-    <!-- The rest of the card: attendance, then fees -->
-    <div class="body stack">
-      {#if !gone}
-        <div class="ph-layer" class:out={ready} aria-hidden="true">
-          <section><i class="ph line"></i><i class="ph block"></i></section>
-          <section><i class="ph line"></i><i class="ph rows"></i></section>
-        </div>
-      {/if}
-      {#if ready}
-        <div>
-          {#if seesDues}
-            <!-- Attendance and payments each get the whole card below the details -->
-            <div class="seg tabs in" role="tablist" aria-label="{shortName(member.player)}'s record">
-              {#each [["attendance", "Attendance"], ["payments", "Payments"]] as [id, label] (id)}
-                <button
-                  type="button"
-                  role="tab"
-                  id="member-tab-{id}"
-                  aria-selected={bodyTab === id}
-                  aria-controls="member-panel"
-                  onclick={() => (bodyTab = id as typeof bodyTab)}
-                >
-                  {label}{#if id === "payments" && owed > 0}<span class="tab-owed num">{pounds(owed)}</span>{/if}
-                </button>
+    <!-- The rest of the card: the tab showing. It scrolls on its own, each section's heading staying in view. -->
+    <div class="body">
+      {#if bodyTab === "details"}
+        <div class="stack" id="member-panel" role="tabpanel" aria-labelledby="member-tab-details">
+          {#if !gone}
+            <div class="details ph-layer" class:out={ready} aria-hidden="true" onanimationend={() => (gone = true)}>
+              {#each ["contact", "club"] as g (g)}
+                <div class="group">
+                  <i class="ph line"></i>
+                  <div class="fields {g}">
+                    {#each g === "contact" ? [1, 2, 3] : [1, 2, 3, 4, 5] as n (n)}<i class="ph field-ph"></i>{/each}
+                  </div>
+                </div>
               {/each}
             </div>
           {/if}
-          {#if bodyTab === "attendance" || !seesDues}
-            <div class="part in" id="member-panel" role="tabpanel" aria-labelledby="member-tab-attendance">
-              <div class="head-row">
-                <h2>Attendance</h2>
-                <span class="steps" role="group" aria-label="Quarter">
-                  <button
-                    class="btn ghost icon"
-                    aria-label="Quarter before"
-                    disabled={quarter <= firstQuarter}
-                    onclick={() => quarter--}
-                  >
-                    <Icon name="chevronLeft" size={18} />
-                  </button>
-                  <span class="step-label num" aria-live="polite">{quarterLabel}</span>
-                  <button
-                    class="btn ghost icon"
-                    aria-label="Quarter after"
-                    disabled={quarter >= thisQuarter}
-                    onclick={() => quarter++}
-                  >
-                    <Icon name="chevronRight" size={18} />
-                  </button>
-                </span>
+          {#if ready}
+            <!-- Two groups: how to reach them and what to call them, then their place in the club -->
+            <div class="details in">
+              <div class="group">
+                <h3 class="eyebrow">Contact</h3>
+                <div class="fields contact">
+                  <label class="field">
+                    Goes by
+                    <input
+                      class="input"
+                      maxlength="40"
+                      autocomplete="off"
+                      placeholder={member.player.name}
+                      bind:value={draft.webName}
+                    />
+                  </label>
+                  <label class="field email">
+                    Email (they sign in with it)
+                    <input
+                      class="input"
+                      type="email"
+                      autocomplete="off"
+                      placeholder="None yet"
+                      bind:value={draft.email}
+                    />
+                  </label>
+                  <label class="field">
+                    Phone
+                    <input class="input" type="tel" autocomplete="off" bind:value={draft.phone} />
+                  </label>
+                </div>
               </div>
-              <p class="legend hint">
-                <span><i class="dot came"></i>Came {inQuarter.filter(came).length}</span>
-                <span
-                  ><i class="dot noshow"></i>No-show {inQuarter.filter((r) => r.signup === "in" && !came(r))
-                    .length}</span
-                >
-                <span><i class="dot"></i>Not there</span>
-                <span>Played {member.player.played ?? 0} in all</span>
-                <span class="tap">Tap a Friday to change it</span>
-              </p>
-              <!-- The quarter as a calendar: a row per month, its trainings across it week by week -->
-              <div class="months">
-                {#each months as [month, days] (month)}
-                  <span class="month">{month}</span>
-                  <div class="weeks">
-                    {#if attendance === null}
-                      <span class="hint">Loading…</span>
-                    {/if}
-                    {#each days as r (r.sessionId)}
-                      {@const o = outcome(r)}
-                      <button
-                        class="day {o.kind}"
-                        disabled={r.cancelled}
-                        title="{r.series}, {formatDayDate(londonISO(r.heldOn, '12:00'))}: {o.label}"
-                        aria-label="{r.series}, {formatDayDate(londonISO(r.heldOn, '12:00'))}: {o.label}"
-                        onclick={() => toggleCame(r)}
-                      >
-                        <span class="d num">{Number(r.heldOn.slice(8))}</span>
-                      </button>
-                    {:else}
-                      {#if attendance !== null}<span class="hint">No trainings</span>{/if}
-                    {/each}
-                  </div>
-                {/each}
-              </div>
-            </div>
-          {:else}
-            <div class="part in" id="member-panel" role="tabpanel" aria-labelledby="member-tab-payments">
-              <!-- What they owe, what they've paid, and the jobs, then the charges -->
-              <div class="money">
-                <div class="stat">
-                  <span class="eyebrow">Owes</span>
-                  <span class="value num" class:owes={owed > 0}>{pounds(owed)}</span>
-                </div>
-                <div class="stat">
-                  <span class="eyebrow">Paid</span>
-                  <span class="value num">{pounds(paidTotal)}</span>
-                </div>
-                <div class="stat">
-                  <span class="eyebrow">Credit</span>
-                  <span class="value num">{pounds(credit)}</span>
-                </div>
-                {#if recordsPayments}
-                  <span class="buttons">
-                    <button class="btn sm primary" aria-haspopup="dialog" onclick={startPayment}>
-                      <Icon name="pound" size={16} />Record a payment
-                    </button>
-                    <button class="btn sm" aria-haspopup="dialog" onclick={startCharge}>
-                      <Icon name="plus" size={16} />Charge a quarter
-                    </button>
+              <div class="group">
+                <h3 class="eyebrow">In the club</h3>
+                <div class="fields club">
+                  <label class="field">
+                    Role
+                    <Select
+                      id="member-role"
+                      value={draft.role}
+                      onchange={(v) => (draft.role = v)}
+                      options={db.roles.map((r) => ({ value: r.name, label: r.name }))}
+                    />
+                  </label>
+                  <label class="field">
+                    Plan
+                    <Select
+                      id="member-plan"
+                      value={draft.plan}
+                      onchange={(v) => (draft.plan = v as typeof draft.plan)}
+                      options={[
+                        { value: "Pay as you go", label: "Pay as you go" },
+                        { value: "Subscription", label: "Quarterly Member" },
+                      ]}
+                    />
+                  </label>
+                  <label class="field">
+                    Position
+                    <Select
+                      id="member-position"
+                      value={draft.position}
+                      onchange={(v) => (draft.position = v as Position)}
+                      options={Object.entries(POSITIONS).map(([value, label]) => ({ value, label }))}
+                    />
+                  </label>
+                  <label class="field">
+                    Rating
+                    <input
+                      class="input num"
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="1"
+                      aria-invalid={!ratingOk}
+                      bind:value={draft.rating}
+                    />
+                  </label>
+                  <div class="field">
+                    <span id="member-team">Cougars team</span>
+                    <!-- On or off: a switch, with what it means beside it -->
                     <button
-                      class="btn sm ghost"
-                      title="Work their dues out again from who came and the fees as they are now"
-                      onclick={() => recalculateDues(memberId)}
+                      type="button"
+                      class="switch"
+                      role="switch"
+                      aria-checked={draft.cougar}
+                      aria-labelledby="member-team"
+                      onclick={() => (draft.cougar = !draft.cougar)}
                     >
-                      <Icon name="undo" size={16} />Recalculate
+                      <span class="track" aria-hidden="true"></span>
+                      <span>{draft.cougar ? "On the Cougars" : "Not on it"}</span>
                     </button>
-                  </span>
-                {/if}
+                  </div>
+                </div>
               </div>
-              <div class="head-row">
-                <h3 class="eyebrow">Not paid yet</h3>
-                {#if recordsPayments && unpaid.length > 1}
-                  <span class="seg sm" role="group" aria-label="Mark everything paid">
-                    <button onclick={() => payAll("transfer")}>All paid · transfer</button>
-                    <button onclick={() => payAll("cash")}>Cash</button>
-                  </span>
-                {/if}
-              </div>
-              <div class="list">
-                {#each unpaid as c (c.id)}<ChargeRow charge={c} editable={recordsPayments} />{:else}<p class="row hint">
-                    All square.
-                  </p>{/each}
-              </div>
-              <h3 class="eyebrow">Payment history</h3>
-              <div class="list">
-                {#each paid as c (c.id)}<ChargeRow charge={c} editable={recordsPayments} />{:else}<p class="row hint">
-                    Nothing paid yet.
-                  </p>{/each}
-              </div>
-              {#if recordsPayments && paid.length}
-                <p class="hint">Tap Paid to take a payment back if it was marked by mistake.</p>
-              {/if}
             </div>
           {/if}
-          {#if seesDues}
-            <Drawer bind:open={charging} wide title="Charge a quarter" sub={member.player.name}>
-              <form class="form" onsubmit={addQuarter}>
-                <div class="field">
-                  Quarter
-                  <Select id="charge-quarter" aria-label="Quarter" bind:value={chargeWhich} options={chargeOptions} />
-                </div>
-                <label class="field">
-                  Amount (£)
-                  <input class="input num" inputmode="decimal" required bind:value={chargeAmount} />
-                </label>
-                <p class="hint">
-                  Due from the quarter's first day. Quarterly Members are charged each quarter on their own; this is for
-                  anyone else, or a quarter they missed.
-                </p>
-                <button class="btn primary">Charge</button>
-              </form>
-            </Drawer>
-            <Drawer bind:open={paying} wide title="Record a payment" sub={member.player.name}>
-              <form class="form" onsubmit={addPayment}>
-                <label class="field">
-                  Amount (£)
-                  <input class="input num" inputmode="decimal" required bind:value={payAmount} />
-                </label>
-                <div class="field">
-                  How
-                  <span class="seg" role="group" aria-label="How they paid">
-                    <button type="button" aria-pressed={payVia === "transfer"} onclick={() => (payVia = "transfer")}
-                      >Transfer</button
+        </div>
+      {:else}
+        <div class="stack">
+          {#if !gone}
+            <div class="ph-layer" class:out={ready} aria-hidden="true" onanimationend={() => (gone = true)}>
+              <section><i class="ph line"></i><i class="ph block"></i></section>
+              <section><i class="ph line"></i><i class="ph rows"></i></section>
+            </div>
+          {/if}
+          {#if ready}
+            <div>
+              {#if bodyTab === "attendance"}
+                <div class="part in" id="member-panel" role="tabpanel" aria-labelledby="member-tab-attendance">
+                  <div class="head-row pinned">
+                    <h2>Attendance</h2>
+                    <span class="steps" role="group" aria-label="Quarter">
+                      <button
+                        class="btn ghost icon"
+                        aria-label="Quarter before"
+                        disabled={quarter <= firstQuarter}
+                        onclick={() => quarter--}
+                      >
+                        <Icon name="chevronLeft" size={18} />
+                      </button>
+                      <span class="step-label num" aria-live="polite">{quarterLabel}</span>
+                      <button
+                        class="btn ghost icon"
+                        aria-label="Quarter after"
+                        disabled={quarter >= thisQuarter}
+                        onclick={() => quarter++}
+                      >
+                        <Icon name="chevronRight" size={18} />
+                      </button>
+                    </span>
+                  </div>
+                  <p class="legend hint">
+                    <span><i class="dot came"></i>Came {inQuarter.filter(came).length}</span>
+                    <span
+                      ><i class="dot noshow"></i>No-show {inQuarter.filter((r) => r.signup === "in" && !came(r))
+                        .length}</span
                     >
-                    <button type="button" aria-pressed={payVia === "cash"} onclick={() => (payVia = "cash")}
-                      >Cash</button
-                    >
-                  </span>
+                    <span><i class="dot"></i>Not there</span>
+                    <span>Played {member.player.played ?? 0} in all</span>
+                    <span class="tap">Tap a Friday to change it</span>
+                  </p>
+                  <!-- The quarter as a calendar: a row per month, its trainings across it week by week -->
+                  <div class="months">
+                    {#each months as [month, days] (month)}
+                      <span class="month">{month}</span>
+                      <div class="weeks">
+                        {#if attendance === null}
+                          <span class="hint">Loading…</span>
+                        {/if}
+                        {#each days as r (r.sessionId)}
+                          {@const o = outcome(r)}
+                          <button
+                            class="day {o.kind}"
+                            disabled={r.cancelled}
+                            title="{r.series}, {formatDayDate(londonISO(r.heldOn, '12:00'))}: {o.label}"
+                            aria-label="{r.series}, {formatDayDate(londonISO(r.heldOn, '12:00'))}: {o.label}"
+                            onclick={() => toggleCame(r)}
+                          >
+                            <span class="d num">{Number(r.heldOn.slice(8))}</span>
+                          </button>
+                        {:else}
+                          {#if attendance !== null}<span class="hint">No trainings</span>{/if}
+                        {/each}
+                      </div>
+                    {/each}
+                  </div>
                 </div>
-                <p class="hint">
-                  It pays what they owe oldest first. Anything over is kept as credit and pays their next charge.
-                  {#if owed}They owe {pounds(owed)}.{/if}
-                </p>
-                <button class="btn primary">Record payment</button>
-              </form>
-            </Drawer>
+              {:else}
+                <div
+                  class="part in"
+                  id="member-panel"
+                  role="tabpanel"
+                  aria-labelledby="member-tab-dues"
+                  style:--below="{moneyHeight}px"
+                >
+                  <!-- What they owe, what they've paid, and the jobs, pinned; then the ledger, its header pinned under them -->
+                  <div class="money" bind:clientHeight={moneyHeight}>
+                    <div class="stat">
+                      <span class="eyebrow">Owes</span>
+                      <span class="value num" class:owes={owed > 0}>{pounds(owed)}</span>
+                    </div>
+                    <div class="stat">
+                      <span class="eyebrow">Paid</span>
+                      <span class="value num">{pounds(paidTotal)}</span>
+                    </div>
+                    <div class="stat">
+                      <span class="eyebrow">Credit</span>
+                      <span class="value num">{pounds(credit)}</span>
+                    </div>
+                    {#if recordsPayments}
+                      <span class="buttons">
+                        <button class="btn sm primary" aria-haspopup="dialog" onclick={startPayment}>
+                          <Icon name="pound" size={16} />Record a payment
+                        </button>
+                        <button class="btn sm" aria-haspopup="dialog" onclick={startAdjust}>
+                          <Icon name="settings" size={16} />Adjust
+                        </button>
+                        <button class="btn sm" aria-haspopup="dialog" onclick={startCharge}>
+                          <Icon name="plus" size={16} />Charge a quarter
+                        </button>
+                        <button
+                          class="btn sm ghost"
+                          title="Work their dues out again from who came and the fees as they are now"
+                          onclick={() => recalculateDues(memberId)}
+                        >
+                          <Icon name="undo" size={16} />Recalculate
+                        </button>
+                      </span>
+                    {/if}
+                  </div>
+                  <Ledger {memberId} editable={recordsPayments} />
+                </div>
+              {/if}
+              {#if seesDues}
+                <!-- Short forms that never grow: a bottom sheet (a centred one on desktop), not a side drawer -->
+                <Sheet bind:open={charging} title="Charge {shortName(member.player)} a quarter">
+                  <form class="form" onsubmit={addQuarter}>
+                    <div class="field">
+                      Quarter
+                      <Select
+                        id="charge-quarter"
+                        aria-label="Quarter"
+                        bind:value={chargeWhich}
+                        options={chargeOptions}
+                      />
+                    </div>
+                    <label class="field">
+                      Amount
+                      <MoneyField id="charge-amount" required bind:value={chargeAmount} />
+                    </label>
+                    <p class="hint">
+                      Due from the quarter's first day. Quarterly Members are charged each quarter on their own; this is
+                      for anyone else, or a quarter they missed.
+                    </p>
+                    <button class="btn primary">Charge</button>
+                  </form>
+                </Sheet>
+                <Sheet bind:open={adjusting} title="Adjust {shortName(member.player)}'s dues">
+                  <form class="form" onsubmit={addAdjust}>
+                    <div class="field">
+                      <span id="adjust-way">What it does</span>
+                      <span class="seg block" role="group" aria-labelledby="adjust-way">
+                        <button type="button" aria-pressed={adjustWay === "less"} onclick={() => (adjustWay = "less")}
+                          ><Icon name="minus" size={18} />Take off what they owe</button
+                        >
+                        <button type="button" aria-pressed={adjustWay === "more"} onclick={() => (adjustWay = "more")}
+                          ><Icon name="plus" size={18} />Add to what they owe</button
+                        >
+                      </span>
+                    </div>
+                    <div class="pay-row">
+                      <label class="field">
+                        Amount
+                        <MoneyField id="adjust-amount" required bind:value={adjustAmount} />
+                      </label>
+                      <div class="field">
+                        <span>On</span>
+                        <DateField id="adjust-on" aria-label="On" max={londonToday()} required bind:value={adjustOn} />
+                      </div>
+                    </div>
+                    <label class="field">
+                      Why
+                      <input
+                        class="input"
+                        maxlength="120"
+                        required
+                        placeholder="e.g. Reffed the Kumite"
+                        bind:value={adjustReason}
+                      />
+                    </label>
+                    <p class="hint">
+                      It's a line on their ledger, with why, and it's on the record.
+                      {#if adjustWay === "less"}It pays what they owe oldest first, like money in.{/if}
+                    </p>
+                    <button class="btn primary">Adjust</button>
+                  </form>
+                </Sheet>
+                <Sheet bind:open={paying} title="Payment from {shortName(member.player)}">
+                  <form class="form" onsubmit={addPayment}>
+                    <div class="pay-row">
+                      <label class="field">
+                        Amount
+                        <MoneyField id="pay-amount" required bind:value={payAmount} />
+                      </label>
+                      <div class="field">
+                        <span id="pay-on">Paid on</span>
+                        <DateField
+                          id="pay-on-day"
+                          aria-label="Paid on"
+                          max={londonToday()}
+                          required
+                          bind:value={payOn}
+                        />
+                      </div>
+                    </div>
+                    <div class="field">
+                      How
+                      <span class="seg block" role="group" aria-label="How they paid">
+                        <button type="button" aria-pressed={payVia === "transfer"} onclick={() => (payVia = "transfer")}
+                          ><Icon name="bank" size={18} />Transfer</button
+                        >
+                        <button type="button" aria-pressed={payVia === "cash"} onclick={() => (payVia = "cash")}
+                          ><Icon name="pound" size={18} />Cash</button
+                        >
+                      </span>
+                    </div>
+                    <p class="hint">
+                      It pays what they owe oldest first. Anything over is kept as credit and pays their next charge.
+                      {#if owed}They owe {pounds(owed)}.{/if}
+                    </p>
+                    <button class="btn primary">Record payment</button>
+                  </form>
+                </Sheet>
+              {/if}
+            </div>
           {/if}
         </div>
       {/if}
@@ -801,10 +918,9 @@
   /* Header: the player. Who they are with the close button top right, then their details in one aligned row. */
   .panel-head {
     display: grid;
-    gap: var(--s-5);
-    padding: var(--s-5) var(--s-5) var(--s-5) var(--s-6);
+    gap: var(--s-4);
+    padding: var(--s-5) var(--s-5) var(--s-4) var(--s-6);
     border-bottom: 1px solid var(--border);
-    container-type: inline-size;
   }
   .who {
     display: flex;
@@ -863,58 +979,40 @@
     background: var(--field-bg);
     box-shadow: var(--field-edge);
   }
+  /* Details: two groups, each a grid of same-height fields that wraps to fit; one column on a phone */
   .details {
     display: grid;
-    grid-template-columns:
-      minmax(9rem, 1fr) minmax(10rem, 1.1fr) minmax(16rem, 1.7fr) minmax(5.5rem, 0.5fr)
-      minmax(9rem, 0.9fr);
+    gap: var(--s-6);
+  }
+  .group {
+    display: grid;
+    gap: var(--s-3);
+  }
+  .fields {
+    display: grid;
     gap: var(--s-4);
     align-items: start;
   }
-  /* A second row: how to reach them */
-  .email {
-    grid-column: 1 / 4;
+  .fields.contact {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr) minmax(0, 1fr);
   }
-  .phone {
-    grid-column: 4 / 6;
+  .fields.club {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(0, 0.6fr) minmax(0, 1fr);
   }
-  .seg {
-    display: flex;
-  }
-  .seg > button {
-    flex: 1;
-  }
-  @container (max-width: 62rem) {
-    .details {
-      grid-template-columns: repeat(6, minmax(0, 1fr));
+  @container (max-width: 52rem) {
+    .fields.contact,
+    .fields.club {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
     }
-    .role,
-    .plan,
-    .rating,
-    .team {
-      grid-column: span 3;
-    }
-    .position {
-      grid-column: span 6;
-    }
-    .ph.role,
-    .ph.plan,
-    .ph.rating,
-    .ph.team {
-      grid-column: span 3;
-    }
-    .ph.position {
-      grid-column: span 6;
-    }
-    .email,
-    .phone {
-      grid-column: span 3;
+    .fields.contact .email {
+      grid-column: 1 / -1;
+      grid-row: 1;
     }
   }
-  @container (max-width: 30rem) {
-    .email,
-    .phone {
-      grid-column: span 6;
+  @container (max-width: 28rem) {
+    .fields.contact,
+    .fields.club {
+      grid-template-columns: minmax(0, 1fr);
     }
   }
   @media (max-width: 600px) {
@@ -932,6 +1030,11 @@
     padding: 0 var(--s-6) var(--s-6);
     overflow-y: auto;
     overscroll-behavior: contain;
+    container-type: inline-size;
+  }
+  /* Details: their fields, from the top of the body */
+  .body > .stack[role="tabpanel"] {
+    padding-top: var(--s-5);
   }
   /* Save and Discard, along the bottom; on a phone, where the whole card scrolls, it stays there */
   .panel-foot {
@@ -953,15 +1056,9 @@
   .asking .foot-note {
     color: var(--fg);
   }
-  /* A phone: the header's fields would leave no room, so the whole card scrolls */
   @media (max-width: 600px) {
-    .panel {
-      overflow-y: auto;
-    }
     .body {
-      flex: none;
       padding: 0 var(--s-4) var(--s-6);
-      overflow: visible;
     }
   }
   /* Sections divided by a rule, not boxed; the tab showing is one too */
@@ -983,7 +1080,7 @@
   h3.eyebrow {
     margin-top: var(--s-2);
   }
-  /* The real fields fade in exactly where they'll stay, each in turn, along the header row then down the body */
+  /* The real fields fade in exactly where they'll stay: the two groups in turn, or the tab showing */
   .details.in > *,
   .part.in {
     /* backwards, not both: a fill that outlives the fade keeps each field its own stacking context, and a later
@@ -992,21 +1089,6 @@
   }
   .details.in > :nth-child(2) {
     animation-delay: 40ms;
-  }
-  .details.in > :nth-child(3) {
-    animation-delay: 80ms;
-  }
-  .details.in > :nth-child(4) {
-    animation-delay: 120ms;
-  }
-  .details.in > :nth-child(5) {
-    animation-delay: 160ms;
-  }
-  .details.in > :nth-child(6) {
-    animation-delay: 200ms;
-  }
-  .details.in > :nth-child(7) {
-    animation-delay: 240ms;
   }
   .part.in {
     animation-delay: 140ms;
@@ -1061,25 +1143,21 @@
   .ph.rows {
     height: 8rem;
   }
-  /* Attendance or payments: the tab showing brings its own space below */
-  .tabs {
-    margin-top: var(--s-5);
-  }
-  .tabs > button {
-    flex: none;
-    min-width: 8rem;
-    gap: var(--s-2);
-  }
   .tab-owed {
     color: var(--red-hot);
-    font-size: var(--text-sm);
   }
   /* Owes, paid and credit, big, with the jobs at the end of the row */
   .money {
+    position: sticky;
+    top: 0;
+    z-index: 2;
     display: flex;
     flex-wrap: wrap;
     align-items: flex-end;
     gap: var(--s-4) var(--s-7);
+    margin-top: calc(-1 * var(--s-5));
+    padding-block: var(--s-5) var(--s-3);
+    background: var(--surface-1);
   }
   .money .stat {
     display: grid;
@@ -1089,6 +1167,12 @@
     color: var(--fg);
     font-size: 1.6rem;
     font-weight: 600;
+  }
+  /* Record a payment: the amount and the day side by side, stacked on a phone */
+  .pay-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+    gap: var(--s-4);
   }
   .money .value.owes {
     color: var(--red-hot);
@@ -1107,6 +1191,16 @@
     align-items: center;
     justify-content: space-between;
     gap: var(--s-3);
+  }
+  /* A section's heading stays at the top of the body while its rows scroll under it */
+  .head-row.pinned {
+    position: sticky;
+    top: var(--below, 0);
+    z-index: 1;
+    min-height: 2.75rem;
+    margin-inline: calc(-1 * var(--s-2));
+    padding: var(--s-2);
+    background: var(--surface-1);
   }
   .steps {
     display: inline-flex;

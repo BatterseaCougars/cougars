@@ -1,13 +1,16 @@
 // The club's data as the app holds it: filled from D1 by /api/bootstrap before the app mounts (app/backend.ts);
 // after a change, only the parts it touched come back and are put in place (applySlices). The shapes match the D1 tables (docs/team-app-data-model.md).
 import type { Action } from "../access/actions";
+import type { IconName } from "../app/shell/icons";
 import type { AgendaRow, OneOff, Tournament, TournamentType, TrainingSeries, TrainingSession, Venue } from "./model";
 import type { Quip } from "../lib/quips";
 import type { Team } from "../lib/snake";
-import type { Charge, DatedFee } from "../lib/dues";
+import type { Charge, DatedFee, Payment } from "../lib/dues";
 
 export type Position = "F" | "D" | "G";
 export const POSITIONS: Record<Position, string> = { F: "Forward", D: "Defence", G: "Keeper" };
+/** Each position's icon on a pick (the brand's Pick): a stick up front, a shield at the back, the net. */
+export const POSITION_ICONS = { F: "stick", D: "shield", G: "net" } as const satisfies Record<Position, IconName>;
 
 export interface Player {
   id: number;
@@ -71,6 +74,8 @@ export interface MemberRow {
   roles: string[];
   /** A Quarterly Member today, from `subscriptions` (ADR 0007); everyone else pays as they go. */
   plan: "Subscription" | "Pay as you go";
+  /** Next quarter's: what they chose, or this one running on. Only your own (false for anyone else). */
+  planNext: "Subscription" | "Pay as you go";
 }
 export const MEMBERS: MemberRow[] = [];
 
@@ -78,6 +83,8 @@ export const MEMBERS: MemberRow[] = [];
 export const SUBSCRIPTION_FEES: DatedFee[] = [];
 /** Charges: your own, or everyone's if you see Unpaid fees (ADR 0007). */
 export const CHARGES: Charge[] = [];
+/** Each payment: your own, or everyone's if you see Unpaid fees; for the dues ledger (ADR 0007). */
+export const PAYMENTS: Payment[] = [];
 /** Money paid in and not yet spent on a charge, by member: it pays their next one (ADR 0007). */
 export const CREDITS: { memberId: number; pence: number }[] = [];
 
@@ -105,6 +112,7 @@ export interface Bootstrap {
     phone: string | null;
     played: number;
     quarterly: boolean;
+    quarterlyNext: boolean;
   }[];
   roles: Role[];
   venues: Venue[];
@@ -119,6 +127,7 @@ export interface Bootstrap {
   settings: { liveRefreshSeconds: number };
   charges: Charge[];
   credits: { memberId: number; pence: number }[];
+  payments: Payment[];
   subscriptionFees: DatedFee[];
 }
 
@@ -162,6 +171,7 @@ export function applySlices(b: Slices) {
         status: m.status,
         roles: m.roles,
         plan: m.quarterly ? ("Subscription" as const) : ("Pay as you go" as const),
+        planNext: m.quarterlyNext ? ("Subscription" as const) : ("Pay as you go" as const),
       })),
     );
   }
@@ -184,6 +194,7 @@ export function applySlices(b: Slices) {
   if (b.settings) Object.assign(SETTINGS, b.settings);
   if (b.charges) fill(CHARGES, b.charges);
   if (b.credits) fill(CREDITS, b.credits);
+  if (b.payments) fill(PAYMENTS, b.payments);
   if (b.subscriptionFees) fill(SUBSCRIPTION_FEES, b.subscriptionFees);
 }
 

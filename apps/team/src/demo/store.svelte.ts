@@ -5,6 +5,7 @@ import {
   AGENDA,
   CHARGES,
   CREDITS,
+  PAYMENTS,
   MEMBERS,
   ONE_OFFS,
   QUIPS,
@@ -41,4 +42,5 @@ export const db = $state({
   charges: structuredClone(CHARGES),
   /** Money paid in and not yet spent, by member: it pays their next charge. */
   credits: structuredClone(CREDITS),
+  payments: structuredClone(PAYMENTS),
 });

@@ -9,6 +9,7 @@
   import Icon from "../app/shell/Icon.svelte";
   import EventCard from "../lib/EventCard.svelte";
   import { formatDayDate, formatTime, londonToday, pounds } from "../lib/dates";
+  import { BUCKETS, aged } from "../lib/dues";
   import { signupOpen } from "../lib/signup";
   import { draftTurn } from "../lib/draft";
   import { downloadIcs } from "../lib/ics";
@@ -51,7 +52,14 @@
     others.map((o) => sessionBookable(o.session)).sort((x, y) => x.startsAt.localeCompare(y.startsAt)),
   );
   // For you (ADR 0060, 0042): a captain's draft, the draft an admin runs, a sign-up about to close you haven't answered
-  type Nudge = { key: string; href?: string; text: string; sub: string; hot: boolean; icon?: "draft" | "teams" };
+  type Nudge = {
+    key: string;
+    href?: string;
+    text: string;
+    sub: string;
+    hot: boolean;
+    icon?: "draft" | "teams" | "pound";
+  };
   const nth = (n: number) => `${n}${n === 1 ? "st" : n === 2 ? "nd" : n === 3 ? "rd" : "th"}`;
   const today = londonToday();
   const nudges = $derived(
@@ -168,6 +176,51 @@
   // Out since the teams were made: still on one until a team maker decides (ADR 0076), but not yours to play on
   const myTeam = $derived(isIn ? db.teams[next.id]?.find((t) => t.players.includes(who.id)) : undefined);
   const owed = $derived(owedBy(who.id));
+  // Dues, on Home, only once something's really late (a Misconduct: over 60 days). Before that the pound badge on
+  // the Dues tab says it, and the session leads (ADR 0007)
+  const late = $derived(
+    aged(
+      db.charges.filter((c) => c.memberId === who.id),
+      today,
+    )[0],
+  );
+  const nag = $derived(owed > 0 && (late?.oldest ?? 0) >= 2);
+  // What the club is owed, for whoever sees Unpaid fees (read:Dues): the total, by how many, and how much of it is
+  // in the worst bucket (over 90 days)
+  const club = $derived.by(() => {
+    if (!can(perms, "read:Dues")) return null;
+    const rows = aged(db.charges, today);
+    return {
+      total: rows.reduce((s, r) => s + r.total, 0),
+      people: rows.length,
+      worst: rows.reduce((s, r) => s + r.amounts[3], 0),
+    };
+  });
+  // For you: one spot under the lead card for everything else that wants your attention, your move first. Slim
+  // rows, never cards, so however many there are the session still leads the page.
+  const forYou = $derived.by((): Nudge[] => {
+    const rows: Nudge[] = [];
+    if (nag)
+      rows.push({
+        key: "dues",
+        href: "/me/tab",
+        text: `You owe the club ${pounds(owed)}`,
+        sub: `Some of it's over 60 days · reference ${referenceFor(who.id)}`,
+        hot: true,
+        icon: "pound",
+      });
+    rows.push(...liveDrafts, ...nudges, ...draftNews);
+    if (club && club.total > 0)
+      rows.push({
+        key: "club-dues",
+        href: "/settings/overdue",
+        text: `Owed to the club ${pounds(club.total)}`,
+        sub: `${club.people} ${club.people === 1 ? "person" : "people"}${club.worst > 0 ? ` · ${pounds(club.worst)} ${BUCKETS[3]} (over 90 days)` : ""}`,
+        hot: false,
+        icon: "pound",
+      });
+    return rows.sort((a, b) => Number(b.hot) - Number(a.hot));
+  });
   // Picked once per visit, from the time of day, a training night, or how often you've looked today. The count
   // is this device's only: a bit of fun, not a record.
   const VISITS_KEY = "team.home.visits";
@@ -240,42 +293,7 @@
       <span class="badge-slot"><AccountMenu /></span>
     </div>
     <h1 class="display poster">{hello}</h1>
-    <!-- Your dues, every visit: red until it's paid, then a quiet all-clear in the same space -->
-    <a class="owing" class:clear={owed <= 0} href="/me/tab">
-      <span class="owing-icon" aria-hidden="true"><Icon name="pound" size={20} /></span>
-      <span class="owing-text">
-        {#if owed > 0}
-          <span class="owing-head">You owe the club <strong class="display num">{pounds(owed)}</strong></span>
-          <span class="owing-sub">Bank transfer, reference <strong>{referenceFor(who.id)}</strong></span>
-        {:else}
-          <span class="owing-head">You're all paid up</span>
-          <span class="owing-sub">Your reference is <strong>{referenceFor(who.id)}</strong></span>
-        {/if}
-      </span>
-      <span class="owing-cta">{owed > 0 ? "Settle up" : "Dues"} <Icon name="chevronRight" size={16} /></span>
-    </a>
   </header>
-
-  {#if nudges.length || liveDrafts.length || draftNews.length}
-    <div class="nudges">
-      {#each [...liveDrafts, ...nudges, ...draftNews] as n (n.key)}
-        {#if n.href}
-          <a class="nudge rise" class:hot={n.hot} href={n.href}>
-            <Icon name={n.icon ?? "draft"} size={18} />
-            <span class="grow"><span class="nudge-text">{n.text}</span><span class="nudge-sub">{n.sub}</span></span>
-            <Icon name="chevronRight" size={16} />
-          </a>
-        {:else}
-          <!-- Just news: nothing to open -->
-          <div class="nudge rise" role="status">
-            <Icon name={n.icon ?? "draft"} size={18} />
-            <span class="grow"><span class="nudge-text">{n.text}</span><span class="nudge-sub">{n.sub}</span></span>
-            <span class="badge red live">Live</span>
-          </div>
-        {/if}
-      {/each}
-    </div>
-  {/if}
 
   {#if series && session && booking}
     <section>
@@ -287,35 +305,62 @@
           >{typed}{#if quip}<span class="caret" class:done={typed === quip.text}></span>{/if}</span
         >
       </p>
-      <EventCard event={booking} canSignUp={can(perms, "signup:Event")} feature beckon {onanswer}>
-        {#snippet footer()}
-          <!-- Once the teams are out, yours. Always: getting there, keeping the date, and how to pay. -->
-          {#if myTeam}
-            <a class="status" href="/training/{series.slug}">
-              <Icon name="teams" size={18} />
-              <span class="grow">You're on <strong>{myTeam.name}</strong> with {teammates(myTeam.players)}</span>
-              <Icon name="chevronRight" size={18} />
-            </a>
-          {/if}
-          <div class="status-row">
-            {#if booking.mapUrl}
-              <a class="status" href={booking.mapUrl} target="_blank" rel="noopener noreferrer">
-                <Icon name="pin" size={18} />
-                <span>Directions</span>
+      <!-- The night you came for: it makes an entrance, the rest of the page just rises -->
+      <div class="lead">
+        <EventCard event={booking} canSignUp={can(perms, "signup:Event")} feature beckon {onanswer}>
+          {#snippet footer()}
+            <!-- Once the teams are out, yours. Always: getting there, keeping the date, and how to pay. -->
+            {#if myTeam}
+              <a class="status" href="/training/{series.slug}">
+                <Icon name="teams" size={18} />
+                <span class="grow">You're on <strong>{myTeam.name}</strong> with {teammates(myTeam.players)}</span>
+                <Icon name="chevronRight" size={18} />
               </a>
             {/if}
-            <button class="status" onclick={() => booking && downloadIcs(booking)}>
-              <Icon name="calendar" size={18} />
-              <span>Add to calendar</span>
-            </button>
-            <!-- The club's bank details and your reference, on Dues -->
-            <a class="status" href="/me/tab">
-              <Icon name="pound" size={18} />
-              <span>Payment info</span>
+            <div class="status-row">
+              {#if booking.mapUrl}
+                <a class="status" href={booking.mapUrl} target="_blank" rel="noopener noreferrer">
+                  <Icon name="pin" size={18} />
+                  <span>Directions</span>
+                </a>
+              {/if}
+              <button class="status" onclick={() => booking && downloadIcs(booking)}>
+                <Icon name="calendar" size={18} />
+                <span>Add to calendar</span>
+              </button>
+              <!-- The club's bank details and your reference, on Dues -->
+              <a class="status" href="/me/tab">
+                <Icon name="pound" size={18} />
+                <span>Payment info</span>
+              </a>
+            </div>
+          {/snippet}
+        </EventCard>
+      </div>
+    </section>
+  {/if}
+
+  {#if forYou.length}
+    <section aria-labelledby="for-you">
+      <h2 class="section-title" id="for-you">For you</h2>
+      <div class="nudges">
+        {#each forYou as n (n.key)}
+          {#if n.href}
+            <a class="nudge rise" class:hot={n.hot} href={n.href}>
+              <Icon name={n.icon ?? "draft"} size={18} />
+              <span class="grow"><span class="nudge-text">{n.text}</span><span class="nudge-sub">{n.sub}</span></span>
+              <Icon name="chevronRight" size={16} />
             </a>
-          </div>
-        {/snippet}
-      </EventCard>
+          {:else}
+            <!-- Just news: nothing to open -->
+            <div class="nudge rise" role="status">
+              <Icon name={n.icon ?? "draft"} size={18} />
+              <span class="grow"><span class="nudge-text">{n.text}</span><span class="nudge-sub">{n.sub}</span></span>
+              <span class="badge red live">Live</span>
+            </div>
+          {/if}
+        {/each}
+      </div>
     </section>
   {/if}
 
@@ -393,79 +438,60 @@
   .page {
     gap: var(--s-8);
   }
-  /* Your dues: shaped like the nudges below it. Owing, the red wash of something to do now; paid up, a plain fill
-     with a green pound. Both the same height, so paying never moves the page. */
-  .owing {
-    display: flex;
-    align-items: center;
-    gap: var(--s-3);
-    margin-top: var(--s-2);
-    padding: var(--s-3) var(--s-4);
-    border-radius: var(--r-lg);
-    background: var(--red-wash);
-    color: var(--fg-muted);
-    transition: background var(--t) var(--ease-in-out);
+  /* The lead card's entrance: it lands (up from below, blurred to sharp), then a single glint of rink light crosses
+     it. Only this card: everything else on Home just rises. A transform and a filter, so nothing moves the page. */
+  .lead {
+    position: relative;
+    border-radius: var(--r-xl);
+    animation: lead-land 620ms var(--ease) both;
+    /* In's pulse waits for the card to land and the glint to pass */
+    --beckon-delay: 1300ms;
   }
-  .owing:hover {
-    background: color-mix(in srgb, var(--red) 22%, transparent);
+  .lead::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background: linear-gradient(
+      105deg,
+      transparent 35%,
+      color-mix(in srgb, var(--fg) 9%, transparent) 48%,
+      color-mix(in srgb, var(--fg) 3%, transparent) 54%,
+      transparent 65%
+    );
+    background-size: 250% 100%;
+    background-position: 120% 0;
+    opacity: 0;
+    animation: lead-glint 900ms 420ms var(--ease-in-out) both;
   }
-  .owing.clear {
-    background: var(--surface-1);
+  @keyframes lead-land {
+    from {
+      opacity: 0;
+      transform: translateY(14px) scale(0.975);
+      filter: blur(6px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+      filter: none;
+    }
   }
-  .owing.clear:hover {
-    background: var(--surface-2);
+  @keyframes lead-glint {
+    0% {
+      opacity: 1;
+      background-position: 120% 0;
+    }
+    100% {
+      opacity: 1;
+      background-position: -20% 0;
+    }
   }
-  .owing.clear .owing-cta {
-    color: var(--fg-muted);
-  }
-  /* The icon on a small tile of its own, coloured, so the card reads at a glance */
-  .owing-icon {
-    display: grid;
-    place-items: center;
-    flex: none;
-    width: 2.5rem;
-    height: 2.5rem;
-    border-radius: var(--r-md);
-    background: var(--surface-2);
-    color: var(--red-hot);
-  }
-  .owing.clear .owing-icon {
-    color: var(--green-ink);
-  }
-  .owing-text {
-    display: grid;
-    flex: 1;
-    min-width: 0;
-    gap: var(--s-1);
-  }
-  .owing-head {
-    color: var(--fg);
-    font-size: var(--text-md);
-    font-weight: 600;
-  }
-  .owing-head strong {
-    margin-left: 0.15em;
-    font-size: 1.5rem;
-    font-weight: 400;
-    color: var(--red-hot);
-    vertical-align: -0.1em;
-  }
-  .owing-sub {
-    font-size: var(--text-xs);
-  }
-  .owing-sub strong {
-    color: var(--fg);
-    font-weight: 600;
-    letter-spacing: 0.04em;
-  }
-  .owing-cta {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.15rem;
-    color: var(--red-hot);
-    font-size: var(--text-sm);
-    font-weight: 600;
-    white-space: nowrap;
+  @media (prefers-reduced-motion: reduce) {
+    .lead,
+    .lead::after {
+      animation: none;
+    }
   }
   /* The message: big enough to read as the club talking to you, right under its heading. Two lines' room on a
      phone, one on desktop, so a new one never moves anything. */
@@ -574,7 +600,6 @@
   .nudges {
     display: grid;
     gap: var(--s-2);
-    margin-bottom: var(--s-5);
   }
   .nudge {
     display: flex;

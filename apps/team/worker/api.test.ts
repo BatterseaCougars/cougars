@@ -495,12 +495,12 @@ describe("members and roles", () => {
       ...reg,
       position: "G",
       rating: 70,
-      roles: ["Member", "Door"],
+      roles: ["Member", "Session lead"],
     });
     expect(res.status).toBe(200);
     const after = (await boot()).members.find((m: { id: number }) => m.id === reg.id);
     expect(after).toMatchObject({ position: "G", rating: 70 });
-    expect(after.roles.sort()).toEqual(["Door", "Member"]);
+    expect(after.roles.sort()).toEqual(["Member", "Session lead"]);
   });
 
   it("won't take Admin from the last admin", async () => {

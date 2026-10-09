@@ -37,6 +37,11 @@ The **Sticker** scheme, one system the whole app follows:
   yellow means only "tap here"), live/danger red.
 - **Six tones at one lightness** (OKLCH 0.74) for trainings, tournaments and teams: crests, chips and dots, never a card
   fill. The red tone is coral, so a team never looks live.
+- **A chosen pick is lit in the brand red, as the switch is**: one of a few (Position, Plan, How they paid) is
+  separate solid tiles with icons, the chosen one a red wash with a `red-hot` icon and the title's red slash under it;
+  tabs are the club's italic capitals with the slash under the one you're on. Never the old sunken track with a grey
+  tile (black on black on grey, no icon, no accent), never a yellow or solid red chosen tile. The brand document's Pick
+  and Tabs show them.
 - `--primary` (cream, the logo's white half) is ink on red only: the kanji seal and the tournament stamp.
 - **The trading card** keeps its printed colours as tokens (`--card-stock`, `--card-ink`, `--card-band`).
 - Colours live in `app.css` tokens; a component doesn't type a colour of its own.
@@ -54,3 +59,4 @@ The **Sticker** scheme, one system the whole app follows:
   cream and cream-edge versions; disabled main buttons lost their look; cream kept as ink on red (was 0083).
 - 2026-10-08: The Sticker scheme replaced it: the main button became sticker yellow, the whole palette moved to one
   warm ramp, one red, three statuses and six tones as tokens, and amber became caution (was 0084).
+- 2026-10-09: Pick (red-lit tiles with icons) and Tabs (italic capitals, the red slash) replaced the segmented control.

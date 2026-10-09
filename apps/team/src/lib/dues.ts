@@ -4,7 +4,7 @@
 export interface Charge {
   id: number;
   memberId: number;
-  kind: "session" | "tournament" | "quarter";
+  kind: "session" | "tournament" | "quarter" | "adjustment";
   /** The training session's or tournament's id; null for a quarter. */
   refId: number | null;
   /** A quarter's charge: "2026-Q4". */
@@ -32,6 +32,73 @@ export interface DatedFee {
   from: string;
 }
 
+/** Money in: a lump sum, paying their oldest charges first; anything over is credit. */
+export interface Payment {
+  id: number;
+  memberId: number;
+  pence: number;
+  receivedOn: string;
+  /** An adjustment takes some off what they owe, as money in would. */
+  via: "transfer" | "cash" | "adjustment";
+  /** An adjustment's reason. */
+  reason?: string | null;
+}
+
+/** One line of a member's dues ledger: a charge (owed more) or a payment (owed less), and what they owe after it. */
+export type LedgerLine =
+  | { kind: "charge"; on: string; charge: Charge; pence: number; balance: number }
+  | { kind: "payment"; on: string; payment: Payment; pence: number; balance: number };
+
+/**
+ * A member's dues as a ledger, newest first: every charge and payment by date, each with the running balance after it
+ * (owed, or below nothing: credit). On one day, charges come before payments, so a night paid on the night nets out.
+ */
+export function ledger(charges: Charge[], payments: Payment[]): LedgerLine[] {
+  const lines = [
+    ...charges.map((charge) => ({
+      kind: "charge" as const,
+      on: charge.dueOn,
+      charge,
+      pence: charge.pence,
+      id: charge.id,
+    })),
+    ...payments.map((payment) => ({
+      kind: "payment" as const,
+      on: payment.receivedOn,
+      payment,
+      pence: payment.pence,
+      id: payment.id,
+    })),
+  ].sort((a, b) => a.on.localeCompare(b.on) || (a.kind === b.kind ? a.id - b.id : a.kind === "charge" ? -1 : 1));
+  let balance = 0;
+  return lines
+    .map(({ id: _, ...l }) => {
+      balance += l.kind === "charge" ? l.pence : -l.pence;
+      return { ...l, balance } as LedgerLine;
+    })
+    .reverse();
+}
+
+/** "2026-Q4" for any day in October to December 2026. */
+export const quarterOf = (day: string) => `${day.slice(0, 4)}-Q${Math.floor((Number(day.slice(5, 7)) - 1) / 3) + 1}`;
+export const QUARTER = /^(\d{4})-Q([1-4])$/;
+/** Its first day: 2026-Q4 → 2026-10-01. */
+export function quarterStart(q: string) {
+  const [, year, n] = q.match(QUARTER)!;
+  return `${year}-${String((Number(n) - 1) * 3 + 1).padStart(2, "0")}-01`;
+}
+/** The quarter after: 2026-Q4 → 2027-Q1. */
+export function nextQuarter(q: string) {
+  const [, year, n] = q.match(QUARTER)!;
+  return n === "4" ? `${Number(year) + 1}-Q1` : `${year}-Q${Number(n) + 1}`;
+}
+
+/** Its months: 2027-Q1 → "Jan–Mar 2027". */
+export function quarterMonths(q: string) {
+  const [, year, n] = q.match(QUARTER)!;
+  return `${["Jan–Mar", "Apr–Jun", "Jul–Sep", "Oct–Dec"][Number(n) - 1]} ${year}`;
+}
+
 /** The fee in force on a date: the latest one that had started. Nothing before the first. */
 export function feeOn(fees: DatedFee[], date: string): number {
   let best: DatedFee | undefined;
@@ -39,15 +106,15 @@ export function feeOn(fees: DatedFee[], date: string): number {
   return best?.pence ?? 0;
 }
 
-/** Unpaid fees' columns, by how long a charge has been owed. */
-export const BUCKETS = ["Due back", "Late", "Very late", "Lost tape"] as const;
+/** Unpaid fees' columns, by how long a charge has been owed: penalties, worse the longer it's left. */
+export const BUCKETS = ["Minor", "Major", "Misconduct", "Ejected"] as const;
 export const BUCKET_HINT = ["0–30 days", "31–60", "61–90", "over 90"] as const;
 
 const DAY = 86_400_000;
 export const daysBetween = (from: string, to: string) =>
   Math.round((Date.parse(`${to}T12:00:00Z`) - Date.parse(`${from}T12:00:00Z`)) / DAY);
 
-/** 0 Due back (0–30 days), 1 Late (31–60), 2 Very late (61–90), 3 Lost tape (over 90). */
+/** 0 Minor (0–30 days), 1 Major (31–60), 2 Misconduct (61–90), 3 Ejected (over 90). */
 export function bucketOf(dueOn: string, today: string): 0 | 1 | 2 | 3 {
   const age = daysBetween(dueOn, today);
   return age <= 30 ? 0 : age <= 60 ? 1 : age <= 90 ? 2 : 3;

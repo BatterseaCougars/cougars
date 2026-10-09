@@ -85,7 +85,7 @@ const mine = "(v.sees_private OR m.id = v.member_id)";
 const PARTS = {
   everydayRole: "json_array((SELECT m.everyday_role_id FROM members m, viewer v WHERE m.id = v.member_id))",
   members: rows(
-    "id name email position rating cougar status payment_reference roles bio web_name phone played quarterly",
+    "id name email position rating cougar status payment_reference roles bio web_name phone played quarterly quarterlyNext",
     `SELECT m.id, m.name, CASE WHEN ${mine} THEN m.email END email, m.position,
             CASE WHEN v.sees_ratings THEN m.rating ELSE 0 END rating, m.cougar, m.status,
             CASE WHEN ${mine} THEN m.payment_reference END payment_reference,
@@ -97,7 +97,11 @@ const PARTS = {
               WHERE a.member_id = m.id AND a.signup = 'in' AND COALESCE(a.attended, 1) = 1
                 AND s.held_on < v.today AND s.cancelled_at IS NULL) played,
             ${mine} AND EXISTS (SELECT 1 FROM subscriptions sub WHERE sub.member_id = m.id AND sub.starts_on <= v.today
-              AND (sub.ends_on IS NULL OR sub.ends_on >= v.today)) quarterly
+              AND (sub.ends_on IS NULL OR sub.ends_on >= v.today)) quarterly,
+            ${mine} AND EXISTS (SELECT 1 FROM subscriptions sub, (SELECT date(v.today, 'start of month',
+                printf('-%d months', (CAST(strftime('%m', v.today) AS INTEGER) - 1) % 3), '+3 months') day) nq
+              WHERE sub.member_id = m.id AND sub.starts_on <= nq.day
+                AND (sub.ends_on IS NULL OR sub.ends_on >= nq.day)) quarterlyNext
      FROM members m, viewer v
      WHERE v.sees_private OR m.status = 'active' OR m.id = v.member_id
      ORDER BY m.name COLLATE NOCASE`,
@@ -194,8 +198,8 @@ const PARTS = {
     "id memberId kind refId quarter title seriesId typeId startTime pence dueOn paidOn paidVia paidPence byHand",
     `SELECT c.id, c.member_id memberId,
             CASE WHEN c.session_id IS NOT NULL THEN 'session' WHEN c.tournament_id IS NOT NULL THEN 'tournament'
-              ELSE 'quarter' END kind,
-            COALESCE(c.session_id, c.tournament_id) refId, c.quarter, COALESCE(ts.name, t.name) title,
+              WHEN c.reason IS NOT NULL THEN 'adjustment' ELSE 'quarter' END kind,
+            COALESCE(c.session_id, c.tournament_id) refId, c.quarter, COALESCE(ts.name, t.name, c.reason) title,
             s.series_id seriesId, t.type_id typeId, COALESCE(s.start_time, ts.start_time, t.start_time) startTime,
             c.amount_pence pence, c.due_on dueOn,
             CASE WHEN paid.total >= c.amount_pence THEN paid.last_on END paidOn,
@@ -211,6 +215,13 @@ const PARTS = {
          ON paid.charge_id = c.id
      WHERE v.sees_dues OR c.member_id = v.member_id
      ORDER BY c.due_on DESC, c.id DESC`,
+  ),
+  // Each payment, for the dues ledger: your own, or everyone's for who sees Unpaid fees
+  payments: rows(
+    "id memberId pence receivedOn via reason",
+    `SELECT p.id, p.member_id memberId, p.amount_pence pence, p.received_on receivedOn, p.via, p.reason
+     FROM payments p, viewer v WHERE v.sees_dues OR p.member_id = v.member_id
+     ORDER BY p.member_id, p.received_on DESC, p.id DESC`,
   ),
   // Money paid in and not yet spent on a charge: it pays the next one (dues.ts settle)
   credits: rows(

@@ -194,7 +194,7 @@ const STATIC_TAIL: Route[] = [
     tab: "more",
     page: "overdue",
     action: "read:Dues",
-    icon: "tape",
+    icon: "pound",
     group: "Settings",
     section: "Money",
     hint: "Who owes what, and for how long",

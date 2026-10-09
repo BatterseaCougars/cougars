@@ -16,7 +16,7 @@ beforeEach(() => {
 
 const CSV = [
   "Name,Email,Position,Rating,Cougar,Roles",
-  'Nina New,Nina@Example.com ,G,70,yes,"Door; Team maker"',
+  'Nina New,Nina@Example.com ,G,70,yes,"Session lead; Contributor"',
   "Olly Other,olly@example.com,Defence,,,",
   "Reg Player,reg@example.com,F,60,,",
 ].join("\r\n");
@@ -53,7 +53,7 @@ describe("an admin imports members from a file", () => {
 
     const nina = (await members(dana)).find((m) => m.name === "Nina New")!;
     expect(nina).toMatchObject({ position: "G", rating: 70, cougar: true, paymentReference: "COUGARS NINA N" });
-    expect(nina.roles).toEqual(expect.arrayContaining(["Member", "Door", "Team maker"]));
+    expect(nina.roles).toEqual(expect.arrayContaining(["Member", "Session lead", "Contributor"]));
     // Nobody's emailed: the admin tells the club when the app's ready
     expect(vi.mocked(console.log).mock.calls.some((c) => String(c[0]).includes("mail.logged"))).toBe(false);
   });
@@ -87,10 +87,15 @@ describe("an admin imports members from a file", () => {
 
   it("a spreadsheet's CSV as Excel saves it: a byte-order mark, quoted commas, Windows line ends", async () => {
     const dana = await w.signedIn("dana@example.com");
-    const excel = '﻿Name,Email,Roles\r\n"Smith, Jo",jo.smith@example.com,"Door;Admin"\r\n';
+    const excel = '﻿Name,Email,Roles\r\n"Smith, Jo",jo.smith@example.com,"Session lead;Admin"\r\n';
     const r = await dana.call("POST", "/api/members/import", { file: excel });
     expect(r.body.add).toEqual([
-      expect.objectContaining({ row: 2, name: "Smith, Jo", email: "jo.smith@example.com", roles: ["Door", "Admin"] }),
+      expect.objectContaining({
+        row: 2,
+        name: "Smith, Jo",
+        email: "jo.smith@example.com",
+        roles: ["Session lead", "Admin"],
+      }),
     ]);
   });
 

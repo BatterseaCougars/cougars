@@ -560,7 +560,7 @@
 
     {#if !columns}
       <!-- Narrower than two columns: one view at a time; Teams warns while you still need a goalie -->
-      <div class="seg block tabs" role="tablist" aria-label="Draft">
+      <div class="tablist" role="tablist" aria-label="Draft">
         <button role="tab" aria-selected={view === "players"} onclick={() => show("players")}>Players</button>
         <button role="tab" aria-selected={view === "teams"} onclick={() => show("teams")}
           >Teams{#if myTeam >= 0 && open && !haveGoalie}<span class="need" title="No goalie yet"
@@ -995,7 +995,7 @@
     position: sticky;
     top: var(--s-5);
   }
-  .tabs .need {
+  .tablist .need {
     display: inline-flex;
     align-items: center;
     gap: 0.15rem;
