@@ -242,6 +242,7 @@
     <h1 class="display poster">{hello}</h1>
     <!-- Your dues, every visit: red until it's paid, then a quiet all-clear in the same space -->
     {#if UNFINISHED}<a class="owing" class:clear={owed <= 0} href="/me/tab">
+        <span class="owing-icon" aria-hidden="true"><Icon name="pound" size={20} /></span>
         <span class="owing-text">
           {#if owed > 0}
             <span class="owing-head">You owe the club <strong class="display num">{pounds(owed)}</strong></span>
@@ -394,31 +395,44 @@
   .page {
     gap: var(--s-8);
   }
+  /* Your dues: shaped like the nudges below it. Owing, the red wash of something to do now; paid up, a plain fill
+     with a green pound. Both the same height, so paying never moves the page. */
   .owing {
     display: flex;
     align-items: center;
-    gap: var(--s-4);
+    gap: var(--s-3);
     margin-top: var(--s-2);
     padding: var(--s-3) var(--s-4);
-    border: 1px solid var(--red-border);
-    border-radius: var(--r-md);
-    background: color-mix(in srgb, var(--red) 12%, var(--surface-1));
+    border-radius: var(--r-lg);
+    background: var(--red-wash);
     color: var(--fg-muted);
-    transition: border-color var(--t) var(--ease-in-out);
+    transition: background var(--t) var(--ease-in-out);
   }
   .owing:hover {
-    border-color: var(--red);
+    background: color-mix(in srgb, var(--red) 22%, transparent);
   }
-  /* Nothing owed: a plain fill, no red */
   .owing.clear {
-    border-color: transparent;
     background: var(--surface-1);
   }
   .owing.clear:hover {
-    border-color: var(--border-strong);
+    background: var(--surface-2);
   }
   .owing.clear .owing-cta {
     color: var(--fg-muted);
+  }
+  /* The icon on a small tile of its own, coloured, so the card reads at a glance */
+  .owing-icon {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: var(--r-md);
+    background: var(--surface-2);
+    color: var(--red-hot);
+  }
+  .owing.clear .owing-icon {
+    color: var(--green-ink);
   }
   .owing-text {
     display: grid;
