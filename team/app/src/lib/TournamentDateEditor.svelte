@@ -1,6 +1,7 @@
 <script lang="ts" module>
   import { goesBy } from "./names";
   import type { TournamentStatus } from "../demo/model";
+  import type { QuickValues } from "./TournamentQuickCreate.svelte";
 
   export const STATUSES: { id: TournamentStatus; label: string }[] = [
     { id: "planned", label: "Coming up" },
@@ -15,6 +16,7 @@
   // for. When and where it is, its rules and awards, sign-up, and its teams (ADR 0052): teams that entered, or a
   // draft's captains in pick order and the draft night, on tabs as the training editor lays out its fields. Picking a series copies its defaults in (ADR 0049); they can
   // then change for this one. The series' look (icon, colour) stays the series'.
+  import TimeSelect from "./TimeSelect.svelte";
   import { tick } from "svelte";
   import { createTournament, updateTournament } from "../app/backend.svelte";
   import {
@@ -27,11 +29,13 @@
   import { db } from "../demo/store.svelte";
   import { collectedFor } from "../demo/dues.svelte";
   import Icon from "../app/shell/Icon.svelte";
+  import { teamsForPlayoffs } from "./fixtures";
   import Select from "./Select.svelte";
   import FormSection from "./FormSection.svelte";
   import PlacePicker from "./PlacePicker.svelte";
   import PersonPicker from "./PersonPicker.svelte";
   import PlayoffsField from "./PlayoffsField.svelte";
+  import DateField from "../lib/DateField.svelte";
   import TeamCard from "./TeamCard.svelte";
   import { typePlace } from "../demo/schedule.svelte";
   import { londonToday, pounds } from "./dates";
@@ -43,6 +47,7 @@
     dateId,
     typeId,
     startTab = "details",
+    start = $bindable(),
     oncreated,
   }: {
     dateId?: number;
@@ -50,6 +55,9 @@
     typeId?: number;
     /** The tab it opens on: "teams" to add the captains */
     startTab?: "details" | "rules" | "signup" | "teams";
+    /** A new date's answers from the quick questions (Advanced): its day, draft and captains, kept up to date here so
+     *  going back to the questions keeps what was changed */
+    start?: QuickValues;
     oncreated?: (id: number) => void;
   } = $props();
 
@@ -74,9 +82,9 @@
     fee: string;
     status: TournamentStatus;
     public: boolean;
+    signupOpensOn: string;
     signupClosesOn: string;
     draftOn: string;
-    draftTime: string;
     pointsWin: number;
     pointsDraw: number;
     pointsLoss: number;
@@ -113,9 +121,9 @@
         fee: String(t.feePence / 100),
         status: t.status,
         public: t.public,
+        signupOpensOn: t.signupOpensOn ?? "",
         signupClosesOn: t.signupClosesOn ?? "",
         draftOn: t.draftOn ?? "",
-        draftTime: t.draftTime ?? "",
         pointsWin: t.pointsWin,
         pointsDraw: t.pointsDraw,
         pointsLoss: t.pointsLoss,
@@ -143,9 +151,10 @@
       fee: "0",
       status: "planned",
       public: true,
+      // Sign-up opens the day it's scheduled, unless said otherwise
+      signupOpensOn: londonToday(),
       signupClosesOn: "",
       draftOn: "",
-      draftTime: "19:00",
       // The usual round robin until a series says otherwise
       pointsWin: 3,
       pointsDraw: 1,
@@ -180,6 +189,9 @@
     if (!t) return;
     if (!date.name) date.name = t.name;
     if (!charged) date.fee = String(t.defaultFeePence / 100);
+    // Its usual hours (ADR 0091)
+    date.startTime = t.defaultStartTime;
+    date.endTime = t.defaultEndTime;
     date.venueId = t.venueId;
     date.location = t.location;
     date.mapUrl = t.mapUrl;
@@ -195,6 +207,35 @@
   // Started from a series' page: in that series from the off (the panel mounts a fresh editor for each, as above)
   // svelte-ignore state_referenced_locally
   if (!dateId && typeId) pickType(String(typeId));
+  // Come from the quick questions: their answers, filled in
+  // svelte-ignore state_referenced_locally
+  if (!dateId && start) {
+    if (start.heldOn) pickDay(start.heldOn);
+    date.dateConfirmed = start.dateConfirmed;
+    date.startTime = start.startTime;
+    date.endTime = start.endTime;
+    date.draftOn = start.draftOn;
+    date.signupOpensOn = start.signupOpensOn;
+    date.teams = start.captains.map((captainMemberId) => ({
+      name: "",
+      logo: null,
+      captainMemberId,
+      captainName: "",
+      contact: "",
+      players: [],
+    }));
+  }
+  // …and changes here go back to them, for Back to the questions
+  $effect(() => {
+    if (dateId || !start) return;
+    start.heldOn = date.heldOn;
+    start.dateConfirmed = date.dateConfirmed;
+    start.startTime = date.startTime;
+    start.endTime = date.endTime;
+    start.draftOn = date.draftOn;
+    start.signupOpensOn = date.signupOpensOn;
+    start.captains = date.teams.map((t) => t.captainMemberId).filter((m): m is number => m !== null);
+  });
 
   /** Off to the series' own page, its defaults open. */
   function editSeries() {
@@ -288,9 +329,9 @@
     feePence: Math.round(Number(d.fee || 0) * 100),
     dateConfirmed: !!d.heldOn && d.dateConfirmed,
     public: d.public,
+    signupOpensOn: d.signupOpensOn || null,
     signupClosesOn: d.signupClosesOn || null,
     draftOn: d.kind === "draft" && d.draftOn ? d.draftOn : null,
-    draftTime: d.kind === "draft" && d.draftOn && d.draftTime ? d.draftTime : null,
     pointsWin: d.pointsWin,
     pointsDraw: d.pointsDraw,
     pointsLoss: d.pointsLoss,
@@ -409,16 +450,16 @@
                     /> TBC</label
                   >
                 </div>
-                <input
+                <DateField
                   id="date-day"
-                  class="input"
-                  type="date"
-                  value={date.heldOn}
-                  onchange={(e) => pickDay(e.currentTarget.value)}
+                  placeholder="Not set: just the season"
+                  bind:value={() => date.heldOn, (v) => pickDay(v)}
                 />
               </div>
-              <label class="field">Starts <input class="input" type="time" bind:value={date.startTime} /></label>
-              <label class="field">Ends <input class="input" type="time" bind:value={date.endTime} /></label>
+              <div class="field">
+                Starts <TimeSelect id="date-start" bind:value={date.startTime} aria-label="Starts" />
+              </div>
+              <div class="field">Ends <TimeSelect id="date-end" bind:value={date.endTime} aria-label="Ends" /></div>
             </div>
           </FormSection>
           <FormSection title="Where">
@@ -449,7 +490,7 @@
             </div>
           </FormSection>
           <FormSection title="Playoffs" description="After the round robin, by place in the table.">
-            <PlayoffsField bind:playoffs={date.playoffs} />
+            <PlayoffsField bind:playoffs={date.playoffs} teams={date.teams.length} />
           </FormSection>
           <FormSection title="Awards" description="Handed out on the day, and shown on the website.">
             {#each date.awards as award, i (i)}
@@ -487,7 +528,7 @@
         {:else if tab === "signup"}
           <FormSection
             title="Sign-up"
-            description="Members say they're in while it's Sign-up open, until sign-up closes (empty: up to the day)."
+            description="Members say they're in from the day sign-up opens (or once it's set to Sign-up open), until it closes (empty: up to the day)."
           >
             <div class="cols">
               <div class="field">
@@ -512,10 +553,26 @@
                   aria-label="Website"
                 />
               </div>
-              <label class="field">
+              <div class="field">
+                Sign-up opens
+                <DateField
+                  id="date-signup-opens"
+                  aria-label="Sign-up opens"
+                  placeholder="Not set"
+                  bind:value={date.signupOpensOn}
+                  max={dayOf(date) || undefined}
+                />
+              </div>
+              <div class="field">
                 Sign-up closes
-                <input class="input" type="date" bind:value={date.signupClosesOn} max={dayOf(date) || undefined} />
-              </label>
+                <DateField
+                  id="date-signup-closes"
+                  aria-label="Sign-up closes"
+                  placeholder="Not set"
+                  bind:value={date.signupClosesOn}
+                  max={dayOf(date) || undefined}
+                />
+              </div>
               <label class="field"
                 >Places <input class="input num" type="number" min="0" bind:value={date.capacity} /></label
               >
@@ -535,19 +592,20 @@
           </FormSection>
         {:else}
           {#if date.kind === "draft"}
-            <FormSection title="Draft" description="Captains pick members in snake order, on the Draft page.">
+            <FormSection
+              title="Draft"
+              description="Captains pick members in snake order, on the Draft page. The day is a reminder for them; you say when it opens."
+            >
               <div class="cols">
-                <label class="field"
-                  >Draft day <input
-                    class="input"
-                    type="date"
+                <div class="field">
+                  Draft day <DateField
+                    id="date-draft"
+                    aria-label="Draft day"
+                    placeholder="TBC"
                     bind:value={date.draftOn}
                     max={dayOf(date) || undefined}
-                  /></label
-                >
-                <label class="field"
-                  >Time <input class="input" type="time" bind:value={date.draftTime} disabled={!date.draftOn} /></label
-                >
+                  />
+                </div>
               </div>
             </FormSection>
           {/if}
@@ -597,6 +655,14 @@
                 </button>
               {/if}
             {/if}
+            {#if date.teams.length && date.teams.length < teamsForPlayoffs(date.playoffs)}
+              <p class="hint warn">
+                <Icon name="alert" size={16} />The playoffs need {teamsForPlayoffs(date.playoffs)} teams: add {date.kind ===
+                "draft"
+                  ? "captains"
+                  : "teams"}, or choose fewer playoffs on Rules &amp; awards.
+              </p>
+            {/if}
           </FormSection>
         {/if}
       </div>
@@ -613,10 +679,24 @@
   }
   .tabs {
     justify-self: start;
+    max-width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
   }
   .tabs > button {
     flex: none;
     min-width: 6.5rem;
+  }
+  /* Four tabs don't fit a phone at full width: they share it instead of stretching the form */
+  @media (max-width: 599px) {
+    .tabs {
+      justify-self: stretch;
+    }
+    .tabs > button {
+      flex: 1 1 auto;
+      min-width: 0;
+      padding: 0 var(--s-2);
+    }
   }
   /* Fields three to a row, wrapping on, so every field lines up with the ones above it */
   .cols {

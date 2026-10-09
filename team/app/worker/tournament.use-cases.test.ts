@@ -55,6 +55,9 @@ async function admin() {
         gameMinutes: 12,
         active: true,
         defaultFeePence: 1000,
+        // Instead of Friday training: at its time
+        defaultStartTime: "19:30",
+        defaultEndTime: "21:30",
         awards: [{ name: "Champions", about: "Top of the table." }],
         location: "Battersea Park courts",
       });
@@ -75,7 +78,6 @@ async function admin() {
         feePence: 1000,
         signupClosesOn: "2026-12-05",
         draftOn: "2026-12-08",
-        draftTime: "19:30",
         teams: captains.map((captainMemberId) => ({ name: "", logo: null, captainMemberId, players: [] })),
       });
       expect(res.status).toBe(201);
@@ -113,6 +115,8 @@ describe("a tournament, from setting it up to the draft", () => {
     const seen = await dana.sees();
     expect(seen.tournamentTypes.find((t: Json) => t.id === typeId)).toMatchObject({
       name: "Summer Cup",
+      defaultStartTime: "19:30",
+      defaultEndTime: "21:30",
       tone: "green",
       kind: "draft",
     });
@@ -124,6 +128,61 @@ describe("a tournament, from setting it up to the draft", () => {
       [captains[0], 1],
       [captains[1], 2],
     ]);
+  });
+
+  it("an admin schedules the next one with just its day: the draft's date and the captains can come later", async () => {
+    const dana = await admin();
+    const typeId = await dana.makeSeries();
+    const res = await dana.call("POST", "/api/tournaments", {
+      typeId,
+      name: "Summer Cup",
+      heldOn: "2027-07-10",
+      dateConfirmed: false,
+      teams: [],
+    });
+    expect(res.status).toBe(201);
+    const t = (await dana.sees()).tournaments.find((x: Json) => x.id === res.body.id);
+    // Its day, to be confirmed, at the series' usual time; no draft date or captains yet; the series' fee, rules and
+    // awards; sign-up not open
+    expect(t).toMatchObject({
+      startTime: "19:30",
+      endTime: "21:30",
+      heldOn: "2027-07-10",
+      dateConfirmed: false,
+      draftOn: null,
+      kind: "draft",
+      feePence: 1000,
+      gameMinutes: 12,
+      status: "planned",
+    });
+    expect(t.teams).toEqual([]);
+    expect(t.awards).toEqual([{ name: "Champions", about: "Top of the table." }]);
+  });
+
+  it("an admin deletes one: it's gone from the app and What's on, with its teams and sign-ups; a member can't", async () => {
+    const { dana, id } = await scheduled();
+    const count = async (sql: string, ...args: unknown[]) =>
+      (await w.db
+        .prepare(sql)
+        .bind(...args)
+        .first<{ n: number }>())!.n;
+    // Its two captains' teams, to go with it
+    expect(await count("SELECT COUNT(*) n FROM tournament_teams WHERE tournament_id = ?", id)).toBe(2);
+    const reg = await member("reg@example.com");
+    expect((await reg.call("DELETE", `/api/tournaments/${id}`)).status).toBe(403);
+    expect((await dana.call("DELETE", `/api/tournaments/${id}`)).status).toBe(200);
+    expect((await dana.sees()).tournaments.find((t: Json) => t.id === id)).toBeUndefined();
+    // Everything that was its went with it (the schema's cascades), and no player was left on a team that's gone
+    for (const table of ["tournament_entries", "tournament_teams", "tournament_games", "tournament_award_winners"])
+      expect(await count(`SELECT COUNT(*) n FROM ${table} WHERE tournament_id = ?`, id)).toBe(0);
+    expect(
+      await count(
+        "SELECT COUNT(*) n FROM tournament_team_players WHERE team_id NOT IN (SELECT id FROM tournament_teams)",
+      ),
+    ).toBe(0);
+    const items = await whatsOn(w.db, NOW, { trainings: 0, tournaments: 10, events: 0 });
+    expect(items.find((i) => i.title === "Winter Cup 2026")).toBeUndefined();
+    expect((await dana.call("DELETE", `/api/tournaments/${id}`)).status).toBe(404);
   });
 
   it("it goes on the website's What's on, at its series' place", async () => {
@@ -156,8 +215,39 @@ describe("a tournament, from setting it up to the draft", () => {
     expect((await mo.answer(id, "in", new Date("2026-12-06T10:00:00Z"))).status).toBe(409);
   });
 
+  it("sign-up opens by itself on the day the admin set, without anyone opening it", async () => {
+    const dana = await admin();
+    const typeId = await dana.makeSeries();
+    const res = await dana.call("POST", "/api/tournaments", {
+      typeId,
+      name: "Summer Cup",
+      heldOn: "2026-12-12",
+      signupOpensOn: "2026-10-10",
+      teams: [],
+    });
+    expect(res.status).toBe(201);
+    const reg = await member("reg@example.com");
+    // The 6th: not yet
+    const early = await reg.answer(res.body.id, "in");
+    expect(early.status).toBe(409);
+    expect(early.body.error).toMatch(/opens on/);
+    // The 10th: open, and it says so
+    expect((await reg.answer(res.body.id, "in", new Date("2026-10-10T09:00:00Z"))).status).toBe(200);
+    expect((await dana.sees()).tournaments.find((t: Json) => t.id === res.body.id)).toMatchObject({
+      signupOpensOn: "2026-10-10",
+      status: "planned",
+    });
+  });
+
   it("members can't say they're in until an admin opens sign-up", async () => {
     const { dana, id } = await scheduled();
+    const count = async (sql: string, ...args: unknown[]) =>
+      (await w.db
+        .prepare(sql)
+        .bind(...args)
+        .first<{ n: number }>())!.n;
+    // Its two captains' teams, to go with it
+    expect(await count("SELECT COUNT(*) n FROM tournament_teams WHERE tournament_id = ?", id)).toBe(2);
     const reg = await member("reg@example.com");
     // Still "Coming up": not yet
     expect((await reg.answer(id, "in")).status).toBe(409);
@@ -204,6 +294,21 @@ describe("a tournament, from setting it up to the draft", () => {
       expect((await s.draft(s.dana, "open")).status).toBe(200);
       return s;
     }
+
+    it("an admin can't open the draft until every team can have 3 players, its captain and two picks", async () => {
+      const story = await scheduled();
+      await story.dana.openSignUp(story.id);
+      const open = () => story.dana.call("POST", `/api/tournaments/${story.id}/draft/open`, {}, { now: DRAFT_DAY });
+      // Two captains need four to pick from: nobody, then three, isn't enough
+      expect((await open()).status).toBe(409);
+      for (const who of ["reg", "mo", "ash"]) await (await member(`${who}@example.com`)).answer(story.id, "in");
+      const three = await open();
+      expect(three.status).toBe(409);
+      expect(three.body.error).toMatch(/needs 4 signed up for 2 captains: 3 so far/);
+      // The fourth: it opens
+      await (await member("bo@example.com")).answer(story.id, "in");
+      expect((await open()).status).toBe(200);
+    });
 
     it("picks wait until an admin opens the draft, and only an admin can open it", async () => {
       const { dana, cara, draft, pick, tournament, ids } = await signedUp();

@@ -2,6 +2,8 @@
   // One training's editor, inside the panel a card opens (Settings → Training). A series is a rule (every N weeks on
   // some days, from a first date, optionally to a last one) plus what every session shares (ADR 0030). Saving makes
   // its sessions; each one can then be cancelled on its own.
+  import TimeSelect from "./TimeSelect.svelte";
+  import DateField from "../lib/DateField.svelte";
   import { tick } from "svelte";
   import type { TrainingSeries } from "../demo/model";
   import { resolve } from "../demo/schedule.svelte";
@@ -224,7 +226,9 @@
                 Fee per session (£)
                 <input class="input num" inputmode="decimal" bind:value={feeAmount} />
               </label>
-              <label class="field span-3">Fee from <input class="input" type="date" bind:value={feeFrom} /></label>
+              <div class="field span-3">
+                Fee from <DateField id="training-fee-from" aria-label="Fee from" bind:value={feeFrom} />
+              </div>
               <div class="span-12 tuck">
                 <p class="hint small">
                   Leave places empty for no limit. {current ? `${pounds(current)} now.` : "Free now."} A new fee applies from
@@ -262,20 +266,30 @@
                 </div>
                 <p class="hint">{describeRule(form)}</p>
               </fieldset>
-              <label class="field span-3"
-                >First session <input class="input" type="date" bind:value={form.startsOn} required /></label
-              >
-              <label class="field span-3">
-                Last session
-                <input
-                  class="input"
-                  type="date"
-                  value={form.endsOn ?? ""}
-                  onchange={(e) => form && (form.endsOn = e.currentTarget.value || null)}
+              <div class="field span-3">
+                First session <DateField
+                  id="training-first"
+                  aria-label="First session"
+                  required
+                  bind:value={form.startsOn}
                 />
-              </label>
-              <label class="field span-3">Starts <input class="input" type="time" bind:value={form.startTime} /></label>
-              <label class="field span-3">Ends <input class="input" type="time" bind:value={form.endTime} /></label>
+              </div>
+              <div class="field span-3">
+                Last session
+                <DateField
+                  id="training-last"
+                  aria-label="Last session"
+                  placeholder="Ongoing"
+                  min={form.startsOn || undefined}
+                  bind:value={() => form?.endsOn ?? "", (v) => form && (form.endsOn = v || null)}
+                />
+              </div>
+              <div class="field span-3">
+                Starts <TimeSelect id="training-start" bind:value={form.startTime} aria-label="Starts" />
+              </div>
+              <div class="field span-3">
+                Ends <TimeSelect id="training-end" bind:value={form.endTime} aria-label="Ends" />
+              </div>
               <p class="hint small span-12 tuck">
                 Leave Last session empty to keep going; sessions are made 12 weeks ahead.
               </p>

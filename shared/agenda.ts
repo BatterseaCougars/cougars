@@ -126,7 +126,6 @@ async function tournamentItems(db: D1Database, filter: string, params: unknown[]
         kind: string;
         signupClosesOn: string | null;
         draftOn: string | null;
-        draftTime: string | null;
         draftState: string;
       }
   >(
@@ -135,7 +134,7 @@ async function tournamentItems(db: D1Database, filter: string, params: unknown[]
             y.venue_id seriesVenueId, COALESCE(y.location, '') seriesName, COALESCE(y.map_url, '') seriesMapUrl,
             t.held_on heldOn, t.start_time startTime, t.end_time endTime, t.date_confirmed dateConfirmed, t.season,
             t.public, t.status, t.kind, t.signup_closes_on signupClosesOn, t.draft_on draftOn,
-            t.draft_time draftTime, t.draft_state draftState
+            t.draft_state draftState
      FROM tournaments t LEFT JOIN tournament_types y ON y.id = t.type_id ${filter}`,
     params as never[],
   );
@@ -183,17 +182,18 @@ async function tournamentItems(db: D1Database, filter: string, params: unknown[]
           audience: "everyone",
         }),
       );
-    // The draft night: for its captains (and whoever runs it), until it's closed
+    // The draft's day: a reminder for its captains (and whoever runs it), with no time (an admin says when it opens),
+    // until it's closed
     if (t.kind === "draft" && t.draftOn && t.draftState !== "closed")
       items.push(
         item({
           ...base,
           kind: "draft",
           title: `${t.title}: the draft`,
-          startsAt: londonISO(t.draftOn, t.draftTime ?? "00:00"),
+          startsAt: londonISO(t.draftOn, "00:00"),
           endsAt: null,
           day: t.draftOn,
-          allDay: !t.draftTime,
+          allDay: true,
           dateTbc: false,
           season: null,
           public: false,

@@ -2,15 +2,15 @@
   // One game, as a row in a list: its kick-off, the two teams (or the places a playoff waits on, 1st v 2nd), and the
   // score once there is one. Each opens the game's own page (Details, or Full result once played): both teams, the
   // goals, and where it's scored or an admin puts a result right (ADR 0071).
-  import { shortNameOf } from "./names";
+  import { nameOfTeam } from "./names";
   import type { Tournament, TournamentGame } from "../demo/model";
   import { PLAYERS } from "../demo/data";
   import { kickOff, table } from "./fixtures";
   import TeamCrest from "./TeamCrest.svelte";
   import { teamHref, teamTone } from "./team-tones";
   import { typeById } from "../demo/schedule.svelte";
-  import { me } from "../demo/session.svelte";
   import { leftOf, mmss, ticking } from "./game-clock.svelte";
+  import Icon from "../app/shell/Icon.svelte";
 
   let {
     tournament,
@@ -29,10 +29,9 @@
   } = $props();
 
   const teams = $derived(tournament.teams);
-  const firstName = (id: number | null) => shortNameOf(PLAYERS.find((p) => p.id === id));
   const teamName = (id: number) => {
     const t = teams.find((x) => x.id === id);
-    return t ? t.name || `Team ${firstName(t.captainMemberId)}` : "";
+    return nameOfTeam(t, teams, (id) => PLAYERS.find((p) => p.id === id));
   };
   const logoOf = (id: number) => teams.find((x) => x.id === id)?.logo ?? null;
   const toneOf = (id: number) => teamTone(teams.findIndex((x) => x.id === id));
@@ -53,20 +52,11 @@
   const recordOf = (id: number) => records?.get(id);
   const crest = $derived(big ? "2.75rem" : "2rem");
 
-  // The game's own page: its live score, and the scoresheet for the team keeping score (ADR 0071)
+  // The game's matchup (Details, ADR 0090), and Live: the clock and the score for everyone, and the scoresheet for
+  // whoever keeps score (ADR 0071)
   const gameHref = $derived(`/tournaments/${typeById(tournament.typeId)?.slug ?? ""}/games/${g.id}`);
-  // Keeping score: the scoresheet's yours, or your team's suggested and nobody's taken it yet
-  const keeperTeam = $derived(teams.find((t) => t.id === g.scoringTeamId));
-  const holding = $derived(g.keeperId === me().id);
-  // Only the game up next (or on now) is taken on: the first in the day's order that isn't over
-  const upNext = $derived((tournament.games ?? []).find((x) => x.status !== "done")?.id === g.id);
-  const keeper = $derived(
-    holding ||
-      (upNext &&
-        !g.keeperId &&
-        !!keeperTeam &&
-        (keeperTeam.captainMemberId === me().id || keeperTeam.players.some((p) => p.memberId === me().id))),
-  );
+  const clockHref = $derived(`${gameHref}/live`);
+  const playable = $derived(g.status !== "done" && !!g.homeTeamId && !!g.awayTeamId);
   // A live game's clock ticks here
   $effect(() => (live ? ticking() : undefined));
 </script>
@@ -124,15 +114,15 @@
   {#if !big}
     <!-- Always there, even empty: every row's columns line up -->
     <span class="act">
-      {#if keeper && g.status !== "done" && g.homeTeamId && g.awayTeamId}
-        <a class="btn sm" class:outline={!live} class:primary={live} href={gameHref}
-          >{holding ? "Scoresheet" : "Keep score"}</a
+      {#if playable}
+        <!-- Live: the same for everyone, at the rink or not: the clock, the score, the goals as they go in. Whoever
+             keeps score takes it on there -->
+        <a class="btn sm live-btn" class:outline={!live} class:primary={live} href={clockHref}
+          >{#if live}<i class="dot" aria-hidden="true"></i>{:else}<Icon name="play" size={14} />{/if}Live</a
         >
-      {:else}
-        <!-- Every game has its own page: the teams, the goals, and where it's scored (an admin puts a result right
-             there) -->
-        <a class="btn ghost sm" href={gameHref}>{g.status === "done" ? "Full result" : "Details"}</a>
       {/if}
+      <!-- Every game's matchup: both squads, the result and its goals, when the captains' sides last met -->
+      <a class="btn ghost sm" href={gameHref}>{g.status === "done" ? "Result" : "Details"}</a>
     </span>
   {/if}
 </div>
@@ -140,7 +130,7 @@
 <style>
   .fixture {
     display: grid;
-    grid-template-columns: 4.75rem minmax(0, 1fr) 5rem minmax(0, 1fr) 7rem;
+    grid-template-columns: 4.75rem minmax(0, 1fr) 5rem minmax(0, 1fr) 9.5rem;
     align-items: center;
     gap: var(--s-3);
     min-height: 3.25rem;
@@ -278,11 +268,22 @@
   .act {
     display: flex;
     justify-content: flex-end;
+    gap: var(--s-1);
+  }
+  .live-btn {
+    gap: var(--s-1);
+  }
+  /* On now: the VCR's REC light */
+  .live-btn .dot {
+    width: 0.45rem;
+    height: 0.45rem;
+    border-radius: 50%;
+    background: var(--red-hot);
   }
   /* Phones: tighter columns, the crests only on the big rows */
   @media (max-width: 600px) {
     .fixture:not(.big) {
-      grid-template-columns: 3rem minmax(0, 1fr) 3.25rem minmax(0, 1fr) 5.5rem;
+      grid-template-columns: 3rem minmax(0, 1fr) 3.25rem minmax(0, 1fr) 8.75rem;
       gap: var(--s-2);
     }
     .fixture:not(.big) .team :global(.crest) {

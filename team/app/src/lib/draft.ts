@@ -1,6 +1,11 @@
 // A captains' draft's turn order (ADR 0052), shared by the Draft page and the Worker: snake order, so the teams
 // pick 1, 2, … n, then n, … 2, 1, and round again.
 
+/** A team has at least this many players, its captain included, so a draft only opens with enough to pick from. */
+export const MIN_TEAM_SIZE = 3;
+/** How many need to have signed up (not counting the captains) before a draft among `captains` can open. */
+export const playersNeeded = (captains: number) => captains * (MIN_TEAM_SIZE - 1);
+
 /** The index, in pick order, of the team on the clock after `made` picks among `teams` teams. */
 export function onTheClock(teams: number, made: number): number {
   const round = Math.floor(made / teams);

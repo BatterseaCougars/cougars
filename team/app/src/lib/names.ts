@@ -22,3 +22,34 @@ export const matchesName = (p: Named, query: string) => {
 /** For a lookup that may find no one: their name, or nothing. */
 export const goesByOf = (p: Named | null | undefined) => (p ? goesBy(p) : "");
 export const shortNameOf = (p: Named | null | undefined) => (p ? shortName(p) : "");
+
+interface Captained {
+  name?: string | null;
+  captainMemberId: number | null;
+}
+
+/**
+ * A team's name: its own, else "Team {captain}". Two captains with the same short name (two Alexes) get their surname
+ * initial, "Team Alex B" and "Team Alex S"; the same initial too, their full name. Only among `teams`, its tournament's.
+ */
+export function nameOfTeam<T extends Captained>(
+  team: T | undefined,
+  teams: readonly T[],
+  person: (id: number | null) => Named | undefined,
+): string {
+  if (!team) return "";
+  if (team.name) return team.name;
+  const captain = person(team.captainMemberId);
+  if (!captain) return "Team";
+  const short = shortName(captain);
+  const twins = teams.flatMap((t) => {
+    const c = t.captainMemberId !== team.captainMemberId && !t.name ? person(t.captainMemberId) : undefined;
+    return c && shortName(c) === short ? [c] : [];
+  });
+  if (!twins.length) return `Team ${short}`;
+  const initial = (p: Named) => {
+    const words = p.name.trim().split(/\s+/);
+    return words.length > 1 ? `${short} ${words.at(-1)![0].toUpperCase()}` : goesBy(p);
+  };
+  return `Team ${twins.some((c) => initial(c) === initial(captain)) ? goesBy({ name: captain.name }) : initial(captain)}`;
+}

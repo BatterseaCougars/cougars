@@ -3,7 +3,7 @@
   // the team's shown, with a way back to them all; yours is also My team (no teamId: the one you're on). Its captain
   // (or an admin) edits its name and logo behind Edit, in a sheet (no name: "Team Dan", after them; no logo: the
   // initials). A draft's players only show once it's closed, to anyone outside it (ADR 0070).
-  import { goesByOf, shortNameOf } from "../lib/names";
+  import { goesByOf, nameOfTeam } from "../lib/names";
   import EmptyState from "../lib/EmptyState.svelte";
   import { db } from "../demo/store.svelte";
   import { PLAYERS } from "../demo/data";
@@ -41,7 +41,7 @@
   const team = $derived(index >= 0 ? teams[index] : undefined);
   const byId = (id: number | null) => (id ? PLAYERS.find((p) => p.id === id) : undefined);
   const captain = $derived(byId(team?.captainMemberId ?? null));
-  const fallback = $derived(`Team ${shortNameOf(captain)}`);
+  const fallback = $derived(team ? nameOfTeam({ ...team, name: "" }, teams, byId) : "");
   const isCaptain = $derived(!!team && team.captainMemberId === me().id);
   // An admin edits any team here: its name and logo as its captain does, and who's on it (TeamDrawer, ADR 0066)
   const admin = $derived(can(granted(), "manage:Tournament"));

@@ -1,6 +1,6 @@
 <script module lang="ts">
   // Which tournament's awards are being confirmed, if any: opened from the Awards section or the Manage sheet
-  import { goesBy, shortNameOf } from "./names";
+  import { goesBy, nameOfTeam } from "./names";
   let editing = $state<{ id: number | null }>({ id: null });
   /** Open the awards for this tournament, to confirm. */
   export const enterAwards = (tournamentId: number) => (editing.id = tournamentId);
@@ -26,7 +26,7 @@
   const teamIndex = (id: number | null) => teams.findIndex((t) => t.id === id);
   const teamName = (id: number | null) => {
     const t = teams[teamIndex(id)];
-    return t ? t.name || `Team ${shortNameOf(byId(t.captainMemberId))}` : "";
+    return nameOfTeam(t, teams, byId);
   };
   const teamOf = (memberId: number | null) =>
     teams.find((t) => t.captainMemberId === memberId || t.players.some((p) => p.memberId === memberId))?.id ?? null;

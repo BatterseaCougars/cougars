@@ -1,6 +1,10 @@
 // A tournament's games (ADR 0061), shared by the Worker (making fixtures, filling the playoffs) and the app (the
 // Games and Standings pages): a round robin by the circle method, and the table from the results so far.
 
+/** How many teams a tournament's playoffs need: the lowest place they take (3rd v 4th needs 4); 0 for none. */
+export const teamsForPlayoffs = (playoffs: { home: number; away: number }[]) =>
+  Math.max(0, ...playoffs.flatMap((p) => [p.home, p.away]));
+
 /** Every team plays every other once, in rounds where nobody plays twice (the circle method). */
 export function roundRobin(teamIds: number[]): [number, number][][] {
   const ids = teamIds.length % 2 ? [...teamIds, -1] : [...teamIds];
@@ -124,4 +128,44 @@ export function scorekeepers(
     lastAt.set(pick, at);
   });
   return out;
+}
+
+const minutes = (hhmm: string) => {
+  const [h, m] = hhmm.split(":").map(Number);
+  return h * 60 + m;
+};
+const hhmm = (mins: number) => {
+  const at = ((mins % (24 * 60)) + 24 * 60) % (24 * 60);
+  return `${String(Math.floor(at / 60)).padStart(2, "0")}:${String(at % 60).padStart(2, "0")}`;
+};
+const earliest = (day: string | null, today: string) => (day && day > today ? today : day);
+
+/**
+ * A game started on another day than its tournament's (asked first, on the game's clock): the tournament moves to
+ * today, its hours shifted so this game kicks off now and the day as long as before, and its sign-up and draft days
+ * no later than the new day (the Worker refuses them after it).
+ */
+export function startingNow<
+  T extends {
+    startTime: string;
+    endTime: string;
+    gameMinutes: number;
+    signupOpensOn: string | null;
+    signupClosesOn: string | null;
+    draftOn: string | null;
+  },
+>(t: T, position: number, today: string, now: string) {
+  const start = minutes(now) - (position - 1) * (t.gameMinutes + BREAK_MINUTES);
+  const length = minutes(t.endTime) - minutes(t.startTime);
+  return {
+    ...t,
+    heldOn: today,
+    startTime: hhmm(start),
+    endTime: hhmm(start + length),
+    dateConfirmed: true,
+    season: null,
+    signupOpensOn: earliest(t.signupOpensOn, today),
+    signupClosesOn: earliest(t.signupClosesOn, today),
+    draftOn: earliest(t.draftOn, today),
+  };
 }

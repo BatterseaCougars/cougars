@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { shortNameOf } from "./names";
+  import { nameOfTeam } from "./names";
   // The tournament's champions, once it's decided (lib/edition.ts championOf: the final's winner, or the top of the
   // table without playoffs). Not a card: the crest big, the trophy, the name in the display face, and how they won
   // it, on the page itself. The crest and name lead to the team.
@@ -21,8 +21,7 @@
   const team = $derived(index >= 0 ? teams[index] : undefined);
   const nameOf = (id: number | null) => {
     const t = teams.find((x) => x.id === id);
-    const c = PLAYERS.find((p) => p.id === t?.captainMemberId);
-    return t ? t.name || `Team ${shortNameOf(c)}` : "";
+    return nameOfTeam(t, teams, (id) => PLAYERS.find((p) => p.id === id));
   };
   // How they won it: the final's score, or their points at the top of the table
   const how = $derived.by(() => {

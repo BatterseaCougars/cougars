@@ -119,7 +119,9 @@ export async function clockGame(
     ]);
     return;
   }
-  // Full time
+  // Full time. A playoff needs a winner: level, it plays on and the next goal wins (it's then a full time like any other)
+  if (game.stage === "playoff" && (game.homeGoals ?? 0) === (game.awayGoals ?? 0))
+    throw new HttpError(409, "It's level, and a playoff needs a winner: play on, next goal wins.");
   await run(
     db,
     "UPDATE tournament_games SET status = 'done', clock_left_ms = ?, clock_started_at = NULL WHERE id = ?",

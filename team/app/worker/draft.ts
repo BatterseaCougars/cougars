@@ -3,7 +3,7 @@
 // once everyone's picked, or leaving the rest out on purpose, and then the teams are locked. Someone running the draft
 // (run:Draft) can pick for the captain on the clock, and undo the last pick.
 import { all, first, run } from "../../../shared/d1";
-import { onTheClock } from "../src/lib/draft";
+import { MIN_TEAM_SIZE, onTheClock, playersNeeded } from "../src/lib/draft";
 import { syncTournament } from "../../../shared/agenda";
 import { HttpError } from "./http";
 import { can, type Action } from "../src/access/actions";
@@ -47,7 +47,23 @@ const POOL = `SELECT e.member_id FROM tournament_entries e
 /** An admin opens the draft: the captains can pick. A closed one reopens with its picks, where it left off (0066). */
 export async function openDraft(db: D1Database, tournamentId: number) {
   await tournamentOf(db, tournamentId);
-  if ((await teamsOf(db, tournamentId)).length < 2) throw new HttpError(409, "A draft needs at least two captains.");
+  const captains = (await teamsOf(db, tournamentId)).length;
+  if (captains < 2) throw new HttpError(409, "A draft needs at least two captains.");
+  // The first time, only with enough to pick from: every team its captain and two more (a reopened one carries on)
+  const picked = await first<{ n: number }>(db, `SELECT (${PICKS}) n`, [tournamentId]);
+  if (!picked?.n) {
+    const pool = await first<{ n: number }>(db, `SELECT COUNT(*) n FROM (${POOL})`, [
+      tournamentId,
+      tournamentId,
+      tournamentId,
+    ]);
+    const need = playersNeeded(captains);
+    if ((pool?.n ?? 0) < need)
+      throw new HttpError(
+        409,
+        `Not enough players yet: a team's at least ${MIN_TEAM_SIZE}, so the draft needs ${need} signed up for ${captains} captains: ${pool?.n ?? 0} so far.`,
+      );
+  }
   await run(db, "UPDATE tournaments SET draft_state = 'open' WHERE id = ?", [tournamentId]);
   await syncTournament(db, tournamentId);
 }
@@ -250,3 +266,11 @@ export async function takeOffTeam(db: D1Database, tournamentId: number, teamId: 
   await teamOf(db, tournamentId, teamId);
   await run(db, "DELETE FROM tournament_team_players WHERE team_id = ? AND member_id = ?", [teamId, memberId]);
 }
+
+/** How far a draft has got: its state and picks made (the record, ADR 0098). */
+export const draftProgress = (db: D1Database, tournamentId: number) =>
+  first<{ state: string; picks: number }>(
+    db,
+    `SELECT draft_state state, (${PICKS}) picks FROM tournaments WHERE id = ?`,
+    [tournamentId, tournamentId],
+  );

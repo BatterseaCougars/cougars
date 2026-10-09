@@ -171,6 +171,8 @@ export async function scoreGame(db: D1Database, tournamentId: number, gameId: nu
   const upNext = (await listGames(db, tournamentId)).find((g) => g.status !== "done");
   if (game.status !== "done" && upNext?.id !== gameId)
     throw new HttpError(409, `Game ${upNext?.position ?? ""} is up next: score that one.`);
+  if (game.stage === "playoff" && homeGoals === awayGoals)
+    throw new HttpError(400, "A playoff can't end level: the next goal won it.");
   await run(db, "UPDATE tournament_games SET home_goals = ?, away_goals = ?, status = 'done' WHERE id = ?", [
     homeGoals,
     awayGoals,

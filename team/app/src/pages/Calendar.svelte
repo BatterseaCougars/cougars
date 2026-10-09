@@ -2,6 +2,8 @@
   // Everything on: training sessions, tournaments and one-offs, in date order. Each training and tournament type
   // has its own icon and colour, and the chips at the top filter to one kind. Trainings and tournaments are set
   // up under Settings; one-off events are added here.
+  import TimeSelect from "../lib/TimeSelect.svelte";
+  import DateField from "../lib/DateField.svelte";
   import PageHeader from "../lib/PageHeader.svelte";
   import Sheet from "../lib/Sheet.svelte";
   import { createClubEvent, setClubEventCancelled, updateClubEvent, type ClubEventBody } from "../app/backend.svelte";
@@ -207,10 +209,10 @@
       <label class="field"
         >Title <input class="input" bind:value={draft.title} placeholder="e.g. Summer social" required /></label
       >
-      <label class="field">Date <input class="input" type="date" bind:value={draft.date} required /></label>
+      <div class="field">Date <DateField id="event-date" aria-label="Date" required bind:value={draft.date} /></div>
       <div class="two">
-        <label class="field">Starts <input class="input" type="time" bind:value={draft.start} required /></label>
-        <label class="field">Ends <input class="input" type="time" bind:value={draft.end} /></label>
+        <div class="field">Starts <TimeSelect id="event-start" bind:value={draft.start} aria-label="Starts" /></div>
+        <div class="field">Ends <TimeSelect id="event-end" optional bind:value={draft.end} aria-label="Ends" /></div>
       </div>
       <PlacePicker id="event-place" bind:venueId={draft.venueId} bind:name={draft.venue} bind:mapUrl={draft.mapUrl} />
       <label class="field"

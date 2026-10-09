@@ -369,6 +369,17 @@ h3 {
 .hint.small {
   font-size: var(--text-xs);
 }
+/* Something to sort before it bites (too few teams for the playoffs): amber words and an icon, not a box */
+.hint.warn {
+  display: flex;
+  gap: var(--s-2);
+  align-items: flex-start;
+  color: var(--tone-amber);
+}
+.hint.warn > svg {
+  flex: none;
+  margin-top: 0.15em;
+}
 .num {
   font-variant-numeric: tabular-nums;
   font-feature-settings: var(--num);

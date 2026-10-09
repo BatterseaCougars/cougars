@@ -99,6 +99,9 @@ export interface TournamentType {
   active: boolean;
   /** Copied onto each new edition, where it can be changed. */
   defaultFeePence: number;
+  /** Its usual hours, copied onto each new edition (ADR 0091). */
+  defaultStartTime: string;
+  defaultEndTime: string;
   /** What's handed out at each edition (ADR 0044), shown on the website. */
   awards: { name: string; about: string }[];
   /** The playoff games after the round robin, by table position (ADR 0061). */
@@ -159,6 +162,8 @@ export interface Tournament extends Entries {
   /** Listed on the website. */
   public: boolean;
   /** The last day members can say they're in; null: up to the day. */
+  /** Sign-up opens by itself on this day (ADR 0089), unless opened by hand. */
+  signupOpensOn: string | null;
   signupClosesOn: string | null;
   /** Its own rules and awards, copied from its series and changed for it if need be (ADR 0049). */
   pointsWin: number;
@@ -170,7 +175,6 @@ export interface Tournament extends Entries {
   awards: { name: string; about: string }[];
   /** The captains' draft, for a drafted one. */
   draftOn: string | null;
-  draftTime: string | null;
   /** Where its draft is (ADR 0060): none, scheduled (a day and captains), open (captains pick), closed (locked). */
   draftState?: DraftState;
   /** Its playoffs (copied from its series, ADR 0061), and its games once the fixtures are made. */

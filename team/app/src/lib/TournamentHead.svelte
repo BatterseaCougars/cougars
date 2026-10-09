@@ -2,8 +2,7 @@
   // The top of every tournament page: the type as the eyebrow, the page, and the edition it's showing, big: its day
   // (or Date to be confirmed), its season, its hours and place, and where it stands, worked out from what's happened
   // (lib/edition.ts). Past ones are on History, each with a page of its own.
-  // On the front page (The Kumite), an admin's Manage menu (ADR 0065): this date's editor, its captains, or a new date,
-  // open over the page.
+  // On the front page (The Kumite), an admin's Manage menu (ADR 0065): its settings and the awards, open over the page; and Next Kumite once there's nothing coming up (ADR 0087).
   import type { Tournament, TournamentType } from "../demo/model";
   import { can } from "../access/actions";
   import { granted } from "../demo/session.svelte";
@@ -16,7 +15,7 @@
   import Sheet from "./Sheet.svelte";
   import Drawer from "./Drawer.svelte";
   import { phone } from "./viewport.svelte";
-  import { navigate } from "../app/router.svelte";
+  import { londonToday } from "./dates";
   import type { IconName } from "../app/shell/icons";
 
   let {
@@ -38,7 +37,17 @@
   const stage = $derived(tournament ? editionState(tournament) : null);
   const when = $derived(tournament ? editionWhen(tournament) : null);
   const place = $derived(tournament ? tournamentPlace(tournament)?.name : undefined);
+  // How long till the day, beside it: today, tomorrow, in N days. Only for a fixed day that's still to come
+  const countdown = $derived.by(() => {
+    if (!tournament || !when?.day || when.tbc || stage === "done") return "";
+    const days = Math.round((Date.parse(tournament.heldOn) - Date.parse(londonToday())) / 86_400_000);
+    return days < 0 ? "" : days === 0 ? "Today" : days === 1 ? "Tomorrow" : `In ${days} days`;
+  });
   const admin = $derived(offer && can(granted(), "manage:Tournament"));
+  // Nothing coming up (the last one's been played, or there's never been one): the next one is the admin's job of the
+  // moment, so it's a button on the page, not only in the menu
+  const nextDue = $derived(!tournament || stage === "done");
+  const scheduleNext = () => editTournament("new", { typeId: type.id });
   interface Tool {
     icon: IconName;
     label: string;
@@ -46,60 +55,32 @@
     run: () => void;
   }
   let menuOpen = $state(false);
-  // Everything an admin does to this edition, in one place: a bottom sheet on a phone (where it's mostly done, at the
-  // rink), a side drawer on a desktop. The job of the moment first: the awards once it's done, the fight card on the day
+  // What an admin does to this edition that has no tab of its own (ADR 0087): its settings (day, sign-up, captains,
+  // draft day, rules), then the awards. The draft and the fight card are run on their own tabs, not from here. A bottom
+  // sheet on a phone (where it's mostly done, at the rink), a side drawer on a desktop. The next one isn't here: it's
+  // the page's own button once this one's done (ADR 0087)
   const tools = $derived.by(() => {
     if (!tournament) return [] as Tool[];
     const t = tournament;
-    const slug = `/tournaments/${type.slug}`;
-    const list: (Tool & { rank: number })[] = [];
+    const list: Tool[] = [
+      {
+        icon: "settings",
+        label: `${type.shortName} settings`,
+        sub:
+          t.kind === "draft"
+            ? "Day, sign-up, captains and draft day, rules, awards"
+            : "Day, sign-up, teams, rules, awards",
+        run: () => editTournament(t.id),
+      },
+    ];
     if (t.awards.length)
       list.push({
         icon: "medal",
         label: "Confirm the awards",
         sub: "From the results; the Dim Mak's a draw",
         run: () => enterAwards(t.id),
-        rank: stage === "done" ? 0 : 5,
       });
-    list.push({
-      icon: type.slug === "kumite" ? "gong" : "calendar",
-      label: t.games?.length ? "Fight card and results" : "Make the fight card",
-      sub: t.games?.length ? "Each game: score it, or put a result right" : "The games, from the teams",
-      run: () => navigate(`${slug}/schedule`),
-      rank: stage === "live" ? 0 : 2,
-    });
-    if (t.kind === "draft") {
-      if (t.draftState !== "closed")
-        list.push({
-          icon: "draft",
-          label: "Run the draft",
-          sub: "Open it, picks, close it",
-          run: () => navigate(`${slug}/draft`),
-          rank: 1,
-        });
-      list.push({
-        icon: "teams",
-        label: "Captains and draft date",
-        sub: "Who picks, and when",
-        run: () => editTournament(t.id, { tab: "teams" }),
-        rank: 3,
-      });
-    }
-    list.push({
-      icon: "settings",
-      label: `Edit this ${type.shortName}`,
-      sub: "Date, place, sign-up, rules, awards",
-      run: () => editTournament(t.id),
-      rank: 4,
-    });
-    list.push({
-      icon: "plus",
-      label: `New ${type.shortName} date`,
-      sub: "The next one",
-      run: () => editTournament("new", { typeId: type.id }),
-      rank: 6,
-    });
-    return list.sort((a, b) => a.rank - b.rank);
+    return list;
   });
   function go(action: () => void) {
     menuOpen = false;
@@ -126,7 +107,9 @@
           <span class="where">&nbsp;</span>
         {:else if tournament && when}
           <span class="day-line"
-            ><span class="day display">{when.day ?? (when.tbc ? "Date to be confirmed" : when.season)}</span></span
+            ><span class="day display">{when.day ?? (when.tbc ? "Date to be confirmed" : when.season)}</span
+            >{#if countdown}<span class="countdown display" class:today={countdown === "Today"}>{countdown}</span
+              >{/if}</span
           >
           <span class="where"
             >{[when.day || when.tbc ? when.season : "", when.hours, place].filter(Boolean).join(" · ")}</span
@@ -142,9 +125,16 @@
         <!-- One quiet button on the series' front page (ADR 0065): what an admin does to the series, kept out of the
              way of everyone else's view -->
         <div class="manage">
-          <button class="btn sm ghost" aria-haspopup="dialog" onclick={() => (menuOpen = true)}
-            ><Icon name="settings" size={16} /> Manage</button
-          >
+          {#if nextDue}
+            <button class="btn sm primary" onclick={scheduleNext}
+              ><Icon name="plus" size={16} /> Next {type.shortName}</button
+            >
+          {/if}
+          {#if tools.length}
+            <button class="btn sm ghost" aria-haspopup="dialog" onclick={() => (menuOpen = true)}
+              ><Icon name="settings" size={16} /> Manage</button
+            >
+          {/if}
         </div>
       {/if}
     {/snippet}
@@ -160,12 +150,6 @@
         <Icon name="chevronRight" size={18} />
       </button>
     {/each}
-    {#if !tournament}
-      <button class="tool" onclick={() => go(() => editTournament("new", { typeId: type.id }))}>
-        <Icon name="plus" size={22} />
-        <span class="tool-text"><strong>New {type.shortName} date</strong><span>The next one</span></span>
-      </button>
-    {/if}
   </div>
 {/snippet}
 
@@ -188,6 +172,8 @@
   }
   .manage {
     position: relative;
+    display: flex;
+    gap: var(--s-2);
   }
   .stamp {
     display: inline-flex;
@@ -242,6 +228,16 @@
     font-size: clamp(1.4rem, 3.5vw, 1.9rem);
     line-height: 1.1;
     text-overflow: ellipsis;
+  }
+  /* The countdown: the day's own size down a step, quieter; on the day itself, the club's red */
+  .countdown {
+    margin-left: var(--s-3);
+    color: var(--fg-muted);
+    font-size: clamp(1rem, 2.4vw, 1.3rem);
+    line-height: 1.1;
+  }
+  .countdown.today {
+    color: var(--red-hot);
   }
   .aside {
     color: var(--fg-muted);

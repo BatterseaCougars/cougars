@@ -1,7 +1,7 @@
 // Teams for a session (T3): made in the app (lib/snake.ts), published here, so everyone sees the same ones.
 // Publishing replaces whatever was there. Someone who drops out or is taken off comes off their team too
 // (entries.ts).
-import { all, run } from "../../../shared/d1";
+import { all, first, run } from "../../../shared/d1";
 import { HttpError } from "./http";
 
 export interface TeamJson {
@@ -94,3 +94,12 @@ export async function resetSession(db: D1Database, sessionId: number) {
   await run(db, "DELETE FROM session_teams WHERE session_id = ?", [sessionId]);
   await run(db, "DELETE FROM attendance WHERE session_id = ?", [sessionId]);
 }
+
+/** A session's day and how many said anything: what a reset takes away (the record, ADR 0098). */
+export const sessionSignups = (db: D1Database, sessionId: number) =>
+  first<{ heldOn: string; signups: number }>(
+    db,
+    `SELECT held_on heldOn, (SELECT COUNT(*) FROM attendance WHERE session_id = s.id) signups
+     FROM training_sessions s WHERE id = ?`,
+    [sessionId],
+  );

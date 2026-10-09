@@ -1,7 +1,7 @@
 <script lang="ts">
   // A tournament's teams, at a glance: each one's crest, name and record so far, yours marked. A team opens its own
   // page (TournamentTeam): the squad, its games, and there its captain (or an admin) edits it.
-  import { shortNameOf } from "../lib/names";
+  import { shortNameOf, nameOfTeam } from "../lib/names";
   import { me } from "../demo/session.svelte";
   import { PLAYERS } from "../demo/data";
   import { currentTournament, typeById } from "../demo/schedule.svelte";
@@ -22,7 +22,7 @@
   const tournament = $derived(currentTournament(typeId));
   const teams = $derived(tournament?.teams ?? []);
   const firstName = (id: number | null) => shortNameOf(PLAYERS.find((p) => p.id === id));
-  const teamName = (i: number) => teams[i].name || `Team ${firstName(teams[i].captainMemberId)}`;
+  const teamName = (i: number) => nameOfTeam(teams[i], teams, (id) => PLAYERS.find((p) => p.id === id));
   const isMine = (i: number) =>
     teams[i].captainMemberId === me().id || teams[i].players.some((p) => p.memberId === me().id);
   // Yours first
@@ -40,11 +40,7 @@
       : new Map(),
   );
   const admin = $derived(can(granted(), "manage:Tournament"));
-  const draftNight = $derived(
-    tournament?.draftOn
-      ? `${formatDayDate(londonISO(tournament.draftOn, tournament.draftTime ?? "12:00"))}${tournament.draftTime ? ` at ${tournament.draftTime}` : ""}`
-      : null,
-  );
+  const draftNight = $derived(tournament?.draftOn ? formatDayDate(londonISO(tournament.draftOn, "12:00")) : null);
   const played = $derived((tournament?.games ?? []).some((g) => g.homeGoals !== null));
 </script>
 

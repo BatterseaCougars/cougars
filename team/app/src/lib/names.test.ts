@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { shortName, goesBy, matchesName } from "./names";
+import { shortName, goesBy, matchesName, nameOfTeam } from "./names";
 
 const adrian = { name: "Adrian Kaczmarczyk", webName: null };
 const wall = { name: "Sam Jones", webName: "The Wall" };
@@ -26,5 +26,31 @@ describe("the name a member goes by", () => {
     expect(matchesName(wall, "sam")).toBe(true);
     expect(matchesName(adrian, "kacz")).toBe(true);
     expect(matchesName(adrian, "wall")).toBe(false);
+  });
+});
+
+describe("a team's name", () => {
+  const people = [
+    { id: 1, name: "Alex Brown", webName: null },
+    { id: 2, name: "Alex Smith", webName: null },
+    { id: 3, name: "Jo Kerr", webName: null },
+    { id: 4, name: "Alex Bell", webName: null },
+  ];
+  const person = (id: number | null) => people.find((p) => p.id === id);
+  const team = (captainMemberId: number, name = "") => ({ name, captainMemberId });
+
+  it("is its own name, else its captain's", () => {
+    const teams = [team(1, "Red Lions"), team(3)];
+    expect(teams.map((t) => nameOfTeam(t, teams, person))).toEqual(["Red Lions", "Team Jo"]);
+  });
+
+  it("adds a surname initial when two captains share a first name, so the fight card never reads Alex v Alex", () => {
+    const teams = [team(1), team(2), team(3)];
+    expect(teams.map((t) => nameOfTeam(t, teams, person))).toEqual(["Team Alex B", "Team Alex S", "Team Jo"]);
+  });
+
+  it("uses the full name when the initials match too, and leaves a team with its own name out of it", () => {
+    const teams = [team(1), team(4), team(2, "Smithy's")];
+    expect(teams.map((t) => nameOfTeam(t, teams, person))).toEqual(["Team Alex Brown", "Team Alex Bell", "Smithy's"]);
   });
 });

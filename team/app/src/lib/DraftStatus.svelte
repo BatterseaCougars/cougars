@@ -32,19 +32,15 @@
       return { key: t.id ?? i, name, initials: p ? initials(name) : "?", tone: teamTone(i), you: i === mine };
     }),
   );
-  const when = $derived(
-    tournament.draftOn
-      ? `${formatDayDate(londonISO(tournament.draftOn, tournament.draftTime ?? "12:00"))}${tournament.draftTime ? ` at ${tournament.draftTime}` : ""}`
-      : "",
-  );
+  const when = $derived(tournament.draftOn ? formatDayDate(londonISO(tournament.draftOn, "12:00")) : "");
 
-  const badge = $derived(
-    tournament.draftOn ? dateBadge(londonISO(tournament.draftOn, tournament.draftTime ?? "12:00")) : null,
-  );
+  const badge = $derived(tournament.draftOn ? dateBadge(londonISO(tournament.draftOn, "12:00")) : null);
 
   // The headline, a line under it if there's more to say, and the badge: in words, so nobody needs the colour
   const view = $derived.by(() => {
-    if (!teams.length) return { title: "Captains to be named", sub: "", badge: "" };
+    // No captains yet: the draft's day still leads (or TBC), and that the captains are still to come
+    if (!teams.length)
+      return { title: when ? `Draft ${when}` : "Draft date TBC", sub: "Captains to be named.", badge: "" };
     if (state === "open") {
       if (mine >= 0 && turn.left && turn.until === 0)
         return { title: "It's your pick", sub: "You're on the clock. Don't keep them waiting.", badge: "Live" };
@@ -63,7 +59,7 @@
       };
     }
     return {
-      title: when ? `Draft ${when}` : "Draft date to be set",
+      title: when ? `Draft ${when}` : "Draft date TBC",
       sub: mine >= 0 ? `You pick ${nth(mine + 1)}.` : "",
       badge: "",
     };

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { champion, kickOff, roundRobin, scorekeepers, table } from "./fixtures";
+import { champion, kickOff, roundRobin, scorekeepers, table, startingNow, teamsForPlayoffs } from "./fixtures";
 
 describe("roundRobin", () => {
   it("has every team play every other exactly once, nobody twice in a round", () => {
@@ -103,5 +103,49 @@ describe("champion", () => {
 
   it("no games, no champion", () => {
     expect(champion(teams, [])).toBeNull();
+  });
+});
+
+describe("starting a game on another day than the tournament's", () => {
+  const t = {
+    heldOn: "2026-10-30",
+    startTime: "11:00",
+    endTime: "16:00",
+    gameMinutes: 12,
+    signupOpensOn: "2026-10-09",
+    signupClosesOn: "2026-10-28",
+    draftOn: "2026-10-23",
+  };
+
+  it("moves its day to today and its hours so this game kicks off now, the day as long as before", () => {
+    // Game 3 at 18:40: games 1 and 2 (12 minutes and a 5-minute break each) would have started 34 minutes before
+    expect(startingNow(t, 3, "2026-10-09", "18:40")).toMatchObject({
+      heldOn: "2026-10-09",
+      startTime: "18:06",
+      endTime: "23:06",
+      dateConfirmed: true,
+      season: null,
+    });
+  });
+
+  it("brings its sign-up and draft days no later than the new day", () => {
+    expect(startingNow(t, 1, "2026-10-09", "10:00")).toMatchObject({
+      signupOpensOn: "2026-10-09",
+      signupClosesOn: "2026-10-09",
+      draftOn: "2026-10-09",
+    });
+  });
+});
+
+describe("how many teams the playoffs need", () => {
+  it("is the lowest place they take: a final needs 2, a 3rd-place game 4, none needs none", () => {
+    expect(teamsForPlayoffs([])).toBe(0);
+    expect(teamsForPlayoffs([{ home: 1, away: 2 }])).toBe(2);
+    expect(
+      teamsForPlayoffs([
+        { home: 3, away: 4 },
+        { home: 1, away: 2 },
+      ]),
+    ).toBe(4);
   });
 });

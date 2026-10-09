@@ -149,6 +149,9 @@ CREATE TABLE tournament_types (
   active INTEGER NOT NULL DEFAULT 1,
   -- Copied onto each new edition, where it can be changed (ADR 0032)
   default_fee_pence INTEGER NOT NULL DEFAULT 0,
+  -- Its usual hours, copied onto each new edition (ADR 0091): the Kumite is instead of Friday training, at its time
+  default_start_time TEXT NOT NULL DEFAULT '11:00',
+  default_end_time TEXT NOT NULL DEFAULT '16:00',
   awards TEXT NOT NULL DEFAULT '[]',
   -- The playoff games after the round robin, by table position: [{name, home, away}] (ADR 0061)
   playoffs TEXT NOT NULL DEFAULT '[]',
@@ -177,9 +180,10 @@ CREATE TABLE tournaments (
   fee_pence INTEGER NOT NULL DEFAULT 0,
   public INTEGER NOT NULL DEFAULT 1,
   date_confirmed INTEGER NOT NULL DEFAULT 1,
+  -- Sign-up opens by itself on this day (ADR 0089), unless an admin opened it by hand (status 'open')
+  signup_opens_on TEXT,
   signup_closes_on TEXT,
   draft_on TEXT,
-  draft_time TEXT,
   -- The captains' draft (ADR 0060): none until an admin opens it, then open, then closed (teams locked)
   draft_state TEXT NOT NULL DEFAULT 'none',
   season TEXT,

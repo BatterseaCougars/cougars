@@ -2,7 +2,7 @@
   // A tournament's awards and who won them (ADR 0073), on its landing page: each award, its line, and the team or
   // player (or joint winners) who took it home. Once it's done, the data's picks show as provisional (lib/awards.ts)
   // until an admin confirms them (here, or in Manage: AwardsDrawer).
-  import { goesByOf, shortNameOf } from "./names";
+  import { goesByOf, nameOfTeam } from "./names";
   import { can } from "../access/actions";
   import { PLAYERS } from "../demo/data";
   import type { Tournament } from "../demo/model";
@@ -26,7 +26,7 @@
   const teamIndex = (id: number | null) => teams.findIndex((t) => t.id === id);
   const teamName = (id: number | null) => {
     const t = teams[teamIndex(id)];
-    return t ? t.name || `Team ${shortNameOf(byId(t.captainMemberId))}` : "";
+    return nameOfTeam(t, teams, byId);
   };
   // Whose team a player's on
   const teamOf = (memberId: number) =>

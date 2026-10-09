@@ -5,6 +5,8 @@
   import { impersonating, me } from "../demo/session.svelte";
   import { answerFor } from "../app/backend.svelte";
   import { signupClosed } from "../demo/schedule.svelte";
+  import { signupOpen } from "./signup";
+  import { formatDayDate, londonISO, londonToday } from "./dates";
 
   let { tournament: t, canSignUp }: { tournament: Tournament; canSignUp: boolean } = $props();
 
@@ -12,10 +14,12 @@
   const inIt = $derived(t.going.includes(id));
   const waiting = $derived(t.waitlist.includes(id));
   const out = $derived(t.out?.includes(id) ?? false);
-  const open = $derived(t.status === "open" && !signupClosed(t));
+  const open = $derived(signupOpen(t, londonToday()));
   const full = $derived(t.capacity != null && t.going.length >= t.capacity);
   const count = $derived(`${t.going.length}${t.capacity ? ` of ${t.capacity}` : ""} in`);
-  const planned = $derived(t.status === "planned");
+  // Not open yet: on its way (by itself on its day, or by an admin), not over
+  const planned = $derived(t.status === "planned" && !signupClosed(t));
+  const opens = $derived(t.signupOpensOn ? formatDayDate(londonISO(t.signupOpensOn, "12:00")) : "");
   const where = $derived(inIt ? "You're in" : waiting ? "You're on the waitlist" : out ? "You're out" : "Are you in?");
   let busy = $state(false);
   async function answer(going: boolean) {
@@ -32,7 +36,15 @@
 {#if open || planned || t.going.length}
   <div class="signup">
     <span class="words">
-      <strong>{open ? where : planned ? "Sign-up opens nearer the day" : "Sign-up's closed"}</strong>
+      <strong
+        >{open
+          ? where
+          : planned
+            ? opens
+              ? `Sign-up opens ${opens}`
+              : "Sign-up opens nearer the day"
+            : "Sign-up's closed"}</strong
+      >
       <span class="hint"
         >{#if t.going.length || !planned}{count}{/if}{#if t.waitlist.length}
           · {t.waitlist.length} waiting{/if}{#if open && t.signupClosesOn}

@@ -57,7 +57,12 @@
   }
 
   function focusActive() {
-    menu?.querySelector<HTMLElement>(`[data-index="${active}"]`)?.focus();
+    const el = menu?.querySelector<HTMLElement>(`[data-index="${active}"]`);
+    if (!menu || !el) return;
+    // In view in the menu only (a long list, the times of day: the one set in the middle), never the page under it
+    el.focus({ preventScroll: true });
+    if (el.offsetTop < menu.scrollTop || el.offsetTop + el.offsetHeight > menu.scrollTop + menu.clientHeight)
+      menu.scrollTop = el.offsetTop - (menu.clientHeight - el.offsetHeight) / 2;
   }
 
   async function setOpen(next: boolean) {
@@ -67,6 +72,8 @@
     active = current >= 0 ? current : (enabled[0] ?? -1);
     await tick();
     place();
+    // Its height is set now: then the one chosen is brought into view
+    await tick();
     focusActive();
   }
 

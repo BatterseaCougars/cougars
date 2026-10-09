@@ -23,8 +23,8 @@ beforeEach(() => {
   w = testWorld(ROSTER);
 });
 
-/** A cup three teams entered, each captained by a member, with its fixtures made. */
-async function cup() {
+/** A cup three teams entered, each captained by a member, with its fixtures made (and its playoffs, if any). */
+async function cup(playoffs: { name: string; home: number; away: number }[] = []) {
   const dana = await w.signedIn("dana@example.com");
   const sees = async (as = dana, now = NOW) =>
     (await as.call("GET", "/api/bootstrap", undefined, { now })).body as Json;
@@ -40,7 +40,7 @@ async function cup() {
     status: "planned",
     feePence: 0,
     kind: "teams",
-    playoffs: [],
+    playoffs,
     teams: Object.entries(captains).map(([name, captainMemberId]) => ({
       name,
       logo: null,
@@ -317,5 +317,39 @@ describe("an admin puts a game's result right, on the game's page", () => {
     await clock(keeper, first.id, "end", at(12));
     // Full time: the scorekeeper's done with it
     expect((await goal(keeper, first.id, { teamId: first.homeTeamId }, at(13))).status).toBe(403);
+  });
+});
+
+describe("a playoff needs a winner", () => {
+  /** The group games played (typed in), so the final has its teams from the table. */
+  async function final() {
+    const c = await cup([{ name: "Final", home: 1, away: 2 }]);
+    for (const g of c.games.filter((x: Json) => x.stage === "group"))
+      await c.dana.call("PUT", `/api/tournaments/${c.id}/games/${g.id}`, { homeGoals: 1, awayGoals: 0 });
+    const game = (await c.tournament()).games.find((x: Json) => x.stage === "playoff");
+    expect(game.homeTeamId).not.toBeNull();
+    return { ...c, game };
+  }
+
+  it("level at full time, it plays on: full time is refused until the next goal wins it", async () => {
+    const { game, keeperOf, clock, goal, tournament } = await final();
+    const keeper = await keeperOf(game);
+    expect((await clock(keeper, game.id, "start")).status).toBe(200);
+    const level = await clock(keeper, game.id, "end", at(20));
+    expect(level.status).toBe(409);
+    expect(level.body.error).toMatch(/next goal wins/);
+    expect((await goal(keeper, game.id, { teamId: game.awayTeamId }, at(22))).status).toBe(200);
+    expect((await clock(keeper, game.id, "end", at(22))).status).toBe(200);
+    const t = await tournament();
+    expect(t.games.find((x: Json) => x.id === game.id)).toMatchObject({ status: "done", homeGoals: 0, awayGoals: 1 });
+  });
+
+  it("an admin typing in a playoff's result can't make it a draw", async () => {
+    const { game, id, dana } = await final();
+    const res = await dana.call("PUT", `/api/tournaments/${id}/games/${game.id}`, { homeGoals: 2, awayGoals: 2 });
+    expect(res.status).toBe(400);
+    expect(
+      (await dana.call("PUT", `/api/tournaments/${id}/games/${game.id}`, { homeGoals: 3, awayGoals: 2 })).status,
+    ).toBe(200);
   });
 });

@@ -282,6 +282,8 @@ const typeBody = (t: TournamentType) => ({
   kind: t.kind,
   active: t.active,
   defaultFeePence: t.defaultFeePence,
+  defaultStartTime: t.defaultStartTime,
+  defaultEndTime: t.defaultEndTime,
   awards: t.awards,
   playoffs: t.playoffs,
   venueId: t.venueId,
@@ -308,9 +310,9 @@ const tournamentBody = (t: Tournament) => ({
   dateConfirmed: t.dateConfirmed,
   season: t.season,
   public: t.public,
+  signupOpensOn: t.signupOpensOn,
   signupClosesOn: t.signupClosesOn,
   draftOn: t.draftOn,
-  draftTime: t.draftTime,
   pointsWin: t.pointsWin,
   pointsDraw: t.pointsDraw,
   pointsLoss: t.pointsLoss,
@@ -386,6 +388,8 @@ export const createTournament = (t: Tournament) =>
   save(() => api<{ id: number }>("POST", "/api/tournaments", tournamentBody(t)), "Date added");
 export const updateTournament = (t: Tournament) =>
   save(() => api("PUT", `/api/tournaments/${t.id}`, tournamentBody(t)));
+/** Gone, with its teams, sign-ups, games and awards. */
+export const deleteTournament = (id: number) => save(() => api("DELETE", `/api/tournaments/${id}`), "Deleted");
 
 /** A one-off event as the app sends it. */
 export interface ClubEventBody {

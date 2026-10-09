@@ -3,7 +3,8 @@
 import type { Tournament } from "../demo/model";
 import { seasonLabel, seasonOf } from "../../../../shared/seasons";
 import { champion } from "./fixtures";
-import { formatDayDate, londonISO } from "./dates";
+import { formatDayDate, londonISO, londonToday } from "./dates";
+import { signupOpen } from "./signup";
 
 export type EditionState = "live" | "done" | "open" | "planned";
 
@@ -23,7 +24,7 @@ export function editionState(t: Tournament): EditionState {
   const games = t.games ?? [];
   if (t.status === "finished" || (games.length && games.every((g) => g.status === "done"))) return "done";
   if (t.status === "live" || games.some((g) => g.status !== "next")) return "live";
-  return t.status === "open" ? "open" : "planned";
+  return signupOpen(t, londonToday()) ? "open" : "planned";
 }
 
 export const EDITION_LABEL: Record<EditionState, string> = {

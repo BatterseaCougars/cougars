@@ -4,6 +4,7 @@
 // waitlist moves up. Admins can put someone in past the limit.
 import { all, first, run } from "../../../shared/d1";
 import { londonToday } from "../src/lib/dates";
+import { signupOpen, signupOver } from "../src/lib/signup";
 import { HttpError } from "./http";
 import { offTeams } from "./teams";
 import { joinDraft, leaveDraft } from "./draft";
@@ -115,17 +116,20 @@ export async function answer(db: D1Database, kind: EntryKind, id: number, member
     return;
   }
   if (was?.signup === "in" || was?.signup === "waitlist") return;
-  // A tournament takes sign-ups once an admin opens them, until the end of the closing day (London); saying you're
-  // out is always fine
+  // A tournament takes sign-ups once an admin opens them or its opening day comes, until the end of the closing day
+  // (London, lib/signup.ts); saying you're out is always fine
   if (kind === "tournament") {
-    const t = await first<{ status: string; closes: string | null }>(
+    const t = await first<{ status: string; signupOpensOn: string | null; signupClosesOn: string | null }>(
       db,
-      "SELECT status, signup_closes_on closes FROM tournaments WHERE id = ?",
+      `SELECT status, signup_opens_on signupOpensOn, signup_closes_on signupClosesOn FROM tournaments WHERE id = ?`,
       [id],
     );
-    if (t?.status === "planned") throw new HttpError(409, "Sign-up isn't open yet.");
-    if (t && t.status !== "open") throw new HttpError(409, "Sign-up has closed.");
-    if (t?.closes && londonToday(new Date(now)) > t.closes) throw new HttpError(409, "Sign-up has closed.");
+    const today = londonToday(new Date(now));
+    if (t && !signupOpen(t, today)) {
+      if (t.status === "planned" && !signupOver(t, today))
+        throw new HttpError(409, t.signupOpensOn ? `Sign-up opens on ${t.signupOpensOn}.` : "Sign-up isn't open yet.");
+      throw new HttpError(409, "Sign-up has closed.");
+    }
   }
   await put(db, kind, id, memberId, { join: limit }, now);
 }

@@ -9,6 +9,7 @@
   import Icon from "../app/shell/Icon.svelte";
   import EventCard from "../lib/EventCard.svelte";
   import { formatDayDate, formatTime, londonToday, pounds } from "../lib/dates";
+  import { signupOpen } from "../lib/signup";
   import { draftTurn } from "../lib/draft";
   import { downloadIcs } from "../lib/ics";
   import { fill, slot } from "../lib/greetings";
@@ -62,7 +63,7 @@
         if (!t || !type) return [];
         const when = r.allDay ? formatDayDate(r.startsAt) : `${formatDayDate(r.startsAt)} at ${formatTime(r.startsAt)}`;
         if (r.kind === "signup_closes") {
-          if (t.status !== "open" || t.going.includes(who.id) || t.waitlist.includes(who.id)) return [];
+          if (!signupOpen(t, londonToday()) || t.going.includes(who.id) || t.waitlist.includes(who.id)) return [];
           return [
             {
               key: r.key,
@@ -330,7 +331,7 @@
               <span class="grow"
                 >{w.tbc
                   ? `${w.season}: the date's being set`
-                  : t.status === "open"
+                  : signupOpen(t, londonToday())
                     ? "Sign-up's open"
                     : "All about it"}: the draft, the teams, last time's champions</span
               >

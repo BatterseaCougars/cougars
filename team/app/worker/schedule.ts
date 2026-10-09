@@ -335,6 +335,8 @@ interface TypeRow {
   kind: Kind;
   active: number;
   default_fee_pence: number;
+  default_start_time: string;
+  default_end_time: string;
   awards: string;
   playoffs: string;
   venue_id: number | null;
@@ -425,6 +427,8 @@ export async function listTournamentTypes(db: D1Database) {
     kind: t.kind,
     active: Boolean(t.active),
     defaultFeePence: t.default_fee_pence,
+    defaultStartTime: t.default_start_time,
+    defaultEndTime: t.default_end_time,
     awards: parseAwards(t.awards),
     playoffs: parsePlayoffs(t.playoffs),
     venueId: t.venue_id,
@@ -446,6 +450,8 @@ async function typeFields(db: D1Database, o: Record<string, unknown>) {
     oneOf(o, "kind", KINDS),
     bool(o, "active") ? 1 : 0,
     int(o, "defaultFeePence", { max: 100_000 }),
+    o.defaultStartTime == null ? "11:00" : time(o, "defaultStartTime"),
+    o.defaultEndTime == null ? "16:00" : time(o, "defaultEndTime"),
     awardsOf(o),
     ...(await placeFields(db, o, "location")),
     playoffsOf(o),
@@ -458,8 +464,9 @@ export async function createTournamentType(db: D1Database, o: Record<string, unk
   const res = await run(
     db,
     `INSERT INTO tournament_types (name, short_name, icon, tone, points_win, points_draw, points_loss, game_minutes,
-       kind, active, default_fee_pence, awards, venue_id, location, map_url, playoffs, slug)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       kind, active, default_fee_pence, default_start_time, default_end_time, awards, venue_id, location, map_url,
+       playoffs, slug)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [...f, slug],
   );
   return { id: Number(res.meta.last_row_id), slug };
@@ -469,7 +476,8 @@ export async function updateTournamentType(db: D1Database, id: number, o: Record
   const res = await run(
     db,
     `UPDATE tournament_types SET name = ?, short_name = ?, icon = ?, tone = ?, points_win = ?, points_draw = ?,
-       points_loss = ?, game_minutes = ?, kind = ?, active = ?, default_fee_pence = ?, awards = ?, venue_id = ?,
+       points_loss = ?, game_minutes = ?, kind = ?, active = ?, default_fee_pence = ?, default_start_time = ?,
+       default_end_time = ?, awards = ?, venue_id = ?,
        location = ?, map_url = ?, playoffs = ?
      WHERE id = ?`,
     [...(await typeFields(db, o)), id],
@@ -503,9 +511,9 @@ export async function listTournaments(db: D1Database) {
       dateConfirmed: number;
       season: Season | null;
       public: number;
+      signupOpensOn: string | null;
       signupClosesOn: string | null;
       draftOn: string | null;
-      draftTime: string | null;
       pointsWin: number;
       pointsDraw: number;
       pointsLoss: number;
@@ -517,8 +525,8 @@ export async function listTournaments(db: D1Database) {
     }>(
       db,
       `SELECT t.id, t.type_id typeId, t.name, t.venue_id venueId, t.location, t.map_url mapUrl, t.held_on heldOn, t.start_time startTime, t.end_time endTime, t.capacity, t.status, t.champions,
-              t.fee_pence feePence, t.date_confirmed dateConfirmed, t.season, t.public, t.signup_closes_on signupClosesOn,
-              t.draft_on draftOn, t.draft_time draftTime, t.points_win pointsWin, t.points_draw pointsDraw,
+              t.fee_pence feePence, t.date_confirmed dateConfirmed, t.season, t.public, t.signup_opens_on signupOpensOn, t.signup_closes_on signupClosesOn,
+              t.draft_on draftOn, t.points_win pointsWin, t.points_draw pointsDraw,
               t.points_loss pointsLoss, t.game_minutes gameMinutes, t.kind, t.awards, t.playoffs, t.draft_state draftState
        FROM tournaments t ORDER BY t.held_on`,
     ),
@@ -584,7 +592,11 @@ async function tournamentFields(db: D1Database, o: Record<string, unknown>) {
     throw new HttpError(400, "season should be spring, summer, autumn or winter.");
   if (season && heldOn !== seasonEnd(season, seasonYear(season, heldOn)))
     throw new HttpError(400, "A season's date is its last day.");
+  const signupOpensOn = date(o, "signupOpensOn", { nullable: true });
+  if (signupOpensOn && signupOpensOn > heldOn) throw new HttpError(400, "Sign-up has to open before the day.");
   const signupClosesOn = date(o, "signupClosesOn", { nullable: true });
+  if (signupOpensOn && signupClosesOn && signupClosesOn < signupOpensOn)
+    throw new HttpError(400, "Sign-up can't close before it opens.");
   if (signupClosesOn && signupClosesOn > heldOn) throw new HttpError(400, "Sign-up can't close after the day.");
   const draftOn = date(o, "draftOn", { nullable: true });
   if (draftOn && draftOn > heldOn) throw new HttpError(400, "The draft has to be before the day.");
@@ -603,9 +615,9 @@ async function tournamentFields(db: D1Database, o: Record<string, unknown>) {
     season,
     // Shown on the website unless said otherwise
     o.public === false ? 0 : 1,
+    signupOpensOn,
     signupClosesOn,
     draftOn,
-    draftOn && o.draftTime ? time(o, "draftTime") : null,
   ] as Param[];
 }
 
@@ -792,8 +804,30 @@ function rulesOf(o: Record<string, unknown>, series: Rules | null) {
   ] as Param[];
 }
 
-export async function createTournament(db: D1Database, o: Record<string, unknown>) {
-  const { typeId, series } = await seriesOf(db, o);
+/**
+ * An admin deletes a tournament (ADR 0088). One statement: the schema's cascades take everything that's its (sign-ups,
+ * teams and their players, games and goals, the awards' winners), so the database does the work, not the Worker
+ * (ADR 0063). The agenda points at it by source, not a foreign key, so its rows go by syncing it away.
+ */
+export async function deleteTournament(db: D1Database, id: number) {
+  const res = await run(db, "DELETE FROM tournaments WHERE id = ?", [id]);
+  if (!res.meta.changes) throw new HttpError(404, "No such tournament.");
+  await syncTournament(db, id);
+}
+
+/**
+ * A new tournament. Only its series, name and day are needed (the next one's quick form): what's left out takes the
+ * series' fee, rules and usual hours (ADR 0091), and sign-up not open yet.
+ */
+export async function createTournament(db: D1Database, given: Record<string, unknown>) {
+  const { typeId, series } = await seriesOf(db, given);
+  const o: Record<string, unknown> = {
+    startTime: series?.default_start_time ?? "11:00",
+    endTime: series?.default_end_time ?? "16:00",
+    status: "planned",
+    feePence: series?.default_fee_pence ?? 0,
+    ...Object.fromEntries(Object.entries(given).filter(([, v]) => v != null)),
+  };
   const rules = rulesOf(o, series);
   const fields = [...(await tournamentFields(db, o)), ...rules];
   const kind = rules[4] as Kind;
@@ -801,7 +835,7 @@ export async function createTournament(db: D1Database, o: Record<string, unknown
   const res = await run(
     db,
     `INSERT INTO tournaments (type_id, name, venue_id, location, map_url, held_on, start_time, end_time, capacity, status, fee_pence,
-       date_confirmed, season, public, signup_closes_on, draft_on, draft_time, points_win, points_draw, points_loss,
+       date_confirmed, season, public, signup_opens_on, signup_closes_on, draft_on, points_win, points_draw, points_loss,
        game_minutes, kind, awards, playoffs)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [typeId, ...fields],
@@ -830,7 +864,7 @@ export async function updateTournament(db: D1Database, id: number, o: Record<str
   const res = await run(
     db,
     `UPDATE tournaments SET type_id = ?, name = ?, venue_id = ?, location = ?, map_url = ?, held_on = ?, start_time = ?, end_time = ?, capacity = ?,
-       status = ?, fee_pence = ?, date_confirmed = ?, season = ?, public = ?, signup_closes_on = ?, draft_on = ?, draft_time = ?,
+       status = ?, fee_pence = ?, date_confirmed = ?, season = ?, public = ?, signup_opens_on = ?, signup_closes_on = ?, draft_on = ?,
        points_win = ?, points_draw = ?, points_loss = ?, game_minutes = ?, kind = ?, awards = ?, playoffs = ?
      WHERE id = ?`,
     [typeId, ...fields, id],
@@ -915,3 +949,7 @@ export async function setClubEventCancelled(db: D1Database, id: number, cancelle
   if (!res.meta.changes) throw new HttpError(404, "No such event.");
   await syncClubEvent(db, id);
 }
+
+/** A tournament's name and day, while it exists (the record, ADR 0098). */
+export const tournamentSummary = (db: D1Database, id: number) =>
+  first<{ name: string; heldOn: string }>(db, "SELECT name, held_on heldOn FROM tournaments WHERE id = ?", [id]);

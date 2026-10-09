@@ -10,6 +10,9 @@ const ROSTER = [
   { name: "Cara Captain", position: "F", rating: 70, email: "cara@example.com" },
   { name: "Cole Captain", position: "F", rating: 66, email: "cole@example.com" },
   { name: "Reg Player", position: "F", rating: 60, email: "reg@example.com" },
+  { name: "Mo Player", position: "D", rating: 58, email: "mo@example.com" },
+  { name: "Ash Player", position: "F", rating: 55, email: "ash@example.com" },
+  { name: "Bo Player", position: "G", rating: 57, email: "bo@example.com" },
 ];
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -41,7 +44,6 @@ async function winterCup(changes: object = {}) {
     kind: "draft",
     signupClosesOn: "2026-12-05",
     draftOn: "2026-12-08",
-    draftTime: "19:30",
     teams: [ids["Cara Captain"], ids["Cole Captain"]].map((captainMemberId) => ({ name: "", captainMemberId })),
     ...changes,
   };
@@ -78,8 +80,10 @@ describe("the club's agenda", () => {
     expect((await whatsOn(w.db, NOW, ALL_LIMITS)).some((i) => /sign-up/.test(i.title))).toBe(false);
   });
 
-  it("its draft night shows only to its captains and the admins", async () => {
+  it("its draft day shows only to its captains and the admins, as a day: a reminder, with no time", async () => {
     await winterCup();
+    const cara = await as("cara@example.com");
+    expect((await cara.agenda()).find((r) => r.kind === "draft")).toMatchObject({ day: "2026-12-08", allDay: true });
     const draftFor = async (email: string) => kinds(await (await as(email)).agenda(), /Winter Cup/).includes("draft");
     expect(await draftFor("cara@example.com")).toBe(true);
     expect(await draftFor("dana@example.com")).toBe(true);
@@ -99,7 +103,10 @@ describe("the club's agenda", () => {
 
   it("a closed draft leaves the calendar; a finished tournament leaves it altogether", async () => {
     const { dana, id } = await winterCup();
-    await dana.call("POST", `/api/tournaments/${id}/draft/open`, {});
+    // Enough to draft: two captains, two picks each
+    for (const who of ["reg", "mo", "ash", "bo"])
+      await (await as(`${who}@example.com`)).call("POST", `/api/tournaments/${id}/answer`, { answer: "in" });
+    expect((await dana.call("POST", `/api/tournaments/${id}/draft/open`, {})).status).toBe(200);
     await dana.call("POST", `/api/tournaments/${id}/draft/close`, { leaveOut: true });
     expect(kinds(await dana.agenda(), /Winter Cup/)).not.toContain("draft");
     const saved = (await dana.sees()).tournaments.find((t: Json) => t.id === id);

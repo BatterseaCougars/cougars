@@ -3,6 +3,7 @@
   // (The Cougars Kumite), set once. Its rules, the fee and location each new tournament in it starts with, its awards
   // and how it looks in the menu. Each tournament is edited on its own card (TournamentDateEditor). A new series gets
   // its own section in the menu.
+  import TimeSelect from "./TimeSelect.svelte";
   import { tick } from "svelte";
   import PlayoffsField from "./PlayoffsField.svelte";
   import { createTournamentType, updateTournamentType } from "../app/backend.svelte";
@@ -33,6 +34,8 @@
     kind: "teams",
     active: true,
     defaultFeePence: 1500,
+    defaultStartTime: "11:00",
+    defaultEndTime: "16:00",
     venueId: null,
     location: "",
     mapUrl: "",
@@ -127,7 +130,7 @@
               <div class="style"><StylePicker bind:icon={form.icon} bind:tone={form.tone} /></div>
             </FormSection>
           {:else}
-            <FormSection title="Where and fee" description="Each new tournament in the series starts with these.">
+            <FormSection title="When, where and fee" description="Each new tournament in the series starts with these.">
               <PlacePicker
                 id="series-place"
                 bind:venueId={form.venueId}
@@ -135,6 +138,16 @@
                 bind:mapUrl={form.mapUrl}
               />
               <div class="cols">
+                <div class="field">
+                  Usual start <TimeSelect
+                    id="series-start"
+                    bind:value={form.defaultStartTime}
+                    aria-label="Usual start"
+                  />
+                </div>
+                <div class="field">
+                  Usual end <TimeSelect id="series-end" bind:value={form.defaultEndTime} aria-label="Usual end" />
+                </div>
                 <label class="field">
                   Fee (£)
                   <input

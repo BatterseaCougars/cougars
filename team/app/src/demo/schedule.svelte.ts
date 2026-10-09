@@ -1,5 +1,6 @@
 // Reading the schedule: sessions resolved against their series, the next session or tournament, and the
 // calendar as one list. Everything here reads `db`, so pages that use it update when an admin edits a series.
+import { signupOpen } from "../lib/signup";
 import { editionState, latestOf, previousOf } from "../lib/edition";
 import { formatDayDate, formatTime, londonISO, londonToday } from "../lib/dates";
 import type { AgendaRow, Bookable, OneOff, Tournament, TournamentType, TrainingSeries, TrainingSession } from "./model";
@@ -84,7 +85,7 @@ export function tournamentBookable(t: Tournament): Bookable {
     startsAt: londonISO(t.heldOn, t.startTime),
     endsAt: londonISO(t.heldOn, t.endTime),
     ...where(tournamentPlace(t)),
-    signup: t.status === "open" && !signupClosed(t),
+    signup: signupOpen(t, londonToday()),
     capacity: t.capacity,
     dateTbc: !t.dateConfirmed,
     season: t.season ? { name: t.season, year: seasonYear(t.season, t.heldOn) } : undefined,

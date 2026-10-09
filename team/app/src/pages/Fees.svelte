@@ -1,6 +1,7 @@
 <script lang="ts">
   import PageHeader from "../lib/PageHeader.svelte";
   import Sheet from "../lib/Sheet.svelte";
+  import DateField from "../lib/DateField.svelte";
   import Fab from "../lib/Fab.svelte";
   import Icon from "../app/shell/Icon.svelte";
   import { db } from "../demo/store.svelte";
@@ -82,7 +83,7 @@
           Amount (£)
           <input class="input num" inputmode="decimal" placeholder="e.g. 60" required bind:value={amount} />
         </label>
-        <label class="field">From <input class="input" type="date" required bind:value={from} /></label>
+        <div class="field">From <DateField id="fee-from" aria-label="From" required bind:value={from} /></div>
       </div>
       <p class="hint">Quarterly Members are charged this each quarter from that date.</p>
       <button class="btn primary">Set fee</button>
