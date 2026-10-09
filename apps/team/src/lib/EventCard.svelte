@@ -378,11 +378,13 @@
     display: grid;
     gap: var(--s-4);
   }
+  /* As tall as the faces even when there are none, so the first sign-up doesn't push the buttons down */
   .crowd {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: var(--s-2) var(--s-3);
+    min-height: 2rem;
   }
   .faces {
     display: flex;
