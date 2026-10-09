@@ -13,9 +13,10 @@ name: Deploy
 # GitHub environment `production` (release only) holds BWS_ACCESS_TOKEN__PRODUCTION; `preview` holds
 # BWS_ACCESS_TOKEN__DEV, which can't read production secrets.
 #
-# Each app is its own job, and a push or PR deploys only the apps its files touch (`changes`). Jobs use their
-# environment's secrets without listing a deploy (`deployment: false`); scripts/ci/link-deployment.sh lists each app
-# on the Deployments page under its own name, linked to where it runs.
+# Each app is its own job, and a push or PR deploys only the apps its files touch (`changes`). The shared D1 database is
+# a job of its own too (`database`), run first when the schema or seed changes; otherwise the apps start together.
+# Jobs use their environment's secrets without listing a deploy (`deployment: false`); scripts/ci/link-deployment.sh
+# lists each app on the Deployments page under its own name, linked to where it runs.
 on:
   push:
     branches: [main, release]
@@ -64,8 +65,9 @@ jobs:
             echo "No release branch yet: nothing is live, nothing to rebuild."
           fi
 
-  # Which apps this run deploys. A push or PR: the apps its files touch (shared code, the database, the lockfile and
-  # this workflow count for every app). A manual run: the `apps` input.
+  # What this run deploys. A push or PR: what its files touch (shared code, the schema, the lockfile and this workflow
+  # count for every app). A manual run: the `apps` input, and `all` also rebuilds the database (say, to seed a roster
+  # change).
   changes:
     # Forks don't get secrets; their PRs are covered by pr.yml. Rebuild triggers only start `rebuild`.
     if: >-
@@ -76,6 +78,7 @@ jobs:
       web: ${{ steps.apps.outputs.web }}
       team: ${{ steps.apps.outputs.team }}
       studio: ${{ steps.apps.outputs.studio }}
+      database: ${{ steps.apps.outputs.database }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -91,6 +94,7 @@ jobs:
             [web]="^(apps/web/|scripts/|$shared)"
             [team]="^(apps/team/|scripts/ci/|$shared)"
             [studio]="^(apps/studio/|$shared)"
+            [database]="^(db/|scripts/db-rebuild\.mjs|scripts/seed-roster\.mjs|scripts/lib/roster|scripts/ci/target\.mjs|\.github/workflows/deploy\.yml)"
           )
           # A PR is checked out as a merge commit: its first parent is the base. A new branch has no `before`.
           base=
@@ -100,7 +104,7 @@ jobs:
             files=$(git diff --name-only "$base" HEAD)
             echo "Changed since ${base:0:7}:"; echo "$files"
           fi
-          for app in web team studio; do
+          for app in web team studio database; do
             if [ -n "$base" ]; then
               grep -qE "${pattern[$app]}" <<<"$files" && on=true || on=false
             else
@@ -110,9 +114,45 @@ jobs:
             echo "$app=$on" >> "$GITHUB_OUTPUT"
           done
 
-  web:
+  # Not live yet, so no migrations (ADR 0050): the database is rebuilt from db/schema.sql, keeping its data, topped up
+  # with the club's seed and the team roster. Each environment has its own database, so a PR rebuilds dev, never
+  # production. Both apps read it, so they wait for this job when it runs.
+  database:
     needs: changes
-    if: needs.changes.outputs.web == 'true'
+    if: needs.changes.outputs.database == 'true'
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.ref == 'refs/heads/release' && 'production' || 'preview' }}
+      deployment: false
+    env:
+      SITE_ENV: ${{ github.ref == 'refs/heads/release' && 'production' || 'dev' }}
+      BWS_SERVER_URL: ${{ vars.BWS_SERVER_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - uses: ./.github/actions/secrets
+        with:
+          environment: ${{ env.SITE_ENV }}
+          token: ${{ secrets.BWS_ACCESS_TOKEN__PRODUCTION || secrets.BWS_ACCESS_TOKEN__DEV }}
+
+      # A config naming only this environment's database (creates it once)
+      - name: Target ${{ env.SITE_ENV }}
+        run: node scripts/ci/target.mjs "$SITE_ENV" db
+
+      - name: Rebuild D1 from the schema
+        working-directory: apps/web
+        run: node ../../scripts/db-rebuild.mjs --remote -c dist/d1/wrangler.json
+
+      # The team roster: personal data, so it lives in Secrets Manager (TEAM_ROSTER), never in this public repo
+      # (ADR 0029). Adds players who aren't there yet and changes no one.
+      - name: Seed the team roster
+        working-directory: apps/web
+        run: node ../../scripts/seed-roster.mjs --remote -c dist/d1/wrangler.json
+
+  web:
+    needs: [changes, database]
+    if: >-
+      !cancelled() && needs.changes.outputs.web == 'true' && needs.database.result != 'failure'
     runs-on: ubuntu-latest
     environment:
       name: ${{ github.ref == 'refs/heads/release' && 'production' || 'preview' }}
@@ -155,22 +195,9 @@ jobs:
       - name: Target ${{ env.SITE_ENV }}
         run: node scripts/ci/target.mjs "$SITE_ENV"
 
-      # Not live yet, so no migrations (ADR 0050): the database is rebuilt from db/schema.sql, keeping its data, and
-      # topped up with the club's seed. Each environment has its own database, so a PR rebuilds dev, never production.
-      # The team app shares it, so its job waits for this one.
-      - name: Rebuild D1 from the schema
-        working-directory: apps/web
-        # D1 commands don't follow the build's config redirect, so name the generated config
-        run: node ../../scripts/db-rebuild.mjs --remote -c dist/server/wrangler.json
-
-      # The team roster: personal data, so it lives in Secrets Manager (TEAM_ROSTER), never in this public repo
-      # (ADR 0029). Adds players who aren't there yet and changes no one, so it's safe on every deploy.
-      - name: Seed the team roster
-        working-directory: apps/web
-        run: node ../../scripts/seed-roster.mjs --remote -c dist/server/wrangler.json
-
       # The privacy page promises enquiries are deleted after 12 months (unless the person joined). Production
-      # deploys daily, so this runs daily there.
+      # deploys daily, so this runs daily there. D1 commands don't follow the build's config redirect, so name the
+      # generated config.
       - name: Delete expired enquiries
         working-directory: apps/web
         run: npx wrangler d1 execute DB --remote --file ../../db/retention/expire-enquiries.sql -c dist/server/wrangler.json
@@ -225,12 +252,11 @@ jobs:
           message: "Preview: ${{ steps.preview.outputs.url }} (`${{ env.PUBLIC_BUILD_VERSION }}`)"
 
   # The team app (ADR 0010): its own worker on dev's account and D1, from main only. Production waits for launch, and
-  # PRs get no preview (a Worker with a Durable Object can't have preview versions). After `web` when both run, so
-  # the database is rebuilt first.
+  # PRs get no preview (a Worker with a Durable Object can't have preview versions).
   team:
-    needs: [changes, web]
+    needs: [changes, database]
     if: >-
-      !cancelled() && needs.changes.outputs.team == 'true' && needs.web.result != 'failure' &&
+      !cancelled() && needs.changes.outputs.team == 'true' && needs.database.result != 'failure' &&
       github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment:

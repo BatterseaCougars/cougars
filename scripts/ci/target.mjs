@@ -9,10 +9,12 @@
 //   node scripts/ci/target.mjs production|dev      (after `npm run build`)
 //   node scripts/ci/target.mjs dev team            (the team app, after `npm run build -w @cougars/team`: worker
 //                                                   `team` on the same D1, ADR 0010; no domain yet)
+//   node scripts/ci/target.mjs production|dev db   (no build: writes apps/web/dist/d1/wrangler.json, naming only the
+//                                                   database, for the D1 scripts in deploy.yml's `database` job)
 //
 // Needs CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID for that environment's account.
 import { execFileSync } from "node:child_process";
-import { readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
 const TARGETS = {
   production: { db: "cougars" },
@@ -20,8 +22,9 @@ const TARGETS = {
 };
 const environment = process.argv[2];
 const team = process.argv[3] === "team";
+const dbOnly = process.argv[3] === "db";
 const target = TARGETS[environment];
-if (!target) throw new Error(`Usage: target.mjs ${Object.keys(TARGETS).join("|")} [team]`);
+if (!target) throw new Error(`Usage: target.mjs ${Object.keys(TARGETS).join("|")} [team|db]`);
 // The team app shares the site's database (ADR 0022), as its own worker
 target.worker = team ? "team" : "web";
 
@@ -39,6 +42,18 @@ if (!db) {
   db = find();
 }
 if (!db?.uuid) throw new Error(`D1 database ${target.db} not found after create`);
+
+if (dbOnly) {
+  const d1 = new URL("dist/d1/", cwd);
+  mkdirSync(d1, { recursive: true });
+  const binding = { binding: "DB", database_name: target.db, database_id: db.uuid };
+  writeFileSync(
+    new URL("wrangler.json", d1),
+    JSON.stringify({ name: "d1", compatibility_date: "2026-10-01", d1_databases: [binding] }),
+  );
+  console.log(`Target ${environment}: D1 ${target.db} (${db.uuid})`);
+  process.exit(0);
+}
 
 const config = JSON.parse(readFileSync(GENERATED, "utf8"));
 config.name = target.worker;

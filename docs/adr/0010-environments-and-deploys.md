@@ -41,8 +41,9 @@ be checked before it goes live. Ark deploys `main` to dev and production from a 
 - **One job per app, and only the apps a change touches.** `deploy.yml`'s `changes` job reads the files a push or PR
   changed: `apps/web/` and `scripts/` deploy the website, `apps/team/` the team app, `apps/studio/` the Studio, and
   shared code, `db/`, the lockfile and the workflow itself deploy every app. A manual run picks with its `apps` input;
-  a rebuild deploys the website only. The team app waits for the website when both run, since the website's job
-  rebuilds the shared database.
+  a rebuild deploys the website only. The shared D1 database is its own `database` job (rebuild from the schema, seed
+  the roster), run only when `db/` or its scripts change, or on a manual `all`; both apps wait for it then, and
+  otherwise deploy side by side.
 - **Every app is linked from GitHub's Deployments page**, under its own name: `web (dev)`, `web (PR preview)`,
   `web (production)`, `team (dev)`, `studio (production)` (`scripts/ci/link-deployment.sh`), and each run's summary
   lists them. Jobs read their GitHub environment's secrets with `deployment: false`, so `preview` and `production`
@@ -111,3 +112,5 @@ be checked before it goes live. Ark deploys `main` to dev and production from a 
   dev is `web.cougars-dev.workers.dev`, not `cougars-dev.cougars-dev.workers.dev`.
 - 2026-10-09: One job per app (`web`, `team`, `studio`); a push or PR deploys only the apps its files touch. Each app
   is listed as its own environment, and the jobs no longer list `preview` or `production` deploys.
+- 2026-10-09: The database rebuild and roster seed move to their own `database` job, so the team app no longer waits
+  for the website.
