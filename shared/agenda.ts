@@ -343,7 +343,7 @@ export const ensureAgenda = async (db: D1Database) => void (await filledFromScra
 
 // ─── Reading ───
 
-interface AgendaRow {
+export interface AgendaRow {
   source: Source;
   source_id: number;
   kind: AgendaKind;
@@ -363,7 +363,7 @@ interface AgendaRow {
   audience: "everyone" | "captains";
 }
 
-const fromRow = (r: AgendaRow): AgendaItem =>
+export const fromRow = (r: AgendaRow): AgendaItem =>
   item({
     source: r.source,
     sourceId: r.source_id,

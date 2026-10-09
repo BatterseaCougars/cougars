@@ -202,10 +202,7 @@ export async function mark(
 /** Everyone's answers for the given events, keyed by event id. */
 export async function listEntries(db: D1Database, kind: EntryKind, ids: number[]): Promise<Map<number, Entries>> {
   const { table, key } = TABLES[kind];
-  const out = new Map<number, Entries>(
-    ids.map((id) => [id, { going: [], waitlist: [], out: [], walkIns: [], noShows: [] }]),
-  );
-  if (!ids.length) return out;
+  if (!ids.length) return entriesFrom([], ids);
   const extra = kind === "session" ? "walk_in walkIn, attended" : "0 walkIn, NULL attended";
   const rows = await all<{
     eventId: number;
@@ -218,6 +215,17 @@ export async function listEntries(db: D1Database, kind: EntryKind, ids: number[]
     `SELECT ${key} eventId, member_id memberId, signup, ${extra} FROM ${table}
      WHERE ${key} IN (SELECT value FROM json_each(?)) ORDER BY signed_up_at, id`,
     [JSON.stringify(ids)],
+  );
+  return entriesFrom(rows, ids);
+}
+
+/** Answers as read, in sign-up order, grouped by event: an event with none has empty lists. */
+export function entriesFrom(
+  rows: { eventId: number; memberId: number; signup: string; walkIn: number; attended: number | null }[],
+  ids: number[],
+): Map<number, Entries> {
+  const out = new Map<number, Entries>(
+    ids.map((id) => [id, { going: [], waitlist: [], out: [], walkIns: [], noShows: [] }]),
   );
   for (const r of rows) {
     const e = out.get(r.eventId);

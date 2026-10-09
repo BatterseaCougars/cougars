@@ -40,12 +40,11 @@ export interface RoleJson {
 
 const isAction = (a: string): a is Action => a in ACTIONS;
 
-export async function listRoles(db: D1Database): Promise<RoleJson[]> {
-  const roles = await all<{ id: number; name: string; description: string; is_system: number }>(
-    db,
-    "SELECT id, name, description, is_system FROM roles ORDER BY id",
-  );
-  const actions = await all<{ role_id: number; action: string }>(db, "SELECT role_id, action FROM role_actions");
+/** Roles and their actions as read (club.ts), each with its actions still in the catalog. */
+export function rolesFrom(
+  roles: { id: number; name: string; description: string; is_system: number }[],
+  actions: { role_id: number; action: string }[],
+): RoleJson[] {
   return roles.map((r) => ({
     id: r.id,
     name: r.name,
@@ -55,23 +54,12 @@ export async function listRoles(db: D1Database): Promise<RoleJson[]> {
   }));
 }
 
-export async function listMembers(
-  db: D1Database,
-  {
-    ratings,
-    privateFor,
-    rolesFor,
-    today,
-  }: {
-    ratings: boolean;
-    /** Whose email, phone, payment reference and quarterly status to send: everyone's (a member manager) or your own. */
-    privateFor: "all" | number;
-    /** Whose roles to send: everyone's (who manages members or roles, or views as them) or just your own (ADR 0036). */
-    rolesFor: "all" | number;
-    today: string;
-  },
-): Promise<MemberJson[]> {
-  const rows = await all<{
+/**
+ * Members as read (club.ts), where what the viewer may not see is already left out: who's asking to join and who's
+ * left, anyone else's email, phone, payment reference, quarterly status and roles, and ratings (ADR 0036).
+ */
+export function membersFrom(
+  rows: {
     id: number;
     name: string;
     email: string | null;
@@ -86,41 +74,24 @@ export async function listMembers(
     phone: string | null;
     played: number;
     quarterly: number;
-  }>(
-    db,
-    `SELECT m.id, m.name, m.email, m.position, m.rating, m.cougar, m.status, m.payment_reference, m.bio, m.web_name,
-            m.phone,
-            (SELECT group_concat(name) FROM (SELECT r.name FROM member_roles mr JOIN roles r ON r.id = mr.role_id
-              WHERE mr.member_id = m.id ORDER BY r.is_system DESC, r.id DESC)) roles,
-            (SELECT COUNT(*) FROM attendance a JOIN training_sessions s ON s.id = a.session_id
-              WHERE a.member_id = m.id AND a.signup = 'in' AND COALESCE(a.attended, 1) = 1
-                AND s.held_on < ? AND s.cancelled_at IS NULL) played,
-            EXISTS (SELECT 1 FROM subscriptions sub WHERE sub.member_id = m.id AND sub.starts_on <= ?
-              AND (sub.ends_on IS NULL OR sub.ends_on >= ?)) quarterly
-     FROM members m ${privateFor === "all" ? "" : "WHERE m.status = 'active' OR m.id = ?"}
-     ORDER BY m.name COLLATE NOCASE`,
-    privateFor === "all" ? [today, today, today] : [today, today, today, privateFor],
-  );
-  // Who's asking to join, and who's left, is for member managers; so is how to reach anyone but yourself
-  const mine = (id: number) => privateFor === "all" || privateFor === id;
-  const rolesShown = (id: number) => rolesFor === "all" || rolesFor === id;
+  }[],
+): MemberJson[] {
   return rows.map((m) => ({
     id: m.id,
     name: m.name,
-    email: mine(m.id) ? m.email : null,
+    email: m.email,
     position: m.position,
-    rating: ratings ? m.rating : 0,
+    rating: m.rating,
     cougar: Boolean(m.cougar),
     status: m.status,
-    paymentReference: mine(m.id) ? m.payment_reference : null,
-    roles: rolesShown(m.id) && m.roles ? m.roles.split(",") : [],
+    paymentReference: m.payment_reference,
+    roles: m.roles ? m.roles.split(",") : [],
     bio: m.bio,
     // Public anyway (the website roster), so everyone may see it
     webName: m.web_name,
-    phone: mine(m.id) ? m.phone : null,
+    phone: m.phone,
     played: m.played,
-    // Whether they pay quarterly is between them and whoever manages members (ADR 0036)
-    quarterly: mine(m.id) && Boolean(m.quarterly),
+    quarterly: Boolean(m.quarterly),
   }));
 }
 
@@ -333,15 +304,6 @@ export async function updateProfile(db: D1Database, id: number, o: Record<string
 }
 
 /** The role someone runs the app as day to day (ADR 0024); null means their full role. */
-export async function everydayRoleOf(db: D1Database, id: number): Promise<number | null> {
-  const row = await first<{ everyday_role_id: number | null }>(
-    db,
-    "SELECT everyday_role_id FROM members WHERE id = ?",
-    [id],
-  );
-  return row?.everyday_role_id ?? null;
-}
-
 /**
  * Choose your everyday role, or none (null) to use your full role. Only a role that can do less than you can: it's
  * for showing the app to someone, never a way to gain anything.

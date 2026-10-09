@@ -9,17 +9,11 @@ export interface TeamJson {
   players: number[];
 }
 
-/** Each session's published teams, in order. */
-export async function listTeams(db: D1Database, sessionIds: number[]): Promise<Map<number, TeamJson[]>> {
+/** Published teams as read (club.ts), in order, by session. */
+export function teamsFrom(
+  rows: { sessionId: number; teamId: number; name: string; memberId: number | null }[],
+): Map<number, TeamJson[]> {
   const out = new Map<number, TeamJson[]>();
-  if (!sessionIds.length) return out;
-  const rows = await all<{ sessionId: number; teamId: number; name: string; memberId: number | null }>(
-    db,
-    `SELECT t.session_id sessionId, t.id teamId, t.name, p.member_id memberId
-     FROM session_teams t LEFT JOIN session_team_players p ON p.team_id = t.id
-     WHERE t.session_id IN (SELECT value FROM json_each(?)) ORDER BY t.position, t.id, p.rowid`,
-    [JSON.stringify(sessionIds)],
-  );
   const byTeam = new Map<number, TeamJson>();
   for (const r of rows) {
     let team = byTeam.get(r.teamId);

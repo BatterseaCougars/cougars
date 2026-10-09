@@ -10,14 +10,6 @@ export interface Winner {
   memberId: number | null;
 }
 
-export async function listWinners(db: D1Database): Promise<(Winner & { tournamentId: number })[]> {
-  return all(
-    db,
-    `SELECT tournament_id tournamentId, award, team_id teamId, member_id memberId FROM tournament_award_winners
-     ORDER BY tournament_id, position`,
-  );
-}
-
 /** { winners: [{ award, teamId } | { award, memberId }] }: the whole list, replacing what was there. */
 export async function setWinners(db: D1Database, tournamentId: number, o: Record<string, unknown>) {
   const list = o.winners;

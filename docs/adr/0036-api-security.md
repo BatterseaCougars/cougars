@@ -33,8 +33,10 @@ sending it is before anyone real signs in.
 **Every route is designed for its least trusted caller.** The UI hiding something is never the protection.
 
 **Rows and fields are filtered on the server, per caller.** A response holds only what the caller's actions allow.
-A new field or route starts private and is opened up deliberately. Filtering is in the slices, so a change's reply
-(`changed`, [0057](0057-team-app-loading-and-changes.md)) is filtered exactly as the bootstrap is. Of anything
+A new field or route starts private and is opened up deliberately. Filtering is in the club read
+(`team/app/worker/club.ts`): who's asking is a row of the statement, so what they may not see never leaves D1. The
+slices are made from it, so a change's reply (`changed`, [0057](0057-team-app-loading-and-changes.md)) is filtered
+exactly as the bootstrap is. Of anything
 personal, a member is sent **their own**, and everyone's only with the action that needs it:
 
 | Field                            | Everyone's, with                                                                                                                       | Otherwise                                                                                                                                     |
@@ -119,3 +121,6 @@ of future sessions is idempotent).
   outs, no-shows, walk-ins and outside teams' contacts filtered by action (was 0099).
 - 2026-10-09: A change with neither `Origin` nor `Sec-Fetch-Site: same-origin` is refused; before, one with neither
   (or `Sec-Fetch-Site: none`) got through ([#42](https://github.com/das974/cougars/issues/42)).
+- 2026-10-09: The bootstrap's filtering moved into its SQL (`club.ts`, [0057](0057-team-app-loading-and-changes.md)):
+  someone else's private fields, outs, no-shows, walk-ins and contacts are no longer read and then dropped in code.
+  The draft's hiding (ADR 0060) and which roles you see stay in code.

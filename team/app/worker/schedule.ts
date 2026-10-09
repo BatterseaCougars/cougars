@@ -1,13 +1,13 @@
 // The schedule (ADR 0030): training series and their sessions, tournament types and editions, one-off events.
 // Sessions are rows, made 12 weeks ahead from each active series' rule, so each can be cancelled on its own.
-import { listWinners } from "./awards";
+import type { Winner } from "./awards";
 import { all, first, run, type Param } from "../../../shared/d1";
 import { cleanMapUrl } from "../../../shared/places";
 import { isSeason, seasonEnd, seasonYear, type Season } from "../../../shared/seasons";
 import { SCHEDULE_ICONS, TONES } from "../src/demo/model";
 import { WEEKDAYS, addDays, datesToMake, type Weekday } from "../src/lib/recurrence";
 import { HttpError, bool, date, int, oneOf, text, time } from "./http";
-import { listGames } from "./fixtures";
+import type { Game } from "./fixtures";
 import { syncAll, syncClubEvent, syncSeries, syncTournament, syncTournamentsOf } from "../../../shared/agenda";
 
 const slugify = (s: string) =>
@@ -26,14 +26,9 @@ async function freeSlug(db: D1Database, table: string, base: string, id = 0) {
 
 // ─── Venues (ADR 0030) ───
 
-export async function listVenues(db: D1Database) {
-  return (
-    await all<{ id: number; name: string; address: string; mapUrl: string; active: number }>(
-      db,
-      "SELECT id, name, address, map_url mapUrl, active FROM venues ORDER BY name",
-    )
-  ).map((v) => ({ ...v, active: Boolean(v.active) }));
-}
+/** Venues as read (club.ts). */
+export const venuesFrom = (rows: { id: number; name: string; address: string; mapUrl: string; active: number }[]) =>
+  rows.map((v) => ({ ...v, active: Boolean(v.active) }));
 
 function mapUrlOf(o: Record<string, unknown>) {
   const url = cleanMapUrl(text(o, "mapUrl", { optional: true, max: 500 }));
@@ -122,9 +117,8 @@ const seriesJson = (s: SeriesRow) => ({
   fees: [] as { pence: number; from: string }[],
 });
 
-export async function listSeries(db: D1Database) {
-  return (await all<SeriesRow>(db, "SELECT * FROM training_series ORDER BY id")).map(seriesJson);
-}
+/** Training series as read (club.ts). */
+export const seriesFrom = (rows: SeriesRow[]) => rows.map(seriesJson);
 
 /** Make each active series' sessions up to the horizon. Dates already made (even cancelled or moved) are skipped. */
 export async function ensureSessions(db: D1Database, today: string) {
@@ -175,28 +169,21 @@ export async function moreSessions(db: D1Database, seriesId: number, today: stri
   await syncSeries(db, s.id);
 }
 
-export async function listSessions(db: D1Database, from: string) {
-  return all<{
-    id: number;
-    seriesId: number;
-    heldOn: string;
-    movedFrom: string | null;
-    startTime: string | null;
-    endTime: string | null;
-    venueId: number | null;
-    venue: string | null;
-    mapUrl: string | null;
-    capacity: number | null;
-    note: string | null;
-    cancelledAt: string | null;
-    registerClosedAt: string | null;
-  }>(
-    db,
-    `SELECT id, series_id seriesId, held_on heldOn, moved_from movedFrom, start_time startTime, end_time endTime,
-            venue_id venueId, venue, map_url mapUrl, capacity, note, cancelled_at cancelledAt, register_closed_at registerClosedAt
-     FROM training_sessions WHERE held_on >= ? ORDER BY held_on, id`,
-    [from],
-  );
+/** A training session as read (club.ts), before its answers and teams. */
+export interface SessionRow {
+  id: number;
+  seriesId: number;
+  heldOn: string;
+  movedFrom: string | null;
+  startTime: string | null;
+  endTime: string | null;
+  venueId: number | null;
+  venue: string | null;
+  mapUrl: string | null;
+  capacity: number | null;
+  note: string | null;
+  cancelledAt: string | null;
+  registerClosedAt: string | null;
 }
 
 async function seriesFields(db: D1Database, o: Record<string, unknown>) {
@@ -411,8 +398,9 @@ function playoffsOf(o: Record<string, unknown>): string {
   return JSON.stringify(games);
 }
 
-export async function listTournamentTypes(db: D1Database) {
-  return (await all<TypeRow>(db, "SELECT * FROM tournament_types ORDER BY id")).map((t) => ({
+/** Tournament series as read (club.ts). */
+export function tournamentTypesFrom(rows: TypeRow[]) {
+  return rows.map((t) => ({
     id: t.id,
     slug: t.slug,
     name: t.name,
@@ -492,67 +480,55 @@ export async function updateTournamentType(db: D1Database, id: number, o: Record
  * where it really is (ADR 0030), which the app works out. Its teams come in pick order (a draft) or the order they
  * entered, each with its players in order (ADR 0030).
  */
-export async function listTournaments(db: D1Database) {
-  const [rows, teams, players, games] = await Promise.all([
-    all<{
-      id: number;
-      typeId: number;
-      name: string;
-      venueId: number | null;
-      location: string;
-      mapUrl: string;
-      heldOn: string;
-      startTime: string;
-      endTime: string;
-      capacity: number | null;
-      status: string;
-      champions: string | null;
-      feePence: number;
-      dateConfirmed: number;
-      season: Season | null;
-      public: number;
-      signupOpensOn: string | null;
-      signupClosesOn: string | null;
-      draftOn: string | null;
-      pointsWin: number;
-      pointsDraw: number;
-      pointsLoss: number;
-      gameMinutes: number;
-      kind: Kind;
-      awards: string;
-      playoffs: string;
-      draftState: string;
-    }>(
-      db,
-      `SELECT t.id, t.type_id typeId, t.name, t.venue_id venueId, t.location, t.map_url mapUrl, t.held_on heldOn, t.start_time startTime, t.end_time endTime, t.capacity, t.status, t.champions,
-              t.fee_pence feePence, t.date_confirmed dateConfirmed, t.season, t.public, t.signup_opens_on signupOpensOn, t.signup_closes_on signupClosesOn,
-              t.draft_on draftOn, t.points_win pointsWin, t.points_draw pointsDraw,
-              t.points_loss pointsLoss, t.game_minutes gameMinutes, t.kind, t.awards, t.playoffs, t.draft_state draftState
-       FROM tournaments t ORDER BY t.held_on`,
-    ),
-    all<{
-      id: number;
-      tournamentId: number;
-      name: string;
-      logo: string | null;
-      captainMemberId: number | null;
-      captainName: string;
-      contact: string;
-      pick: number | null;
-    }>(
-      db,
-      `SELECT id, tournament_id tournamentId, name, logo, captain_member_id captainMemberId, captain_name captainName,
-              contact, pick
-       FROM tournament_teams ORDER BY tournament_id, coalesce(pick, 1000), id`,
-    ),
-    all<{ teamId: number; memberId: number | null; name: string; pick: number | null }>(
-      db,
-      `SELECT team_id teamId, member_id memberId, name, pick_number pick FROM tournament_team_players
-       ORDER BY team_id, coalesce(pick_number, position), id`,
-    ),
-    listGames(db),
-  ]);
-  const winners = await listWinners(db);
+export type TournamentListRow = {
+  id: number;
+  typeId: number;
+  name: string;
+  venueId: number | null;
+  location: string;
+  mapUrl: string;
+  heldOn: string;
+  startTime: string;
+  endTime: string;
+  capacity: number | null;
+  status: string;
+  champions: string | null;
+  feePence: number;
+  dateConfirmed: number;
+  season: Season | null;
+  public: number;
+  signupOpensOn: string | null;
+  signupClosesOn: string | null;
+  draftOn: string | null;
+  pointsWin: number;
+  pointsDraw: number;
+  pointsLoss: number;
+  gameMinutes: number;
+  kind: Kind;
+  awards: string;
+  playoffs: string;
+  draftState: string;
+};
+export type TournamentTeamRow = {
+  id: number;
+  tournamentId: number;
+  name: string;
+  logo: string | null;
+  captainMemberId: number | null;
+  captainName: string;
+  contact: string;
+  pick: number | null;
+};
+export type TournamentPlayerRow = { teamId: number; memberId: number | null; name: string; pick: number | null };
+
+/** Tournaments as read (club.ts), each with its games, award winners, and teams with their players. */
+export function tournamentsFrom(
+  rows: TournamentListRow[],
+  teams: TournamentTeamRow[],
+  players: TournamentPlayerRow[],
+  games: Game[],
+  winners: (Winner & { tournamentId: number })[],
+) {
   return rows.map((t) => ({
     ...t,
     draftState: draftStateOf(
@@ -876,31 +852,23 @@ export async function updateTournament(db: D1Database, id: number, o: Record<str
 
 // ─── One-off events ───
 
-export async function listClubEvents(db: D1Database, from: string) {
-  return (
-    await all<{
-      id: number;
-      title: string;
-      startsAt: string;
-      endsAt: string;
-      venueId: number | null;
-      venue: string;
-      mapUrl: string;
-      description: string;
-      public: number;
-      signup: number;
-      capacity: number | null;
-      cancelledAt: string | null;
-    }>(
-      db,
-      `SELECT id, title, starts_at startsAt, ends_at endsAt, venue_id venueId, venue, map_url mapUrl, description, public,
-              signup_enabled signup,
-              capacity, cancelled_at cancelledAt
-       FROM club_events WHERE ends_at >= ? ORDER BY starts_at`,
-      [from],
-    )
-  ).map((e) => ({ ...e, public: Boolean(e.public), signup: Boolean(e.signup) }));
-}
+/** One-off events as read (club.ts): those that haven't ended. */
+export const clubEventsFrom = (
+  rows: {
+    id: number;
+    title: string;
+    startsAt: string;
+    endsAt: string;
+    venueId: number | null;
+    venue: string;
+    mapUrl: string;
+    description: string;
+    public: number;
+    signup: number;
+    capacity: number | null;
+    cancelledAt: string | null;
+  }[],
+) => rows.map((e) => ({ ...e, public: Boolean(e.public), signup: Boolean(e.signup) }));
 
 async function clubEventFields(db: D1Database, o: Record<string, unknown>) {
   const startsAt = text(o, "startsAt", { max: 30 });

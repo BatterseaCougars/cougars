@@ -59,6 +59,15 @@ describe("reopening the app", () => {
     expect(next.status).toBe(200);
   });
 
+  it("asks the database a handful of times, not once for every part of the club", async () => {
+    // Each ask is a round trip the app waits on before it can show anything (ADR 0057)
+    const reg = await w.signedIn("reg@example.com");
+    await reg.call("GET", "/api/bootstrap"); // the day's first open also makes the coming training sessions
+    const asks = vi.spyOn(w.db, "prepare");
+    expect((await reg.call("GET", "/api/bootstrap")).status).toBe(200);
+    expect(asks.mock.calls.length).toBeLessThanOrEqual(8);
+  });
+
   it("doesn't count a refused change as a change", async () => {
     const reg = await w.signedIn("reg@example.com");
     const tag = (await reg.call("GET", "/api/bootstrap")).headers.get("etag")!;

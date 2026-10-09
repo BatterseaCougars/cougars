@@ -1,11 +1,8 @@
 // Home's quips and greetings (lib/quips.ts QUIP_KINDS), edited by admins in Settings → Quips. Every kind keeps
 // at least one line, so Home always has something to say.
-import { all, first, run } from "../../../shared/d1";
+import { first, run } from "../../../shared/d1";
 import { QUIP_KINDS, type QuipKind } from "../src/lib/quips";
 import { HttpError } from "./http";
-
-export const listQuips = (db: D1Database) =>
-  all<{ id: number; kind: QuipKind; text: string }>(db, "SELECT id, kind, text FROM quips ORDER BY id");
 
 function quipText(o: Record<string, unknown>, kind: QuipKind) {
   const max = QUIP_KINDS.find((k) => k.kind === kind)!.max;

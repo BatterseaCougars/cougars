@@ -68,6 +68,18 @@ export async function listGames(db: D1Database, tournamentId?: number): Promise<
       args,
     ),
   ]);
+  return gamesFrom(rows, goals, teams);
+}
+
+/**
+ * Games as read, each with its goals and who keeps score. `teams` is every team of their tournaments, in pick order
+ * (a draft) or the order they entered.
+ */
+export function gamesFrom(
+  rows: Omit<Game, "scoringTeamId" | "goals">[],
+  goals: (Goal & { gameId: number })[],
+  teams: { id: number; tournamentId: number }[],
+): Game[] {
   // Who keeps score, per tournament, from its teams in pick order and its games in the day's order
   const keepers = new Map<number, number>();
   for (const tid of new Set(rows.map((g) => g.tournamentId)))

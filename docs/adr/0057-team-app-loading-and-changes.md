@@ -1,4 +1,4 @@
-# 0057. Team app pages load when opened, and a change replies with the parts of the club it touched
+# 0057. Team app pages load when opened, the club is read in one statement, and a change replies with the parts it touched
 
 - **Status:** Accepted
 - **Date:** 2026-10-07 · updated 2026-10-09
@@ -17,6 +17,19 @@ runtime, parsed on a phone before the first paint, whether you open Home or the 
 already loaded only when shown, but registered all of its community modules: 1.1 MB (312 KB gzipped).
 
 ## Decision
+
+**The club is read in one statement.**
+
+- Every round trip to D1 is one the app waits on before it can show anything: read part by part, opening the app was
+  29 statements one after another, 668 ms on the dev site. Now it's one statement for the whole club
+  (`readClub` in `team/app/worker/club.ts`), plus who's asking and the data version.
+- Each part is a query whose rows SQLite turns into JSON (`json_group_array`), side by side in one `SELECT`. The
+  domain modules shape the rows (`membersFrom`, `tournamentsFrom`, `gamesFrom`, ...), so the JSON the app gets is
+  unchanged.
+- Who's asking is a row of the statement (`WITH viewer AS (VALUES ...)`): their id, the day, and what their actions
+  let them see. Each part filters on it, so another member's private fields never leave D1
+  ([0036](0036-api-security.md)). A SQLite view can't take who's asking or the day, so this is the view, as a query.
+- A change's reply reads only the parts its slices need, the same way.
 
 **Changes reply with what they touched.**
 
@@ -45,6 +58,12 @@ already loaded only when shown, but registered all of its community modules: 1.1
 
 ## Consequences
 
+- Opening the app costs a handful of statements, not one per part of the club. A test holds it to 8 or fewer
+  (`load.use-cases.test.ts`); the rest, which still run one after another, are signing in, the data version, and
+  making the coming training sessions (`ensureSessions`, which writes on a read and is next to go).
+- A new part of the club is a query in `club.ts` and a shaping function in its domain module, not a `list...` function
+  that reads for itself.
+- D1 limits a statement to 100 KB (it's 12 KB) and a row to 2 MB (the whole club is a few tens of KB).
 - A tap costs one request and reads only its part of the club, not all of it.
 - Outside live pages, other members' changes arrive when the app comes back into view or on the next change to the
   same part, not after every change of your own.
@@ -65,3 +84,5 @@ already loaded only when shown, but registered all of its community modules: 1.1
 - 2026-10-08: Each page its own chunk, loaded when opened and the rest while idle; AG Grid trimmed to the modules it
   uses (was 0081).
 - 2026-10-09: The declared slices also drive the live hub's change events (ADR 0072).
+- 2026-10-09: The club read in one statement (`club.ts`), filtered for whoever's asking in SQL; opening the app went
+  from 29 statements to 7.

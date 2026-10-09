@@ -1,7 +1,7 @@
 // The club's settings for the app (ADR 0072): one row. For now, how often live pages (a game being scored, the
 // tournament's home, the draft room) check for updates. Each check is a request against the club's free daily
 // allowance, so it's the admins' call: faster feels live, slower lasts the day. No row yet means the default.
-import { first, run } from "../../../shared/d1";
+import { run } from "../../../shared/d1";
 import { int } from "./http";
 
 export const LIVE_REFRESH_DEFAULT = 10;
@@ -12,12 +12,9 @@ export interface Settings {
   liveRefreshSeconds: number;
 }
 
-export async function readSettings(db: D1Database): Promise<Settings> {
-  const row = await first<{ live_refresh_seconds: number }>(
-    db,
-    "SELECT live_refresh_seconds FROM club_settings WHERE id = 1",
-  );
-  return { liveRefreshSeconds: row?.live_refresh_seconds ?? LIVE_REFRESH_DEFAULT };
+/** The club's settings as read (club.ts): its one row, or the defaults before anyone has set them. */
+export function settingsFrom(rows: { live_refresh_seconds: number }[]): Settings {
+  return { liveRefreshSeconds: rows[0]?.live_refresh_seconds ?? LIVE_REFRESH_DEFAULT };
 }
 
 export async function saveSettings(db: D1Database, o: Record<string, unknown>) {
