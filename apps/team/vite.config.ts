@@ -1,8 +1,9 @@
 import { readFileSync } from "node:fs";
-import net from "node:net";
+import { fileURLToPath } from "node:url";
 import { defineConfig, type Plugin } from "vite";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
 import { cloudflare } from "@cloudflare/vite-plugin";
+import { takeOverPort } from "../../scripts/lib/dev-server.mjs";
 
 const PORT = 4510;
 // The browser's libraries are package.json "dependencies" (scripts/team-app-deps.test.mjs holds every import to that).
@@ -14,6 +15,7 @@ const pkg = JSON.parse(readFileSync(new URL("package.json", import.meta.url), "u
 export default defineConfig(({ command }) => ({
   plugins: [
     oneDevServer(PORT),
+    waitForDepsCache(),
     svelte(),
     cloudflare({
       persistState: { path: "../../apps/web/.wrangler/state" },
@@ -47,30 +49,43 @@ export default defineConfig(({ command }) => ({
   preview: { port: PORT, strictPort: true, host: true },
 }));
 
-// One dev server per checkout. Vite rebuilds node_modules/.vite before it binds the port, so a second `vite`
-// here would rewrite the files the running server's page is loading, and only then fail on strictPort.
-// Refuse before that. Vite's own restart after a config edit is the same process, so it's let through, and tools
-// that only read this config (svelte-check) aren't the `vite` command, so they aren't checked.
+// One dev server per checkout, and starting one takes over 4510 (scripts/lib/dev-server.mjs): it stops the running
+// one before Vite rebuilds node_modules/.vite, so two never share the cache. Vite's own restart after a config edit is
+// the same process, so it's let through, and tools that only read this config (svelte-check) aren't the `vite`
+// command, so they're left alone.
 function oneDevServer(port: number): Plugin {
   return {
     name: "cougars:one-dev-server",
     apply: "serve",
     async config() {
       if (!/[\\/]vite(\.js)?$/.test(process.argv[1] ?? "")) return;
-      if (process.env.COUGARS_TEAM_DEV_PID === String(process.pid)) return;
-      const inUse = await new Promise<boolean>((resolve) => {
-        const socket = net.connect({ port, host: "127.0.0.1" });
-        socket.setTimeout(500);
-        socket.once("connect", () => (socket.destroy(), resolve(true)));
-        socket.once("timeout", () => (socket.destroy(), resolve(false)));
-        socket.once("error", () => resolve(false));
+      await takeOverPort(port, fileURLToPath(new URL("node_modules/.cache/dev-server.pid", import.meta.url)));
+    },
+  };
+}
+
+// Vite restarts itself in the same process (index.html or wrangler.jsonc edited, workerd restarted). It tells the open
+// tab to reload and builds the new server while the old one still answers: the reload lands in that gap, main.ts is
+// stamped with a throwaway hash (svelte.js?v=<new>), the new server keeps that transform, and every load 504s until a
+// full restart. So once a restart is done, drop every cached transform (the tab's stale-code reload, src/main.ts,
+// then gets a good main.ts), and hold requests until the dependency optimizer has read node_modules/.vite.
+function waitForDepsCache(): Plugin {
+  return {
+    name: "cougars:wait-for-deps-cache",
+    apply: "serve",
+    configureServer(server) {
+      const restart = server.restart.bind(server);
+      server.restart = async (forceOptimize) => {
+        await restart(forceOptimize);
+        // `server` is the same object after a restart, holding the new server's environments
+        for (const environment of Object.values(server.environments)) environment.moduleGraph.invalidateAll();
+      };
+      server.middlewares.use(async (_req, _res, next) => {
+        const optimizer = server.environments.client.depsOptimizer;
+        for (const end = Date.now() + 15_000; optimizer && optimizer.initState !== "initialized" && Date.now() < end;)
+          await new Promise((resolve) => setTimeout(resolve, 25));
+        next();
       });
-      if (inUse) {
-        throw new Error(
-          `The team app is already running on ${port}. Use that one (it hot-reloads); a second server here breaks its page.`,
-        );
-      }
-      process.env.COUGARS_TEAM_DEV_PID = String(process.pid);
     },
   };
 }

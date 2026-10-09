@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "predev": "node ../../scripts/club-snapshot.mjs",
-    "dev": "astro dev",
+    "dev": "astro dev stop && astro dev",
     "prebuild": "node ../../scripts/club-snapshot.mjs",
     "build": "astro build",
     "preview": "astro preview",

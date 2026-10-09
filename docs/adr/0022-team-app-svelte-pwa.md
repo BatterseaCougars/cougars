@@ -17,6 +17,9 @@ stamp in the URL. Two things kept changing that stamp under an open tab, which t
 and a blank main screen: Vite found libraries lazily, so opening a screen the startup crawl hadn't reached made it
 rebundle mid-session; and a second `vite` in the same checkout (another session, a `--force` restart) rebuilds that
 folder **before** it tries the port, so it broke the running server's page even though `strictPort` then stopped it.
+A third: Vite restarts itself in the same process (index.html or `wrangler.jsonc` edited, workerd restarted) and tells
+the tab to reload at the same moment; the reload landed while the new server was being built, `main.ts` was stamped
+with a throwaway hash, and the new server kept that transform, so every load 504'd until a full restart.
 
 ## Decision
 
@@ -37,9 +40,12 @@ folder **before** it tries the port, so it broke the running server's page even 
     a library configures dev with no config edit. Svelte's entry points come from the Svelte plugin.
   - A browser library goes in `dependencies`, never `devDependencies`. `scripts/team-app-deps.test.mjs` fails
     `npm test` if the app imports a package that isn't there.
-- **One dev server per checkout, on 4510.** A small plugin in `vite.config.ts` refuses to start a second one while 4510
-  is serving, before it touches the cache. Vite's own restart after a config edit is the same process and is let
-  through.
+- **One dev server per checkout, on 4510, and starting one takes over.** `npm run team` (or `npm run dev` in apps/team)
+  stops whatever dev server is on 4510, whoever started it (another terminal, an agent), before it touches the cache,
+  then serves (`scripts/lib/dev-server.mjs`, a pid file in `node_modules/.cache`). Vite's own restart is the same
+  process and is let through. The website does the same on 4500 with Astro's own `astro dev stop` first.
+- **After Vite restarts itself, every cached transform is dropped**, and requests wait until the dependency optimizer
+  has read its cache (`waitForDepsCache` in `vite.config.ts`), so a reload during the restart can't keep a dead stamp.
 
 ## Consequences
 
@@ -51,7 +57,8 @@ folder **before** it tries the port, so it broke the running server's page even 
 - In dev, hot reload is unchanged; editing code never rebundles libraries. Installing a new library while the server
   runs still makes Vite rebundle once and reload the open page itself; that's expected, not the stale-cache failure.
   Cold start crawls all of `src`, a second or so more.
-- To restart the dev server, stop the running one first. Starting another beside it is refused; never `--force`.
+- To restart a dev server, run it again in your own terminal: it replaces the running one. Never `--force`.
+- After an in-process restart the first page load re-transforms the app's modules, a second or so.
 
 ## History
 
@@ -59,3 +66,5 @@ folder **before** it tries the port, so it broke the running server's page even 
 - 2026-10-07: The dev server pre-bundles every dependency at startup and refuses a second server in the same
   checkout, after stale-bundle 504s (0047).
 - 2026-10-08: Deployed to dev from `main` now that sign-in exists, not held back until launch (ADR 0010).
+- 2026-10-09: Starting a dev server takes over its port instead of being refused, so whoever runs it owns it; after
+  Vite restarts itself, cached transforms are dropped, after the same stale-stamp 504s from a reload during the restart.

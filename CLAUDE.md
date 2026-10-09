@@ -52,7 +52,8 @@ Worker ([ADR 0022](docs/adr/0022-team-app-svelte-pwa.md)); its permissions follo
 
 - A library the browser imports goes in apps/team `package.json` **dependencies** (not devDependencies). Vite
   pre-bundles exactly that list at startup; `scripts/team-app-deps.test.mjs` enforces it ([ADR 0022](docs/adr/0022-team-app-svelte-pwa.md)).
-- One dev server on 4510. A second `vite` is refused; stop the running one to restart. Never `--force` beside it.
+- One dev server on 4510 (and one on 4500). Starting one stops the running one first, whoever started it: to restart,
+  just run it again. Never `--force`.
 
 ## Tests
 
