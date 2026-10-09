@@ -4,7 +4,7 @@ import type { Action } from "../access/actions";
 import type { IconName } from "../app/shell/icons";
 import type { AgendaRow, OneOff, Tournament, TournamentType, TrainingSeries, TrainingSession, Venue } from "./model";
 import type { Quip } from "../lib/quips";
-import type { Team } from "../lib/snake";
+import type { Team } from "../lib/balance";
 import type { Charge, DatedFee, Payment } from "../lib/dues";
 
 export type Position = "F" | "D" | "G";

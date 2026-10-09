@@ -1,3 +1,6 @@
+> Not the plan: the team app balances teams with a greedy deal and a swap search instead
+> ([ADR 0102](../../docs/adr/0102-balanced-teams-by-swap-search.md)). Kept as a reference for the LP model.
+
 # JavaScript Solver Port (glpk.js)
 
 ## Overview

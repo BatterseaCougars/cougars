@@ -1,6 +1,6 @@
 // The app's working copy of the club's data, filled from D1 (demo/data.ts hydrate) and replaced by
 // app/backend.svelte.ts after each change.
-import type { Team } from "../lib/snake";
+import type { Team } from "../lib/balance";
 import {
   AGENDA,
   CHARGES,

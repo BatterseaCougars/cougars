@@ -30,7 +30,7 @@ without taking players off a team behind the team maker's back.
   screen readers. **A click or tap on the grip does nothing**: with every move saved, a tap that sent someone to
   another team made them seem to vanish.
 - **When the teams stop matching who's in, the page says so**: someone signed up after them (slot them in by rule,
-  `slotIn` in lib/snake.ts, or remake), or someone said they're out since (keep the teams as they are without them, or
+  `slotIn` in lib/balance.ts, or remake), or someone said they're out since (keep the teams as they are without them, or
   remake). Saying out doesn't take a member off a published team: they stay on it, marked Out, until a team maker
   decides. An admin taking someone off the session still takes them off their team.
 - The warning takes the place of the In / Waiting / Spaces numbers, over them and the same height, so nothing below

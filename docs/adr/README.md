@@ -65,6 +65,7 @@ record per topic** ([0001](0001-record-decisions.md)). Read the relevant one bef
 | [0072](0072-live-updates.md)                 | Live pages are pushed to over SSE from a Durable Object; polling at the admins' pace is the fallback               |
 | [0065](0065-page-frame-and-admin-actions.md) | One page frame; admin actions live on the thing's own page, not under Settings                                     |
 | [0084](0084-sticker-colour-scheme.md)        | The Sticker colour scheme: one yellow main button, red for the brand, tokens for everything                        |
+| [0102](0102-drawers-sheets-and-panels.md)    | A side drawer for working beside the page, a sheet for a short job, a panel for a whole editor (proposed)          |
 
 ## Team app: the club
 
@@ -73,6 +74,7 @@ record per topic** ([0001](0001-record-decisions.md)). Read the relevant one bef
 | [0069](0069-members.md)                          | Admins add members; the members table is in Settings; a member's details save with a button                      |
 | [0030](0030-training-and-tournament-schedule.md) | The schedule lives in D1: training repeats as a series, tournaments are scheduled one by one and own their rules |
 | [0076](0076-training-teams.md)                   | Training teams: a Session lead role, made by dragging, saved as you change them                                  |
+| [0102](0102-balanced-teams-by-swap-search.md)    | Friday teams are balanced by a greedy deal and a swap search in the browser, not a linear programme              |
 | [0007](0007-dues-and-payments.md)                | Dues are charges per session and tournament, paid by bank transfer with a name reference                         |
 
 ## Team app: tournaments

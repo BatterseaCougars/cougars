@@ -23,7 +23,7 @@
   import { prefersReducedMotion } from "../app/motion";
   import { formatDayDate } from "../lib/dates";
   import { describeRule } from "../lib/recurrence";
-  import { slotIn, snakeTeams, type Team } from "../lib/snake";
+  import { makeTeams, slotIn, type Team } from "../lib/balance";
   import { shuffleAndDeal, type Show } from "../lib/shuffle";
   import { onDestroy, tick } from "svelte";
   import { SvelteSet } from "svelte/reactivity";
@@ -125,7 +125,7 @@
   let pending: Team[] | null = null;
   let gathering = $state(false);
   async function generate() {
-    const made = snakeTeams(next.going.map(byId), TEAM_NAMES);
+    const made = makeTeams(next.going.map(byId), TEAM_NAMES);
     if (show) return;
     if (prefersReducedMotion) return commit(made);
     // Bring the players into view first, so their cards start from where you can see them

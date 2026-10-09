@@ -34,15 +34,13 @@ the Sanity helpers and the Europe/London date code. Gwenda's ark repo solves the
   `Team app:`; `Housekeeping` is for both), and every piece of work is an issue in one. A checklist in a doc went stale as soon as work moved
   faster than it was ticked.
 - The old app stays in `archive/team-manager/` as read-only reference. Nothing imports from `archive/`.
-- **The team generator runs in the browser**, on a JavaScript port of the solver (glpk.js,
-  `.github/kb/js-solver-port.md`), so there is no server to pay for ([ADR 0003](0003-free-tiers-only.md)).
+- **The team generator runs in the browser** ([ADR 0102](0102-balanced-teams-by-swap-search.md)), so there is no
+  server to pay for ([ADR 0003](0003-free-tiers-only.md)).
 
 ## Consequences
 
 - One PR can change the schema and both projects that use it.
 - Large drafts are solved on the organiser's phone or laptop, so solver speed on a phone matters.
-- The solver port isn't in yet (#37): `apps/team/src/lib/snake.ts` is a greedy stand-in that keeps the old
-  solver's rules.
 - A new app goes in `apps/`; code a second app needs moves to `packages/`, as a package of its own if it grows.
 
 ## History
@@ -56,5 +54,6 @@ the Sanity helpers and the Europe/London date code. Gwenda's ark repo solves the
 - 2026-10-09: The website stays in `apps/` and the team app joins it (`apps/team`); `shared/` becomes the workspace
   package `packages/shared` (`@cougars/shared`). The move to `website/` is dropped (#36).
 - 2026-10-09: The repo moved from `das974/cougars` to the club's organisation, `BatterseaCougars/cougars`.
+- 2026-10-09: The glpk.js port was dropped for a swap search ([0102](0102-balanced-teams-by-swap-search.md)).
 - 2026-10-09: The organisation became `battersea-cougars` and the repo `ark`, the name of every monorepo built this
   way (like gwenda-hackney/ark): `battersea-cougars/ark`.

@@ -26,7 +26,7 @@ import {
 } from "../demo/data";
 import type { Position, Slices } from "../demo/data";
 import type { Quip, QuipKind } from "../lib/quips";
-import type { Team } from "../lib/snake";
+import type { Team } from "../lib/balance";
 import { api, bootstrapIfChanged, brake, getBootstrap } from "./api";
 import type { Tournament, TournamentType, TrainingSeries, Venue } from "../demo/model";
 import { db } from "../demo/store.svelte";
