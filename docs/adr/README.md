@@ -5,7 +5,7 @@ record per topic** ([0001](0001-record-decisions.md)). Read the relevant one bef
 
 - **Changing a decision:** update its topic's record in the same change as the code. Rewrite what no longer holds,
   add a dated line to its **History**, and bump _updated_.
-- **A new topic:** copy [template.md](template.md) and take the next unused number (the next is **0101**). Numbers are
+- **A new topic:** copy [template.md](template.md) and take the next unused number (the next is **0102**). Numbers are
   never reused.
 - **An old number** (from a commit, an issue or a chat) that has no file any more was merged into another record.
   `grep -l 0035 docs/adr/*.md` finds it on that record's _Merges_ line.
@@ -55,6 +55,7 @@ record per topic** ([0001](0001-record-decisions.md)). Read the relevant one bef
 | [0042](0042-website-reads-the-club-agenda.md)    | The website's What's on and events page read one club agenda, live                                        |
 | [0043](0043-roster-and-names.md)                 | The roster is a build-time snapshot of the club's members, and members go by their chosen name everywhere |
 | [0100](0100-website-reads-tournament-results.md) | Tournament results are built into the website from D1; the team app rebuilds it when one changes          |
+| [0101](0101-one-icon-for-both-apps.md)           | The website and the team app share one icon: the C of COUGARS, traced from the logo                       |
 
 ## Team app: how it works
 
