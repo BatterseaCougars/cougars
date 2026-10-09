@@ -1,11 +1,10 @@
-// Tournament results on the website (ADR 0100): what the team app recorded, read live from D1. Only a tournament
-// that's public and done (packages/shared/results.ts), and only award winners an admin confirmed (ADR 0044). People go by the
-// name they chose, else first name and initial (packages/shared/names.ts): no full name leaves this module.
-import { all, type Param } from "@cougars/shared/d1";
+// Tournament results on the website (ADR 0100): what the team app recorded, worked out at build time from the club
+// snapshot's rows (scripts/lib/results-sql.mjs). Only a tournament that's public and done (@cougars/shared/results),
+// and only award winners an admin confirmed (ADR 0044). People go by the name they chose, else first name and initial
+// (@cougars/shared/names): no full name leaves this module.
 import { onTheWebsite, publicName, shortOnTheWebsite } from "@cougars/shared/names";
 import { champion, isDone, table } from "@cougars/shared/results";
 import { isSeason, seasonLabel, seasonOf } from "@cougars/shared/seasons";
-import { cached, type CacheDeps, type CacheOptions } from "./cache";
 
 export interface PublishedAward {
   name: string;
@@ -14,26 +13,11 @@ export interface PublishedAward {
   winners: string[];
 }
 
-/** One tournament, for the list and the champions board. */
-export interface PublishedSummary {
-  id: number;
-  name: string;
-  /** Its series ("The Cougars Kumite"), if it has one. */
-  series: { slug: string; name: string } | null;
-  heldOn: string;
-  /** "Autumn 2026". */
-  season: string;
-  /** The champions' team name; null if the day didn't decide one. */
-  champions: string | null;
-  /** The champions' team id, when it has a crest (/api/crests/<id>). */
-  championsCrest: number | null;
-  awards: PublishedAward[];
-}
-
 export interface PublishedTeam {
   id: number;
   name: string;
-  crest: boolean;
+  /** Its crest's address (/crests/<id>.webp), or null for none. */
+  crest: string | null;
   /** Captain first, then the players in order. */
   players: string[];
 }
@@ -50,7 +34,19 @@ export interface PublishedGame {
   awayGoals: number;
 }
 
-export interface PublishedEdition extends PublishedSummary {
+export interface PublishedEdition {
+  id: number;
+  name: string;
+  /** Its series ("The Cougars Kumite"), if it has one. */
+  series: { slug: string; name: string } | null;
+  heldOn: string;
+  /** "Autumn 2026". */
+  season: string;
+  /** The champions' team name; null if the day didn't decide one. */
+  champions: string | null;
+  /** The champions' crest's address, if they have one. */
+  championsCrest: string | null;
+  awards: PublishedAward[];
   teams: PublishedTeam[];
   table: {
     teamId: number;
@@ -68,173 +64,108 @@ export interface PublishedEdition extends PublishedSummary {
   scorers: { name: string; team: string; goals: number; assists: number }[];
 }
 
-/** Fresh for a minute, so a result shows soon after the last game; the last good copy for an hour if D1 fails. */
-export const RESULTS_CACHE: CacheOptions = { ttlMs: 60_000, staleMs: 60 * 60_000 };
-
-export const cachedEditions = (db: D1Database, deps?: CacheDeps) =>
-  cached("d1:results", RESULTS_CACHE, () => publishedEditions(db), deps);
-
-export const cachedEdition = (db: D1Database, id: number, deps?: CacheDeps) =>
-  cached(`d1:results:${id}`, RESULTS_CACHE, () => publishedEdition(db, id), deps);
-
-export const cachedCrest = (db: D1Database, teamId: number, deps?: CacheDeps) =>
-  cached(`d1:crest:${teamId}`, RESULTS_CACHE, () => crestOf(db, teamId), deps);
-
-/** Every published tournament, newest first. */
-export async function publishedEditions(db: D1Database): Promise<PublishedSummary[]> {
-  return (await load(db)).map(({ teams: _t, table: _x, games: _g, scorers: _s, ...summary }) => summary);
+/** The snapshot's rows, as scripts/lib/results-sql.mjs reads them. */
+export interface ResultRows {
+  tournaments: {
+    id: number;
+    name: string;
+    heldOn: string;
+    status: string;
+    season: string | null;
+    awards: string;
+    pointsWin: number;
+    pointsDraw: number;
+    pointsLoss: number;
+    seriesSlug: string | null;
+    seriesName: string | null;
+  }[];
+  games: {
+    id: number;
+    tournamentId: number;
+    stage: "group" | "playoff";
+    name: string;
+    position: number;
+    homeTeamId: number | null;
+    awayTeamId: number | null;
+    homeGoals: number | null;
+    awayGoals: number | null;
+    status: string;
+  }[];
+  teams: {
+    id: number;
+    tournamentId: number;
+    name: string;
+    /** A small image, as the team app keeps it: a data: URL. */
+    logo: string | null;
+    captainName: string | null;
+    captainWebName: string | null;
+    outsideCaptain: string;
+  }[];
+  players: { teamId: number; name: string | null; webName: string | null; outsideName: string }[];
+  goals: {
+    tournamentId: number;
+    teamId: number;
+    scorerId: number | null;
+    scorerName: string | null;
+    scorerWebName: string | null;
+    assistId: number | null;
+    assistName: string | null;
+    assistWebName: string | null;
+  }[];
+  winners: {
+    tournamentId: number;
+    award: string;
+    teamId: number | null;
+    memberName: string | null;
+    memberWebName: string | null;
+  }[];
 }
 
-/** One published tournament in full; null if it isn't published (private, not done, or no such tournament). */
-export async function publishedEdition(db: D1Database, id: number): Promise<PublishedEdition | null> {
-  return (await load(db, id))[0] ?? null;
+/** A crest as a file the build writes: its address and its bytes. */
+export interface CrestFile {
+  path: string;
+  type: string;
+  base64: string;
 }
 
-/** A team's crest (a data: URL), only for a published tournament's team that has one. */
-export async function crestOf(db: D1Database, teamId: number): Promise<string | null> {
-  const [team] = await all<{ tournamentId: number; logo: string | null }>(
-    db,
-    "SELECT tournament_id tournamentId, logo FROM tournament_teams WHERE id = ?",
-    [teamId],
-  );
-  if (!team?.logo) return null;
-  return (await load(db, team.tournamentId)).length ? team.logo : null;
+const CREST = /^data:image\/(png|jpeg|webp|gif);base64,([A-Za-z0-9+/=]+)$/;
+
+/** A team's crest as a file, if it has one the website can show (never SVG: it could carry script). */
+function crestFile(teamId: number, logo: string | null): CrestFile | null {
+  const m = logo?.match(CREST);
+  return m
+    ? { path: `/crests/${teamId}.${m[1] === "jpeg" ? "jpg" : m[1]}`, type: `image/${m[1]}`, base64: m[2] }
+    : null;
 }
 
-interface TournamentRow {
-  id: number;
-  name: string;
-  heldOn: string;
-  status: string;
-  season: string | null;
-  awards: string;
-  pointsWin: number;
-  pointsDraw: number;
-  pointsLoss: number;
-  seriesSlug: string | null;
-  seriesName: string | null;
-}
-interface TeamRow {
-  id: number;
-  tournamentId: number;
-  name: string;
-  crest: number;
-  captainName: string | null;
-  captainWebName: string | null;
-  outsideCaptain: string;
-}
-interface PlayerRow {
-  teamId: number;
-  name: string | null;
-  webName: string | null;
-  outsideName: string;
-}
-interface GameRow {
-  id: number;
-  tournamentId: number;
-  stage: "group" | "playoff";
-  name: string;
-  position: number;
-  homeTeamId: number | null;
-  awayTeamId: number | null;
-  homeGoals: number | null;
-  awayGoals: number | null;
-  status: string;
-}
-interface GoalRow {
-  tournamentId: number;
-  teamId: number;
-  scorerName: string | null;
-  scorerWebName: string | null;
-  scorerId: number | null;
-  assistName: string | null;
-  assistWebName: string | null;
-  assistId: number | null;
-}
-interface WinnerRow {
-  tournamentId: number;
-  award: string;
-  teamId: number | null;
-  memberName: string | null;
-  memberWebName: string | null;
+/** The crests of the published tournaments' teams, to write as files at build time. */
+export function crestFiles(rows: ResultRows | null): CrestFile[] {
+  const published = new Set(editionsFrom(rows).map((e) => e.id));
+  return (rows?.teams ?? []).flatMap((x) => (published.has(x.tournamentId) ? (crestFile(x.id, x.logo) ?? []) : []));
 }
 
-/** The public tournaments (all, or one), each worked out in full; only the done ones come back. */
-async function load(db: D1Database, only?: number): Promise<PublishedEdition[]> {
-  const where = only === undefined ? "" : " AND t.id = ?";
-  const params: Param[] = only === undefined ? [] : [only];
-  const tournaments = await all<TournamentRow>(
-    db,
-    `SELECT t.id, t.name, t.held_on heldOn, t.status, t.season, t.awards, t.points_win pointsWin,
-            t.points_draw pointsDraw, t.points_loss pointsLoss, y.slug seriesSlug, y.name seriesName
-     FROM tournaments t LEFT JOIN tournament_types y ON y.id = t.type_id
-     WHERE t.public = 1${where}
-     ORDER BY t.held_on DESC, t.id DESC`,
-    params,
-  );
-  if (!tournaments.length) return [];
-  const of = `(SELECT id FROM tournaments t WHERE t.public = 1${where})`;
-  const [games, teams, players, goals, winners] = await Promise.all([
-    all<GameRow>(
-      db,
-      `SELECT id, tournament_id tournamentId, stage, name, position, home_team_id homeTeamId, away_team_id awayTeamId,
-              home_goals homeGoals, away_goals awayGoals, status
-       FROM tournament_games WHERE tournament_id IN ${of} ORDER BY position`,
-      params,
-    ),
-    all<TeamRow>(
-      db,
-      `SELECT x.id, x.tournament_id tournamentId, x.name, x.logo IS NOT NULL crest, m.name captainName,
-              m.web_name captainWebName, x.captain_name outsideCaptain
-       FROM tournament_teams x LEFT JOIN members m ON m.id = x.captain_member_id
-       WHERE x.tournament_id IN ${of} ORDER BY COALESCE(x.pick, 0), x.id`,
-      params,
-    ),
-    all<PlayerRow>(
-      db,
-      `SELECT p.team_id teamId, m.name, m.web_name webName, p.name outsideName
-       FROM tournament_team_players p JOIN tournament_teams x ON x.id = p.team_id
-       LEFT JOIN members m ON m.id = p.member_id
-       WHERE x.tournament_id IN ${of} ORDER BY p.position, p.id`,
-      params,
-    ),
-    all<GoalRow>(
-      db,
-      `SELECT g.tournament_id tournamentId, o.team_id teamId,
-              s.name scorerName, s.web_name scorerWebName, s.id scorerId,
-              a.name assistName, a.web_name assistWebName, a.id assistId
-       FROM tournament_goals o JOIN tournament_games g ON g.id = o.game_id
-       LEFT JOIN members s ON s.id = o.scorer_member_id LEFT JOIN members a ON a.id = o.assist_member_id
-       WHERE g.tournament_id IN ${of} AND g.status = 'done'`,
-      params,
-    ),
-    all<WinnerRow>(
-      db,
-      `SELECT w.tournament_id tournamentId, w.award, w.team_id teamId, m.name memberName, m.web_name memberWebName
-       FROM tournament_award_winners w LEFT JOIN members m ON m.id = w.member_id
-       WHERE w.tournament_id IN ${of} ORDER BY w.award, w.position`,
-      params,
-    ),
-  ]);
-
+/** Every published tournament, newest first, worked out from the snapshot's rows. None without a snapshot. */
+export function editionsFrom(rows: ResultRows | null): PublishedEdition[] {
+  if (!rows) return [];
   const editions: PublishedEdition[] = [];
-  for (const t of tournaments) {
-    const myGames = games.filter((g) => g.tournamentId === t.id);
-    if (!isDone(t.status, myGames)) continue;
-    const myTeams = teams.filter((x) => x.tournamentId === t.id);
-    const teamName = teamNamer(myTeams);
-    const nameOf = new Map(myTeams.map((x) => [x.id, teamName(x)]));
+  for (const t of rows.tournaments) {
+    const games = rows.games.filter((g) => g.tournamentId === t.id);
+    if (!isDone(t.status, games)) continue;
+    const teams = rows.teams.filter((x) => x.tournamentId === t.id);
+    const teamName = teamNamer(teams);
+    const nameOf = new Map(teams.map((x) => [x.id, teamName(x)]));
+    const crestOf = new Map(teams.map((x) => [x.id, crestFile(x.id, x.logo)?.path ?? null]));
     const points = { win: t.pointsWin, draw: t.pointsDraw, loss: t.pointsLoss };
-    const teamIds = myTeams.map((x) => x.id);
+    const teamIds = teams.map((x) => x.id);
 
     // The champions: as confirmed, else worked out from the games
-    const myWinners = winners.filter((w) => w.tournamentId === t.id);
-    const confirmed = myWinners.find((w) => w.award === "Champions" && w.teamId)?.teamId ?? null;
-    const championId = confirmed ?? champion(teamIds, myGames, points);
+    const winners = rows.winners.filter((w) => w.tournamentId === t.id);
+    const confirmed = winners.find((w) => w.award === "Champions" && w.teamId)?.teamId ?? null;
+    const championId = confirmed ?? champion(teamIds, games, points);
     const awards = (JSON.parse(t.awards) as { name: string; about?: string }[]).map((a) => ({
       name: a.name,
       about: a.about ?? "",
-      winners: myWinners
+      winners: winners
         .filter((w) => w.award === a.name)
         .map((w) =>
           w.teamId ? (nameOf.get(w.teamId) ?? "") : w.memberName ? onTheWebsite(w.memberName, w.memberWebName) : "",
@@ -249,26 +180,26 @@ async function load(db: D1Database, only?: number): Promise<PublishedEdition[]> 
       heldOn: t.heldOn,
       season: seasonLabel(isSeason(t.season) ? t.season : seasonOf(t.heldOn).season, t.heldOn),
       champions: championId ? (nameOf.get(championId) ?? null) : null,
-      championsCrest: championId && myTeams.find((x) => x.id === championId)?.crest ? championId : null,
+      championsCrest: championId ? (crestOf.get(championId) ?? null) : null,
       awards,
-      teams: myTeams.map((x) => ({
+      teams: teams.map((x) => ({
         id: x.id,
         name: nameOf.get(x.id)!,
-        crest: Boolean(x.crest),
+        crest: crestOf.get(x.id) ?? null,
         players: [
           ...(x.captainName
             ? [onTheWebsite(x.captainName, x.captainWebName)]
             : x.outsideCaptain
               ? [publicName(x.outsideCaptain)]
               : []),
-          ...players
+          ...rows.players
             .filter((p) => p.teamId === x.id)
             .map((p) => (p.name ? onTheWebsite(p.name, p.webName) : publicName(p.outsideName)))
             .filter(Boolean),
         ],
       })),
-      table: table(teamIds, myGames, points).map((r) => ({ ...r, name: nameOf.get(r.teamId)! })),
-      games: myGames.flatMap((g) =>
+      table: table(teamIds, games, points).map((r) => ({ ...r, name: nameOf.get(r.teamId)! })),
+      games: games.flatMap((g) =>
         g.status === "done" && g.homeTeamId && g.awayTeamId && g.homeGoals != null && g.awayGoals != null
           ? [
               {
@@ -285,13 +216,15 @@ async function load(db: D1Database, only?: number): Promise<PublishedEdition[]> 
           : [],
       ),
       scorers: scorersOf(
-        goals.filter((o) => o.tournamentId === t.id),
+        rows.goals.filter((o) => o.tournamentId === t.id),
         nameOf,
       ),
     });
   }
   return editions;
 }
+
+type TeamRow = ResultRows["teams"][number];
 
 /** A team's name: its own, else "Team" and its captain's short name (first name and initial, if two would match). */
 function teamNamer(teams: TeamRow[]) {
@@ -307,7 +240,7 @@ function teamNamer(teams: TeamRow[]) {
   };
 }
 
-function scorersOf(goals: GoalRow[], teamName: Map<number, string>) {
+function scorersOf(goals: ResultRows["goals"], teamName: Map<number, string>) {
   const by = new Map<number, { name: string; team: string; goals: number; assists: number }>();
   const tally = (id: number | null, name: string | null, webName: string | null, teamId: number) => {
     if (!id || !name) return null;

@@ -2,6 +2,7 @@
 // binding falls back to index.html, so the app's own router takes any path).
 import { handleApi, type Env } from "./api";
 import { checkUsage } from "./usage";
+import { rebuildWebsite } from "./website";
 // The live hub (ADR 0072): Cloudflare finds the Durable Object class here
 export { LiveHub } from "./live";
 
@@ -43,8 +44,11 @@ export default {
       return secured(await handleApi(request, env, new Date(), (p) => ctx.waitUntil(p)));
     return secured(await env.ASSETS.fetch(request));
   },
-  // Hourly (wrangler.jsonc triggers): warn the admins before the free allowance runs out (ADR 0059)
   async scheduled(controller: ScheduledController, env: Env) {
-    await checkUsage(env, new Date(controller.scheduledTime));
+    const now = new Date(controller.scheduledTime);
+    // Every five minutes (wrangler.jsonc triggers): a wanted website rebuild, once it's quiet (ADR 0100)
+    if (controller.cron === "*/5 * * * *") await rebuildWebsite(env, now);
+    // Hourly: warn the admins before the free allowance runs out (ADR 0059)
+    else await checkUsage(env, now);
   },
 } satisfies ExportedHandler<Env & { ASSETS: Fetcher }>;

@@ -1,61 +1,51 @@
 ---
 // Kumite champions (ADR 0100): the reigning team (the newest result) up top with its award winners, earlier ones as a
-// compact list, each linking to its result. Read live from the team app's D1: the home page and /kumite/ are
-// prerendered with a placeholder that the script fills from /honours/, which renders this same component live.
-// No data-reveal in here: swapped-in elements would never be revealed.
-import type { PublishedSummary } from "../lib/server/results";
+// compact list, each linking to its result. As of this build: the team app starts a rebuild when a result changes.
+import type { PublishedEdition } from "../lib/results";
 
 interface Props {
-  /** Newest first, as cachedEditions() returns them; null: the placeholder, filled in by the script. */
-  results: PublishedSummary[] | null;
+  /** Newest first, as getResults() returns them. */
+  results: PublishedEdition[];
 }
 const { results } = Astro.props;
-const [reigning, ...past] = results ?? [];
+const [reigning, ...past] = results;
 const others = reigning?.awards.filter((a) => a.name !== "Champions" && a.winners.length) ?? [];
 ---
 
-<div class="board" data-honours>
-  {results === null ? (
-    <p class="loading">
-      <a class="more" href="/results/">
-        Results
-      </a>
-    </p>
-  ) : (
-    reigning && (
-      <>
-        <p class="kicker">Champions</p>
-        <a class="reigning" href={`/results/${reigning.id}/`}>
-          <span class="label">Reigning · {reigning.season}</span>
-          <span class="team">
-            {reigning.championsCrest && (
-              <img src={`/api/crests/${reigning.championsCrest}`} alt="" width="48" height="48" loading="lazy" />
-            )}
-            {reigning.champions ?? "–"}
+<div class="board">
+  {reigning && (
+    <>
+      <p class="kicker">Champions</p>
+      <a class="reigning" href={`/results/${reigning.id}/`}>
+        <span class="label">Reigning · {reigning.season}</span>
+        <span class="team">
+          {reigning.championsCrest && (
+            <img src={reigning.championsCrest} alt="" width="48" height="48" loading="lazy" />
+          )}
+          {reigning.champions ?? "–"}
+        </span>
+        {others.map((a) => (
+          <span class="muted">
+            {a.name}: {a.winners.join(", ")}
           </span>
-          {others.map((a) => (
-            <span class="muted">
-              {a.name}: {a.winners.join(", ")}
-            </span>
+        ))}
+      </a>
+      {past.length > 0 && (
+        <ol class="past">
+          {past.map((h) => (
+            <li>
+              <a href={`/results/${h.id}/`}>
+                <span class="label">{h.season}</span>
+                <span>{h.champions ?? "–"}</span>
+              </a>
+            </li>
           ))}
-        </a>
-        {past.length > 0 && (
-          <ol class="past">
-            {past.map((h) => (
-              <li>
-                <a href={`/results/${h.id}/`}>
-                  <span class="label">{h.season}</span>
-                  <span>{h.champions ?? "–"}</span>
-                </a>
-              </li>
-            ))}
-          </ol>
-        )}
-        <a class="more" href="/results/">
-          All results
-        </a>
-      </>
-    )
+        </ol>
+      )}
+      <a class="more" href="/results/">
+        All results
+      </a>
+    </>
   )}
 </div>
 
@@ -104,25 +94,4 @@ const others = reigning?.awards.filter((a) => a.name !== "Champions" && a.winner
     color: var(--text-2);
     text-decoration: none;
   }
-  .loading {
-    margin: 0;
-  }
 </style>
-
-<script>
-  // Fill in the live board. If it fails (offline, blocked), the placeholder's link to the results stays.
-  async function refresh() {
-    const box = document.querySelector<HTMLElement>("[data-honours]");
-    if (!box?.querySelector(".loading")) return;
-    try {
-      const res = await fetch("/honours/", { headers: { Accept: "text/html" } });
-      if (!res.ok) return;
-      const fresh = new DOMParser().parseFromString(await res.text(), "text/html").querySelector("[data-honours]");
-      if (fresh && box.isConnected) box.replaceChildren(...fresh.childNodes);
-    } catch {
-      // keep the placeholder
-    }
-  }
-
-  document.addEventListener("astro:page-load", refresh);
-</script>

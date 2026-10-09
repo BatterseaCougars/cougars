@@ -26,8 +26,8 @@ eventually edit events, players and Kumite results, so it's the natural owner of
 - **Production rebuilds daily** (the `schedule` in `deploy.yml`, 04:30 UTC) and on every release
   ([ADR 0010](0010-environments-and-deploys.md)). A Studio change is live the next morning. Anything urgent is rebuilt
   by hand: **Actions → Deploy → Run workflow → `release`** (or `gh workflow run deploy.yml --ref release`).
-- **No Sanity publish webhook.** The team app will start production rebuilds when content changes, batched, holding
-  its own GitHub token. The `repository_dispatch: sanity-publish` trigger stays in `deploy.yml` for it.
+- **No Sanity publish webhook.** The team app starts rebuilds when a tournament result changes, batched, as the
+  club's GitHub App (`repository_dispatch: website-rebuild`, [ADR 0100](0100-website-reads-tournament-results.md)).
 - Photos and videos don't wait for a rebuild: they're read live ([ADR 0016](0016-photos-and-videos-read-live.md)).
 - **D1** holds operational data. Plain SQL through `packages/shared/d1.ts`, no ORM. Until launch the database is
   `db/schema.sql` plus seed, with no migrations ([ADR 0050](0050-schema-and-seed-until-launch.md)).
@@ -48,3 +48,5 @@ eventually edit events, players and Kumite results, so it's the natural owner of
 - 2026-10-05: No Sanity publish webhook; production rebuilds daily and on release until the team app triggers builds
   (0018).
 - 2026-10-07: Migrations replaced by schema plus seed until launch (ADR 0050).
+- 2026-10-09: The team app's rebuild trigger exists: `website-rebuild`, from its GitHub App, for dev and production
+  (0100); the unused `sanity-publish` trigger is gone.

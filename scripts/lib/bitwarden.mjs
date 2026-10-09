@@ -97,7 +97,8 @@ export function bws(args) {
   env.BWS_SERVER_URL ||= "https://vault.bitwarden.eu";
   // Options before a `--`: after it everything is a plain value, even one that starts with dashes (a PEM key)
   const end = args.indexOf("--");
-  const argv = end < 0 ? [...args, "--output", "json"] : [...args.slice(0, end), "--output", "json", ...args.slice(end)];
+  const argv =
+    end < 0 ? [...args, "--output", "json"] : [...args.slice(0, end), "--output", "json", ...args.slice(end)];
   const res = spawnSync("bws", argv, { encoding: "utf8", env });
   if (res.error) throw new Error(`Could not run bws: ${res.error.message}. Is the Bitwarden CLI installed?`);
   if (res.status !== 0) throw new Error(`bws failed: ${res.stderr.trim().split("\n")[0]}`);

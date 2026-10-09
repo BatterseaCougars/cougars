@@ -1,9 +1,11 @@
 // A tournament's results on the website (ADR 0100): once its last game is played, anyone can see it on the website,
 // read live from the same D1: the champions, the table, every score and who scored. Award winners show once an admin
 // confirms them. Players go by the name they chose; nobody's full name leaves the database. Driven through the real
-// Worker handlers (ADR 0031), read through the website's own module.
+// Worker handlers (ADR 0031), then read the way the website's build reads them: the snapshot's rows
+// (scripts/lib/results-sql.mjs), worked out by the website's own module.
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { crestOf, publishedEdition, publishedEditions } from "../../../apps/web/src/lib/server/results";
+import { crestFiles, editionsFrom } from "../../web/src/lib/results";
+import { readResultRows } from "../../../scripts/lib/results-sql.mjs";
 import { testWorld } from "./testing";
 
 const ROSTER = [
@@ -17,6 +19,10 @@ const FULL_NAMES = /Dana Admin|Cara Captain|Cole Captain|Reg Player|Mo Member/;
 const CREST = "data:image/png;base64,iVBORw0KGgo=";
 
 let w: ReturnType<typeof testWorld>;
+/** What the website shows after its next build. */
+const rows = () => readResultRows(async (sql: string) => w.db.raw.prepare(sql).all());
+const publishedEditions = async () => editionsFrom(await rows());
+const publishedEdition = async (id: number) => (await publishedEditions()).find((e) => e.id === id) ?? null;
 beforeEach(() => {
   vi.spyOn(console, "log").mockImplementation(() => {});
   w = testWorld(ROSTER);
@@ -83,12 +89,12 @@ describe("tournament results on the website", () => {
     const { id, play } = await cup();
     await play();
 
-    const list = await publishedEditions(w.db);
+    const list = await publishedEditions();
     expect(list).toEqual([
       expect.objectContaining({ id, name: "Summer Cup", heldOn: "2026-09-12", champions: "Ants" }),
     ]);
 
-    const r = (await publishedEdition(w.db, id))!;
+    const r = (await publishedEdition(id))!;
     expect(r.champions).toBe("Ants");
     expect(r.table.map((x) => [x.name, x.p, x.w, x.l, x.gf, x.ga, x.pts])).toEqual([
       ["Ants", 1, 1, 0, 2, 1, 3],
@@ -113,7 +119,7 @@ describe("tournament results on the website", () => {
   it("award winners show once an admin confirms them, not before", async () => {
     const { id, idOf, ants, play, confirm } = await cup();
     await play();
-    expect((await publishedEdition(w.db, id))!.awards).toEqual([
+    expect((await publishedEdition(id))!.awards).toEqual([
       { name: "Champions", about: "Top of the table.", winners: [] },
       { name: "Top scorer", about: "Most goals.", winners: [] },
     ]);
@@ -125,41 +131,42 @@ describe("tournament results on the website", () => {
         ])
       ).status,
     ).toBe(200);
-    const r = (await publishedEdition(w.db, id))!;
+    const r = (await publishedEdition(id))!;
     expect(r.awards).toEqual([
       { name: "Champions", about: "Top of the table.", winners: ["Ants"] },
       { name: "Top scorer", about: "Most goals.", winners: ["Cara C."] },
     ]);
-    expect((await publishedEditions(w.db))[0].awards).toEqual(r.awards);
+    expect((await publishedEditions())[0].awards).toEqual(r.awards);
   });
 
   it("a tournament still to play, or one kept off the website, isn't there", async () => {
     const coming = await cup();
-    expect(await publishedEditions(w.db)).toEqual([]);
-    expect(await publishedEdition(w.db, coming.id)).toBeNull();
+    expect(await publishedEditions()).toEqual([]);
+    expect(await publishedEdition(coming.id)).toBeNull();
 
     const hidden = await cup({ name: "Members' Cup", public: false });
     await hidden.play();
-    expect(await publishedEdition(w.db, hidden.id)).toBeNull();
-    expect(await publishedEditions(w.db)).toEqual([]);
+    expect(await publishedEdition(hidden.id)).toBeNull();
+    expect(await publishedEditions()).toEqual([]);
   });
 
   it("a player who changes the name they go by changes it on the results too", async () => {
     const { id, play } = await cup();
     await play();
-    expect((await publishedEdition(w.db, id))!.scorers[0].name).toBe("Cara C.");
+    expect((await publishedEdition(id))!.scorers[0].name).toBe("Cara C.");
     const cara = await w.signedIn("cara@example.com");
     await cara.call("PUT", "/api/me", { position: "F", webName: "Cara Captain" });
-    expect((await publishedEdition(w.db, id))!.scorers[0].name).toBe("Cara Captain");
+    expect((await publishedEdition(id))!.scorers[0].name).toBe("Cara Captain");
   });
 
-  it("a team's crest is served only once its tournament is on the website", async () => {
-    const { ants, bees, play } = await cup();
-    expect(await crestOf(w.db, ants)).toBeNull();
+  it("a team's crest is published only once its tournament is on the website", async () => {
+    const { ants, play } = await cup();
+    expect(crestFiles(await rows())).toEqual([]);
     await play();
-    expect(await crestOf(w.db, ants)).toBe(CREST);
-    expect(await crestOf(w.db, bees)).toBeNull();
-    const r = (await publishedEditions(w.db))[0];
-    expect(r.championsCrest).toBe(ants);
+    // The Ants have one, the Bees don't
+    expect(crestFiles(await rows())).toEqual([
+      { path: `/crests/${ants}.png`, type: "image/png", base64: CREST.split(",")[1] },
+    ]);
+    expect((await publishedEditions())[0].championsCrest).toBe(`/crests/${ants}.png`);
   });
 });

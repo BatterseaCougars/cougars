@@ -54,7 +54,7 @@ record per topic** ([0001](0001-record-decisions.md)). Read the relevant one bef
 | [0020](0020-drawn-share-cards.md)                | Share pictures are drawn at build time                                                                    |
 | [0042](0042-website-reads-the-club-agenda.md)    | The website's What's on and events page read one club agenda, live                                        |
 | [0043](0043-roster-and-names.md)                 | The roster is a build-time snapshot of the club's members, and members go by their chosen name everywhere |
-| [0100](0100-website-reads-tournament-results.md) | The website reads tournament results from D1, live, and names players as they chose                       |
+| [0100](0100-website-reads-tournament-results.md) | Tournament results are built into the website from D1; the team app rebuilds it when one changes          |
 
 ## Team app: how it works
 

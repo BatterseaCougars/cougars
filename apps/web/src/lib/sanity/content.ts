@@ -12,6 +12,7 @@ import { demoAlbums, DEMO_EVENTS, DEMO_PLAYERS } from "./demo";
 import { sanityError, toAlbum } from "../server/photos";
 import { guard } from "@cougars/shared/breaker";
 import { toPlayer, type RosterRow } from "../roster";
+import { crestFiles, editionsFrom, type ResultRows } from "../results";
 import { listOr, mergeClub, mergeFridays, mergeKumite, mergePub, mergeTeam } from "./merge";
 import type { Album, ClubEvent, Player, SiteSettings, Sponsor, Award } from "./types";
 
@@ -123,6 +124,15 @@ export const getPlayers = memo(async () => {
   return roster ? roster.map(toPlayer) : fetchList<Player>(q.PLAYERS, DEMO_PLAYERS);
 });
 export const getSponsors = memo(() => fetchList<Sponsor>(q.SPONSORS));
+// Tournament results as of this build (lib/results.ts, ADR 0100): none without a snapshot. The team app starts a
+// rebuild when a result changes.
+const resultsSnapshot = import.meta.glob<ResultRows | null>("../../data/results.local.json", {
+  eager: true,
+  import: "default",
+});
+const resultRows = () => Object.values(resultsSnapshot)[0] ?? null;
+export const getResults = memo(async () => editionsFrom(resultRows()));
+export const getCrestFiles = memo(async () => crestFiles(resultRows()));
 
 /** Events that haven't finished yet, soonest first. */
 export function upcoming(events: ClubEvent[], now = new Date()): ClubEvent[] {

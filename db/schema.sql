@@ -384,6 +384,13 @@ CREATE TABLE data_version (
   sessions_made_on TEXT
 );
 
+-- The website wants rebuilding (apps/team/worker/website.ts, ADR 0100): a finished tournament changed. One row while
+-- one is wanted; the team Worker's five-minute cron sends it to GitHub after five quiet minutes and deletes the row.
+CREATE TABLE website_rebuild (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  wanted_at TEXT NOT NULL
+);
+
 -- Who won a tournament's awards (apps/team/worker/awards.ts, ADR 0044): a team (Champions) or a player on one of its
 -- teams (Top scorer). The award is one of the tournament's own, by name (tournaments.awards).
 CREATE TABLE tournament_award_winners (

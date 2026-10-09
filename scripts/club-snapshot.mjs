@@ -4,6 +4,7 @@
 // predev/prebuild). Only what the website shows leaves the database.
 //   roster.local.json   the active Cougars and their record (lib/roster-sql.mjs)
 //   kumite.local.json   the Kumite's awards, and the next one's date and place (the club's agenda, ADR 0042)
+//   results.local.json  every public tournament's results, as rows (lib/results-sql.mjs, ADR 0100)
 //
 //   node scripts/club-snapshot.mjs                   local D1 (apps/web/.wrangler)
 //   CLUB_SNAPSHOT_ENV=dev|production node ...       that environment's D1, over the API (CI: CLOUDFLARE_API_TOKEN
@@ -12,10 +13,13 @@
 // list is a real answer (no Cougars yet).
 import { execFileSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
+import { readResultRows } from "./lib/results-sql.mjs";
 import { ROSTER_SQL } from "./lib/roster-sql.mjs";
 
 const SNAPSHOTS = {
   roster: { sql: ROSTER_SQL, shape: (rows) => rows, say: (r) => `${r.length} Cougars` },
+  // Several queries at once (no `sql`): their rows by name
+  results: { sql: null, shape: (rows) => rows, say: (r) => `${r.tournaments.length} public tournaments` },
   kumite: {
     // The series' awards, and the next public Kumite from the club's agenda (ADR 0042) with that tournament's own
     // awards (ADR 0030): when, where, TBC or a season
@@ -85,7 +89,7 @@ mkdirSync(new URL("src/data/", web), { recursive: true });
 for (const [name, { sql, shape, say }] of Object.entries(SNAPSHOTS)) {
   let data = null;
   try {
-    data = shape(await query(sql));
+    data = shape(sql ? await query(sql) : await readResultRows(query));
   } catch (error) {
     console.warn(`Club snapshot: no ${name} (${error.message.split("\n")[0]}). The site falls back.`);
   }

@@ -1,203 +1,179 @@
 ---
-// One tournament's result, live from the team app's D1 (ADR 0100): the champions, the awards (once confirmed), the
-// table, every score, who scored and who played. Only a public tournament that's done; anything else is a 404.
-import { env } from "cloudflare:workers";
+// One tournament's result, as of this build (ADR 0100): the champions, the awards (once confirmed), the table, every
+// score, who scored and who played. Only a public tournament that's done has a page; the team app starts a rebuild
+// when a result changes.
+import type { GetStaticPaths } from "astro";
 import Base from "../../layouts/Base.astro";
 import PageHeader from "../../components/PageHeader.astro";
-import Empty from "../../components/Empty.astro";
 import { formatDate } from "../../lib/dates";
-import { cachedEdition, type PublishedEdition } from "../../lib/server/results";
-import { cacheControl } from "../../lib/server/sanity-env";
+import { getResults } from "../../lib/sanity/content";
+import type { PublishedEdition } from "../../lib/results";
 
-export const prerender = false;
+export const getStaticPaths = (async () =>
+  (await getResults()).map((r) => ({ params: { id: String(r.id) }, props: { r } }))) satisfies GetStaticPaths;
 
-const id = Number(Astro.params.id);
-let r: PublishedEdition | null = null;
-let unavailable = false;
-try {
-  r = Number.isInteger(id) && id > 0 ? await cachedEdition(env.DB, id) : null;
-} catch (error) {
-  console.error(JSON.stringify({ event: "result.d1_error", error: String(error) }));
-  unavailable = true;
-}
-// An empty 404 makes Astro serve the site's own 404 page.
-if (!r && !unavailable) return new Response(null, { status: 404 });
-Astro.response.headers.set("Cache-Control", cacheControl(unavailable));
-if (unavailable) Astro.response.status = 503;
-
-const groups = r?.games.filter((g) => g.stage === "group") ?? [];
+const { r } = Astro.props as { r: PublishedEdition };
+const groups = r.games.filter((g) => g.stage === "group");
 // The playoffs first: the final is what people come for
 const rounds = [
-  { title: "Playoffs", games: r?.games.filter((g) => g.stage === "playoff") ?? [] },
+  { title: "Playoffs", games: r.games.filter((g) => g.stage === "playoff") },
   { title: "Games", games: groups },
 ];
-const awards = r?.awards.filter((a) => a.winners.length) ?? [];
+const awards = r.awards.filter((a) => a.winners.length);
 ---
 
 <Base
-  title={r ? `${r.name}, ${r.season}` : "Results"}
+  title={`${r.name}, ${r.season}`}
   card="kumite"
-  description={
-    r ? `${r.name}, ${r.season}: ${r.champions ? `${r.champions} are the champions.` : "the results."}` : "Results"
-  }
+  description={`${r.name}, ${r.season}: ${r.champions ? `${r.champions} are the champions.` : "the results."}`}
 >
-  {!r ? (
-    <div class="wrap page-body">
-      <Empty>
-        The result didn't load. Try again in a minute, or see <a href="/results/">all results</a>.
-      </Empty>
-    </div>
-  ) : (
-    <>
-      <PageHeader
-        eyebrow={`${r.season}${r.series ? ` · ${r.series.name}` : ""}`}
-        title={r.name}
-        lede={formatDate(r.heldOn)}
-      />
-      <div class="wrap page-body">
-        <section class="champions" data-reveal>
-          <p class="kicker">Champions</p>
-          <p class="team">
-            {r.championsCrest && <img src={`/api/crests/${r.championsCrest}`} alt="" width="64" height="64" />}
-            {r.champions ?? "Not decided"}
-          </p>
-        </section>
+  <PageHeader
+    eyebrow={`${r.season}${r.series ? ` · ${r.series.name}` : ""}`}
+    title={r.name}
+    lede={formatDate(r.heldOn)}
+  />
+  <div class="wrap page-body">
+    <section class="champions" data-reveal>
+      <p class="kicker">Champions</p>
+      <p class="team">
+        {r.championsCrest && <img src={r.championsCrest} alt="" width="64" height="64" />}
+        {r.champions ?? "Not decided"}
+      </p>
+    </section>
 
-        {awards.length > 0 && (
+    {awards.length > 0 && (
+      <section class="block" data-reveal>
+        <p class="kicker">Awards</p>
+        <ul class="awards">
+          {awards.map((a) => (
+            <li>
+              <span class="award">
+                <strong>{a.name}</strong>
+                {a.about && <span class="muted">{a.about}</span>}
+              </span>
+              <span class="winner">{a.winners.join(", ")}</span>
+            </li>
+          ))}
+        </ul>
+      </section>
+    )}
+
+    {r.table.length > 0 && groups.length > 0 && (
+      <section class="block" data-reveal>
+        <p class="kicker">The table</p>
+        <div class="table-scroll">
+          <table class="grid">
+            <thead>
+              <tr>
+                <th class="label" scope="col">
+                  Team
+                </th>
+                {["P", "W", "D", "L", "GF", "GA", "Pts"].map((h) => (
+                  <th class="label num" scope="col">
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {r.table.map((t) => (
+                <tr>
+                  <th scope="row">{t.name}</th>
+                  <td class="num">{t.p}</td>
+                  <td class="num">{t.w}</td>
+                  <td class="num">{t.d}</td>
+                  <td class="num">{t.l}</td>
+                  <td class="num">{t.gf}</td>
+                  <td class="num">{t.ga}</td>
+                  <td class="num">
+                    <strong>{t.pts}</strong>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    )}
+
+    {rounds.map(
+      (round) =>
+        round.games.length > 0 && (
           <section class="block" data-reveal>
-            <p class="kicker">Awards</p>
-            <ul class="awards">
-              {awards.map((a) => (
+            <p class="kicker">{round.title}</p>
+            <ol class="games">
+              {round.games.map((g) => (
                 <li>
-                  <span class="award">
-                    <strong>{a.name}</strong>
-                    {a.about && <span class="muted">{a.about}</span>}
+                  {g.name && <span class="label">{g.name}</span>}
+                  <span class={g.homeGoals > g.awayGoals ? "side won" : "side"}>{g.home}</span>
+                  <span class="score">
+                    {g.homeGoals}–{g.awayGoals}
                   </span>
-                  <span class="winner">{a.winners.join(", ")}</span>
+                  <span class={g.awayGoals > g.homeGoals ? "side away won" : "side away"}>{g.away}</span>
                 </li>
               ))}
-            </ul>
+            </ol>
           </section>
-        )}
+        ),
+    )}
 
-        {r.table.length > 0 && groups.length > 0 && (
-          <section class="block" data-reveal>
-            <p class="kicker">The table</p>
-            <div class="table-scroll">
-              <table class="grid">
-                <thead>
-                  <tr>
-                    <th class="label" scope="col">
-                      Team
-                    </th>
-                    {["P", "W", "D", "L", "GF", "GA", "Pts"].map((h) => (
-                      <th class="label num" scope="col">
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {r.table.map((t) => (
-                    <tr>
-                      <th scope="row">{t.name}</th>
-                      <td class="num">{t.p}</td>
-                      <td class="num">{t.w}</td>
-                      <td class="num">{t.d}</td>
-                      <td class="num">{t.l}</td>
-                      <td class="num">{t.gf}</td>
-                      <td class="num">{t.ga}</td>
-                      <td class="num">
-                        <strong>{t.pts}</strong>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </section>
-        )}
+    {r.scorers.length > 0 && (
+      <section class="block" data-reveal>
+        <p class="kicker">Scorers</p>
+        <div class="table-scroll">
+          <table class="grid">
+            <thead>
+              <tr>
+                <th class="label" scope="col">
+                  Player
+                </th>
+                <th class="label" scope="col">
+                  Team
+                </th>
+                <th class="label num" scope="col">
+                  Goals
+                </th>
+                <th class="label num" scope="col">
+                  Assists
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {r.scorers.map((s) => (
+                <tr>
+                  <th scope="row">{s.name}</th>
+                  <td>{s.team}</td>
+                  <td class="num">{s.goals}</td>
+                  <td class="num">{s.assists}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    )}
 
-        {rounds.map(
-          (round) =>
-            round.games.length > 0 && (
-              <section class="block" data-reveal>
-                <p class="kicker">{round.title}</p>
-                <ol class="games">
-                  {round.games.map((g) => (
-                    <li>
-                      {g.name && <span class="label">{g.name}</span>}
-                      <span class={g.homeGoals > g.awayGoals ? "side won" : "side"}>{g.home}</span>
-                      <span class="score">
-                        {g.homeGoals}–{g.awayGoals}
-                      </span>
-                      <span class={g.awayGoals > g.homeGoals ? "side away won" : "side away"}>{g.away}</span>
-                    </li>
-                  ))}
-                </ol>
-              </section>
-            ),
-        )}
+    <section class="block" data-reveal>
+      <p class="kicker">The teams</p>
+      <ul class="teams">
+        {r.teams.map((t) => (
+          <li>
+            <p class="team-name">
+              {t.crest && <img src={t.crest} alt="" width="32" height="32" loading="lazy" />}
+              {t.name}
+            </p>
+            <p class="muted">{t.players.join(", ")}</p>
+          </li>
+        ))}
+      </ul>
+    </section>
 
-        {r.scorers.length > 0 && (
-          <section class="block" data-reveal>
-            <p class="kicker">Scorers</p>
-            <div class="table-scroll">
-              <table class="grid">
-                <thead>
-                  <tr>
-                    <th class="label" scope="col">
-                      Player
-                    </th>
-                    <th class="label" scope="col">
-                      Team
-                    </th>
-                    <th class="label num" scope="col">
-                      Goals
-                    </th>
-                    <th class="label num" scope="col">
-                      Assists
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {r.scorers.map((s) => (
-                    <tr>
-                      <th scope="row">{s.name}</th>
-                      <td>{s.team}</td>
-                      <td class="num">{s.goals}</td>
-                      <td class="num">{s.assists}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </section>
-        )}
-
-        <section class="block" data-reveal>
-          <p class="kicker">The teams</p>
-          <ul class="teams">
-            {r.teams.map((t) => (
-              <li>
-                <p class="team-name">
-                  {t.crest && <img src={`/api/crests/${t.id}`} alt="" width="32" height="32" loading="lazy" />}
-                  {t.name}
-                </p>
-                <p class="muted">{t.players.join(", ")}</p>
-              </li>
-            ))}
-          </ul>
-        </section>
-
-        <p class="back">
-          <a class="more" href="/results/">
-            All results
-          </a>
-        </p>
-      </div>
-    </>
-  )}
+    <p class="back">
+      <a class="more" href="/results/">
+        All results
+      </a>
+    </p>
+  </div>
 </Base>
 
 <style>

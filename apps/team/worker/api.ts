@@ -41,6 +41,7 @@ import {
 } from "./people";
 import { createQuip, deleteQuip, updateQuip } from "./quips";
 import { teamsFrom, publishTeams, removeTeams, resetSession, sessionSignups } from "./teams";
+import { onTheWebsite, tournamentOfPath, wantRebuild, type WebsiteEnv } from "./website";
 import {
   createClubEvent,
   setClubEventCancelled,
@@ -67,7 +68,7 @@ import {
   updateVenue,
 } from "./schedule";
 
-export interface Env extends AuthEnv {
+export interface Env extends AuthEnv, Omit<WebsiteEnv, "DB" | "TEAM_ENV"> {
   /** "1", and only with TEAM_ENV "local" (tests, `TEAM_AUTO_ADMIN=1 npm run dev`): no session means the first admin. */
   TEAM_AUTO_ADMIN?: string;
   /** This deploy's version (wrangler.jsonc version_metadata): part of the bootstrap's ETag. */
@@ -942,6 +943,10 @@ export async function handleApi(
     // On the record (ADR 0095): what the change is to, before it
     const record = writes && hit.r.audit ? hit.r.audit : null;
     const before = record ? await record.subject(ctx) : undefined;
+    // A finished tournament's result is on the website's pages (ADR 0100): a change to it, or one that finishes it,
+    // wants a rebuild. Read before too, so deleting one or making it private counts.
+    const tournament = writes ? tournamentOfPath(url.pathname) : null;
+    const wasOnWebsite = tournament ? await onTheWebsite(env.DB, tournament) : false;
     const res = await hit.r.handle(ctx);
     if (record && res.ok) {
       const reply = (await res
@@ -956,6 +961,8 @@ export async function handleApi(
           to: after ?? null,
         });
     }
+    if (tournament && res.ok && (wasOnWebsite || (await onTheWebsite(env.DB, tournament))))
+      await wantRebuild(env.DB, now);
     if (writes && res.ok) {
       // A change: every member's bootstrap is out of date (ADR 0053)
       await bumpDataVersion(env.DB);

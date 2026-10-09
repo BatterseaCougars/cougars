@@ -1,25 +1,12 @@
 ---
-// Every tournament the club has played, newest first, live from the team app's D1 (ADR 0100): the champions and
-// award winners of each, linking to its full result.
-import { env } from "cloudflare:workers";
+// Every tournament the club has played, newest first, as of this build (ADR 0100): the champions and award winners
+// of each, linking to its full result. The team app starts a rebuild when a result changes.
 import Base from "../../layouts/Base.astro";
 import PageHeader from "../../components/PageHeader.astro";
 import Empty from "../../components/Empty.astro";
-import { cachedEditions, type PublishedSummary } from "../../lib/server/results";
-import { cacheControl } from "../../lib/server/sanity-env";
+import { getResults } from "../../lib/sanity/content";
 
-export const prerender = false;
-
-let results: PublishedSummary[] = [];
-let unavailable = false;
-try {
-  results = await cachedEditions(env.DB);
-} catch (error) {
-  console.error(JSON.stringify({ event: "results.d1_error", error: String(error) }));
-  unavailable = true;
-}
-Astro.response.headers.set("Cache-Control", cacheControl(unavailable));
-if (unavailable) Astro.response.status = 503;
+const results = await getResults();
 ---
 
 <Base title="Results" card="kumite" description="Every Cougars tournament: the champions, the scores and the awards.">
@@ -29,9 +16,7 @@ if (unavailable) Astro.response.status = 503;
     lede="Every tournament we've played: who won, who scored, who stopped them."
   />
   <div class="wrap page-body">
-    {unavailable ? (
-      <Empty>The results didn't load. Try again in a minute.</Empty>
-    ) : results.length === 0 ? (
+    {results.length === 0 ? (
       <Empty>
         No results yet. The first champions are crowned at the next <a href="/kumite/">Kumite</a>.
       </Empty>
@@ -46,9 +31,7 @@ if (unavailable) Astro.response.status = 503;
               </span>
               <span class="name">{r.name}</span>
               <span class="champions">
-                {r.championsCrest && (
-                  <img src={`/api/crests/${r.championsCrest}`} alt="" width="32" height="32" loading="lazy" />
-                )}
+                {r.championsCrest && <img src={r.championsCrest} alt="" width="32" height="32" loading="lazy" />}
                 {r.champions ? `Champions: ${r.champions}` : "No champions decided"}
               </span>
               {r.awards
