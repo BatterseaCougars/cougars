@@ -22,6 +22,8 @@ export interface Viewer {
   seesContacts: boolean;
   /** A draft night on the agenda, for whoever runs the draft (its captains see their own) */
   runsDraft: boolean;
+  /** Everyone's charges and payments (ADR 0007): who sees Unpaid fees or records payments */
+  seesDues: boolean;
 }
 
 // The viewer's columns, in the order they're bound
@@ -36,6 +38,7 @@ const VIEWER = [
   "sees_ratings",
   "sees_contacts",
   "runs_draft",
+  "sees_dues",
 ] as const;
 
 const bound = (v: Viewer) => [
@@ -49,6 +52,7 @@ const bound = (v: Viewer) => [
   Number(v.seesRatings),
   Number(v.seesContacts),
   Number(v.runsDraft),
+  Number(v.seesDues),
 ];
 
 /** A query's rows as one JSON array of objects, keyed by the query's column names, in the query's order. */
@@ -110,11 +114,17 @@ const PARTS = {
     "SELECT * FROM training_series ORDER BY id",
   ),
   sessions: rows(
-    "id seriesId heldOn movedFrom startTime endTime venueId venue mapUrl capacity note cancelledAt registerClosedAt",
+    "id seriesId heldOn movedFrom startTime endTime venueId venue mapUrl capacity note cancelledAt registerClosedAt feePence",
     `SELECT s.id, s.series_id seriesId, s.held_on heldOn, s.moved_from movedFrom, s.start_time startTime,
             s.end_time endTime, s.venue_id venueId, s.venue, s.map_url mapUrl, s.capacity, s.note,
-            s.cancelled_at cancelledAt, s.register_closed_at registerClosedAt
+            s.cancelled_at cancelledAt, s.register_closed_at registerClosedAt, s.fee_pence feePence
      FROM training_sessions s, viewer v WHERE s.held_on >= v.sessions_from ORDER BY s.held_on, s.id`,
+  ),
+  // A training's fee, from each date (ADR 0007)
+  seriesFees: rows(
+    "seriesId pence from",
+    `SELECT series_id seriesId, amount_pence pence, effective_from "from" FROM series_fees
+     ORDER BY series_id, effective_from`,
   ),
   sessionEntries: entries("attendance", "session_id", SESSIONS_SHOWN, "session"),
   sessionTeams: rows(
@@ -179,6 +189,33 @@ const PARTS = {
      FROM club_events ce, viewer v WHERE ce.ends_at >= v.now ORDER BY ce.starts_at`,
   ),
   eventEntries: entries("club_event_entries", "event_id", EVENTS_SHOWN, "event"),
+  // Dues (ADR 0007): your own charges, or everyone's for who sees Unpaid fees. Paid: in full, the last payment's day.
+  charges: rows(
+    "id memberId kind refId quarter title seriesId typeId startTime pence dueOn paidOn paidVia byHand",
+    `SELECT c.id, c.member_id memberId,
+            CASE WHEN c.session_id IS NOT NULL THEN 'session' WHEN c.tournament_id IS NOT NULL THEN 'tournament'
+              ELSE 'quarter' END kind,
+            COALESCE(c.session_id, c.tournament_id) refId, c.quarter, COALESCE(ts.name, t.name) title,
+            s.series_id seriesId, t.type_id typeId, COALESCE(s.start_time, ts.start_time, t.start_time) startTime,
+            c.amount_pence pence, c.due_on dueOn,
+            CASE WHEN paid.total >= c.amount_pence THEN paid.last_on END paidOn,
+            CASE WHEN paid.total >= c.amount_pence THEN paid.via END paidVia,
+            c.created_by IS NOT NULL byHand
+     FROM charges c, viewer v
+       LEFT JOIN training_sessions s ON s.id = c.session_id LEFT JOIN training_series ts ON ts.id = s.series_id
+       LEFT JOIN tournaments t ON t.id = c.tournament_id
+       LEFT JOIN (SELECT pa.charge_id, SUM(pa.amount_pence) total, MAX(p.received_on) last_on,
+                         (SELECT p2.via FROM payment_allocations pa2 JOIN payments p2 ON p2.id = pa2.payment_id
+                           WHERE pa2.charge_id = pa.charge_id ORDER BY p2.id DESC LIMIT 1) via
+                  FROM payment_allocations pa JOIN payments p ON p.id = pa.payment_id GROUP BY pa.charge_id) paid
+         ON paid.charge_id = c.id
+     WHERE v.sees_dues OR c.member_id = v.member_id
+     ORDER BY c.due_on DESC, c.id DESC`,
+  ),
+  subscriptionFees: rows(
+    "pence from",
+    `SELECT amount_pence pence, effective_from "from" FROM subscription_fees ORDER BY effective_from`,
+  ),
   quips: rows("id kind text", "SELECT id, kind, text FROM quips ORDER BY id"),
   settings: rows("live_refresh_seconds", "SELECT live_refresh_seconds FROM club_settings WHERE id = 1"),
   // What's on from today (ADR 0042). A draft night is for whoever runs the draft and that tournament's captains.

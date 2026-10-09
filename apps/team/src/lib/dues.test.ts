@@ -6,10 +6,16 @@ const charge = (over: Partial<Charge>): Charge => ({
   memberId: 1,
   kind: "session",
   refId: 1,
+  quarter: null,
+  title: null,
+  seriesId: null,
+  typeId: null,
+  startTime: null,
   pence: 1000,
   dueOn: "2026-10-02",
   paidOn: null,
   paidVia: null,
+  byHand: false,
   ...over,
 });
 

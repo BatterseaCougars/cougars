@@ -13,6 +13,22 @@ import { liveStream, notifyLive } from "./live";
 import { saveSettings, settingsFrom } from "./settings";
 import { addDevMail, devMailList, devToolsHere, removeDevMail } from "./devtools";
 import { setWinners } from "./awards";
+import {
+  addQuarterCharge,
+  chargeAttendance,
+  chargeDue,
+  chargeQuarters,
+  chargeState,
+  chargesFrom,
+  payAll,
+  payCharge,
+  removeCharge,
+  setSeriesFees,
+  setSubscriptionFee,
+  subscriptionFees,
+  unpaidOf,
+  unpayCharge,
+} from "./dues";
 import { ensureAgenda, fromRow as agendaItem, type AgendaRow } from "@cougars/shared/agenda";
 import { readClub, type Part, type Parts, type Viewer } from "./club";
 import { HttpError, body, json, sameOrigin } from "./http";
@@ -138,6 +154,8 @@ const SEES_REGISTER: readonly Action[] = [
   "manage:Tournament",
   "run:Draft",
 ];
+/** Everyone's charges and payments (ADR 0007). Anyone else sees only their own. */
+const SEES_DUES: readonly Action[] = ["read:Dues", "record:Payment"];
 const holdsAny = (c: Ctx, actions: readonly Action[]) =>
   c.actions.has("manage:all") || actions.some((a) => c.actions.has(a));
 
@@ -156,6 +174,7 @@ const viewerOf = (c: Ctx): Viewer => ({
   seesContacts: holdsAny(c, ["manage:Tournament"]),
   // A draft night on the agenda: for whoever runs the draft, and that tournament's captains
   runsDraft: can(c.actions, "run:Draft"),
+  seesDues: holdsAny(c, SEES_DUES),
 });
 
 /** Each part of the club: the rows it's made from (club.ts, read as this member may see them) and how. */
@@ -173,7 +192,7 @@ const SLICES = {
     },
   },
   venues: { parts: ["venues"], shape: (_c: Ctx, p: Parts) => venuesFrom(p.venues) },
-  series: { parts: ["series"], shape: (_c: Ctx, p: Parts) => seriesFrom(p.series) },
+  series: { parts: ["series", "seriesFees"], shape: (_c: Ctx, p: Parts) => seriesFrom(p.series, p.seriesFees) },
   // Each with its answers and published teams
   sessions: {
     parts: ["sessions", "sessionEntries", "sessionTeams"],
@@ -204,6 +223,12 @@ const SLICES = {
   clubEvents: {
     parts: ["clubEvents", "eventEntries"],
     shape: (_c: Ctx, p: Parts) => withEntries(clubEventsFrom(p.clubEvents), p.eventEntries),
+  },
+  // Dues (ADR 0007): your own charges, or everyone's for who sees Unpaid fees; and the quarterly rate
+  charges: { parts: ["charges"], shape: (_c: Ctx, p: Parts) => chargesFrom(p.charges) },
+  subscriptionFees: {
+    parts: ["subscriptionFees"],
+    shape: (_c: Ctx, p: Parts) => p.subscriptionFees as { pence: number; from: string }[],
   },
   quips: { parts: ["quips"], shape: (_c: Ctx, p: Parts) => p.quips as { id: number; kind: string; text: string }[] },
   // How often live pages check for updates (ADR 0072)
@@ -290,7 +315,7 @@ const ENTRY_ROUTES: Route[] = KINDS.flatMap(([path, kind, slice]): Route[] => [
     path: new RegExp(`^/api/${path}/(\\d+)/answer$`),
     audit: false,
     action: "signup:Event",
-    changes: [slice],
+    changes: slice === "clubEvents" ? [slice] : [slice, "charges"],
     // You, in or out
     handle: async (c) => {
       const b = await body(c.request);
@@ -305,7 +330,12 @@ const ENTRY_ROUTES: Route[] = KINDS.flatMap(([path, kind, slice]): Route[] => [
     audit: false,
     action: "update:Event",
     // A past session's line-up is what a player's "played" counts
-    changes: slice === "sessions" ? ["sessions", "members"] : [slice],
+    changes:
+      slice === "sessions"
+        ? ["sessions", "members", "charges"]
+        : slice === "tournaments"
+          ? [slice, "charges"]
+          : [slice],
     // An admin puts someone in, or takes them off
     handle: async (c) => {
       const { b, memberId } = await memberIdIn(c);
@@ -337,6 +367,8 @@ export const ROUTES: Route[] = [
       // The coming training sessions, on the day's first open; the rest of the day's opens skip it
       if (sessionsMadeOn !== c.today) {
         await ensureSessions(db, c.today);
+        // ...and whatever the new day makes due (ADR 0007), in case the hourly check hasn't run yet
+        await chargeDue(c.env, new Date(c.now));
         await sessionsMade(db, c.today);
       }
       const reply = json({
@@ -344,7 +376,7 @@ export const ROUTES: Route[] = [
         actions: [...c.actions],
         // Dev tools (ADR 0027): outside production, for whoever sets the club's settings
         devTools: devToolsHere(c.env) && (c.actions.has("manage:all") || c.actions.has("manage:Settings")),
-        // Screens on demo data (dues, fees, Upload): on dev and locally to try, never in production (#63)
+        // Screens on demo data (Upload): on dev and locally to try, never in production (#63)
         unfinished: devToolsHere(c.env),
         ...(await slices(c, Object.keys(SLICES) as Slice[])),
       });
@@ -389,7 +421,7 @@ export const ROUTES: Route[] = [
       about: (c) => ({ memberId: id(c) }),
     },
     action: "manage:Member",
-    changes: ["members"],
+    changes: ["members", "charges"],
     handle: async (c) => {
       const b = await body(c.request);
       if (typeof b.quarterly !== "boolean") throw new HttpError(400, "quarterly should be true or false.");
@@ -481,16 +513,28 @@ export const ROUTES: Route[] = [
     path: /^\/api\/series$/,
     audit: false,
     action: "manage:Training",
-    changes: ["series", "sessions"],
-    handle: async (c) => json(await createSeries(c.env.DB, await body(c.request), c.today), 201),
+    changes: ["series", "sessions", "charges"],
+    handle: async (c) => {
+      const b = await body(c.request);
+      const made = await createSeries(c.env.DB, b, c.today);
+      // A new training is free until whoever sets fees says otherwise
+      if (can(c.actions, "manage:Fees")) await setSeriesFees(c.env.DB, made.id, b.fees, c.actions);
+      return json(made, 201);
+    },
   },
   {
     method: "PUT",
     path: /^\/api\/series\/(\d+)$/,
     audit: false,
     action: "manage:Training",
-    changes: ["series", "sessions"],
-    handle: async (c) => (await updateSeries(c.env.DB, id(c), await body(c.request), c.today), ok()),
+    changes: ["series", "sessions", "charges"],
+    // Its fees too, for whoever sets fees (ADR 0007)
+    handle: async (c) => {
+      const b = await body(c.request);
+      await setSeriesFees(c.env.DB, id(c), b.fees, c.actions);
+      await updateSeries(c.env.DB, id(c), b, c.today);
+      return ok();
+    },
   },
   {
     method: "POST",
@@ -505,7 +549,7 @@ export const ROUTES: Route[] = [
     path: /^\/api\/sessions\/(\d+)\/cancelled$/,
     audit: false,
     action: "manage:Training",
-    changes: ["sessions", "members"],
+    changes: ["sessions", "members", "charges"],
     handle: async (c) => {
       const b = await body(c.request);
       if (typeof b.cancelled !== "boolean") throw new HttpError(400, "cancelled should be true or false.");
@@ -534,7 +578,7 @@ export const ROUTES: Route[] = [
     path: /^\/api\/tournaments$/,
     audit: false,
     action: "manage:Tournament",
-    changes: ["tournaments"],
+    changes: ["tournaments", "charges"],
     handle: async (c) => json(await createTournament(c.env.DB, await body(c.request)), 201),
   },
   {
@@ -542,7 +586,7 @@ export const ROUTES: Route[] = [
     path: /^\/api\/tournaments\/(\d+)$/,
     audit: false,
     action: "manage:Tournament",
-    changes: ["tournaments"],
+    changes: ["tournaments", "charges"],
     handle: async (c) => (await updateTournament(c.env.DB, id(c), await body(c.request)), ok()),
   },
   {
@@ -550,8 +594,8 @@ export const ROUTES: Route[] = [
     path: /^\/api\/tournaments\/(\d+)$/,
     audit: { event: "tournament.deleted", subject: (c) => tournamentSummary(c.env.DB, id(c)) },
     action: "manage:Tournament",
-    changes: ["tournaments"],
-    // Gone, with its teams, sign-ups, games and awards (Settings → Tournaments)
+    changes: ["tournaments", "charges"],
+    // Gone, with its teams, sign-ups, games, awards and charges (Settings → Tournaments)
     handle: async (c) => (await deleteTournament(c.env.DB, id(c)), ok()),
   },
   {
@@ -799,7 +843,7 @@ export const ROUTES: Route[] = [
     path: /^\/api\/sessions\/(\d+)\/reset$/,
     audit: { event: "session.reset", subject: (c) => sessionSignups(c.env.DB, id(c)) },
     action: "update:Event",
-    changes: ["sessions"],
+    changes: ["sessions", "charges"],
     // Start the session again: no sign-ups, no teams
     handle: async (c) => (await resetSession(c.env.DB, id(c)), ok()),
   },
@@ -832,7 +876,8 @@ export const ROUTES: Route[] = [
     path: /^\/api\/sessions\/(\d+)\/register$/,
     audit: false,
     action: "record:Attendance",
-    changes: ["sessions", "members"],
+    // Who came is who's charged (ADR 0007)
+    changes: ["sessions", "members", "charges"],
     // The register on the night: here or not
     handle: async (c) => {
       const { b, memberId } = await memberIdIn(c);
@@ -840,6 +885,91 @@ export const ROUTES: Route[] = [
       await mark(c.env.DB, id(c), memberId, b.here, c.memberId, c.now);
       return ok();
     },
+  },
+  // Dues (ADR 0007)
+  {
+    method: "POST",
+    path: /^\/api\/subscription-fees$/,
+    audit: { event: "fees.quarterly", subject: (c) => subscriptionFees(c.env.DB) },
+    action: "manage:Fees",
+    changes: ["subscriptionFees", "charges"],
+    // { pence, from }: the quarterly rate from a date
+    handle: async (c) => (await setSubscriptionFee(c.env.DB, await body(c.request)), ok()),
+  },
+  {
+    method: "POST",
+    path: /^\/api\/members\/(\d+)\/charges$/,
+    audit: {
+      event: "charge.added",
+      subject: async (c, reply) => (reply ? chargeState(c.env.DB, reply.id as number) : null),
+      about: (c) => ({ memberId: id(c) }),
+    },
+    action: "record:Payment",
+    changes: ["charges"],
+    // { quarter: "2026-Q3", pence? }: they owe for a quarter
+    handle: async (c) => json(await addQuarterCharge(c.env.DB, id(c), await body(c.request), c.memberId, c.now), 201),
+  },
+  {
+    method: "DELETE",
+    path: /^\/api\/charges\/(\d+)$/,
+    audit: {
+      event: "charge.removed",
+      subject: (c) => chargeState(c.env.DB, id(c)),
+      about: (c, reply) => ({ memberId: reply.memberId }),
+    },
+    action: "record:Payment",
+    changes: ["charges"],
+    // A quarter charged by hand by mistake
+    handle: async (c) => {
+      const was = await chargeState(c.env.DB, id(c));
+      await removeCharge(c.env.DB, id(c));
+      return json({ ok: true, memberId: was?.memberId });
+    },
+  },
+  {
+    method: "POST",
+    path: /^\/api\/charges\/(\d+)\/payment$/,
+    audit: {
+      event: "charge.paid",
+      subject: (c) => chargeState(c.env.DB, id(c)),
+      about: (c, reply) => ({ memberId: reply.memberId }),
+    },
+    action: "record:Payment",
+    changes: ["charges"],
+    // { via: "transfer" | "cash" }: paid
+    handle: async (c) => {
+      await payCharge(c.env.DB, id(c), await body(c.request), c.memberId, c.now);
+      return json({ ok: true, memberId: (await chargeState(c.env.DB, id(c)))?.memberId });
+    },
+  },
+  {
+    method: "DELETE",
+    path: /^\/api\/charges\/(\d+)\/payment$/,
+    audit: {
+      event: "charge.paid",
+      subject: (c) => chargeState(c.env.DB, id(c)),
+      about: (c, reply) => ({ memberId: reply.memberId }),
+    },
+    action: "record:Payment",
+    changes: ["charges"],
+    // Marked paid by mistake
+    handle: async (c) => {
+      await unpayCharge(c.env.DB, id(c));
+      return json({ ok: true, memberId: (await chargeState(c.env.DB, id(c)))?.memberId });
+    },
+  },
+  {
+    method: "POST",
+    path: /^\/api\/members\/(\d+)\/payments$/,
+    audit: {
+      event: "member.paid",
+      subject: (c) => unpaidOf(c.env.DB, id(c)),
+      about: (c) => ({ memberId: id(c) }),
+    },
+    action: "record:Payment",
+    changes: ["charges"],
+    // { via }: Mark all paid
+    handle: async (c) => (await payAll(c.env.DB, id(c), await body(c.request), c.memberId, c.now), ok()),
   },
   {
     method: "POST",
@@ -963,6 +1093,11 @@ export async function handleApi(
     }
     if (tournament && res.ok && (wasOnWebsite || (await onTheWebsite(env.DB, tournament))))
       await wantRebuild(env.DB, now);
+    if (writes && res.ok && hit.r.changes?.includes("charges")) {
+      // Who came, a fee or a quarterly membership changed: so may what people owe (ADR 0007)
+      await chargeAttendance(env.DB, ctx.today, ctx.now);
+      await chargeQuarters(env.DB, ctx.today, ctx.now);
+    }
     if (writes && res.ok) {
       // A change: every member's bootstrap is out of date (ADR 0053)
       await bumpDataVersion(env.DB);

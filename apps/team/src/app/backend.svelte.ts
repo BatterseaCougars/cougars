@@ -19,6 +19,8 @@ import {
   VENUES,
   AGENDA,
   SETTINGS,
+  CHARGES,
+  SUBSCRIPTION_FEES,
 } from "../demo/data";
 import type { Position, Slices } from "../demo/data";
 import type { Quip, QuipKind } from "../lib/quips";
@@ -63,6 +65,12 @@ const COPY: Record<keyof Slices, () => void> = {
   },
   agenda: () => {
     db.agenda = structuredClone(AGENDA);
+  },
+  charges: () => {
+    db.charges = structuredClone(CHARGES);
+  },
+  subscriptionFees: () => {
+    db.fees = structuredClone(SUBSCRIPTION_FEES);
   },
   // Only when it's changed: live pages' checks follow it, and would otherwise start again after every refresh
   settings: () => {
@@ -258,7 +266,26 @@ const seriesBody = (s: TrainingSeries) => ({
   goalieCapacity: s.goalieCapacity ?? null,
   public: s.public,
   active: s.active,
+  fees: s.fees,
 });
+// ─── Dues (ADR 0007) ───
+/** A charge is paid, by transfer or in cash. */
+export const payCharge = (chargeId: number, via: "transfer" | "cash") =>
+  save(() => api("POST", `/api/charges/${chargeId}/payment`, { via }), "");
+/** Marked paid by mistake. */
+export const unpayCharge = (chargeId: number) => save(() => api("DELETE", `/api/charges/${chargeId}/payment`), "");
+/** Everything a member owes, paid at once. */
+export const payAll = (memberId: number, via: "transfer" | "cash") =>
+  save(() => api("POST", `/api/members/${memberId}/payments`, { via }), "All paid");
+/** A member owes for a quarter ("2026-Q3"): at the quarterly rate then, unless an amount is given. */
+export const chargeQuarter = (memberId: number, quarter: string, pence?: number) =>
+  save(() => api("POST", `/api/members/${memberId}/charges`, { quarter, pence }), "Charged");
+/** A quarter charged by hand by mistake. */
+export const removeCharge = (chargeId: number) => save(() => api("DELETE", `/api/charges/${chargeId}`), "Taken off");
+/** The quarterly rate from a date. */
+export const setSubscriptionFee = (pence: number, from: string) =>
+  save(() => api("POST", "/api/subscription-fees", { pence, from }), "Rate set");
+
 export const createSeries = (s: TrainingSeries) =>
   save(() => api<{ id: number; slug: string }>("POST", "/api/series", seriesBody(s)), "Training added");
 export const updateSeries = (s: TrainingSeries) => save(() => api("PUT", `/api/series/${s.id}`, seriesBody(s)));

@@ -1,17 +1,27 @@
-// Dues (ADR 0007): every charge is one person for one session or tournament. What someone owes, what a session
+// Dues (ADR 0007): every charge is one person for one session, tournament or quarter. What someone owes, what a session
 // collected and Unpaid fees are all sums over charges. Pure, so the D1 queries can be checked against it.
 
 export interface Charge {
   id: number;
   memberId: number;
-  kind: "session" | "tournament";
-  /** The training session's or tournament's id. */
-  refId: number;
+  kind: "session" | "tournament" | "quarter";
+  /** The training session's or tournament's id; null for a quarter. */
+  refId: number | null;
+  /** A quarter's charge: "2026-Q4". */
+  quarter: string | null;
+  /** The training's or tournament's name; null for a quarter. */
+  title: string | null;
+  /** For its icon and colour: the training, or the tournament's series. */
+  seriesId: number | null;
+  typeId: number | null;
+  startTime: string | null;
   pence: number;
-  /** The day it was held: a charge is due from then. */
+  /** The day it was held (or the quarter began): a charge is due from then. */
   dueOn: string;
   paidOn: string | null;
   paidVia: "transfer" | "cash" | null;
+  /** Charged by an admin (a quarter), so it can be taken back. */
+  byHand: boolean;
 }
 
 /** A fee that applies from a date, going forward. */

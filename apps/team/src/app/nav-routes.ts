@@ -130,7 +130,6 @@ const STATIC_TAIL: Route[] = [
   },
   {
     id: "tab",
-    unfinished: true,
     path: "/me/tab",
     name: "Dues",
     tab: "more",
@@ -190,7 +189,6 @@ const STATIC_TAIL: Route[] = [
   },
   {
     id: "overdue",
-    unfinished: true,
     path: "/settings/overdue",
     name: "Unpaid fees",
     tab: "more",
@@ -203,7 +201,6 @@ const STATIC_TAIL: Route[] = [
   },
   {
     id: "fees",
-    unfinished: true,
     path: "/settings/fees",
     name: "Quarterly rate",
     tab: "more",

@@ -19,13 +19,9 @@ Two kinds of member are easy to confuse because both carry the club's name: **Co
 quarterly rate; **the Cougars** are the club's official team, who play together on one team called "Cougars" when
 training teams are made (as the old app did, `archive/team-manager`).
 
-Most of this is decided but **not built yet** (#46). What exists today: the
-`subscriptions` table, `members.cougar`, `members.payment_reference` and its rules, `tournament_types.default_fee_pence`
-and `tournaments.fee_pence`, and the register (`training_sessions.register_closed_at`, `attendance.attended` and
-`walk_in`). The dues screens (a member's tab, Unpaid fees, charges on the member sheet) run on demo data only
-(`apps/team/src/demo/dues.svelte.ts`, with the sums in `apps/team/src/lib/dues.ts`). `series_fees`, `subscription_fees`,
-`charges`, `payments`, `payment_allocations` and `training_sessions.fee_pence` are planned in
-docs/team-app-data-model.md but aren't in `db/schema.sql`, and nothing charges anyone yet.
+Built in #46: fees, charges, payments, a member's Dues, Unpaid fees and the charges on the member sheet all read and
+write D1 (`apps/team/worker/dues.ts`, with the sums in `apps/team/src/lib/dues.ts`). Not built yet: the bank-statement
+upload, reminder emails, and an override of one session's fee.
 
 ## Decision
 
@@ -43,16 +39,18 @@ docs/team-app-data-model.md but aren't in `db/schema.sql`, and nothing charges a
   gets it the next time they sign in. `packages/shared/payment-reference.ts` holds the rules and the SQL, used by both the
   Worker (`giveReference` in apps/team/worker/auth.ts) and the roster seed (scripts/lib/roster.mjs).
 
-**Fees** (not built)
+**Fees**
 
 - **Trainings have a fee that applies going forward**: a dated schedule per training (`series_fees`: amount,
-  effective_from). A session's fee is the one in force on its date, written onto the session
-  (`training_sessions.fee_pence`) when its register closes, so a later change never alters it. An admin can override
-  one session's fee.
+  effective_from), set in the training's editor. A session's fee is the one in force on its date, written onto the
+  session (`training_sessions.fee_pence`) the first time it charges anyone, so a later change never alters it. No fee
+  in force: nobody is charged, so the first fee's date decides how far back charging goes. (Overriding one session's
+  fee is not built.)
 - **Tournament types have a default fee; each edition has its own.** Scheduling an edition copies the type's default
   (`tournament_types.default_fee_pence` → `tournaments.fee_pence`), and the admin can change it there. (Built.)
-- The **quarterly rate** is its own dated schedule (`subscription_fees`), kept on Settings → Fees; there is no single
-  club-wide per-session fee. Fees are set with `manage:Fees`.
+- The **quarterly rate** is its own dated schedule (`subscription_fees`), kept on Settings → Quarterly rate; there is
+  no single club-wide per-session fee. Fees are set with `manage:Fees`: saving a training changes its fees only for
+  someone who holds it.
 
 **Quarterly Members and the Cougars**
 
@@ -65,16 +63,27 @@ docs/team-app-data-model.md but aren't in `db/schema.sql`, and nothing charges a
 - The two are independent: a Cougar may or may not be a Quarterly Member, and the other way round. In the app,
   "Cougar" always means the official team; quarterly membership is shown as "Quarterly".
 
-**Charges** (not built)
+**Charges**
 
-- **Attendance comes from the register**, not sign-ups: on the night one screen lists who signed up, marks no-shows
-  and adds walk-ins. Closing the register makes it final.
-- **A charge is one person for one session or tournament** at that fee (`charges`: member, session or tournament,
-  amount, due_on). Closing a register charges every pay-as-you-go attendee, walk-ins included; subscribers aren't
-  charged for training sessions. Tournament entrants are all charged, subscribers included.
-- A subscription is charged once, at the start of its quarter, by a quarterly Cron Trigger.
+- **Attendance comes from the register**: on the night one screen lists who signed up, marks no-shows and adds
+  walk-ins. Someone signed up counts as there unless marked a no-show.
+- **There is no closing the register: charges follow it** (#11). From a session's day, everyone in who isn't a no-show
+  (walk-ins included) is charged; ticking someone in charges them at once, unticking takes an unpaid charge off.
+  Anything that changes who came (a tick, a sign-up, an admin adding someone, a cancellation) works the charges out
+  again, and so does the hourly Cron Trigger, which is what charges a session's sign-ups on its day. A paid charge is
+  never taken off by this.
+- **A charge is one person for one session, tournament or quarter** (`charges`: member, session or tournament or
+  quarter `2026-Q4`, amount, due_on, created_by when made by hand). Quarterly Members aren't charged for training
+  sessions. Tournament entrants are all charged from its day, Quarterly Members included.
+- **Quarters are calendar quarters** (January, April, July, October). The hourly Cron Trigger charges each Quarterly
+  Member the rate in force for every quarter a subscription covers, up to the current one: due on the quarter's first
+  day, or the day they joined (joining mid-quarter pays the full quarter). A subscription taken back the day it was
+  made takes its unpaid charge with it.
+- **An admin can charge a member for a quarter by hand** (member sheet → Charge a quarter, `record:Payment`), at the
+  rate on its first day unless they change it: for someone who isn't a Quarterly Member in the app, or a quarter
+  missed. Only a charge made by hand can be taken back by hand; the rest follow who came or the subscription.
 
-**Payments** (not built)
+**Payments**
 
 - **Payments are marked against charges.** On a member's sheet an admin ticks what they paid for (transfer or cash),
   or "Mark all paid", and can untick a mistake; each tick is a payment (`payments`) allocated to that charge
@@ -86,10 +95,14 @@ docs/team-app-data-model.md but aren't in `db/schema.sql`, and nothing charges a
 
 - A member's **Dues**: what they owe, each session and tournament they were charged for and whether it's paid, and the
   bank details with their reference.
-- **What a session collected** is the sum of its paid charges, shown beside what it was due.
+- **What a session collected** is the sum of its paid charges, shown beside what it was due (the training's editor).
+- Who sees everyone's charges: `read:Dues` or `record:Payment`. Anyone else sees only their own (ADR 0036).
+- Marking a payment, taking one back, Mark all paid, a quarter charged or taken back by hand, and a new quarterly rate
+  are on the record ([0095](0095-audit-log.md)).
 - **Unpaid fees** (`read:Dues`), the club's aged-receivables report, is just the unpaid charges, summed per member and
   bucketed by each charge's age: **Due back** (0–30 days), **Late** (31–60), **Very late** (61–90), **Lost tape**
-  (over 90). Column totals, a drill-down to each member's charges, CSV export, and an optional reminder email.
+  (over 90). Column totals, a drill-down to each member's charges, and CSV export. A reminder email is planned, not
+  built.
 
 ## Consequences
 
@@ -102,14 +115,16 @@ docs/team-app-data-model.md but aren't in `db/schema.sql`, and nothing charges a
   it. Two people can look alike (`SAM T` and `SAM T2`), so matching is by the whole reference.
 - A reference doesn't follow a name change. If someone wants theirs changed, that's an edit by hand, and they must
   update their standing order.
-- Dues are only as good as the register; it has to be quick enough that someone does it every Friday. Reopening a
-  register to fix a mistake changes charges; corrections are audited ([0095](0095-audit-log.md)).
+- Dues are only as good as the register; it has to be quick enough that someone does it every Friday. With no closing
+  step, a late correction just changes the charges; a night already paid for stays charged until the payment is taken
+  back.
 - "Who's a Quarterly Member this quarter" is a date query on `subscriptions`; history comes for free, lapsing needs no
   update to the member, and pay-as-you-go needs no rows.
 - Marking payments one charge at a time is more taps for someone who pays for a month at once; "Mark all paid" covers
   it. Partial payments (£5 of £10) are possible through allocations but have no screen.
-- Still open: calendar quarters or a club season, what someone joining mid-quarter pays, concessions, a free first
-  session.
+- The day's charges for a session appear that morning, before anyone has played; dropping out takes them off.
+- Deleting a tournament deletes its charges, paid ones too.
+- Still open: concessions, a free first session.
 
 ## History
 
@@ -124,3 +139,6 @@ docs/team-app-data-model.md but aren't in `db/schema.sql`, and nothing charges a
 - 2026-10-07: The reference became the member's name, `COUGARS ADRIAN K`, instead of `COU-0004` from their id; the old
   references were cleared, as nobody had paid with one (was 0038).
 - 2026-10-08: Overdue Rentals was renamed Unpaid fees in the app and the roadmap; no record of its own.
+- 2026-10-09: Built (#46). No closing the register: charges follow who came, worked out after each change and hourly
+  (#11). Calendar quarters, charged by the hourly Cron Trigger; joining mid-quarter pays that quarter; an admin can
+  charge a quarter by hand. A session's fee is written on it when it first charges someone.

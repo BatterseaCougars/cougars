@@ -1,12 +1,9 @@
 // The app's working copy of the club's data, filled from D1 (demo/data.ts hydrate) and replaced by
-// app/backend.svelte.ts after each change. Fees, charges and payments still live here only: they come with dues
-// (#46).
-import { londonToday } from "../lib/dates";
-import type { Charge } from "../lib/dues";
+// app/backend.svelte.ts after each change.
 import type { Team } from "../lib/snake";
 import {
   AGENDA,
-  FEES,
+  CHARGES,
   MEMBERS,
   ONE_OFFS,
   QUIPS,
@@ -14,6 +11,7 @@ import {
   SERIES,
   SESSIONS,
   SETTINGS,
+  SUBSCRIPTION_FEES,
   TEAMS,
   TOURNAMENTS,
   TOURNAMENT_TYPES,
@@ -31,22 +29,13 @@ export const db = $state({
   agenda: structuredClone(AGENDA),
   roles: structuredClone(ROLES),
   members: structuredClone(MEMBERS),
-  fees: structuredClone(FEES),
+  /** The quarterly rate, from each date (ADR 0007). */
+  fees: structuredClone(SUBSCRIPTION_FEES),
   quips: structuredClone(QUIPS),
   /** How often live pages check for updates (ADR 0072). */
   settings: structuredClone(SETTINGS),
   /** Published teams, by session id. */
   teams: structuredClone(TEAMS) as Record<number, Team[]>,
   /** One person for one session or tournament, paid or not (ADR 0007). */
-  charges: [] as Charge[],
+  charges: structuredClone(CHARGES),
 });
-
-/** Mark a charge paid (transfer or cash), or take it back. */
-export function markPaid(chargeId: number, via: "transfer" | "cash") {
-  const c = db.charges.find((x) => x.id === chargeId);
-  if (c) Object.assign(c, { paidOn: londonToday(), paidVia: via });
-}
-export function markUnpaid(chargeId: number) {
-  const c = db.charges.find((x) => x.id === chargeId);
-  if (c) Object.assign(c, { paidOn: null, paidVia: null });
-}

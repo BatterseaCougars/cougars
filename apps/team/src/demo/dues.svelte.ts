@@ -1,4 +1,4 @@
-// What a charge was for, in words, and per-member and per-session sums over the store's charges.
+// What a charge was for, in words, and per-member and per-session sums over the store's charges (ADR 0007).
 import type { IconName } from "../app/shell/icons";
 import { londonISO } from "../lib/dates";
 import { collected, owed, type Charge } from "../lib/dues";
@@ -15,23 +15,26 @@ export interface ChargeLabel {
 
 export function labelFor(c: Charge): ChargeLabel {
   if (c.kind === "session") {
-    const session = db.sessions.find((s) => s.id === c.refId);
-    const series = db.series.find((s) => s.id === session?.seriesId);
+    const series = db.series.find((s) => s.id === c.seriesId);
     return {
-      title: series?.name ?? "Training",
-      at: londonISO(c.dueOn, session?.startTime ?? series?.startTime ?? "19:30"),
+      title: c.title ?? "Training",
+      at: londonISO(c.dueOn, c.startTime ?? "19:30"),
       icon: series?.icon ?? "stick",
       tone: series?.tone ?? "blue",
     };
   }
-  const t = db.tournaments.find((x) => x.id === c.refId);
-  const type = db.tournamentTypes.find((x) => x.id === t?.typeId);
-  return {
-    title: t?.name ?? "Tournament",
-    at: londonISO(c.dueOn, t?.startTime ?? "11:00"),
-    icon: type?.icon ?? "trophy",
-    tone: type?.tone ?? "red",
-  };
+  if (c.kind === "tournament") {
+    const type = db.tournamentTypes.find((x) => x.id === c.typeId);
+    return {
+      title: c.title ?? "Tournament",
+      at: londonISO(c.dueOn, c.startTime ?? "11:00"),
+      icon: type?.icon ?? "trophy",
+      tone: type?.tone ?? "red",
+    };
+  }
+  // "2026-Q4" → "Quarterly membership, Q4 2026"
+  const [year, q] = (c.quarter ?? "").split("-");
+  return { title: `Quarterly membership, ${q} ${year}`, at: londonISO(c.dueOn, "12:00"), icon: "pound", tone: "green" };
 }
 
 /** A member's charges, newest first. */

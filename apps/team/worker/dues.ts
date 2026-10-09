@@ -1,0 +1,350 @@
+// Dues (ADR 0007): fees, charges and payments. A charge is one person for one session, tournament or quarter. Session
+// and tournament charges follow who came, so they're worked out again after anything that changes it (a tick on the
+// register, a sign-up, a cancellation) and each hour, when a new day makes another session due: whoever came and isn't
+// charged is, and an unpaid charge for someone who no longer counts goes. A paid one always stays. Quarterly Members
+// are charged the quarterly rate for each quarter a subscription covers; an admin can charge a quarter by hand.
+import { all, first, run, type Param } from "@cougars/shared/d1";
+import { can, type Action } from "../src/access/actions";
+import { feeOn, type DatedFee } from "../src/lib/dues";
+import { londonToday } from "../src/lib/dates";
+import { HttpError } from "./http";
+import { bumpDataVersion } from "./version";
+
+// ─── Quarters ───
+
+/** "2026-Q4" for any day in October to December 2026. */
+export const quarterOf = (day: string) => `${day.slice(0, 4)}-Q${Math.floor((Number(day.slice(5, 7)) - 1) / 3) + 1}`;
+const QUARTER = /^(\d{4})-Q([1-4])$/;
+/** Its first day: 2026-Q4 → 2026-10-01. */
+export function quarterStart(q: string) {
+  const [, year, n] = q.match(QUARTER)!;
+  return `${year}-${String((Number(n) - 1) * 3 + 1).padStart(2, "0")}-01`;
+}
+/** The quarter after: 2026-Q4 → 2027-Q1. */
+function nextQuarter(q: string) {
+  const [, year, n] = q.match(QUARTER)!;
+  return n === "4" ? `${Number(year) + 1}-Q1` : `${year}-Q${Number(n) + 1}`;
+}
+
+// ─── Who owes what ───
+
+/** Whether a member's subscription covers a day (`day` is SQL for it): they're a Quarterly Member then. */
+const subscribed = (member: string, day: string) =>
+  `EXISTS (SELECT 1 FROM subscriptions sub WHERE sub.member_id = ${member} AND sub.starts_on <= ${day}
+     AND (sub.ends_on IS NULL OR sub.ends_on >= ${day}))`;
+const unpaid = "NOT EXISTS (SELECT 1 FROM payment_allocations pa WHERE pa.charge_id = c.id)";
+
+/** Who should be charged for a session: everyone in who wasn't a no-show (walk-ins too), but Quarterly Members. */
+const SESSIONS_DUE = `
+  SELECT a.member_id, s.id event_id, s.fee_pence amount, s.held_on due_on
+  FROM attendance a JOIN training_sessions s ON s.id = a.session_id
+  WHERE s.held_on <= ? AND s.cancelled_at IS NULL AND s.fee_pence > 0
+    AND a.signup = 'in' AND COALESCE(a.attended, 1) = 1 AND NOT ${subscribed("a.member_id", "s.held_on")}`;
+/** Who should be charged for a tournament: everyone in, Quarterly Members too. */
+const TOURNAMENTS_DUE = `
+  SELECT e.member_id, t.id event_id, t.fee_pence amount, t.held_on due_on
+  FROM tournament_entries e JOIN tournaments t ON t.id = e.tournament_id
+  WHERE t.held_on <= ? AND t.fee_pence > 0 AND e.signup = 'in'`;
+
+/** A training's fee on a session's day. */
+const SERIES_FEE = `(SELECT f.amount_pence FROM series_fees f WHERE f.series_id = s.series_id
+  AND f.effective_from <= s.held_on ORDER BY f.effective_from DESC LIMIT 1)`;
+
+/**
+ * Bring session and tournament charges in line with who came, as of today. Returns how many changed. A session takes
+ * its training's fee on its day the first time it charges anyone, and keeps it.
+ */
+export async function chargeAttendance(db: D1Database, today: string, now: string): Promise<number> {
+  let changed = 0;
+  const count = async (sql: string, params: Param[]) => (changed += (await run(db, sql, params)).meta.changes ?? 0);
+  await count(
+    `UPDATE training_sessions AS s SET fee_pence = ${SERIES_FEE}
+     WHERE s.fee_pence IS NULL AND s.held_on <= ? AND ${SERIES_FEE} > 0
+       AND EXISTS (SELECT 1 FROM attendance a WHERE a.session_id = s.id AND a.signup = 'in')`,
+    [today],
+  );
+  for (const [column, due] of [
+    ["session_id", SESSIONS_DUE],
+    ["tournament_id", TOURNAMENTS_DUE],
+  ]) {
+    await count(
+      `INSERT INTO charges (member_id, ${column}, amount_pence, due_on, created_at)
+       SELECT member_id, event_id, amount, due_on, ? FROM (${due}) WHERE true ON CONFLICT DO NOTHING`,
+      [now, today],
+    );
+    await count(
+      `DELETE FROM charges AS c WHERE c.${column} IS NOT NULL AND ${unpaid}
+         AND (c.member_id, c.${column}) NOT IN (SELECT member_id, event_id FROM (${due}))`,
+      [today],
+    );
+  }
+  return changed;
+}
+
+/**
+ * Charge Quarterly Members the quarterly rate for every quarter, up to this one, that a subscription covers: due on
+ * the quarter's first day, or the day they joined. Only where the rate in force then isn't nothing, so setting the
+ * first rate decides how far back it goes. A quarter charged by mistake (the subscription taken back) goes, unpaid.
+ */
+export async function chargeQuarters(db: D1Database, today: string, now: string): Promise<number> {
+  const fees = await subscriptionFees(db);
+  const subs = await all<{ member_id: number; starts_on: string; ends_on: string | null }>(
+    db,
+    "SELECT member_id, starts_on, ends_on FROM subscriptions WHERE starts_on <= ?",
+    [today],
+  );
+  const due = new Map<string, { memberId: number; quarter: string; dueOn: string; pence: number }>();
+  for (const s of subs) {
+    const last = s.ends_on && s.ends_on < today ? s.ends_on : today;
+    for (let q = quarterOf(s.starts_on); quarterStart(q) <= last; q = nextQuarter(q)) {
+      const dueOn = s.starts_on > quarterStart(q) ? s.starts_on : quarterStart(q);
+      const key = `${s.member_id} ${q}`;
+      const pence = feeOn(fees, dueOn);
+      const was = due.get(key);
+      if (pence > 0 && (!was || dueOn < was.dueOn)) due.set(key, { memberId: s.member_id, quarter: q, dueOn, pence });
+    }
+  }
+  let changed = 0;
+  for (const d of due.values())
+    changed +=
+      (
+        await run(
+          db,
+          `INSERT INTO charges (member_id, quarter, amount_pence, due_on, created_at) VALUES (?, ?, ?, ?, ?)
+           ON CONFLICT DO NOTHING`,
+          [d.memberId, d.quarter, d.pence, d.dueOn, now],
+        )
+      ).meta.changes ?? 0;
+  const auto = await all<{ id: number; member_id: number; quarter: string }>(
+    db,
+    `SELECT c.id, c.member_id, c.quarter FROM charges c WHERE c.quarter IS NOT NULL AND c.created_by IS NULL AND ${unpaid}`,
+  );
+  for (const c of auto)
+    if (!due.has(`${c.member_id} ${c.quarter}`)) {
+      await run(db, "DELETE FROM charges WHERE id = ?", [c.id]);
+      changed++;
+    }
+  return changed;
+}
+
+/** The hourly check (and the day's first open of the app): whatever a new day makes due. */
+export async function chargeDue(env: { DB: D1Database }, now: Date) {
+  const today = londonToday(now);
+  const changed =
+    (await chargeAttendance(env.DB, today, now.toISOString())) +
+    (await chargeQuarters(env.DB, today, now.toISOString()));
+  // Someone's dues changed: every member's bootstrap is out of date (ADR 0053)
+  if (changed) await bumpDataVersion(env.DB);
+}
+
+// ─── Fees ───
+
+const DAY = /^\d{4}-\d{2}-\d{2}$/;
+function datedFees(v: unknown): DatedFee[] {
+  if (!Array.isArray(v) || v.length > 100) throw new HttpError(400, "fees should be a list.");
+  const fees = v.map((f: { pence?: unknown; from?: unknown }) => {
+    if (!Number.isInteger(f?.pence) || (f.pence as number) < 0 || (f.pence as number) > 100_000)
+      throw new HttpError(400, "A fee should be a whole number of pence.");
+    if (typeof f.from !== "string" || !DAY.test(f.from)) throw new HttpError(400, "A fee needs a date it's from.");
+    return { pence: f.pence as number, from: f.from };
+  });
+  if (new Set(fees.map((f) => f.from)).size !== fees.length) throw new HttpError(400, "One fee per date.");
+  return fees.sort((a, b) => a.from.localeCompare(b.from));
+}
+
+/** A training's fees, oldest first. */
+export const seriesFees = (db: D1Database, id: number) =>
+  all<DatedFee>(
+    db,
+    "SELECT amount_pence pence, effective_from 'from' FROM series_fees WHERE series_id = ? ORDER BY effective_from",
+    [id],
+  );
+
+/**
+ * A training's fees, as its editor sends them: the whole list, each from a date. Only for whoever sets fees; anyone
+ * else's save of the training leaves them as they are, and may not change them.
+ */
+export async function setSeriesFees(db: D1Database, id: number, given: unknown, actions: ReadonlySet<Action>) {
+  if (given === undefined) return;
+  const fees = datedFees(given);
+  if (JSON.stringify(fees) === JSON.stringify(await seriesFees(db, id))) return;
+  if (!can(actions, "manage:Fees")) throw new HttpError(403, "Your role can't set fees.");
+  await run(db, "DELETE FROM series_fees WHERE series_id = ?", [id]);
+  for (const f of fees)
+    await run(db, "INSERT INTO series_fees (series_id, effective_from, amount_pence) VALUES (?, ?, ?)", [
+      id,
+      f.from,
+      f.pence,
+    ]);
+}
+
+/** The quarterly rate's history, oldest first. */
+export const subscriptionFees = (db: D1Database) =>
+  all<DatedFee>(db, "SELECT amount_pence pence, effective_from 'from' FROM subscription_fees ORDER BY effective_from");
+
+/** A new quarterly rate from a date (one already from that date is replaced). */
+export async function setSubscriptionFee(db: D1Database, o: Record<string, unknown>) {
+  const [fee] = datedFees([o]);
+  await run(
+    db,
+    `INSERT INTO subscription_fees (effective_from, amount_pence) VALUES (?, ?)
+     ON CONFLICT (effective_from) DO UPDATE SET amount_pence = excluded.amount_pence`,
+    [fee.from, fee.pence],
+  );
+}
+
+// ─── Charges by hand, and payments ───
+
+async function memberExists(db: D1Database, id: number) {
+  if (!(await first(db, "SELECT 1 FROM members WHERE id = ?", [id]))) throw new HttpError(404, "No such member.");
+}
+
+/** { quarter: "2026-Q3", pence? }: a member owes for a quarter, at the rate on its first day unless told. */
+export async function addQuarterCharge(
+  db: D1Database,
+  memberId: number,
+  o: Record<string, unknown>,
+  by: number,
+  now: string,
+) {
+  await memberExists(db, memberId);
+  if (typeof o.quarter !== "string" || !QUARTER.test(o.quarter))
+    throw new HttpError(400, "quarter should be like 2026-Q3.");
+  const dueOn = quarterStart(o.quarter);
+  const pence = o.pence == null ? feeOn(await subscriptionFees(db), dueOn) : o.pence;
+  if (!Number.isInteger(pence) || (pence as number) <= 0 || (pence as number) > 100_000)
+    throw new HttpError(400, "How much? There's no quarterly rate set for then.");
+  if (await first(db, "SELECT 1 FROM charges WHERE member_id = ? AND quarter = ?", [memberId, o.quarter]))
+    throw new HttpError(409, "They're already charged for that quarter.");
+  const res = await run(
+    db,
+    `INSERT INTO charges (member_id, quarter, amount_pence, due_on, created_at, created_by) VALUES (?, ?, ?, ?, ?, ?)`,
+    [memberId, o.quarter, pence as number, dueOn, now, by],
+  );
+  return { id: Number(res.meta.last_row_id) };
+}
+
+/**
+ * Take back a quarter charged by hand by mistake. Every other charge follows something: who came, or a quarterly
+ * membership, so that's what to change.
+ */
+export async function removeCharge(db: D1Database, id: number) {
+  const c = await first<{ byHand: number; paid: number }>(
+    db,
+    `SELECT c.created_by IS NOT NULL byHand, NOT ${unpaid} paid FROM charges c WHERE c.id = ?`,
+    [id],
+  );
+  if (!c) throw new HttpError(404, "No such charge.");
+  if (!c.byHand) throw new HttpError(409, "It follows who came, or their quarterly membership: change that instead.");
+  if (c.paid) throw new HttpError(409, "It's paid: mark it unpaid first.");
+  await run(db, "DELETE FROM charges WHERE id = ?", [id]);
+}
+
+const via = (o: Record<string, unknown>) => {
+  if (o.via !== "transfer" && o.via !== "cash") throw new HttpError(400, "via should be transfer or cash.");
+  return o.via;
+};
+
+/** One payment, received today, for what's left of each of these charges. */
+async function pay(
+  db: D1Database,
+  memberId: number,
+  charges: { id: number; left: number }[],
+  how: string,
+  by: number,
+  now: string,
+) {
+  const total = charges.reduce((s, c) => s + c.left, 0);
+  if (!charges.length) return;
+  const res = await run(
+    db,
+    `INSERT INTO payments (member_id, amount_pence, received_on, via, recorded_by, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
+    [memberId, total, londonToday(new Date(now)), how, by, now],
+  );
+  const payment = Number(res.meta.last_row_id);
+  for (const c of charges)
+    await run(db, "INSERT INTO payment_allocations (payment_id, charge_id, amount_pence) VALUES (?, ?, ?)", [
+      payment,
+      c.id,
+      c.left,
+    ]);
+}
+
+/** What's left to pay on each of a member's charges (or one charge), where anything is. */
+const owing = (db: D1Database, where: string, param: number) =>
+  all<{ id: number; member_id: number; left: number }>(
+    db,
+    `SELECT c.id, c.member_id, c.amount_pence - COALESCE((SELECT SUM(pa.amount_pence) FROM payment_allocations pa
+       WHERE pa.charge_id = c.id), 0) "left"
+     FROM charges c WHERE ${where} = ? AND "left" > 0 ORDER BY c.due_on, c.id`,
+    [param],
+  );
+
+/** { via }: a charge is paid, by transfer or in cash. */
+export async function payCharge(db: D1Database, id: number, o: Record<string, unknown>, by: number, now: string) {
+  const how = via(o);
+  if (!(await first(db, "SELECT 1 FROM charges WHERE id = ?", [id]))) throw new HttpError(404, "No such charge.");
+  const left = await owing(db, "c.id", id);
+  if (left.length) await pay(db, left[0].member_id, left, how, by, now);
+}
+
+/** { via }: Mark all paid, one payment for everything they owe. */
+export async function payAll(db: D1Database, memberId: number, o: Record<string, unknown>, by: number, now: string) {
+  const how = via(o);
+  await memberExists(db, memberId);
+  await pay(db, memberId, await owing(db, "c.member_id", memberId), how, by, now);
+}
+
+/** A mistake: the charge isn't paid after all. A payment that paid for nothing else goes with it. */
+export async function unpayCharge(db: D1Database, id: number) {
+  if (!(await first(db, "SELECT 1 FROM charges WHERE id = ?", [id]))) throw new HttpError(404, "No such charge.");
+  await run(db, "DELETE FROM payment_allocations WHERE charge_id = ?", [id]);
+  await run(db, "DELETE FROM payments WHERE id NOT IN (SELECT payment_id FROM payment_allocations)");
+}
+
+// ─── As the app reads them ───
+
+export interface ChargeJson {
+  id: number;
+  memberId: number;
+  kind: "session" | "tournament" | "quarter";
+  /** The session's or tournament's id; null for a quarter. */
+  refId: number | null;
+  quarter: string | null;
+  /** What it was for: the training or tournament's name; null for a quarter. */
+  title: string | null;
+  /** For its icon and colour: the training, or the tournament's series. */
+  seriesId: number | null;
+  typeId: number | null;
+  startTime: string | null;
+  pence: number;
+  dueOn: string;
+  /** Paid in full: the day, and how. */
+  paidOn: string | null;
+  paidVia: "transfer" | "cash" | null;
+  /** Charged by an admin, so it can be taken back. */
+  byHand: boolean;
+}
+
+/** Charges as read (club.ts). */
+export const chargesFrom = (rows: (Omit<ChargeJson, "byHand"> & { byHand: number })[]): ChargeJson[] =>
+  rows.map((r) => ({ ...r, byHand: Boolean(r.byHand) }));
+
+// ─── What the record compares (ADR 0095) ───
+
+/** A charge: who, what for, how much, and whether it's paid. */
+export const chargeState = (db: D1Database, id: number) =>
+  first<{ memberId: number; what: string; pence: number; dueOn: string; paid: string | null }>(
+    db,
+    `SELECT c.member_id memberId, COALESCE(c.quarter, ts.name, t.name) what, c.amount_pence pence, c.due_on dueOn,
+            (SELECT p.via FROM payment_allocations pa JOIN payments p ON p.id = pa.payment_id
+              WHERE pa.charge_id = c.id ORDER BY p.id DESC LIMIT 1) paid
+     FROM charges c LEFT JOIN training_sessions s ON s.id = c.session_id
+       LEFT JOIN training_series ts ON ts.id = s.series_id LEFT JOIN tournaments t ON t.id = c.tournament_id
+     WHERE c.id = ?`,
+    [id],
+  );
+
+/** What a member still owes, charge by charge. */
+export const unpaidOf = async (db: D1Database, memberId: number) =>
+  (await owing(db, "c.member_id", memberId)).map((c) => ({ id: c.id, left: c.left }));

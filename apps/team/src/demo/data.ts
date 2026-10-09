@@ -4,6 +4,7 @@ import type { Action } from "../access/actions";
 import type { AgendaRow, OneOff, Tournament, TournamentType, TrainingSeries, TrainingSession, Venue } from "./model";
 import type { Quip } from "../lib/quips";
 import type { Team } from "../lib/snake";
+import type { Charge, DatedFee } from "../lib/dues";
 
 export type Position = "F" | "D" | "G";
 export const POSITIONS: Record<Position, string> = { F: "Forward", D: "Defence", G: "Keeper" };
@@ -29,7 +30,7 @@ export const PLAYERS: Player[] = [];
 export let REAL_ID = 0;
 /** Dev tools are here (outside production, for whoever sets the club's settings; ADR 0027). */
 export let DEV_TOOLS = false;
-/** Screens still on demo data (dues, fees, Upload) are shown: dev and local only (#63). */
+/** Screens still on demo data (Upload) are shown: dev and local only (#63). */
 export let UNFINISHED = false;
 /** The role you run the app as day to day, if not your full one (ADR 0024). Read once by session.svelte.ts. */
 export let EVERYDAY_ROLE: number | null = null;
@@ -73,15 +74,17 @@ export interface MemberRow {
 }
 export const MEMBERS: MemberRow[] = [];
 
-/** The quarterly subscription, from a date. Set up with dues (#46). */
-export const FEES: { kind: string; amountPence: number; from: string; superseded?: boolean }[] = [];
+/** The quarterly rate, from each date (ADR 0007). */
+export const SUBSCRIPTION_FEES: DatedFee[] = [];
+/** Charges: your own, or everyone's if you see Unpaid fees (ADR 0007). */
+export const CHARGES: Charge[] = [];
 
 /** What /api/bootstrap sends (apps/team/worker/api.ts). */
 export interface Bootstrap {
   me: number;
   actions: Action[];
   devTools?: boolean;
-  /** Screens still on demo data (dues, fees, Upload) are shown: not in production (#63). */
+  /** Screens still on demo data (Upload) are shown: not in production (#63). */
   unfinished?: boolean;
   /** The role the app opens as, when it isn't your full one (ADR 0024). */
   everydayRole: number | null;
@@ -112,6 +115,8 @@ export interface Bootstrap {
   /** What's on from today (ADR 0042). */
   agenda: AgendaRow[];
   settings: { liveRefreshSeconds: number };
+  charges: Charge[];
+  subscriptionFees: DatedFee[];
 }
 
 /** Home's lines, from D1. */
@@ -174,6 +179,8 @@ export function applySlices(b: Slices) {
   if (b.clubEvents) fill(ONE_OFFS, b.clubEvents);
   if (b.agenda) fill(AGENDA, b.agenda);
   if (b.settings) Object.assign(SETTINGS, b.settings);
+  if (b.charges) fill(CHARGES, b.charges);
+  if (b.subscriptionFees) fill(SUBSCRIPTION_FEES, b.subscriptionFees);
 }
 
 /** The old app's names: the Cougar players' team is "Cougars", the rest are colours (archive/team-manager). */

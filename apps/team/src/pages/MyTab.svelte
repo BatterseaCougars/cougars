@@ -19,7 +19,7 @@
     <p class="eyebrow">{owed > 0 ? "You owe" : "All square"}</p>
     <p class="display amount num" class:zero={owed <= 0}>{pounds(owed)}</p>
     <p class="hint">
-      {unpaid.length ? `${unpaid.length} ${unpaid.length === 1 ? "session" : "sessions"} not paid yet` : "Nothing owed"}
+      {unpaid.length ? `${unpaid.length} not paid yet` : "Nothing owed"}
     </p>
   </header>
 

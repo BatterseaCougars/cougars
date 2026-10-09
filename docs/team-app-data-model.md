@@ -68,13 +68,13 @@ each session and tournament, payments are marked against charges, and Unpaid fee
 | Table                 | Columns                                                                                                                                      |
 | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
 | `series_fees`         | series_id, amount_pence, effective_from (a training's fee, going forward)                                                                    |
-| `subscription_fees`   | amount_pence, effective_from (the quarterly subscription)                                                                                    |
+| `subscription_fees`   | amount_pence, effective_from (the quarterly rate)                                                                                            |
 | `subscriptions`       | member_id, starts_on, ends_on (a Quarterly Member while one covers the date; none: pay as you go, [ADR 0007](adr/0007-dues-and-payments.md)) |
-| `charges`             | member_id, session_id or tournament_id or quarter, amount_pence, due_on, voided_at                                                           |
-| `payments`            | member_id, amount_pence, received_on, via (transfer/cash), reference, recorded_by                                                            |
+| `charges`             | member_id, session_id or tournament_id or quarter (2026-Q4), amount_pence, due_on, created_at, created_by (made by hand)                     |
+| `payments`            | member_id, amount_pence, received_on, via (transfer/cash), recorded_by, created_at                                                           |
 | `payment_allocations` | payment_id, charge_id, amount_pence                                                                                                          |
 
-Also: `training_sessions.fee_pence` (written when the register closes, or an admin's override),
+Also: `training_sessions.fee_pence` (written when the session first charges someone),
 `tournament_types.default_fee_pence`, `tournaments.fee_pence` (copied from the type's default when scheduled).
 
 ## Club

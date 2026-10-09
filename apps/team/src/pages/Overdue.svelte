@@ -11,7 +11,7 @@
   const rows = $derived(
     aged(db.charges, londonToday()).map((r) => ({
       ...r,
-      player: PLAYERS.find((p) => p.id === r.memberId)!,
+      player: PLAYERS.find((p) => p.id === r.memberId) ?? { id: r.memberId, name: "Someone who's left" },
       reference: referenceFor(r.memberId),
     })),
   );
@@ -19,6 +19,23 @@
   const grand = $derived(totals.reduce((a, b) => a + b, 0));
   const max = $derived(Math.max(1, ...totals));
   const tone = ["", "amber", "red", "red"];
+
+  /** The report as a spreadsheet: one row per member, a column per bucket. */
+  function exportCsv() {
+    const cell = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;
+    const money = (p: number) => (p / 100).toFixed(2);
+    const lines = [
+      ["Name", "Reference", ...BUCKETS.map((b, i) => `${b} (${BUCKET_HINT[i]})`), "Total"],
+      ...rows.map((r) => [r.player.name, r.reference, ...r.amounts.map(money), money(r.total)]),
+      ["Total", "", ...totals.map(money), money(grand)],
+    ];
+    const blob = new Blob([lines.map((l) => l.map(cell).join(",")).join("\r\n")], { type: "text/csv" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `unpaid-fees-${londonToday()}.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
 </script>
 
 <div class="page">
@@ -62,10 +79,11 @@
     {/each}
   </div>
 
-  <div class="actions">
-    <button class="btn outline">Export CSV</button>
-    <button class="btn outline">Send reminders</button>
-  </div>
+  {#if rows.length}
+    <div class="actions">
+      <button class="btn outline" onclick={exportCsv}>Export CSV</button>
+    </div>
+  {/if}
 </div>
 
 <style>

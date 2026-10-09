@@ -14,7 +14,7 @@
   import { phone } from "../../lib/viewport.svelte";
   import { can } from "../../access/actions";
   import { db } from "../../demo/store.svelte";
-  import { UNFINISHED, emailFor } from "../../demo/data";
+  import { emailFor } from "../../demo/data";
   import {
     elevated,
     everydayName,
@@ -194,11 +194,9 @@
           </div>
           <div class="sep" role="separator"></div>
           <button class="item" role="menuitem" onclick={() => go("/me")}><Icon name="user" size={16} /> Profile</button>
-          {#if UNFINISHED}
-            <button class="item" role="menuitem" onclick={() => go("/me/tab")}
-              ><Icon name="pound" size={16} /> Dues</button
-            >
-          {/if}
+          <button class="item" role="menuitem" onclick={() => go("/me/tab")}
+            ><Icon name="pound" size={16} /> Dues</button
+          >
           {#if hasEveryday()}
             <div class="sep" role="separator"></div>
             <button class="item" role="menuitem" onclick={() => (toggleMode(), close())}>

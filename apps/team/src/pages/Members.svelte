@@ -5,7 +5,7 @@
   // stays in view. Teammates is the everyday view (cards), for everyone.
   import PageHeader from "../lib/PageHeader.svelte";
   import { can } from "../access/actions";
-  import { UNFINISHED, emailFor, phoneFor, type MemberRow } from "../demo/data";
+  import { emailFor, phoneFor, type MemberRow } from "../demo/data";
   import { owedBy } from "../demo/dues.svelte";
   import { granted } from "../demo/session.svelte";
   import { db } from "../demo/store.svelte";
@@ -19,6 +19,7 @@
   import type { ColDef } from "ag-grid-community";
 
   const ratings = $derived(can(granted(), "read:Rating"));
+  const seesDues = $derived(can(granted(), "read:Dues") || can(granted(), "record:Payment"));
   // Adding someone to the club (ADR 0069)
   let adding = $state(false);
   let filter = $state<"all" | "F" | "D" | "G">("all");
@@ -53,8 +54,8 @@
       valueGetter: (p) => (p.data?.plan === "Subscription" ? "Quarterly" : "Pay as you go"),
     },
     { headerName: "Played", valueGetter: (p) => p.data?.player.played ?? 0, type: "numericColumn" },
-    // Dues are still on demo data: not in production (#63)
-    ...(UNFINISHED
+    // What each owes (ADR 0007): for whoever sees everyone's dues
+    ...(seesDues
       ? [
           {
             headerName: "Owes",

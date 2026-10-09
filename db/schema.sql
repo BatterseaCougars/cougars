@@ -126,6 +126,9 @@ CREATE TABLE training_sessions (
   note TEXT,
   cancelled_at TEXT,
   register_closed_at TEXT,
+  -- What a session costs (ADR 0007): the series' fee on its day, written when it first charges someone, so a later
+  -- change to the fee never alters it
+  fee_pence INTEGER,
   UNIQUE (series_id, held_on)
 );
 
@@ -298,6 +301,61 @@ CREATE TABLE subscriptions (
 );
 
 CREATE INDEX subscriptions_member ON subscriptions (member_id);
+
+-- Dues (ADR 0007): a training's fee, and the quarterly rate, each from a date going forward
+CREATE TABLE series_fees (
+  series_id INTEGER NOT NULL REFERENCES training_series (id) ON DELETE CASCADE,
+  effective_from TEXT NOT NULL,
+  amount_pence INTEGER NOT NULL,
+  PRIMARY KEY (series_id, effective_from)
+);
+
+CREATE TABLE subscription_fees (
+  effective_from TEXT PRIMARY KEY,
+  amount_pence INTEGER NOT NULL
+);
+
+-- One person for one session, tournament or quarter (2026-Q4). Session and tournament charges follow who came
+-- (dues.ts); a quarter is charged by the hourly check, or by an admin by hand (created_by).
+CREATE TABLE charges (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  member_id INTEGER NOT NULL REFERENCES members (id) ON DELETE CASCADE,
+  session_id INTEGER REFERENCES training_sessions (id) ON DELETE CASCADE,
+  tournament_id INTEGER REFERENCES tournaments (id) ON DELETE CASCADE,
+  quarter TEXT,
+  amount_pence INTEGER NOT NULL,
+  due_on TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  created_by INTEGER REFERENCES members (id),
+  CHECK ((session_id IS NOT NULL) + (tournament_id IS NOT NULL) + (quarter IS NOT NULL) = 1)
+);
+
+CREATE INDEX charges_member ON charges (member_id);
+CREATE UNIQUE INDEX charges_session ON charges (session_id, member_id) WHERE session_id IS NOT NULL;
+CREATE UNIQUE INDEX charges_tournament ON charges (tournament_id, member_id) WHERE tournament_id IS NOT NULL;
+CREATE UNIQUE INDEX charges_quarter ON charges (quarter, member_id) WHERE quarter IS NOT NULL;
+
+-- Money in, by transfer or cash, and the charges it paid for
+CREATE TABLE payments (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  member_id INTEGER NOT NULL REFERENCES members (id) ON DELETE CASCADE,
+  amount_pence INTEGER NOT NULL,
+  received_on TEXT NOT NULL,
+  via TEXT NOT NULL,
+  recorded_by INTEGER REFERENCES members (id),
+  created_at TEXT NOT NULL
+);
+
+CREATE INDEX payments_member ON payments (member_id);
+
+CREATE TABLE payment_allocations (
+  payment_id INTEGER NOT NULL REFERENCES payments (id) ON DELETE CASCADE,
+  charge_id INTEGER NOT NULL REFERENCES charges (id) ON DELETE CASCADE,
+  amount_pence INTEGER NOT NULL,
+  PRIMARY KEY (payment_id, charge_id)
+);
+
+CREATE INDEX payment_allocations_charge ON payment_allocations (charge_id);
 
 CREATE TABLE login_challenges (
   id INTEGER PRIMARY KEY AUTOINCREMENT,

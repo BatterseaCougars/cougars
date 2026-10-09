@@ -93,7 +93,7 @@ interface SeriesRow {
   active: number;
 }
 
-const seriesJson = (s: SeriesRow) => ({
+const seriesJson = (s: SeriesRow, fees: { seriesId: number; pence: number; from: string }[]) => ({
   id: s.id,
   slug: s.slug,
   name: s.name,
@@ -113,12 +113,13 @@ const seriesJson = (s: SeriesRow) => ({
   goalieCapacity: s.goalie_capacity,
   public: Boolean(s.public),
   active: Boolean(s.active),
-  // Fees per session come with dues (T4)
-  fees: [] as { pence: number; from: string }[],
+  // The fee per session, from each date (ADR 0007)
+  fees: fees.filter((f) => f.seriesId === s.id).map(({ pence, from }) => ({ pence, from })),
 });
 
-/** Training series as read (club.ts). */
-export const seriesFrom = (rows: SeriesRow[]) => rows.map(seriesJson);
+/** Training series as read (club.ts), each with its fees. */
+export const seriesFrom = (rows: SeriesRow[], fees: { seriesId: number; pence: number; from: string }[]) =>
+  rows.map((s) => seriesJson(s, fees));
 
 /** Make each active series' sessions up to the horizon. Dates already made (even cancelled or moved) are skipped. */
 export async function ensureSessions(db: D1Database, today: string) {

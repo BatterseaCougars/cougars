@@ -6,7 +6,7 @@
   import Icon from "../app/shell/Icon.svelte";
   import PageHeader from "../lib/PageHeader.svelte";
   import { ACTIONS, type Action } from "../access/actions";
-  import { formatDayDate, formatTime } from "../lib/dates";
+  import { formatDayDate, formatTime, pounds } from "../lib/dates";
 
   interface Entry {
     id: number;
@@ -45,6 +45,11 @@
   const label = (a: unknown) => (typeof a === "string" && a in ACTIONS ? ACTIONS[a as Action] : String(a));
   const list = (v: unknown) => (Array.isArray(v) && v.length ? v.map(label).join(", ") : "nothing");
   const str = (v: unknown) => (typeof v === "string" && v ? v : "none");
+  const pence = (v: unknown) => (typeof v === "number" ? pounds(v) : "?");
+  const rates = (v: unknown) =>
+    Array.isArray(v) && v.length
+      ? v.map((f: { pence: number; from: string }) => `${pounds(f.pence)} from ${f.from}`).join(", ")
+      : "none";
 
   /** The entry in plain words: who, then what. Changes carry what they were (`from`) and are (`to`), ADR 0095. */
   function said(e: Entry): string {
@@ -75,6 +80,22 @@
         return `${who} changed ${about}'s sign-in email: ${str(d.from)} → ${str(d.to)}`;
       case "member.quarterly":
         return d.to ? `${who} made ${about} a Quarterly Member` : `${who} ended ${about}'s quarterly membership`;
+      // Dues (ADR 0007): a charge reads { memberId, what (a training, tournament or quarter), pence, dueOn, paid }
+      case "charge.paid": {
+        const c = (to ?? from) as Record<string, unknown> | null;
+        const what = `${str(c?.what)} on ${str(c?.dueOn)}`;
+        return to?.paid
+          ? `${who} marked ${about}'s ${what} paid (${str(to.paid)})`
+          : `${who} took back ${about}'s payment for ${what}`;
+      }
+      case "member.paid":
+        return `${who} marked everything ${about} owed paid (${Array.isArray(d.from) ? d.from.length : 0} charges)`;
+      case "charge.added":
+        return `${who} charged ${about} ${pence(to?.pence)} for ${str(to?.what)}`;
+      case "charge.removed":
+        return `${who} took back ${about}'s charge for ${str(from?.what)}`;
+      case "fees.quarterly":
+        return `${who} changed the quarterly rate: ${rates(d.from)} → ${rates(d.to)}`;
       case "role.created":
         return `${who} made the role ${str(to?.name)}: ${list(to?.actions)}`;
       case "role.updated":

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { shortName, shortNameOf } from "../lib/names";
   import { can } from "../access/actions";
-  import { PLAYERS, UNFINISHED, referenceFor } from "../demo/data";
+  import { PLAYERS, referenceFor } from "../demo/data";
   import { owedBy } from "../demo/dues.svelte";
   import { granted, me } from "../demo/session.svelte";
   import { db } from "../demo/store.svelte";
@@ -241,19 +241,19 @@
     </div>
     <h1 class="display poster">{hello}</h1>
     <!-- Your dues, every visit: red until it's paid, then a quiet all-clear in the same space -->
-    {#if UNFINISHED}<a class="owing" class:clear={owed <= 0} href="/me/tab">
-        <span class="owing-icon" aria-hidden="true"><Icon name="pound" size={20} /></span>
-        <span class="owing-text">
-          {#if owed > 0}
-            <span class="owing-head">You owe the club <strong class="display num">{pounds(owed)}</strong></span>
-            <span class="owing-sub">Bank transfer, reference <strong>{referenceFor(who.id)}</strong></span>
-          {:else}
-            <span class="owing-head">You're all paid up</span>
-            <span class="owing-sub">Your reference is <strong>{referenceFor(who.id)}</strong></span>
-          {/if}
-        </span>
-        <span class="owing-cta">{owed > 0 ? "Settle up" : "Dues"} <Icon name="chevronRight" size={16} /></span>
-      </a>{/if}
+    <a class="owing" class:clear={owed <= 0} href="/me/tab">
+      <span class="owing-icon" aria-hidden="true"><Icon name="pound" size={20} /></span>
+      <span class="owing-text">
+        {#if owed > 0}
+          <span class="owing-head">You owe the club <strong class="display num">{pounds(owed)}</strong></span>
+          <span class="owing-sub">Bank transfer, reference <strong>{referenceFor(who.id)}</strong></span>
+        {:else}
+          <span class="owing-head">You're all paid up</span>
+          <span class="owing-sub">Your reference is <strong>{referenceFor(who.id)}</strong></span>
+        {/if}
+      </span>
+      <span class="owing-cta">{owed > 0 ? "Settle up" : "Dues"} <Icon name="chevronRight" size={16} /></span>
+    </a>
   </header>
 
   {#if nudges.length || liveDrafts.length || draftNews.length}
@@ -309,12 +309,10 @@
               <span>Add to calendar</span>
             </button>
             <!-- The club's bank details and your reference, on Dues -->
-            {#if UNFINISHED}
-              <a class="status" href="/me/tab">
-                <Icon name="pound" size={18} />
-                <span>Payment info</span>
-              </a>
-            {/if}
+            <a class="status" href="/me/tab">
+              <Icon name="pound" size={18} />
+              <span>Payment info</span>
+            </a>
           </div>
         {/snippet}
       </EventCard>

@@ -14,16 +14,22 @@
   import PlayerCard from "./PlayerCard.svelte";
   import {
     attendanceOf,
+    chargeQuarter,
     markHere,
+    payAll as payEverything,
     saveContact,
     saveMember,
     setQuarterly,
     type AttendanceRow,
   } from "../app/backend.svelte";
-  import { POSITIONS, UNFINISHED, emailFor, phoneFor, referenceFor, type Position } from "../demo/data";
+  import { POSITIONS, emailFor, phoneFor, referenceFor, type Position } from "../demo/data";
   import { chargesFor, owedBy } from "../demo/dues.svelte";
-  import { db, markPaid } from "../demo/store.svelte";
+  import { db } from "../demo/store.svelte";
+  import { granted } from "../demo/session.svelte";
+  import { can } from "../access/actions";
   import ChargeRow from "./ChargeRow.svelte";
+  import Drawer from "./Drawer.svelte";
+  import { feeOn } from "./dues";
   import { formatDayDate, londonISO, londonToday, pounds } from "./dates";
   import { initials } from "./initials";
   import Select from "./Select.svelte";
@@ -197,8 +203,36 @@
   const owed = $derived(owedBy(memberId));
   const paidTotal = $derived(paid.reduce((s, c) => s + c.pence, 0));
 
-  function payAll(via: "transfer" | "cash") {
-    for (const c of unpaid) markPaid(c.id, via);
+  // Dues (ADR 0007): who sees Unpaid fees sees a member's charges; who records payments marks them
+  const perms = $derived(granted());
+  const seesDues = $derived(can(perms, "read:Dues") || can(perms, "record:Payment"));
+  const recordsPayments = $derived(can(perms, "record:Payment"));
+  const payAll = (via: "transfer" | "cash") => payEverything(memberId, via);
+
+  // Charging a quarter by hand: this one or one of the last four, at the quarterly rate then unless changed
+  const quarterKey = (n: number) => `${Math.floor(n / 4)}-Q${(n % 4) + 1}`;
+  const quarterName = (n: number) => `Q${(n % 4) + 1} ${Math.floor(n / 4)}`;
+  const quarterStartOf = (n: number) => `${Math.floor(n / 4)}-${String((n % 4) * 3 + 1).padStart(2, "0")}-01`;
+  let charging = $state(false);
+  let chargeWhich = $state(String(thisQuarter));
+  let chargeAmount = $state("");
+  const chargeOptions = $derived(
+    [0, 1, 2, 3, 4].map((back) => {
+      const n = thisQuarter - back;
+      const taken = charges.some((c) => c.quarter === quarterKey(n));
+      return { value: String(n), label: `${quarterName(n)}${taken ? " (charged)" : ""}`, disabled: taken };
+    }),
+  );
+  function startCharge() {
+    chargeWhich = chargeOptions.find((o) => !o.disabled)?.value ?? String(thisQuarter);
+    chargeAmount = String(feeOn(db.fees, quarterStartOf(Number(chargeWhich))) / 100 || "");
+    charging = true;
+  }
+  async function addQuarter(e: SubmitEvent) {
+    e.preventDefault();
+    const pence = Math.round(Number(chargeAmount) * 100);
+    if (!pence || pence < 0) return;
+    if (await chargeQuarter(memberId, quarterKey(Number(chargeWhich)), pence)) charging = false;
   }
 
   // Opening is one turn: the tapped card lifts, grows towards the middle and turns edge-on; the panel carries the
@@ -536,7 +570,7 @@
             </div>
           </section>
 
-          {#if UNFINISHED}
+          {#if seesDues}
             <section class="in">
               <div class="head-row">
                 <h2>Fees</h2>
@@ -546,7 +580,7 @@
               </div>
               <div class="head-row">
                 <h3 class="eyebrow">Not paid yet</h3>
-                {#if unpaid.length > 1}
+                {#if recordsPayments && unpaid.length > 1}
                   <span class="seg sm" role="group" aria-label="Mark everything paid">
                     <button onclick={() => payAll("transfer")}>All paid · transfer</button>
                     <button onclick={() => payAll("cash")}>Cash</button>
@@ -554,18 +588,51 @@
                 {/if}
               </div>
               <div class="list">
-                {#each unpaid as c (c.id)}<ChargeRow charge={c} editable />{:else}<p class="row hint">
+                {#each unpaid as c (c.id)}<ChargeRow charge={c} editable={recordsPayments} />{:else}<p class="row hint">
                     All square.
                   </p>{/each}
               </div>
               <h3 class="eyebrow">Paid</h3>
               <div class="list">
-                {#each paid as c (c.id)}<ChargeRow charge={c} editable />{:else}<p class="row hint">
+                {#each paid as c (c.id)}<ChargeRow charge={c} editable={recordsPayments} />{:else}<p class="row hint">
                     Nothing paid yet.
                   </p>{/each}
               </div>
-              {#if paid.length}<p class="hint">Tap Paid to take a payment back if it was marked by mistake.</p>{/if}
+              {#if recordsPayments}
+                <div class="head-row">
+                  <p class="hint">
+                    {#if paid.length}Tap Paid to take a payment back if it was marked by mistake.{/if}
+                  </p>
+                  <button class="btn sm" aria-haspopup="dialog" onclick={startCharge}>
+                    <Icon name="plus" size={16} />Charge a quarter
+                  </button>
+                </div>
+              {/if}
             </section>
+            <Drawer bind:open={charging} title="Charge a quarter" sub={member.player.name}>
+              <form class="form" onsubmit={addQuarter}>
+                <div class="field">
+                  Quarter
+                  <Select
+                    id="charge-quarter"
+                    aria-label="Quarter"
+                    bind:value={chargeWhich}
+                    options={chargeOptions}
+                    onchange={(v) =>
+                      (chargeAmount = String(feeOn(db.fees, quarterStartOf(Number(v))) / 100 || chargeAmount))}
+                  />
+                </div>
+                <label class="field">
+                  Amount (£)
+                  <input class="input num" inputmode="decimal" required bind:value={chargeAmount} />
+                </label>
+                <p class="hint">
+                  Due from the quarter's first day. Quarterly Members are charged each quarter on their own; this is for
+                  anyone else, or a quarter they missed.
+                </p>
+                <button class="btn primary">Charge</button>
+              </form>
+            </Drawer>
           {/if}
         </div>
       {/if}

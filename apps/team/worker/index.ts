@@ -1,6 +1,7 @@
 // The team app's Worker (ADR 0022): the JSON API under /api, and the built app for everything else (the assets
 // binding falls back to index.html, so the app's own router takes any path).
 import { handleApi, type Env } from "./api";
+import { chargeDue } from "./dues";
 import { checkUsage } from "./usage";
 import { rebuildWebsite } from "./website";
 // The live hub (ADR 0072): Cloudflare finds the Durable Object class here
@@ -48,7 +49,11 @@ export default {
     const now = new Date(controller.scheduledTime);
     // Every five minutes (wrangler.jsonc triggers): a wanted website rebuild, once it's quiet (ADR 0100)
     if (controller.cron === "*/5 * * * *") await rebuildWebsite(env, now);
-    // Hourly: warn the admins before the free allowance runs out (ADR 0059)
-    else await checkUsage(env, now);
+    // Hourly: charge what a new day or quarter makes due (ADR 0007), and warn the admins before the free allowance
+    // runs out (ADR 0059)
+    else {
+      await chargeDue(env, now);
+      await checkUsage(env, now);
+    }
   },
 } satisfies ExportedHandler<Env & { ASSETS: Fetcher }>;

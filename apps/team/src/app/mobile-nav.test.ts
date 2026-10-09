@@ -60,7 +60,7 @@ describe("buildRoutes", () => {
   });
 
   it("leaves out screens that run on demo data unless they're switched on (#63)", () => {
-    const unfinished = ["/me/tab", "/settings/fees", "/settings/overdue", "/more/upload"];
+    const unfinished = ["/more/upload"];
     const paths = (config: NavConfig) => buildRoutes(config).map((r) => r.path);
     expect(paths(one).filter((p) => unfinished.includes(p))).toEqual([]);
     expect(

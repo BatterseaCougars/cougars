@@ -14,8 +14,9 @@
   import PlacePicker from "./PlacePicker.svelte";
   import { formatDayDate, londonISO, londonToday, pounds } from "./dates";
   import { feeOn } from "./dues";
-  import { UNFINISHED } from "../demo/data";
   import { collectedFor } from "../demo/dues.svelte";
+  import { granted } from "../demo/session.svelte";
+  import { can } from "../access/actions";
   import { WEEKDAYS, addDays, describeRule, weekdayOf } from "./recurrence";
 
   const DAY_NAMES = { mon: "Mon", tue: "Tue", wed: "Wed", thu: "Thu", fri: "Fri", sat: "Sat", sun: "Sun" };
@@ -59,6 +60,10 @@
     const s = selected === "new" ? blank() : db.series.find((x) => x.id === selected);
     form = s ? structuredClone($state.snapshot(s)) : null;
   });
+
+  // Dues (ADR 0007): whoever sets fees sets a training's; whoever sees dues sees what each night collected
+  const setsFees = $derived(can(granted(), "manage:Fees"));
+  const seesDues = $derived(can(granted(), "read:Dues") || can(granted(), "record:Payment"));
 
   // The fee, going forward: a new amount applies from its date; sessions already held keep theirs (ADR 0007).
   const current = $derived(form ? feeOn(form.fees, londonToday()) : 0);
@@ -223,7 +228,7 @@
                     form && (form.goalieCapacity = e.currentTarget.value === "" ? null : Number(e.currentTarget.value))}
                 />
               </label>
-              {#if UNFINISHED}
+              {#if setsFees}
                 <label class="field span-3">
                   Fee per session (£)
                   <input class="input num" inputmode="decimal" bind:value={feeAmount} />
@@ -234,11 +239,11 @@
               {/if}
               <div class="span-12 tuck">
                 <p class="hint small">
-                  Leave places empty for no limit.{#if UNFINISHED}
+                  Leave places empty for no limit.{#if setsFees}
                     {current ? `${pounds(current)} now.` : "Free now."} A new fee applies from its date; sessions already
                     held keep theirs. Subscribers aren't charged.{/if}
                 </p>
-                {#if UNFINISHED && form.fees.length > 1}
+                {#if setsFees && form.fees.length > 1}
                   <p class="hint small">
                     {#each [...form.fees].reverse() as f, i (f.from)}{i ? " · " : ""}{pounds(f.pence)} from {fullDate(
                         f.from,
@@ -352,7 +357,7 @@
                   <p class="hint">Cancelling keeps the session, so whoever signed up can be told.</p>
                 </section>
               {/if}
-              {#if UNFINISHED && held.length}
+              {#if seesDues && held.length}
                 <section class="nights">
                   <h2>Held</h2>
                   <div class="nights-grid">
@@ -365,7 +370,7 @@
                         <span class="collected num" class:short={c.paid < c.due}>
                           <strong>{pounds(c.paid)}</strong> / {pounds(c.due)}
                         </span>
-                        <span class="sub num">{session.attended?.length ?? 0} came</span>
+                        <span class="sub num">{session.going.length - (session.noShows?.length ?? 0)} came</span>
                         <span class="sub num">
                           {c.paidPeople} of {c.people} paid · {pounds(session.feePence ?? 0)} each
                         </span>
