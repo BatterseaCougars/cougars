@@ -2,7 +2,7 @@
 // cards under it, so it reads as the thing it opened from, grown, not a box of some other size. The column is the
 // page's frame less its gutters, at the reading width unless the page is .full (app.css). Phones keep the panel full
 // screen, so this only gives --col-left and --col-width for the desktop CSS to use. Read when the panel is created,
-// before it's laid out, so its opening motion starts from the right box.
+// before it's laid out, so its opening motion starts from the right box, and again when the window is resized.
 const READING_REM = 52;
 
 export function column(): { left: number; width: number } | null {

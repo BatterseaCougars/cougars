@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { goesBy, matchesName, shortNameOf } from "./names";
   import { MEMBERS, type Player } from "../demo/data";
   import type { Tournament } from "../demo/model";
   import Icon from "../app/shell/Icon.svelte";
@@ -25,12 +26,12 @@
   const active = $derived(
     MEMBERS.filter((m) => m.status === "active")
       .map((m) => m.player)
-      .sort((a, b) => a.name.localeCompare(b.name)),
+      .sort((a, b) => goesBy(a).localeCompare(goesBy(b))),
   );
-  const found = (p: Player) => search.length < 2 || p.name.toLowerCase().includes(search.toLowerCase());
+  const found = (p: Player) => search.length < 2 || matchesName(p, search);
   const byId = (id: number) => active.find((p) => p.id === id);
   const teamLabel = (i: number) =>
-    tournament.teams[i].name || `Team ${byId(tournament.teams[i].captainMemberId ?? 0)?.name.split(" ")[0] ?? ""}`;
+    tournament.teams[i].name || `Team ${shortNameOf(byId(tournament.teams[i].captainMemberId ?? 0))}`;
 
   const on = $derived(team.players.flatMap((p) => (p.memberId ? (byId(p.memberId) ?? []) : [])).filter(found));
   const free = $derived(

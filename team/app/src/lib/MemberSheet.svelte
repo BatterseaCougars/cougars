@@ -1,11 +1,12 @@
 <script lang="ts">
+  import { goesBy, shortName } from "./names";
   // A member, opened for an admin (Teammates: a tap on their card or row, or a link to /more/teammates/:id). It
   // fills the space the page has, beside the dock and under the top bar (on a phone, the whole screen), the way
   // Gwenda's editors do: a header with who they are and a close button top right, then a body that scrolls on its
   // own. Details and attendance on the left, money on the right; one column when it's narrow. The card they were
-  // tapped on turns away as it opens, and back as it closes. Their details are a draft until Save, in a footer that
-  // stays at the bottom (as Gwenda's editors have); closing with changes asks first. Attendance and fees are records
-  // kept as you tap them, not details, so they save at once.
+  // tapped on turns away as it opens, and back as it closes. Their details and attendance are a draft until Save, in
+  // a footer that stays at the bottom (as Gwenda's editors have); closing with changes asks first. Fees (marking a
+  // charge paid) still save as they're tapped.
   import { onMount, tick } from "svelte";
   import Icon from "../app/shell/Icon.svelte";
   import { pageColumnStyle } from "./page-column";
@@ -28,7 +29,15 @@
   import Select from "./Select.svelte";
 
   // Opens in the page's own column (desktop), the same width as the cards under it
-  const colStyle = pageColumnStyle();
+  // …measured again when the window changes size, so it keeps to the page as the page reflows
+  let colStyle = $state(pageColumnStyle());
+  let settle: ReturnType<typeof setTimeout> | undefined;
+  function remeasure() {
+    colStyle = pageColumnStyle();
+    // The page's sides ease across when the window crosses a width (the settings list grows): again once they land
+    clearTimeout(settle);
+    settle = setTimeout(() => (colStyle = pageColumnStyle()), 400);
+  }
   let {
     memberId,
     source,
@@ -57,12 +66,15 @@
   let saved = $state(current());
   let draft = $state(current());
   const tidyName = (n: string) => n.trim().replace(/\s+/g, " ");
+  // Attendance taps, held until Save too: a session's id → whether they came
+  let marks = $state<Record<number, boolean>>({});
   const ratingOk = $derived(Number.isInteger(draft.rating) && draft.rating >= 0 && draft.rating <= 100);
   const changed = $derived(
     tidyName(draft.name) !== saved.name ||
       (Object.keys(saved) as (keyof typeof saved)[]).some(
         (k) => k !== "name" && String(draft[k]).trim() !== String(saved[k]),
-      ),
+      ) ||
+      Object.keys(marks).length > 0,
   );
   let busy = $state(false);
   const canSave = $derived(changed && ratingOk && !!tidyName(draft.name) && !busy);
@@ -93,10 +105,18 @@
       }
       if (d.email !== saved.email || d.phone !== saved.phone)
         results.push(await saveContact(memberId, d.email, d.phone));
+      // Each Friday tapped, through the register's rules (a sign-up becomes a no-show or back, anyone else is
+      // added or taken off)
+      for (const [sessionId, here] of Object.entries(marks))
+        results.push(await markHere(Number(sessionId), memberId, here));
       // A failed save says so (the shell's note) and reloads the club; the draft stays, to try again
       if (results.includes(null)) return false;
       saved = current();
       draft = current();
+      if (Object.keys(marks).length) {
+        marks = {};
+        await load(memberId, year);
+      }
       return true;
     } finally {
       busy = false;
@@ -104,12 +124,12 @@
   }
   function discard() {
     draft = { ...saved };
+    marks = {};
     asking = false;
   }
 
   // Their attendance, a quarter at a time (Jan–Mar, Apr–Jun…), from the first quarter any training ran to this one.
-  // Tap a Friday to say whether they came; it goes through the register's rules (a sign-up becomes a no-show or
-  // back, anyone else is added or taken off).
+  // Tap a Friday to say whether they came; it shows at once and is sent with Save.
   const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   const today = londonToday();
   const thisYear = Number(today.slice(0, 4));
@@ -136,7 +156,10 @@
   const months = $derived(
     [0, 1, 2].map((k) => {
       const m = firstMonth + k;
-      const days = (attendance ?? []).filter((r) => Number(r.heldOn.slice(5, 7)) - 1 === m).reverse();
+      const days = (attendance ?? [])
+        .filter((r) => Number(r.heldOn.slice(5, 7)) - 1 === m)
+        .reverse()
+        .map(asMarked);
       return [MONTHS[m], days] as const;
     }),
   );
@@ -151,15 +174,21 @@
     return { label: "Not there", kind: "" };
   }
 
-  async function toggleCame(r: AttendanceRow) {
-    if (r.cancelled) return;
+  // A row as it will be once saved: ticking makes them in and here; unticking a sign-up makes a no-show, and a
+  // walk-in comes off
+  function asMarked(r: AttendanceRow): AttendanceRow {
+    const here = marks[r.sessionId];
+    if (here === undefined) return r;
+    if (here) return { ...r, signup: "in", attended: true };
+    return r.walkIn ? { ...r, signup: null, attended: null, walkIn: false } : { ...r, attended: false };
+  }
+  function toggleCame(r: AttendanceRow) {
+    const was = attendance?.find((x) => x.sessionId === r.sessionId);
+    if (!was || was.cancelled) return;
     const here = !came(r);
-    // Show it at once; the server's word follows. Unticking a sign-up makes a no-show; anyone else comes off.
-    if (here) Object.assign(r, { signup: "in", attended: true });
-    else if (r.walkIn) Object.assign(r, { signup: null, attended: null, walkIn: false });
-    else r.attended = false;
-    await markHere(r.sessionId, memberId, here);
-    await load(memberId, year);
+    // Back to how it was saved: nothing to send
+    if (here === came(was)) delete marks[r.sessionId];
+    else marks[r.sessionId] = here;
   }
 
   const charges = $derived(chargesFor(memberId));
@@ -299,7 +328,7 @@
   }
 </script>
 
-<svelte:window {onkeydown} />
+<svelte:window {onkeydown} onresize={remeasure} />
 
 <div class="sheet-layer" class:closing use:portal>
   <button class="scrim" aria-label="Close" tabindex="-1" onclick={close}></button>
@@ -321,14 +350,14 @@
     style={colStyle}
     role="dialog"
     aria-modal="true"
-    aria-label={member.player.name}
+    aria-label={goesBy(member.player)}
     tabindex="-1"
     bind:this={panel}
   >
     <!-- The header is the player: who they are, then their details in one row -->
     <header class="panel-head">
       <div class="who">
-        <span class="avatar big">{initials(member.player.name)}</span>
+        <span class="avatar big">{initials(goesBy(member.player))}</span>
         <div class="titles">
           <p class="eyebrow">
             Member · {POSITIONS[draft.position]}{draft.plan === "Subscription" ? " · Quarterly" : ""}
@@ -344,7 +373,10 @@
               onkeydown={(e) => e.key === "Enter" && e.currentTarget.blur()}
             />
           </div>
-          <p class="sub">{emailFor(member.player)} · <span class="num">{referenceFor(memberId)}</span></p>
+          <p class="sub">
+            {#if goesBy(member.player) !== member.player.name}Goes by {goesBy(member.player)} ·
+            {/if}{emailFor(member.player)} · <span class="num">{referenceFor(memberId)}</span>
+          </p>
         </div>
         <button class="btn ghost icon close" aria-label="Close" onclick={close}>
           <Icon name="x" size={18} />
@@ -540,7 +572,7 @@
     <!-- Always at the bottom: Save and Discard for their details; closing with changes asks here -->
     <footer class="panel-foot" class:asking>
       <p class="foot-note hint" role="status">
-        {#if asking}Save your changes to {saved.name.split(" ")[0]}?{:else if !ratingOk}A rating is a whole number, 0 to
+        {#if asking}Save your changes to {shortName(member.player)}?{:else if !ratingOk}A rating is a whole number, 0 to
           100{:else if changed}Unsaved changes{/if}
       </p>
       {#if asking}

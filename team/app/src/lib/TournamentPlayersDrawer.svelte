@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { goesBy, matchesName } from "./names";
   import { MEMBERS, type Player } from "../demo/data";
   import Icon from "../app/shell/Icon.svelte";
   import Drawer from "./Drawer.svelte";
@@ -20,9 +21,9 @@
   const active = $derived(
     MEMBERS.filter((m) => m.status === "active")
       .map((m) => m.player)
-      .sort((a, b) => a.name.localeCompare(b.name)),
+      .sort((a, b) => goesBy(a).localeCompare(goesBy(b))),
   );
-  const found = (p: Player) => search.length < 2 || p.name.toLowerCase().includes(search.toLowerCase());
+  const found = (p: Player) => search.length < 2 || matchesName(p, search);
   const inIt = $derived(active.filter((p) => going.includes(p.id) && !captains.has(p.id) && found(p)));
   const others = $derived(active.filter((p) => !going.includes(p.id) && !captains.has(p.id) && found(p)));
 </script>

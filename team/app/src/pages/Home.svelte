@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { shortName, shortNameOf } from "../lib/names";
   import { can } from "../access/actions";
   import { PLAYERS, referenceFor } from "../demo/data";
   import { owedBy } from "../demo/dues.svelte";
@@ -185,7 +186,7 @@
   const hello = $derived.by(() => {
     const set = lines(slot(new Date(), nexts[0]?.session.heldOn === londonToday(), visits));
     const line = set[Math.floor(roll * set.length)]?.text ?? "{name}";
-    return fill(line, { name: who.name.split(" ")[0], visits, day: series?.shortName ?? "training night" });
+    return fill(line, { name: shortName(who), visits, day: series?.shortName ?? "training night" });
   });
 
   // The locker room has a word for you until you answer, and another once you have.
@@ -226,7 +227,7 @@
     ids
       .filter((id) => id !== who.id)
       .slice(0, 3)
-      .map((id) => PLAYERS.find((p) => p.id === id)?.name.split(" ")[0])
+      .map((id) => shortNameOf(PLAYERS.find((p) => p.id === id)))
       .join(", ");
 </script>
 

@@ -3,6 +3,7 @@
   // the team's shown, with a way back to them all; yours is also My team (no teamId: the one you're on). Its captain
   // (or an admin) edits its name and logo behind Edit, in a sheet (no name: "Team Dan", after them; no logo: the
   // initials). A draft's players only show once it's closed, to anyone outside it (ADR 0070).
+  import { goesByOf, shortNameOf } from "../lib/names";
   import EmptyState from "../lib/EmptyState.svelte";
   import { db } from "../demo/store.svelte";
   import { PLAYERS } from "../demo/data";
@@ -40,7 +41,7 @@
   const team = $derived(index >= 0 ? teams[index] : undefined);
   const byId = (id: number | null) => (id ? PLAYERS.find((p) => p.id === id) : undefined);
   const captain = $derived(byId(team?.captainMemberId ?? null));
-  const fallback = $derived(`Team ${captain?.name.split(" ")[0] ?? ""}`);
+  const fallback = $derived(`Team ${shortNameOf(captain)}`);
   const isCaptain = $derived(!!team && team.captainMemberId === me().id);
   // An admin edits any team here: its name and logo as its captain does, and who's on it (TeamDrawer, ADR 0066)
   const admin = $derived(can(granted(), "manage:Tournament"));
@@ -78,7 +79,7 @@
       <div class="who">
         <h2 class="display">{team.name || fallback}</h2>
         <p class="hint">
-          Captain {captain?.name ?? ""}{isCaptain ? " (you)" : ""}{#if !drafting}
+          Captain {goesByOf(captain)}{isCaptain ? " (you)" : ""}{#if !drafting}
             · {team.players.length + 1} {team.players.length ? "players" : "player so far"}{/if}
         </p>
       </div>
@@ -109,7 +110,7 @@
           <li class="row">
             <span class="c"></span>
             <span class="name"
-              >{m?.name ?? p.name}{#if p.memberId === me().id}<small>you</small>{/if}</span
+              >{goesByOf(m) || p.name}{#if p.memberId === me().id}<small>you</small>{/if}</span
             >
             {#if m}<span class="pos">{m.position}</span>{/if}
           </li>

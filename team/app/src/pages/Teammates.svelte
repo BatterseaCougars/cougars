@@ -1,8 +1,9 @@
 <script lang="ts">
-  // Teammates: the club's active players. Everyone sees trading cards, Cougars first; tap one to turn it over.
+  // Teammates: the club's active players. Everyone sees trading cards, A to Z; tap one to turn it over.
   // Someone who manages members also gets the join requests to approve, and a tap on a card opens everything about
   // them (MemberSheet). The table of everyone is Settings → Members.
   // A link to /more/teammates/:id (Unpaid fees, a training's card) opens here with that card up.
+  import { goesBy, matchesName } from "../lib/names";
   import PageHeader from "../lib/PageHeader.svelte";
   import { can } from "../access/actions";
   import type { Player } from "../demo/data";
@@ -32,15 +33,9 @@
   const pending = $derived(db.members.filter((m) => m.status === "pending"));
   const active = $derived(db.members.filter((m) => m.status === "active"));
   const shown = $derived(
-    active
-      .filter((m) => filter === "all" || m.player.position === filter)
-      .filter((m) => !query.trim() || m.player.name.toLowerCase().includes(query.trim().toLowerCase())),
+    active.filter((m) => filter === "all" || m.player.position === filter).filter((m) => matchesName(m.player, query)),
   );
-  const byCard = $derived(
-    [...shown].sort(
-      (a, b) => Number(b.player.cougar) - Number(a.player.cougar) || a.player.name.localeCompare(b.player.name),
-    ),
-  );
+  const byCard = $derived([...shown].sort((a, b) => goesBy(a.player).localeCompare(goesBy(b.player))));
 
   // The card that's been picked up, and where it lies (none: it grows in place). Admins get the member sheet.
   let lifted = $state<{ player: Player; el?: HTMLElement } | null>(null);

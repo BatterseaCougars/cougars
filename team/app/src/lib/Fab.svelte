@@ -29,11 +29,11 @@
     gap: var(--s-3);
     height: 3.5rem;
     padding: 0 var(--s-5) 0 var(--s-4);
-    border: 2px solid var(--primary);
+    border: 0;
     border-radius: var(--r-lg);
-    /* Floats over the page, so solid underneath: the main button's cream edge on a raised tile */
-    background: var(--surface-3);
-    color: var(--fg);
+    /* The main button, floating: solid VCR blue (ADR 0083) */
+    background: var(--action);
+    color: var(--on-action);
     font-weight: 600;
     letter-spacing: 0.01em;
     box-shadow:
@@ -45,7 +45,7 @@
       transform var(--t-fast) var(--ease);
   }
   .fab:hover {
-    background: color-mix(in srgb, var(--primary) 14%, var(--surface-3));
+    background: var(--action-hover);
     box-shadow:
       0 2px 6px rgb(0 0 0 / 0.45),
       0 12px 32px -6px rgb(0 0 0 / 0.75);

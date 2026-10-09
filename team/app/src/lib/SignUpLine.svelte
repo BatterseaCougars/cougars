@@ -15,6 +15,7 @@
   const open = $derived(t.status === "open" && !signupClosed(t));
   const full = $derived(t.capacity != null && t.going.length >= t.capacity);
   const count = $derived(`${t.going.length}${t.capacity ? ` of ${t.capacity}` : ""} in`);
+  const planned = $derived(t.status === "planned");
   const where = $derived(inIt ? "You're in" : waiting ? "You're on the waitlist" : out ? "You're out" : "Are you in?");
   let busy = $state(false);
   async function answer(going: boolean) {
@@ -28,12 +29,12 @@
   }
 </script>
 
-{#if open || t.going.length}
+{#if open || planned || t.going.length}
   <div class="signup">
     <span class="words">
-      <strong>{open ? where : "Sign-up's closed"}</strong>
+      <strong>{open ? where : planned ? "Sign-up opens nearer the day" : "Sign-up's closed"}</strong>
       <span class="hint"
-        >{count}{#if t.waitlist.length}
+        >{#if t.going.length || !planned}{count}{/if}{#if t.waitlist.length}
           · {t.waitlist.length} waiting{/if}{#if open && t.signupClosesOn}
           · until
           {t.signupClosesOn}{/if}{#if full}

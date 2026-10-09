@@ -102,7 +102,7 @@
     transition: height var(--t-slow) var(--ease);
   }
   .bar.amber {
-    background: var(--amber);
+    background: var(--caution);
   }
   .bar.red {
     background: var(--red);

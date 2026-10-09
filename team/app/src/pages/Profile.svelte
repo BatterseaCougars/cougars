@@ -1,6 +1,7 @@
 <script lang="ts">
   // Your profile. You change your phone, position and bio (the back of your player card), and how your name shows
   // on the website's roster; your name and email are an admin's to change, since sign-in and the roster go by them.
+  import { goesBy, shortName } from "../lib/names";
   import { POSITIONS, emailFor, phoneFor, type Position } from "../demo/data";
   import { fullRole, impersonating, me, realGranted, session, setElevated, shownRoles } from "../demo/session.svelte";
   import { db } from "../demo/store.svelte";
@@ -11,7 +12,7 @@
   const who = me();
   let form = $state({ phone: phoneFor(who.id) ?? "", position: who.position, bio: who.bio ?? "" });
 
-  // Your name on the website (ADR 0043): ready-made forms of your name, or a nickname. Saved as the text itself;
+  // The name you go by, in the app and on the website (ADR 0043, 0085): ready-made forms of your name, or a nickname. Saved as the text itself;
   // the default (first name and initial) is saved as nothing, so it follows a change to your name.
   const [firstName, ...rest] = who.name.trim().split(/\s+/);
   const lastName = rest.at(-1);
@@ -62,9 +63,10 @@
 
 <div class="page">
   <header class="head">
-    <span class="avatar big">{initials(who.name)}</span>
+    <span class="avatar big">{initials(goesBy(who))}</span>
     <div>
-      <h1>{who.name}</h1>
+      <h1>{goesBy(who)}</h1>
+      {#if goesBy(who) !== who.name}<p class="hint">{who.name}</p>{/if}
       <p class="roles">
         {#each shownRoles(who.id) as r (r)}<span class="badge" class:red={r === "Admin"}>{r}</span>{/each}
       </p>
@@ -88,7 +90,8 @@
         </div>
       </div>
       <div class="field">
-        <span id="web-name">Name on the website <span class="hint">· if you're on the Cougars roster</span></span>
+        <span id="web-name">The name you go by <span class="hint">· in the app, and on the website's roster</span></span
+        >
         <div class="seg block wrap" role="group" aria-labelledby="web-name">
           {#each NAME_FORMS as f (f.id)}
             <button type="button" aria-pressed={nameForm === f.id} onclick={() => (nameForm = f.id)}>{f.label}</button>
@@ -116,7 +119,7 @@
       </label>
       <button class="btn primary">Save</button>
     </fieldset>
-    {#if locked}<p class="hint">Read-only while you're viewing as {who.name.split(" ")[0]}.</p>{/if}
+    {#if locked}<p class="hint">Read-only while you're viewing as {shortName(who)}.</p>{/if}
   </form>
 
   {#if full !== "Member" && !locked}

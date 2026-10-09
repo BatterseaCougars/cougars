@@ -5,6 +5,7 @@
   // (PageHeader). Phones: five tabs at the bottom, and a slim bar along the top with the page's name (or its
   // section's strip of pages), its actions, and its filters: inline when they fit, otherwise a Filters button that
   // opens them in a sheet. Home has neither: it starts with the greeting.
+  import { goesBy, shortName } from "../../lib/names";
   import { type Snippet } from "svelte";
   import { can } from "../../access/actions";
   import { granted, impersonating, me, realMember, rolesOf, viewAs } from "../../demo/session.svelte";
@@ -338,11 +339,11 @@
           <div class="viewing" role="status">
             <Icon name="eye" size={16} />
             <span class="viewing-text">
-              Viewing as <strong>{me().name}</strong>
+              Viewing as <strong>{goesBy(me())}</strong>
               <span class="viewing-role">· {rolesOf(me().id).join(", ")} · read-only</span>
             </span>
             <button class="btn sm viewing-back" onclick={() => (viewAs(null), stayIfAllowed())}>
-              Back to {realMember().name.split(" ")[0]}
+              Back to {shortName(realMember())}
             </button>
           </div>
         {/if}
@@ -543,7 +544,7 @@
     width: 3rem;
     height: 3rem;
     border-radius: var(--r-md);
-    border: 1px solid rgb(236 232 225 / 0.07);
+    border: 1px solid var(--border);
     background: color-mix(in srgb, var(--surface-1) 45%, transparent);
     backdrop-filter: blur(14px) saturate(1.4);
     -webkit-backdrop-filter: blur(14px) saturate(1.4);
@@ -555,12 +556,12 @@
   }
   .dock-item:hover {
     color: var(--fg);
-    border-color: rgb(236 232 225 / 0.14);
+    border-color: var(--border-strong);
   }
   /* The current one, raised */
   .dock-item.on {
     color: var(--fg);
-    border-color: rgb(236 232 225 / 0.18);
+    border-color: color-mix(in srgb, var(--fg) 18%, transparent);
     background: color-mix(in srgb, var(--surface-3) 90%, transparent);
     box-shadow:
       inset 0 1px 0 rgb(255 255 255 / 0.12),
@@ -580,7 +581,7 @@
     padding: 0.1rem 0.35rem;
     border-radius: var(--r-pill);
     background: var(--red);
-    color: #fff;
+    color: var(--on-red);
     font-size: 0.65rem;
     font-weight: 700;
     line-height: 1.3;
@@ -593,7 +594,7 @@
     translate: 0 -50%;
     padding: 0.4rem 0.7rem;
     border-radius: var(--r-sm);
-    border: 1px solid rgb(236 232 225 / 0.12);
+    border: 1px solid color-mix(in srgb, var(--fg) 12%, transparent);
     background: color-mix(in srgb, var(--surface-2) 92%, transparent);
     color: var(--fg);
     font-size: var(--text-2xs);
@@ -697,9 +698,9 @@
     gap: var(--s-2);
     min-height: 2.75rem;
     padding: var(--s-1) var(--gutter);
-    background: color-mix(in srgb, var(--amber) 16%, var(--bg));
-    border-bottom: 1px solid var(--amber-border);
-    color: var(--amber);
+    background: color-mix(in srgb, var(--caution) 16%, var(--bg));
+    border-bottom: 1px solid var(--caution-border);
+    color: var(--caution);
     font-size: var(--text-sm);
   }
   .viewing-text {
@@ -714,11 +715,11 @@
     font-weight: 600;
   }
   .viewing-back {
-    background: color-mix(in srgb, var(--amber) 18%, transparent);
-    color: var(--amber);
+    background: color-mix(in srgb, var(--caution) 18%, transparent);
+    color: var(--caution);
   }
   .viewing-back:hover {
-    background: color-mix(in srgb, var(--amber) 24%, transparent);
+    background: color-mix(in srgb, var(--caution) 24%, transparent);
   }
 
   /* ─── Strip of a section's pages: a row under the bar on phones, floating pills along the top on desktop ─── */
@@ -833,7 +834,7 @@
       display: inline-flex;
     }
     .brand img {
-      filter: drop-shadow(0 2px 8px rgb(229 19 31 / 0.35));
+      filter: drop-shadow(0 2px 8px color-mix(in srgb, var(--red) 35%, transparent));
     }
     /* Room for the dock on narrower desktops, mirrored so the page stays centred */
     .shell:not(.focus) .view {

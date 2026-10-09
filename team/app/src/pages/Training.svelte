@@ -2,6 +2,7 @@
   // A training series' next session. Before the teams: who's in, in order, and your answer. Once there are teams,
   // they're the page: anyone who signed up after them first (an admin slots them in or remakes them), then the
   // teams, then sign-up. A team maker's changes to the teams are saved as they're made (ADR 0079). Ratings drive the teams but only admins see them (read:Rating), as in the old app.
+  import { goesBy, shortName } from "../lib/names";
   import PageHeader from "../lib/PageHeader.svelte";
   import { can } from "../access/actions";
   import { PLAYERS, TEAM_NAMES, TEAM_ORDER, type Player } from "../demo/data";
@@ -198,7 +199,7 @@
     if (!from || !to) return;
     from.players = from.players.filter((p) => p !== id);
     to.players = [...to.players, id];
-    commit(list, `${byId(id).name.split(" ")[0]} to ${to.name}`);
+    commit(list, `${shortName(byId(id))} to ${to.name}`);
   }
   const nextTeam = (name: string) => {
     const i = ordered?.findIndex((t) => t.name === name) ?? -1;
@@ -246,7 +247,7 @@
     commit(withoutLeavers());
   }
   const firstNames = (ids: number[]) => {
-    const names = ids.map((id) => (id === who.id ? "you" : byId(id).name.split(" ")[0]));
+    const names = ids.map((id) => (id === who.id ? "you" : shortName(byId(id))));
     const list = names.length > 1 ? `${names.slice(0, -1).join(", ")} and ${names.at(-1)}` : names[0];
     return list.charAt(0).toUpperCase() + list.slice(1);
   };
@@ -493,7 +494,7 @@
                   >
                     <button
                       class="grip"
-                      aria-label="Move {byId(id).name}: drag to a team, or press Enter for the next team"
+                      aria-label="Move {goesBy(byId(id))}: drag to a team, or press Enter for the next team"
                       onpointerdown={(e) => grab(e, id, team.name)}
                       onpointermove={follow}
                       onpointerup={drop}
@@ -833,7 +834,7 @@
     overflow: hidden;
     padding: var(--s-3) var(--s-5);
     border-radius: var(--r-lg);
-    background: color-mix(in srgb, var(--amber) 10%, var(--surface-1));
+    background: color-mix(in srgb, var(--caution) 10%, var(--surface-1));
     color: var(--fg-muted);
   }
   .late-icon {
@@ -843,8 +844,8 @@
     height: 2.75rem;
     flex-shrink: 0;
     border-radius: 50%;
-    background: color-mix(in srgb, var(--amber) 22%, transparent);
-    color: var(--amber-ink);
+    background: color-mix(in srgb, var(--caution) 22%, transparent);
+    color: var(--caution-ink);
   }
   .late-text {
     display: grid;
@@ -863,7 +864,7 @@
   }
   .late-text .eyebrow {
     overflow: hidden;
-    color: var(--amber-ink);
+    color: var(--caution-ink);
     text-overflow: ellipsis;
     white-space: nowrap;
   }

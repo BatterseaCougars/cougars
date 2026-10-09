@@ -1,4 +1,5 @@
 <script lang="ts" module>
+  import { goesBy } from "./names";
   import type { TournamentStatus } from "../demo/model";
 
   export const STATUSES: { id: TournamentStatus; label: string }[] = [
@@ -230,9 +231,9 @@
   );
 
   const members = $derived(
-    db.members.filter((m) => m.status === "active").sort((a, b) => a.player.name.localeCompare(b.player.name)),
+    db.members.filter((m) => m.status === "active").sort((a, b) => goesBy(a.player).localeCompare(goesBy(b.player))),
   );
-  const memberList = $derived(members.map((m) => ({ id: m.player.id, name: m.player.name })));
+  const memberList = $derived(members.map((m) => ({ id: m.player.id, name: goesBy(m.player) })));
 
   // Teams (ADR 0052): nobody on two of them; a draft's are in pick order
   const MAX_TEAMS = 16;

@@ -5,6 +5,7 @@
   // card carries a "You" sticker in the other corner and a ring round it. Ratings
   // only show for admins (read:Rating). With `onopen` it's a button: the page flips it over (PlayerCardZoom), and
   // hides this one meanwhile, as if it's been picked up.
+  import { goesBy, shortName } from "./names";
   import { POSITIONS, type Player } from "../demo/data";
   import mark from "../assets/cougars-mark.webp";
 
@@ -26,18 +27,20 @@
     lifted?: boolean;
   } = $props();
 
-  const first = $derived(player.name.split(" ")[0]);
+  const first = $derived(shortName(player));
+  // Long names print smaller so the whole name fits the plate (see .plate strong)
+  const len = $derived(Math.max(first.length, 5));
 </script>
 
 {#snippet card()}
-  <article class="pc" class:you aria-label={player.name}>
+  <article class="pc" class:you aria-label={goesBy(player)}>
     <span class="photo">
       <img class="ghost" src={mark} alt="" loading="lazy" />
       {#if n !== undefined}<span class="no">{n}</span>{/if}
       {#if you}<span class="you-tag">You</span>{/if}
       {#if player.cougar}<span class="cougar-tag">Cougar</span>{/if}
     </span>
-    <span class="plate"><strong>{first}</strong></span>
+    <span class="plate"><strong style:--len={len}>{first}</strong></span>
     <span class="foot">
       <span class="pos">{POSITIONS[player.position]}</span>
       {#if showRating}<span class="num">{player.rating}</span>{/if}
@@ -50,7 +53,7 @@
     class="slot tap"
     style:visibility={lifted ? "hidden" : undefined}
     aria-haspopup="dialog"
-    aria-label="{player.name}: turn the card over"
+    aria-label="{goesBy(player)}: turn the card over"
     onclick={(e) => onopen(e.currentTarget)}>{@render card()}</button
   >
 {:else}
@@ -77,7 +80,8 @@
     outline: 2px solid var(--ring);
     outline-offset: 3px;
   }
-  /* Card stock: warm off-white, faint grain, small rounded corners, a hairline edge and a table shadow */
+  /* Card stock: an aged off-white, dimmed so it doesn't glare on the dark page; small rounded corners, a hairline
+     edge and a table shadow */
   .pc {
     position: relative;
     display: flex;
@@ -86,8 +90,8 @@
     padding: 5cqw 5cqw 3.5cqw;
     overflow: hidden;
     border-radius: 3cqw;
-    color: #1b1917;
-    background: #e7e1d5;
+    color: var(--card-ink);
+    background: var(--card-stock);
     box-shadow:
       inset 0 0 0 1px rgb(0 0 0 / 0.12),
       0 1px 1px rgb(0 0 0 / 0.35),
@@ -120,8 +124,8 @@
     place-items: center;
     overflow: hidden;
     border-radius: 1cqw;
-    background: #1c1c21;
-    box-shadow: 0 0 0 0.6cqw #1b1917;
+    background: var(--card-well);
+    box-shadow: 0 0 0 0.6cqw var(--card-ink);
   }
   /* No photo yet: the club mark, its red turned down, so the name, tags and rating are what you read */
   .ghost {
@@ -139,8 +143,8 @@
     width: 14cqw;
     height: 14cqw;
     border-radius: 50%;
-    background: #e7e1d5;
-    color: #1b1917;
+    background: var(--card-stock);
+    color: var(--card-ink);
     font-family: var(--font-display);
     font-size: 8cqw;
     line-height: 1;
@@ -153,7 +157,7 @@
     padding: 1.6cqw 3cqw 1.2cqw;
     border-radius: 1.2cqw;
     background: var(--green);
-    color: #0d1a12;
+    color: var(--card-you-ink);
     font-family: var(--font-display);
     font-size: 7cqw;
     line-height: 1;
@@ -161,30 +165,32 @@
     text-transform: uppercase;
     box-shadow: 0 1px 3px rgb(0 0 0 / 0.4);
   }
-  /* The plate overlaps the bottom of the photo, as printed */
+  /* The plate overlaps the bottom of the photo, as printed, and is as long as the name */
   .plate {
     position: relative;
     z-index: 1;
     align-self: start;
     max-width: 100%;
-    margin: -5.5cqw 0 0 -5cqw;
-    padding: 2.2cqw 7cqw 1.8cqw 5cqw;
+    margin: -6cqw 0 0 -5cqw;
+    padding: 2.6cqw 7cqw 2.2cqw 5cqw;
     /* A deep red, not the logo's bright one: white on it reads at about 7:1 where the bright red managed 4.5 */
-    background: #a80f18;
-    color: #fff;
+    background: var(--card-band);
+    color: var(--on-red);
     clip-path: polygon(0 0, 100% 0, calc(100% - 4cqw) 100%, 0 100%);
   }
+  /* Upright: Anton has no italic, so a slant is a faked oblique and smears at this size. As big as the name allows:
+     the plate holds at most about 78cqw of capitals at roughly 0.5em each, so long names step down rather than get cut off */
   .plate strong {
     display: block;
+    overflow: hidden;
     font-family: var(--font-display);
-    font-size: 13cqw;
+    font-size: min(17cqw, 132cqw / var(--len));
     font-weight: 400;
-    font-style: italic;
-    line-height: 1;
-    letter-spacing: 0.02em;
+    line-height: 1.05;
+    letter-spacing: 0.03em;
     text-transform: uppercase;
     white-space: nowrap;
-    text-shadow: 0 1px 0 rgb(0 0 0 / 0.35);
+    text-overflow: ellipsis;
   }
   .foot {
     display: flex;
@@ -201,7 +207,7 @@
   }
   /* The position is the first thing a captain looks for, so it's printed big, in ink */
   .pos {
-    color: #1b1917;
+    color: var(--card-ink);
     font-family: var(--font-display);
     font-size: 9cqw;
     font-weight: 400;
@@ -214,8 +220,8 @@
     right: 3cqw;
     padding: 1.6cqw 3cqw 1.2cqw;
     border-radius: 1.2cqw;
-    background: #a80f18;
-    color: #fff;
+    background: var(--card-band);
+    color: var(--on-red);
     font-family: var(--font-display);
     font-size: 7cqw;
     line-height: 1;
@@ -228,7 +234,7 @@
   }
   /* The rating, big in the display face: the number an admin reads the card for */
   .foot .num {
-    color: #1b1917;
+    color: var(--card-ink);
     font-family: var(--font-display);
     font-size: 12cqw;
     font-weight: 400;

@@ -92,3 +92,7 @@ rule, a trade-off. Copy [template.md](template.md), take the next number, keep i
 | [0080](0080-members-table-in-settings.md)              | The members table is a Settings page that fills the window                                    | Accepted                  |
 | [0081](0081-team-app-pages-load-when-opened.md)        | Team app pages load when opened, the rest in the background                                   | Accepted                  |
 | [0082](0082-member-details-save-with-a-button.md)      | A member's details save with a Save button                                                    | Accepted                  |
+| [0083](0083-main-button-is-vcr-blue.md)                | The main button is VCR blue                                                                   | Superseded by 0084        |
+| [0084](0084-sticker-colour-scheme.md)                  | The Sticker colour scheme: carbon, bone, cougar red, sticker yellow                           | Accepted                  |
+| [0085](0085-one-name-everywhere.md)                    | Members go by their chosen name everywhere                                                    | Accepted                  |
+| [0086](0086-next-tournament-without-last-time.md)      | The next tournament's page says less, and leaves the last one to History                      | Accepted                  |

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { goesBy, matchesName, shortName } from "../../lib/names";
   /**
    * Who's signed in, top right (the Gwenda ops account badge). Opens your account: profile, your tab, sign out,
    * and for admins "View as", which shows the app exactly as a member sees it (ADR 0029). Escape or a click
@@ -71,7 +72,7 @@
   const members = $derived(
     db.members
       .filter((m) => m.status === "active" && m.player.id !== realMember().id)
-      .filter((m) => !search || m.player.name.toLowerCase().includes(search.toLowerCase())),
+      .filter((m) => matchesName(m.player, search)),
   );
 
   async function toggle() {
@@ -138,19 +139,19 @@
     bind:this={trigger}
     aria-haspopup="menu"
     aria-expanded={open}
-    aria-label="Account: {shown.name}"
+    aria-label="Account: {goesBy(shown)}"
     onclick={toggle}
   >
     {#if card}
-      <span class="avatar big" aria-hidden="true">{initials(shown.name)}</span>
+      <span class="avatar big" aria-hidden="true">{initials(goesBy(shown))}</span>
       <span class="card-text">
-        <span class="card-name">{shown.name}</span>
+        <span class="card-name">{goesBy(shown)}</span>
         <span class="hint">{emailFor(shown)} · {roles.join(", ")}</span>
       </span>
       <Icon name="chevronRight" size={18} />
     {:else}
-      <span class="avatar sm" aria-hidden="true">{initials(shown.name)}</span>
-      <span class="name">{shown.name.split(" ")[0]}</span>
+      <span class="avatar sm" aria-hidden="true">{initials(goesBy(shown))}</span>
+      <span class="name">{shortName(shown)}</span>
     {/if}
   </button>
 
@@ -173,8 +174,8 @@
           <div class="items">
             {#each members as m (m.player.id)}
               <button class="item" role="menuitem" onclick={() => become(m.player.id)}>
-                <span class="avatar sm">{initials(m.player.name)}</span>
-                <span class="grow">{m.player.name}</span>
+                <span class="avatar sm">{initials(goesBy(m.player))}</span>
+                <span class="grow">{goesBy(m.player)}</span>
                 <span class="hint">{m.roles.join(", ")}</span>
               </button>
             {/each}
@@ -182,9 +183,9 @@
           <p class="hint small">Read-only: you see what they see, and can't change anything as them.</p>
         {:else}
           <div class="who">
-            <span class="avatar big" aria-hidden="true">{initials(shown.name)}</span>
+            <span class="avatar big" aria-hidden="true">{initials(goesBy(shown))}</span>
             <span class="who-text">
-              <span class="title">{shown.name}</span>
+              <span class="title">{goesBy(shown)}</span>
               <span class="hint">{emailFor(shown)}</span>
               <span class="roles"
                 >{#each roles as r (r)}<span class="badge" class:red={r === "Admin"}>{r}</span>{/each}</span
@@ -206,7 +207,7 @@
           {#if impersonating()}
             <div class="sep" role="separator"></div>
             <button class="item accent" role="menuitem" onclick={() => become(null)}>
-              <Icon name="undo" size={16} /> Back to {realMember().name.split(" ")[0]}
+              <Icon name="undo" size={16} /> Back to {shortName(realMember())}
             </button>
           {:else if canViewAs}
             <div class="sep" role="separator"></div>
@@ -239,7 +240,7 @@
     gap: var(--s-2);
     height: 2.25rem;
     padding: 0 var(--s-3);
-    border: 1px solid rgb(236 232 225 / 0.07);
+    border: 1px solid var(--border);
     border-radius: var(--r-md);
     background: color-mix(in srgb, var(--surface-1) 45%, transparent);
     backdrop-filter: blur(14px) saturate(1.4);
@@ -267,7 +268,7 @@
     gap: var(--s-2);
     height: 2.25rem;
     padding: 0 var(--s-2) 0 0.2rem;
-    border: 1px solid rgb(236 232 225 / 0.07);
+    border: 1px solid var(--border);
     border-radius: var(--r-md);
     background: color-mix(in srgb, var(--surface-1) 45%, transparent);
     backdrop-filter: blur(14px) saturate(1.4);
@@ -280,7 +281,7 @@
   }
   .trigger:hover,
   .trigger[aria-expanded="true"] {
-    border-color: rgb(236 232 225 / 0.14);
+    border-color: var(--border-strong);
     background: color-mix(in srgb, var(--surface-3) 90%, transparent);
     color: var(--fg);
   }
@@ -317,8 +318,8 @@
   }
   .trigger.as {
     border-color: transparent;
-    background: var(--amber-wash);
-    color: var(--amber);
+    background: var(--caution-wash);
+    color: var(--caution);
   }
   .name {
     color: var(--fg);
@@ -335,8 +336,8 @@
     color: var(--fg);
   }
   .trigger.as .avatar {
-    background: var(--amber-wash);
-    color: var(--amber);
+    background: var(--caution-wash);
+    color: var(--caution);
   }
   /* In the menu's own header, a size down from a page's */
   .menu .avatar.big {
@@ -423,7 +424,7 @@
     cursor: not-allowed;
   }
   .item.accent {
-    color: var(--amber);
+    color: var(--caution);
   }
   .item .grow {
     flex: 1;

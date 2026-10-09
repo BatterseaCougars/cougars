@@ -4,6 +4,7 @@
   // Teammates gets MemberSheet instead.) Closing puts it back the same way. Its actions sit as icons in the card's top band. Someone who runs events can take
   // the player off the session from here (two taps, so a stray one can't). Without motion it just appears. Once it lands it drops its 3D turn, so fields and
   // menus on the back behave like any others.
+  import { goesBy, shortName } from "./names";
   import { onMount, tick } from "svelte";
   import { POSITIONS, type Player } from "../demo/data";
   import mark from "../assets/cougars-mark.webp";
@@ -49,7 +50,7 @@
   let closing = $state(false);
   let settled = $state(false);
   let sure = $state(false);
-  const first = $derived(player.name.split(" ")[0]);
+  const first = $derived(shortName(player));
   const DURATION = 520;
   const EASE = EASE_OUT;
 
@@ -111,7 +112,7 @@
 
 <div class="zoom" class:closing use:portal>
   <button class="scrim" aria-label="Close" tabindex="-1" onclick={close}></button>
-  <div class="stage" role="dialog" aria-modal="true" aria-label={player.name}>
+  <div class="stage" role="dialog" aria-modal="true" aria-label={goesBy(player)}>
     <div class="flipper" class:settled bind:this={flipper}>
       <div class="face front" aria-hidden="true"><PlayerCard {player} {n} {you} {showRating} /></div>
       <div class="face back">
@@ -135,9 +136,9 @@
             </div>
           </header>
           <div class="who">
-            <span class="avatar">{initials(player.name)}</span>
+            <span class="avatar">{initials(goesBy(player))}</span>
             <div>
-              <h2>{player.name}</h2>
+              <h2>{goesBy(player)}</h2>
               <p class="pos">
                 {POSITIONS[player.position]}{#if player.cougar}<span class="cougar"> · Cougar</span>{/if}
               </p>
@@ -252,10 +253,10 @@
     height: 100%;
     overflow: hidden;
     border-radius: 3cqw;
-    color: #e7e1d5;
+    color: var(--fg);
     background:
-      linear-gradient(#26262c, #26262c) top / 100% var(--band-h) no-repeat,
-      #161619;
+      linear-gradient(var(--surface-3), var(--surface-3)) top / 100% var(--band-h) no-repeat,
+      var(--surface-1);
     box-shadow:
       inset 0 0 0 1px rgb(255 255 255 / 0.08),
       0 30px 60px -20px rgb(0 0 0 / 0.85);
@@ -266,7 +267,7 @@
     gap: 3cqw;
     height: var(--band-h);
     padding: 0 5cqw;
-    color: #e7e1d5;
+    color: var(--fg);
     font-family: var(--font-display);
     font-size: 6.5cqw;
     font-style: italic;
@@ -297,7 +298,7 @@
     height: 20cqw;
     border-radius: 50%;
     background: var(--red);
-    color: #fff;
+    color: var(--on-red);
     font-family: var(--font-display);
     font-size: 9cqw;
     font-style: italic;
@@ -316,7 +317,7 @@
   }
   .pos {
     margin-top: 1.5cqw;
-    color: #a39e96;
+    color: var(--fg-muted);
     font-size: 4.4cqw;
     font-weight: 700;
     letter-spacing: 0.08em;
@@ -330,13 +331,13 @@
     gap: 2cqw;
     margin: 0 5cqw;
     padding: 3cqw 0;
-    border-block: 0.5cqw solid rgb(231 225 213 / 0.25);
+    border-block: 0.5cqw solid color-mix(in srgb, var(--fg) 25%, transparent);
   }
   .stats div {
     flex: 1;
   }
   dt {
-    color: #a39e96;
+    color: var(--fg-muted);
     font-size: 3.6cqw;
     font-weight: 700;
     letter-spacing: 0.1em;
@@ -356,7 +357,7 @@
     line-height: 1.4;
   }
   .bio.empty {
-    color: #8a857d;
+    color: var(--fg-muted);
     font-style: italic;
   }
 
@@ -374,14 +375,14 @@
     padding: 0;
     border: 0;
     border-radius: 2cqw;
-    background: rgb(231 225 213 / 0.1);
-    color: #e7e1d5;
+    background: color-mix(in srgb, var(--fg) 10%, transparent);
+    color: var(--fg);
     font: inherit;
     cursor: pointer;
     transition: background-color 150ms var(--ease);
   }
   .act:hover {
-    background: rgb(231 225 213 / 0.18);
+    background: color-mix(in srgb, var(--fg) 18%, transparent);
   }
   .act.remove {
     background: var(--red-wash);
@@ -392,7 +393,7 @@
   }
   .act.remove.sure {
     background: var(--red);
-    color: #fff;
+    color: var(--on-red);
   }
   /* The card's own action, along its foot */
   .cb-action {

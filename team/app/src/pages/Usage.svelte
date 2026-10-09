@@ -259,10 +259,10 @@
     background: var(--green);
   }
   .mid {
-    color: var(--amber-ink);
+    color: var(--caution-ink);
   }
   .fill.mid {
-    background: var(--amber);
+    background: var(--caution);
   }
   .high {
     color: var(--red-hot);

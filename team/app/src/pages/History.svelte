@@ -1,6 +1,7 @@
 <script lang="ts">
   // A series' past ones (ADR 0074), newest first, each with how it ended: the day, the champions, the final's score.
   // Each opens its own page (Edition): the champions, every fight, the board, the awards; back comes here.
+  import { shortNameOf } from "../lib/names";
   import EmptyState from "../lib/EmptyState.svelte";
   import { PLAYERS } from "../demo/data";
   import type { Tournament } from "../demo/model";
@@ -20,7 +21,7 @@
   const nameOf = (t: Tournament, id: number | null) => {
     const team = t.teams.find((x) => x.id === id);
     const c = PLAYERS.find((p) => p.id === team?.captainMemberId);
-    return team ? team.name || `Team ${c?.name.split(" ")[0] ?? ""}` : "";
+    return team ? team.name || `Team ${shortNameOf(c)}` : "";
   };
   // How it ended, in a line: the final, else the top of the table
   const summary = (t: Tournament) => {

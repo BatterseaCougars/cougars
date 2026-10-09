@@ -2,6 +2,7 @@
   // One game, as a row in a list: its kick-off, the two teams (or the places a playoff waits on, 1st v 2nd), and the
   // score once there is one. Each opens the game's own page (Details, or Full result once played): both teams, the
   // goals, and where it's scored or an admin puts a result right (ADR 0071).
+  import { shortNameOf } from "./names";
   import type { Tournament, TournamentGame } from "../demo/model";
   import { PLAYERS } from "../demo/data";
   import { kickOff, table } from "./fixtures";
@@ -28,7 +29,7 @@
   } = $props();
 
   const teams = $derived(tournament.teams);
-  const firstName = (id: number | null) => PLAYERS.find((p) => p.id === id)?.name.split(" ")[0] ?? "";
+  const firstName = (id: number | null) => shortNameOf(PLAYERS.find((p) => p.id === id));
   const teamName = (id: number) => {
     const t = teams.find((x) => x.id === id);
     return t ? t.name || `Team ${firstName(t.captainMemberId)}` : "";
@@ -124,7 +125,7 @@
     <!-- Always there, even empty: every row's columns line up -->
     <span class="act">
       {#if keeper && g.status !== "done" && g.homeTeamId && g.awayTeamId}
-        <a class="btn sm" class:outline={!live} class:go={live} href={gameHref}
+        <a class="btn sm" class:outline={!live} class:primary={live} href={gameHref}
           >{holding ? "Scoresheet" : "Keep score"}</a
         >
       {:else}
@@ -265,10 +266,6 @@
     justify-content: center;
     align-items: center;
     gap: var(--s-1) var(--s-2);
-  }
-  .go {
-    background: var(--red);
-    color: #fff;
   }
   .vs {
     color: var(--fg-subtle);

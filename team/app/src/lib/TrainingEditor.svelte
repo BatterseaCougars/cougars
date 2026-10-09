@@ -417,7 +417,7 @@
     border: 0;
     background: none;
     /* The training's own colour (the panel carries it), like Gwenda's accent links */
-    color: var(--tone, var(--amber));
+    color: var(--tone, var(--caution));
     font: inherit;
     font-size: var(--text-sm);
     font-weight: 600;

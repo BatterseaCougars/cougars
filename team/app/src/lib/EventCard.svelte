@@ -4,6 +4,7 @@
   // their faces and first names, the count and spaces left, and In and Out at the end of that row, so you answer
   // next to the people you'd be playing with. Every kind carries its own icon and colour (set by an admin per
   // training and tournament type), so the calendar reads at a glance. Nothing moves when you answer.
+  import { goesByOf } from "./names";
   import type { Snippet } from "svelte";
   import type { Bookable } from "../demo/model";
   import { impersonating, me } from "../demo/session.svelte";
@@ -53,7 +54,7 @@
   const full = $derived(event.capacity != null && entries.going.length >= event.capacity);
 
   // Who's going: the first five faces, in sign-up order, and first names (you first, when you're in)
-  const nameOf = (pid: number) => PLAYERS.find((p) => p.id === pid)?.name ?? "";
+  const nameOf = (pid: number) => goesByOf(PLAYERS.find((p) => p.id === pid));
   const faces = $derived(entries.going.slice(0, 5));
   const others = $derived(entries.going.filter((x) => x !== id));
   const names = $derived(

@@ -6,8 +6,10 @@
   // Teams page, not here.
   //
   // Laid out as a draft room: a ticker of picks across the top (the one on the clock brought forward with a badge),
-  // then three views, My team, Players and Teams: columns on a wide screen, tabs on anything narrower. The
-  // players are a plain list with a Pick on each row on your turn; a name opens the player's card.
+  // then two views, Players and Teams: side by side on a wide screen, tabs on anything narrower. The players are a
+  // plain list with a Pick on each row on your turn; a name opens the player's card. A captain's own team is the
+  // first of the teams, badged "Your team", with their coming pick drawn in.
+  import { goesBy, goesByOf, shortNameOf } from "../lib/names";
   import EmptyState from "../lib/EmptyState.svelte";
   import { can } from "../access/actions";
   import { PLAYERS, type Player, type Position } from "../demo/data";
@@ -37,7 +39,7 @@
   const type = $derived(typeById(typeId)!);
   const tournament = $derived(currentTournament(typeId));
   const byId = (id: number) => PLAYERS.find((p) => p.id === id);
-  const firstName = (id: number | null) => (id ? (byId(id)?.name.split(" ")[0] ?? "") : "");
+  const firstName = (id: number | null) => (id ? shortNameOf(byId(id)) : "");
   const ratings = $derived(can(perms, "read:Rating"));
 
   const teams = $derived(tournament?.teams ?? []);
@@ -79,7 +81,8 @@
   const isMine = (i: number) =>
     teams[i].captainMemberId === me().id || teams[i].players.some((p) => p.memberId === me().id);
   const myTeam = $derived(teams.findIndex((_, i) => isMine(i)));
-  const others = $derived(teams.map((_, i) => i).filter((i) => i !== myTeam));
+  // The teams in pick order, yours first
+  const teamOrder = $derived([...(myTeam >= 0 ? [myTeam] : []), ...teams.map((_, i) => i).filter((i) => i !== myTeam)]);
   // How many picks until a team's turn (0: now); never, once the pool runs out first
   const turnIn = (i: number) => {
     for (let k = 0; k < pool.length; k++) if (onTheClock(teams.length, made + k) === i) return k;
@@ -109,7 +112,11 @@
   const SHOWN_BEFORE = 3;
   const ticker = $derived.by(() => {
     if (!teams.length || phase === "none" || (phase === "closed" && !made)) return [];
-    const out: { n: number; team: number; took?: string }[] = [];
+    const out: { n: number; team: number; took?: string; ghost?: boolean }[] = [];
+    // Before the first few picks, empty places keep the next one in the middle; the picks fill them in
+    if (phase !== "closed")
+      for (let n = Math.min(picks.length, SHOWN_BEFORE) - SHOWN_BEFORE + 1; n <= 0; n++)
+        out.push({ n, team: -1, ghost: true });
     for (const p of picks.slice(-SHOWN_BEFORE))
       out.push({ n: p.n, team: p.team, took: p.memberId ? firstName(p.memberId) : p.name });
     if (phase !== "closed")
@@ -120,7 +127,7 @@
   // Only the ticker scrolls: scrollIntoView would also move the page under you (it scrolls every scroller around it)
   $effect(() => {
     void made;
-    const now = tickerEl?.querySelector<HTMLElement>(".tick.now");
+    const now = tickerEl?.querySelector<HTMLElement>(".tick.up");
     if (!tickerEl || !now) return;
     tickerEl.scrollTo({
       left: now.offsetLeft - (tickerEl.clientWidth - now.offsetWidth) / 2,
@@ -132,7 +139,7 @@
     picks.map((p) => ({
       n: p.n,
       team: p.team,
-      name: p.memberId ? (byId(p.memberId)?.name ?? p.name) : p.name,
+      name: p.memberId ? goesByOf(byId(p.memberId)) || p.name : p.name,
       you: p.memberId === me().id,
     })),
   );
@@ -160,12 +167,13 @@
   type Filter = "all" | Position;
   let filter = $state<Filter>("all");
   const shown = $derived(filter === "all" ? pool : pool.filter((p) => p.position === filter));
-  // Just the pool, by name: who's good is the captain's call, not the app's
-  const listed = $derived([...shown].sort((a, b) => a.name.localeCompare(b.name)));
+  // Just the pool, A to Z by the name they go by: who's good is the captain's call, not the app's
+  const byName = (a: Player, b: Player) => goesBy(a).localeCompare(goesBy(b), "en", { sensitivity: "base" });
+  const listed = $derived([...shown].sort(byName));
   // A goalie's row: greyed for you once you have one, and not offered to whoever's on the clock if they have one
   const dimmed = (p: Player) => p.position === "G" && haveGoalie;
   const pickable = (p: Player) => canPick && !(p.position === "G" && clockHasGoalie);
-  const leftOut = $derived(phase === "closed" ? pool : []);
+  const leftOut = $derived(phase === "closed" ? [...pool].sort(byName) : []);
 
   // A name turns the player's card over (PlayerCardZoom); Pick lives on the row
   let lifted = $state<{ id: number; el: HTMLElement } | null>(null);
@@ -188,15 +196,15 @@
     }
   }
 
-  // Three columns only where they fit (by the page's own width); anything narrower gets the phone's tabs, one view at
+  // Two columns only where they fit (by the page's own width); anything narrower gets the phone's tabs, one view at
   // a time. No in-between layout
   let pageW = $state(0);
   const columns = $derived(pageW >= 960);
-  type View = "players" | "mine" | "teams";
+  type View = "players" | "teams";
   let view = $state<View>("players");
   // Switching tabs slides the new view in from the side it's on (no slide out: the old one just goes, so the page
   // never holds both and nothing below jumps)
-  const ORDER: View[] = ["players", "mine", "teams"];
+  const ORDER: View[] = ["players", "teams"];
   let dir = $state(1);
   const show = (v: View) => {
     dir = ORDER.indexOf(v) >= ORDER.indexOf(view) ? 1 : -1;
@@ -258,7 +266,7 @@
       <li class="row" class:you={t.captainMemberId === me().id}>
         <span class="c display" title="Captain" aria-label="Captain">C</span>
         <span class="name"
-          >{c?.name ?? ""}{#if t.captainMemberId === me().id}<small>you</small>{/if}</span
+          >{goesByOf(c)}{#if t.captainMemberId === me().id}<small>you</small>{/if}</span
         >
         {#if c}<span class="pos" class:g={c.position === "G"}>{c.position}</span>{/if}
       </li>
@@ -268,7 +276,7 @@
       <li class="row" class:you={p.memberId === me().id} animate:flip={{ duration: moveMs }}>
         <span class="n num">{n + 1}</span>
         <span class="name"
-          >{m?.name ?? p.name}{#if p.memberId === me().id}<small>you</small>{/if}</span
+          >{goesByOf(m) || p.name}{#if p.memberId === me().id}<small>you</small>{/if}</span
         >
         {#if m}<span class="pos" class:g={m.position === "G"}>{m.position}</span>{/if}
       </li>
@@ -282,28 +290,10 @@
   </ol>
 {/snippet}
 
-{#snippet myTeamView()}
-  {#if myTeam >= 0 && myTally}
-    {@const t = teams[myTeam]}
-    <section class="panel mine" aria-label="My team">
-      <header>
-        <TeamCrest
-          name={teamName(myTeam)}
-          logo={t.logo}
-          tone={teamTone(myTeam)}
-          onclick={canLook(myTeam) ? () => ((lookIndex = myTeam), (lookOpen = true)) : undefined}
-        />
-        <h3 class="display">{teamName(myTeam)}</h3>
-      </header>
-      {@render roster(myTeam, live && untilMine >= 0)}
-    </section>
-  {/if}
-{/snippet}
-
 {#snippet playerRow(p: Player, action: boolean)}
-  <div class="prow" class:dim={dimmed(p)} class:chosen={chosenPlayer?.id === p.id}>
+  <div class="prow" class:dim={dimmed(p)}>
     <button class="nm" onclick={(e) => (lifted = { id: p.id, el: e.currentTarget })}>
-      {p.name}{#if p.cougar}<small>Cougar</small>{/if}
+      {goesBy(p)}{#if p.cougar}<small>Cougar</small>{/if}
     </button>
     <span class="ps" class:g={p.position === "G"}>{p.position}</span>
     <!-- Room for Pick is always kept, so the rows don't change when your turn comes -->
@@ -330,11 +320,13 @@
         <p class="hint">Everyone who signed up is on a team.</p>
       {/if}
     {:else if pool.length}
-      <div class="seg chips" role="group" aria-label="Show">
-        <button aria-pressed={filter === "all"} onclick={() => (filter = "all")}>All {pool.length}</button>
-        <button aria-pressed={filter === "D"} onclick={() => (filter = "D")}>D {poolTally.D}</button>
-        <button aria-pressed={filter === "F"} onclick={() => (filter = "F")}>F {poolTally.F}</button>
-        <button aria-pressed={filter === "G"} onclick={() => (filter = "G")}>G {poolTally.G}</button>
+      <!-- The position filter: the app's filter chips, as Teammates has them, each with how many are left -->
+      <div class="filters" role="group" aria-label="Position">
+        {#each [["all", "All", pool.length], ["F", "Forwards", poolTally.F], ["D", "Defence", poolTally.D], ["G", "Keepers", poolTally.G]] as const as [v, label, n] (v)}
+          <button class="filter" aria-pressed={filter === v} onclick={() => (filter = v)}
+            >{label}<span class="count num">{n}</span></button
+          >
+        {/each}
       </div>
       <div class="plist" aria-label="Players left">
         {#each listed as p (p.id)}{@render playerRow(p, true)}{/each}
@@ -349,9 +341,10 @@
 
 {#snippet teamsView()}
   <section class="teams" aria-label="Teams">
-    {#each others as i (teams[i].id ?? i)}
+    {#each teamOrder as i (teams[i].id ?? i)}
       {@const t = teams[i]}
-      <div class="panel">
+      {@const yours = i === myTeam}
+      <div class="panel" aria-label={yours ? "Your team" : undefined}>
         <header>
           <TeamCrest
             name={teamName(i)}
@@ -360,9 +353,17 @@
             onclick={canLook(i) ? () => ((lookIndex = i), (lookOpen = true)) : undefined}
           />
           <h3 class="display">{teamName(i)}</h3>
-          {@render turnBadge(i)}
+          {#if yours}
+            <!-- Yours: said in words; Picking when it's your turn (the strip above says how long till then), and a
+                 heads-up while you still need a goalie -->
+            {#if open && !haveGoalie}<span class="badge amber"><Icon name="alert" size={13} />No goalie</span>{/if}
+            {#if live && turnIn(i) === 0}<span class="badge red"><Icon name="clock" size={13} />Picking</span>
+            {:else}<span class="badge">Your team</span>{/if}
+          {:else}
+            {@render turnBadge(i)}
+          {/if}
         </header>
-        {@render roster(i)}
+        {@render roster(i, yours && live && untilMine >= 0)}
       </div>
     {/each}
   </section>
@@ -393,47 +394,47 @@
     <!-- Running it: quiet buttons along the top, out of the picker's way -->
     {#if running || adding}
       <div class="controls run">
-        {#if running && phase === "closed"}
-          <button class="btn sm outline" onclick={() => openDraft(tournament.id)}>Reopen</button>
-          {#if !tournament.games?.length}
-            <button class="btn primary sm" onclick={fixtures}>Make the fixtures</button>
+        {#if confirmLeaveOut || confirmReset}
+          <!-- A question before closing with players left, or starting again: asked in place, in this row -->
+          <p class="ask" role="alert">
+            {#if confirmLeaveOut}<span class="wide">{pool.length} still to pick. Leave them out?</span><span
+                class="narrow">Leave {pool.length} out?</span
+              >
+            {:else}Start again?<span class="wide"> Every pick comes off.</span>{/if}
+          </p>
+          <button
+            class="btn ghost sm"
+            onclick={() => (confirmLeaveOut ? (confirmLeaveOut = false) : (confirmReset = false))}
+            >{confirmLeaveOut ? "Keep picking" : "Keep it"}</button
+          >
+          <button class="btn primary sm" onclick={confirmLeaveOut ? close : reset}
+            >{confirmLeaveOut ? "Close it" : "Reset the draft"}</button
+          >
+        {:else}
+          {#if running && phase === "closed"}
+            <button class="btn sm outline" onclick={() => openDraft(tournament.id)}>Reopen</button>
+            {#if !tournament.games?.length}
+              <button class="btn primary sm" onclick={fixtures}>Make the fixtures</button>
+            {/if}
+          {:else if running && open}
+            <button class="btn sm" class:primary={!pool.length} onclick={close}>Close the draft</button>
+          {:else if running}
+            <button class="btn primary sm" onclick={() => openDraft(tournament.id)}>Open the draft</button>
           {/if}
-        {:else if running && open}
-          <button class="btn sm" class:primary={!pool.length} onclick={close}>Close the draft</button>
-        {:else if running}
-          <button class="btn primary sm" onclick={() => openDraft(tournament.id)}>Open the draft</button>
+          {#if running && open && made}
+            <button class="btn ghost sm" onclick={() => undoDraftPick(tournament.id)}
+              ><Icon name="undo" size={16} /> Undo</button
+            >
+          {/if}
+          {#if adding}
+            <button class="btn ghost sm" onclick={() => (addingOpen = true)}
+              ><Icon name="userPlus" size={16} /> Add player</button
+            >
+          {/if}
+          {#if running && resettable}
+            <button class="btn ghost sm" onclick={reset}>Reset</button>
+          {/if}
         {/if}
-        {#if running && open && made}
-          <button class="btn ghost sm" onclick={() => undoDraftPick(tournament.id)}
-            ><Icon name="undo" size={16} /> Undo</button
-          >
-        {/if}
-        {#if adding}
-          <button class="btn ghost sm" onclick={() => (addingOpen = true)}
-            ><Icon name="userPlus" size={16} /> Add player</button
-          >
-        {/if}
-        {#if running && resettable}
-          <button class="btn ghost sm" onclick={reset}>Reset</button>
-        {/if}
-      </div>
-    {/if}
-    {#if confirmReset}
-      <div class="panel confirm" role="alert">
-        <p>Start the draft again? Every pick comes off. Sign-ups, captains and fixtures stay.</p>
-        <div class="run">
-          <button class="btn sm" onclick={() => (confirmReset = false)}>Keep it</button>
-          <button class="btn primary sm" onclick={reset}>Reset the draft</button>
-        </div>
-      </div>
-    {/if}
-    {#if confirmLeaveOut}
-      <div class="panel confirm" role="alert">
-        <p>{pool.length} still to pick. Close the draft and leave them out?</p>
-        <div class="run">
-          <button class="btn sm" onclick={() => (confirmLeaveOut = false)}>Keep picking</button>
-          <button class="btn primary sm" onclick={close}>Close it</button>
-        </div>
       </div>
     {/if}
 
@@ -481,48 +482,51 @@
     {#if ticker.length}
       <div class="ticker" bind:this={tickerEl} aria-label="Picks">
         {#each ticker as t (t.n)}
+          <!-- An empty place (before the first picks) is the chip's shape with nothing in it -->
           <div
             class="tick"
-            class:done={t.n <= made}
+            class:ghost={t.ghost}
+            class:done={!t.ghost && t.n <= made}
+            class:up={t.n === made + 1}
             class:now={live && t.n === made + 1}
             style:--d={Math.min(Math.abs(t.n - (made + 1)), 4)}
             animate:flip={{ duration: moveMs }}
+            aria-hidden={t.ghost ? "true" : undefined}
           >
-            <TeamCrest name={teamName(t.team)} logo={teams[t.team].logo} tone={teamTone(t.team)} size="2.25rem" />
-            <span class="who display"
-              >{#if t.team === myTeam}<Icon name="user" size={12} />You{:else}{teamName(t.team)}{/if}</span
-            >
-            {#if live && t.n === made + 1}<span class="badge red clock">On the clock</span>
-            {:else}<span class="meta num">{tickMeta(t)}</span>{/if}
+            {#if !t.ghost}
+              <TeamCrest name={teamName(t.team)} logo={teams[t.team].logo} tone={teamTone(t.team)} size="2.25rem" />
+              <span class="who display"
+                >{#if t.team === myTeam}<Icon name="user" size={12} />You{:else}<span class="clip"
+                    >{teamName(t.team)}</span
+                  >{/if}</span
+              >
+              {#if live && t.n === made + 1}<span class="badge red clock">On the clock</span>
+              {:else}<span class="meta num">{tickMeta(t)}</span>{/if}
+            {/if}
           </div>
         {/each}
       </div>
     {/if}
 
     {#if !columns}
-      <!-- Narrower than three columns: one view at a time; My team warns while you still need a goalie -->
+      <!-- Narrower than two columns: one view at a time; Teams warns while you still need a goalie -->
       <div class="seg block tabs" role="tablist" aria-label="Draft">
         <button role="tab" aria-selected={view === "players"} onclick={() => show("players")}>Players</button>
-        {#if myTeam >= 0}
-          <button role="tab" aria-selected={view === "mine"} onclick={() => show("mine")}
-            >My team{#if open && !haveGoalie}<span class="need" title="No goalie yet"
-                ><Icon name="alert" size={13} />G</span
-              >{/if}</button
-          >
-        {/if}
-        <button role="tab" aria-selected={view === "teams"} onclick={() => show("teams")}>Teams</button>
+        <button role="tab" aria-selected={view === "teams"} onclick={() => show("teams")}
+          >Teams{#if myTeam >= 0 && open && !haveGoalie}<span class="need" title="No goalie yet"
+              ><Icon name="alert" size={13} />G</span
+            >{/if}</button
+        >
       </div>
       {#key view}
         <div class="pane" in:fly={{ x: 32 * dir, duration: flyMs, easing: easeOut, opacity: 0 }}>
-          {#if view === "mine" && myTeam >= 0}{@render myTeamView()}
-          {:else if view === "teams"}{@render teamsView()}
+          {#if view === "teams"}{@render teamsView()}
           {:else}{@render playersView()}{/if}
         </div>
       {/key}
     {:else}
-      <div class="views" class:solo={myTeam < 0}>
-        {#if myTeam >= 0}<div class="col">{@render myTeamView()}</div>{/if}
-        <div class="col">{@render playersView()}</div>
+      <div class="views" class:filtered={phase !== "closed" && pool.length > 0}>
+        <div class="col pool">{@render playersView()}</div>
         <div class="col side">{@render teamsView()}</div>
       </div>
     {/if}
@@ -540,10 +544,10 @@
   >
     <div class="who-picked">
       <span class="eyebrow">Your pick</span>
-      <span class="chosen-name">{chosenPlayer.name}<small>{chosenPlayer.position}</small></span>
+      <span class="chosen-name">{goesBy(chosenPlayer)}<small>{chosenPlayer.position}</small></span>
     </div>
     <button class="btn ghost sm" onclick={() => (chosen = null)}>Change</button>
-    <button class="btn end-turn" disabled={ending} onclick={endTurn}
+    <button class="btn primary end-turn" disabled={ending} onclick={endTurn}
       >End turn<Icon name="chevronRight" size={18} /></button
     >
   </div>
@@ -657,15 +661,26 @@
   .controls {
     justify-content: flex-end;
   }
-  .confirm {
-    display: flex;
-    flex-wrap: wrap;
+  .controls {
     align-items: center;
-    justify-content: space-between;
-    gap: var(--s-3);
+    min-height: var(--control-h-sm);
   }
-  .confirm p {
-    margin: 0;
+  .ask {
+    margin: 0 var(--s-2) 0 0;
+    color: var(--fg-body);
+    font-size: var(--text-sm);
+  }
+  /* A phone says it in fewer words, so the question and both buttons stay on one line */
+  .ask .narrow {
+    display: none;
+  }
+  @media (max-width: 600px) {
+    .ask .wide {
+      display: none;
+    }
+    .ask .narrow {
+      display: inline;
+    }
   }
   .hint {
     margin: 0;
@@ -738,11 +753,6 @@
   .end-turn {
     gap: var(--s-1);
     padding-right: var(--s-3);
-    background: var(--red);
-    color: #fff;
-  }
-  .end-turn:hover:not(:disabled) {
-    background: var(--red-hover);
   }
   .turn {
     display: inline-flex;
@@ -791,6 +801,10 @@
     scrollbar-width: none;
     mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
   }
+  /* An empty place before the first picks: the chip's shape, faint, with nothing in it */
+  .tick.ghost {
+    background: color-mix(in srgb, var(--surface-2) 75%, transparent);
+  }
   .ticker::-webkit-scrollbar {
     display: none;
   }
@@ -829,6 +843,12 @@
     white-space: nowrap;
     text-overflow: ellipsis;
   }
+  /* A long team name ends in an ellipsis, not cut mid-letter (the flex row can't clip its own text) */
+  .clip {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
   .meta {
     overflow: hidden;
     color: var(--fg-subtle);
@@ -856,20 +876,19 @@
     text-transform: uppercase;
   }
 
-  /* Three views: My team, Players, Teams. A desktop has them side by side; the teams stay in view */
-  /* The pool is a name, a position and Pick: it needs no more than 30rem. My team and the other teams share what's
-     left evenly, either side of it */
+  /* Two views: Players, Teams. A desktop has them side by side; the teams stay in view. The pool is a name, a
+     position and Pick: it needs no more than 30rem; the teams get the rest, side by side where there's room */
   .views {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 30rem) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 30rem) minmax(16rem, 1fr);
     gap: var(--s-6);
     align-items: start;
   }
-  .views.solo {
-    grid-template-columns: minmax(0, 30rem) minmax(16rem, 1fr);
+  /* The teams start level with the first player, under the filter (a chip's height and the gap) */
+  .views.filtered > .col:not(.pool) {
+    padding-top: calc(2.25rem + var(--s-3));
   }
-  /* No team of your own: the teams get the rest of the width, side by side where there's room */
-  .views.solo .teams {
+  .views .teams {
     grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
     align-items: start;
   }
@@ -888,7 +907,7 @@
     align-items: center;
     gap: 0.15rem;
     margin-left: 0.4rem;
-    color: var(--amber-ink);
+    color: var(--caution-ink);
     font-size: var(--text-2xs);
     font-weight: 700;
   }
@@ -996,30 +1015,39 @@
     gap: var(--s-3);
     min-width: 0;
   }
-  .chips {
-    justify-self: start;
-    flex-wrap: wrap;
-    max-width: 100%;
+  /* A chip's count, quieter than its word */
+  .filter .count {
+    color: var(--fg-subtle);
+    font-size: var(--text-xs);
+    font-weight: 600;
   }
+  .filter[aria-pressed="true"] .count {
+    color: var(--fg-muted);
+  }
+  /* A phone keeps the four on one line: tighter chips sharing the width */
+  @media (max-width: 600px) {
+    .players .filters {
+      flex-wrap: nowrap;
+      gap: var(--s-1);
+    }
+    .players .filter {
+      flex: 1 1 auto;
+      justify-content: center;
+      gap: var(--s-1);
+      padding: 0 var(--s-2);
+    }
+  }
+  /* Tight rows, so more of the pool is in view at once; flush with the filter and the page's edge. No row fill: the
+     Pick button lights up for the row you point at */
   .plist {
     display: grid;
-    gap: var(--s-1);
   }
   .prow {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 1.6rem 5.5rem;
     align-items: center;
     gap: var(--s-3);
-    min-height: 3rem;
-    padding: 0 var(--s-1) 0 var(--s-3);
-    border-radius: var(--r-md);
-    transition: background-color var(--t-fast) var(--ease);
-  }
-  .prow:hover {
-    background: var(--surface-2);
-  }
-  .prow.chosen {
-    background: var(--surface-3);
+    min-height: 2.5rem;
   }
   .prow.dim {
     opacity: 0.4;
@@ -1037,10 +1065,6 @@
     white-space: nowrap;
     text-overflow: ellipsis;
     cursor: pointer;
-  }
-  .nm:hover {
-    text-decoration: underline;
-    text-underline-offset: 0.2em;
   }
   .nm small {
     margin-left: var(--s-2);
@@ -1065,18 +1089,19 @@
     display: flex;
     justify-content: flex-end;
   }
-  /* Pick: the app's small button, quiet in the list; the row you point at fills it cream */
+  /* Pick: the app's small button, quiet in the list; the row you point at makes it the main button (blue) */
   .pick {
     min-width: 4.5rem;
+    height: 1.9rem;
     border-color: var(--border-strong);
     font-weight: 600;
   }
   .prow:hover .pick,
   .pick:focus-visible,
   .pick[aria-pressed="true"] {
-    border-color: var(--primary);
-    background: color-mix(in srgb, var(--primary) 14%, transparent);
-    color: var(--fg);
+    border-color: var(--action);
+    background: var(--action);
+    color: var(--on-action);
   }
   .pick:focus-visible {
     outline: 2px solid var(--ring);

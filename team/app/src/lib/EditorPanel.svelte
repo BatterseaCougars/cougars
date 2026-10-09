@@ -10,7 +10,15 @@
   import { EASE_IN, EASE_OUT, prefersReducedMotion } from "../app/motion";
 
   // Opens in the page's own column (desktop), the same width as the cards under it
-  const colStyle = pageColumnStyle();
+  // …measured again when the window changes size, so it keeps to the page as the page reflows
+  let colStyle = $state(pageColumnStyle());
+  let settle: ReturnType<typeof setTimeout> | undefined;
+  function remeasure() {
+    colStyle = pageColumnStyle();
+    // The page's sides ease across when the window crosses a width (the settings list grows): again once they land
+    clearTimeout(settle);
+    settle = setTimeout(() => (colStyle = pageColumnStyle()), 400);
+  }
   let {
     eyebrow,
     title,
@@ -64,7 +72,7 @@
   }
 </script>
 
-<svelte:window {onkeydown} />
+<svelte:window {onkeydown} onresize={remeasure} />
 
 <div class="editor-layer" use:portal>
   <button class="scrim" aria-label="Close" tabindex="-1" onclick={close}></button>

@@ -1,5 +1,6 @@
 <script module lang="ts">
   // Which tournament's awards are being confirmed, if any: opened from the Awards section or the Manage sheet
+  import { goesBy, shortNameOf } from "./names";
   let editing = $state<{ id: number | null }>({ id: null });
   /** Open the awards for this tournament, to confirm. */
   export const enterAwards = (tournamentId: number) => (editing.id = tournamentId);
@@ -25,7 +26,7 @@
   const teamIndex = (id: number | null) => teams.findIndex((t) => t.id === id);
   const teamName = (id: number | null) => {
     const t = teams[teamIndex(id)];
-    return t ? t.name || `Team ${byId(t.captainMemberId)?.name.split(" ")[0] ?? ""}` : "";
+    return t ? t.name || `Team ${shortNameOf(byId(t.captainMemberId))}` : "";
   };
   const teamOf = (memberId: number | null) =>
     teams.find((t) => t.captainMemberId === memberId || t.players.some((p) => p.memberId === memberId))?.id ?? null;
@@ -33,7 +34,7 @@
     teams
       .flatMap((t) => [t.captainMemberId, ...t.players.map((p) => p.memberId)])
       .flatMap((id) => byId(id) ?? [])
-      .sort((a, b) => a.name.localeCompare(b.name)),
+      .sort((a, b) => goesBy(a).localeCompare(goesBy(b))),
   );
 
   // Each award's winners as they'll be confirmed: what's saved, else what the data says

@@ -1,6 +1,7 @@
 <script lang="ts">
   // A tournament's teams, at a glance: each one's crest, name and record so far, yours marked. A team opens its own
   // page (TournamentTeam): the squad, its games, and there its captain (or an admin) edits it.
+  import { shortNameOf } from "../lib/names";
   import { me } from "../demo/session.svelte";
   import { PLAYERS } from "../demo/data";
   import { currentTournament, typeById } from "../demo/schedule.svelte";
@@ -20,7 +21,7 @@
   const type = $derived(typeById(typeId)!);
   const tournament = $derived(currentTournament(typeId));
   const teams = $derived(tournament?.teams ?? []);
-  const firstName = (id: number | null) => PLAYERS.find((p) => p.id === id)?.name.split(" ")[0] ?? "";
+  const firstName = (id: number | null) => shortNameOf(PLAYERS.find((p) => p.id === id));
   const teamName = (i: number) => teams[i].name || `Team ${firstName(teams[i].captainMemberId)}`;
   const isMine = (i: number) =>
     teams[i].captainMemberId === me().id || teams[i].players.some((p) => p.memberId === me().id);

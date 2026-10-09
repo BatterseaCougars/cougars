@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { goesBy, matchesName } from "./names";
   import { MEMBERS, type Player } from "../demo/data";
   import { nextSession, seriesById, sessionBookable } from "../demo/schedule.svelte";
   import Icon from "../app/shell/Icon.svelte";
@@ -24,9 +25,9 @@
   const active = $derived(
     MEMBERS.filter((m) => m.status === "active")
       .map((m) => m.player)
-      .sort((a, b) => a.name.localeCompare(b.name)),
+      .sort((a, b) => goesBy(a).localeCompare(goesBy(b))),
   );
-  const found = (p: Player) => search.length < 2 || p.name.toLowerCase().includes(search.toLowerCase());
+  const found = (p: Player) => search.length < 2 || matchesName(p, search);
   // Walk-ins stay where they were ticked, under everyone else, so the list doesn't jump under your finger
   const signedUpIds = $derived(going.filter((id) => !walkIns.includes(id)));
   const signedUp = $derived(
@@ -108,7 +109,7 @@
 
 <style>
   .stat .value.warn {
-    color: var(--amber);
+    color: var(--caution);
   }
   .search {
     position: relative;

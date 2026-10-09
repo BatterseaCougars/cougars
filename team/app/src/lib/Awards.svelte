@@ -2,6 +2,7 @@
   // A tournament's awards and who won them (ADR 0073), on its landing page: each award, its line, and the team or
   // player (or joint winners) who took it home. Once it's done, the data's picks show as provisional (lib/awards.ts)
   // until an admin confirms them (here, or in Manage: AwardsDrawer).
+  import { goesByOf, shortNameOf } from "./names";
   import { can } from "../access/actions";
   import { PLAYERS } from "../demo/data";
   import type { Tournament } from "../demo/model";
@@ -25,7 +26,7 @@
   const teamIndex = (id: number | null) => teams.findIndex((t) => t.id === id);
   const teamName = (id: number | null) => {
     const t = teams[teamIndex(id)];
-    return t ? t.name || `Team ${byId(t.captainMemberId)?.name.split(" ")[0] ?? ""}` : "";
+    return t ? t.name || `Team ${shortNameOf(byId(t.captainMemberId))}` : "";
   };
   // Whose team a player's on
   const teamOf = (memberId: number) =>
@@ -67,9 +68,7 @@
               <span class="won-text">
                 <span class="won-name">Shared by {w.list.length}</span>
                 <span class="hint shared"
-                  >{w.list
-                    .map((x) => (x.teamId ? teamName(x.teamId) : (byId(x.memberId)?.name ?? "")))
-                    .join(", ")}</span
+                  >{w.list.map((x) => (x.teamId ? teamName(x.teamId) : goesByOf(byId(x.memberId)))).join(", ")}</span
                 >
               </span>
             {:else}
@@ -86,7 +85,7 @@
                   </span>
                 {:else if x.memberId}
                   <span class="won-text">
-                    <span class="won-name">{byId(x.memberId)?.name ?? ""}</span>
+                    <span class="won-name">{goesByOf(byId(x.memberId))}</span>
                     {#if teamOf(x.memberId)}<span class="hint">{teamName(teamOf(x.memberId))}</span>{/if}
                   </span>
                 {/if}

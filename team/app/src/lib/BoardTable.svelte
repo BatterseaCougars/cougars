@@ -2,6 +2,7 @@
   // A tournament's table (ADR 0061): its group games with a result, points, then goal difference, then goals for, with
   // its own points for a win, draw and loss; the champions marked once it's decided. On the board, and on a past
   // one's page (History).
+  import { shortNameOf } from "./names";
   import { PLAYERS } from "../demo/data";
   import type { Tournament, TournamentType } from "../demo/model";
   import { teamHref, teamTone } from "./team-tones";
@@ -30,7 +31,7 @@
       points,
     ),
   );
-  const firstName = (id: number | null) => PLAYERS.find((p) => p.id === id)?.name.split(" ")[0] ?? "";
+  const firstName = (id: number | null) => shortNameOf(PLAYERS.find((p) => p.id === id));
   const teamName = (id: number) => {
     const t = teams.find((x) => x.id === id);
     return t ? t.name || `Team ${firstName(t.captainMemberId)}` : "";

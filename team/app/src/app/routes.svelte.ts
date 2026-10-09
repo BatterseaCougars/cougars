@@ -6,6 +6,7 @@ import { db } from "../demo/store.svelte";
 import { DEV_TOOLS } from "../demo/data";
 import { buildFolds, buildRoutes, buildTabs, routeFor, type NavConfig } from "./nav-routes";
 import { navigate, router } from "./router.svelte";
+import { goesBy } from "../lib/names";
 
 const config = (): NavConfig => ({
   series: db.series,
@@ -33,7 +34,7 @@ const config = (): NavConfig => ({
       ),
   })),
   me: me().id,
-  members: db.members.filter((m) => m.status === "active").map((m) => ({ id: m.player.id, name: m.player.name })),
+  members: db.members.filter((m) => m.status === "active").map((m) => ({ id: m.player.id, name: goesBy(m.player) })),
   devTools: DEV_TOOLS,
 });
 

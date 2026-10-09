@@ -1,8 +1,11 @@
 <script lang="ts">
   // Where a tournament's draft stands, on its landing page: its date up front, as the event card has it, then that
-  // it's coming, on, or closed. Its captains and whoever runs it get a way in, and a captain hears when it's their
-  // pick. Everyone else just hears the news: the draft itself is the captains' business (ADR 0070). Closed is loud:
-  // the teams are set, and that's the way to them.
+  // it's coming, on, or closed, and its captains as discs in their teams' colours. Its captains and whoever runs it get
+  // a way in, and a captain hears when it's their pick. Everyone else just hears the news: the draft itself is the
+  // captains' business (ADR 0070). Closed is loud: the teams are set, and that's the way to them.
+  import { goesBy } from "./names";
+  import { initials } from "./initials";
+  import { teamTone } from "./team-tones";
   import { can } from "../access/actions";
   import { PLAYERS } from "../demo/data";
   import type { Tournament, TournamentType } from "../demo/model";
@@ -21,8 +24,14 @@
   const inside = $derived(mine >= 0 || running);
   const state = $derived(tournament.draftState);
   const turn = $derived(draftTurn(tournament, mine));
-  const firstName = (id: number | null) => PLAYERS.find((p) => p.id === id)?.name.split(" ")[0] ?? "";
-  const captains = $derived(teams.map((t) => firstName(t.captainMemberId)).join(", "));
+  // The captains, in pick order: a disc each, in their team's colour (the same as its crest below)
+  const captains = $derived(
+    teams.map((t, i) => {
+      const p = PLAYERS.find((p) => p.id === t.captainMemberId);
+      const name = p ? goesBy(p) : "To be named";
+      return { key: t.id ?? i, name, initials: p ? initials(name) : "?", tone: teamTone(i), you: i === mine };
+    }),
+  );
   const when = $derived(
     tournament.draftOn
       ? `${formatDayDate(londonISO(tournament.draftOn, tournament.draftTime ?? "12:00"))}${tournament.draftTime ? ` at ${tournament.draftTime}` : ""}`
@@ -33,9 +42,9 @@
     tournament.draftOn ? dateBadge(londonISO(tournament.draftOn, tournament.draftTime ?? "12:00")) : null,
   );
 
-  // The headline, a line under it, and the badge: in words, so nobody needs the colour
+  // The headline, a line under it if there's more to say, and the badge: in words, so nobody needs the colour
   const view = $derived.by(() => {
-    if (!teams.length) return { title: "Captains to be named", sub: "Then a date for the draft.", badge: "" };
+    if (!teams.length) return { title: "Captains to be named", sub: "", badge: "" };
     if (state === "open") {
       if (mine >= 0 && turn.left && turn.until === 0)
         return { title: "It's your pick", sub: "You're on the clock. Don't keep them waiting.", badge: "Live" };
@@ -49,16 +58,13 @@
         return { title: "Everyone's picked", sub: "It closes to set the teams.", badge: "Live" };
       return {
         title: "The draft is on",
-        sub: inside
-          ? `${turn.picks} picked, ${turn.left} to go.`
-          : "The captains are picking. The teams are out when they're done.",
+        sub: inside ? `${turn.picks} picked, ${turn.left} to go.` : "The teams are out when they're done.",
         badge: "Live",
       };
     }
-    if (state === "closed") return { title: "The teams are set", sub: `Captains: ${captains}.`, badge: "Done" };
     return {
       title: when ? `Draft ${when}` : "Draft date to be set",
-      sub: `Captains: ${captains}${mine >= 0 ? `. You pick ${nth(mine + 1)}.` : "."}`,
+      sub: mine >= 0 ? `You pick ${nth(mine + 1)}.` : "",
       badge: "",
     };
   });
@@ -73,7 +79,7 @@
     <span class="stamp display">Closed</span>
     <span class="text">
       <span class="shout display">The draft is done</span>
-      <span class="sub">The teams are set. Captains: {captains}.</span>
+      {@render discs()}
     </span>
     <span class="see">See the teams<Icon name="chevronRight" size={16} /></span>
   </a>
@@ -97,10 +103,12 @@
         {#if view.badge === "Live"}<span class="badge red live">Live</span>
         {:else if view.badge}<span class="badge">{view.badge}</span>{/if}
       </p>
-      <p class="sub">{view.sub}</p>
+      {#if view.sub}<p class="sub">{view.sub}</p>{/if}
+      {@render discs()}
     </div>
     {#if inside && teams.length && state !== "none"}
-      <a class="btn sm" class:outline={!yours} class:go={yours} href="/tournaments/{type.slug}/draft">Go to the draft</a
+      <a class="btn sm" class:outline={!yours} class:primary={yours} href="/tournaments/{type.slug}/draft"
+        >Go to the draft</a
       >
     {:else if !teams.length && can(perms, "manage:Tournament")}
       <button class="btn sm outline" onclick={() => editTournament(tournament.id, { tab: "teams" })}
@@ -109,6 +117,19 @@
     {/if}
   </div>
 {/if}
+
+<!-- The captains: initials in a disc, the name on hover and for a screen reader -->
+{#snippet discs()}
+  {#if captains.length}
+    <span class="captains" role="list" aria-label="Captains">
+      {#each captains as c (c.key)}
+        <span class="captain" class:you={c.you} role="listitem" title={c.name} aria-label={c.name} style:--tone={c.tone}
+          >{c.initials}</span
+        >
+      {/each}
+    </span>
+  {/if}
+{/snippet}
 
 <style>
   .draft {
@@ -180,15 +201,31 @@
     color: var(--fg);
     font-weight: 600;
   }
-  .go {
-    background: var(--red);
-    color: #fff;
-  }
-  .go:hover {
-    background: var(--red-hover);
-  }
   .sub {
     margin: 0;
     font-size: var(--text-sm);
+  }
+  .captains {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-2);
+    margin-top: var(--s-2);
+  }
+  /* A disc per captain, in their team's colour, as the crests are: tinted, the initials in the colour */
+  .captain {
+    display: grid;
+    place-items: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: var(--r-pill);
+    background: color-mix(in srgb, var(--tone) 18%, var(--surface-2));
+    color: var(--tone);
+    font-size: var(--text-xs);
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+  /* You: a ring, so it doesn't rest on the colour */
+  .captain.you {
+    box-shadow: 0 0 0 2px var(--fg);
   }
 </style>

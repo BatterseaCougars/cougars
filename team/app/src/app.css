@@ -67,18 +67,19 @@
   --r-xl: 0.875rem;
   --r-pill: 999px;
 
-  /* ─── Surfaces and ink ─── */
+  /* ─── The Sticker scheme (ADR 0084): carbon and bone, cougar red, sticker yellow for the one main action ───
+     Surfaces and ink are one warm ramp (OKLCH hue 70), so the greys and the bone words belong together. */
   color-scheme: dark;
-  --bg: #0d0d0f;
-  --surface-1: #17171a;
-  --surface-2: #1e1e22;
-  --surface-3: #27272c; /* hover, selected */
-  --border: rgb(236 232 225 / 0.07);
-  --border-strong: rgb(236 232 225 / 0.14);
-  --fg: #ece8e1; /* titles, the active item */
-  --fg-body: #d6d1c9; /* running text */
-  --fg-muted: #a39e96;
-  --fg-subtle: #6e6a64;
+  --bg: #0e0d0b; /* carbon */
+  --surface-1: #191715; /* panels */
+  --surface-2: #201e1b; /* fields, chips */
+  --surface-3: #2a2724; /* hover, selected */
+  --border: rgb(239 232 225 / 0.07);
+  --border-strong: rgb(239 232 225 / 0.14);
+  --fg: #efe8e1; /* bone: titles, the active item, 14.7:1 on a panel */
+  --fg-body: #d8d1ca; /* running text */
+  --fg-muted: #a6a09a; /* hints, 6.9:1 */
+  --fg-subtle: #75716b; /* placeholders and disabled only, 3.7:1 */
 
   /* ─── Colour ─── */
   --red: #e5131f;
@@ -88,31 +89,47 @@
   --red-wash: color-mix(in srgb, var(--red) 16%, transparent);
   --red-wash-strong: color-mix(in srgb, var(--red) 26%, transparent);
   --red-border: color-mix(in srgb, var(--red) 40%, transparent);
-  --green: #5ccb86;
+  /* Statuses, one job each, always with a word: success (in, paid), heads-up (the waitlist, View as), live and
+     danger (red) */
+  --green: #67d283;
   --green-wash: color-mix(in srgb, var(--green) 14%, transparent);
   /* Text on a tinted fill (badges, a pressed In or Out): a lighter shade of the colour, so it reads at about 7.5:1
      on its own wash, where the plain colour managed 4 to 6 */
   --green-ink: #7fdca2;
-  --amber-ink: #ffca7a;
+  --caution-ink: #ffb784;
   --red-ink: #ff9da1;
   --green-border: color-mix(in srgb, var(--green) 35%, transparent);
-  --amber: #ffb84d;
-  --amber-wash: color-mix(in srgb, var(--amber) 14%, transparent);
-  --amber-border: color-mix(in srgb, var(--amber) 35%, transparent);
+  /* Heads-up is orange, so yellow means only "tap here" */
+  --caution: #f99549;
+  --caution-wash: color-mix(in srgb, var(--caution) 14%, transparent);
+  --caution-border: color-mix(in srgb, var(--caution) 35%, transparent);
   --ring: var(--red-hot);
-  /* Main buttons: the logo's white half, a notch under the brightest ink so a row of them doesn't glare. Red is the
-     brand (logo, headings, glow), so a red button got lost in it. */
+  /* The logo's white half, a notch under the brightest ink: ink on red (the kanji seal, a stamp) */
   --primary: #e6e0d4;
-  --primary-fg: var(--bg);
-  --primary-hover: #f2ede3;
+  /* The one action colour: the website's sticker yellow, carbon words (13.8:1). Only the main button (one per group)
+     uses it, never anything else, so it always means "tap here" */
+  --action: #ffd60a;
+  --action-hover: #ffe03d;
+  --on-action: var(--bg);
+  /* Words on a red fill: an armed "are you sure", the switch's track */
+  --on-red: #ffffff;
 
-  /* Schedule tones: each training and tournament has one (demo/model.ts TONES) */
-  --tone-red: #ff3b45;
-  --tone-blue: #5b9bff;
-  --tone-green: #5ccb86;
-  --tone-amber: #ffb84d;
-  --tone-violet: #a78bfa;
-  --tone-teal: #2dd4bf;
+  /* Tones: a training's or tournament's own, and the teams' (demo/model.ts TONES, lib/team-tones.ts). Six at one
+     lightness (OKLCH 0.74), so they read as a set: crests, chips and dots, never a card fill. The red one is coral,
+     not the club's red, so a team never looks live */
+  --tone-red: #f18b71;
+  --tone-blue: #67b0f9;
+  --tone-green: #69c27e;
+  --tone-amber: #da9e3f;
+  --tone-violet: #be95ec;
+  --tone-teal: #2fbfb8;
+
+  /* The trading card (PlayerCard, PlayerCardZoom): a printed thing, so its own stock, ink and band */
+  --card-stock: #c9c0af;
+  --card-ink: #1b1917;
+  --card-band: #a80f18;
+  --card-well: #1c1c21;
+  --card-you-ink: #0d1a12;
 
   /* ─── Surfaces: panels are solid; --blur is for the chrome ─── */
   --panel-bg: var(--surface-1);
@@ -197,7 +214,7 @@ body::after {
 body::before {
   background:
     var(--ambient),
-    linear-gradient(rgb(13 13 15 / 0.8), rgb(13 13 15 / 0.8)),
+    linear-gradient(color-mix(in srgb, var(--bg) 80%, transparent), color-mix(in srgb, var(--bg) 80%, transparent)),
     url("./assets/carbon.webp") center / cover no-repeat,
     var(--bg);
 }
@@ -624,16 +641,14 @@ button.row:hover:not(:disabled) {
   box-shadow: none;
   cursor: not-allowed;
 }
-/* The main button: no light block on the dark page (a cream fill glared, red read as an error). A full cream edge on
-   a faint cream wash, cream text: the strongest thing in its row, still part of the page. */
+/* The main button: solid VCR blue, white words (ADR 0083). One per group: the clearest thing in its row */
 .btn.primary {
-  border: 2px solid var(--primary);
-  background: color-mix(in srgb, var(--primary) 12%, transparent);
-  color: var(--fg);
+  background: var(--action);
+  color: var(--on-action);
   font-weight: 600;
 }
 .btn.primary:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--primary) 20%, transparent);
+  background: var(--action-hover);
 }
 /* The secondary button: a clear cream outline on nothing, so it reads as a button on the dark panels (a grey fill on
    a grey panel didn't). Hover warms it a touch */
@@ -661,6 +676,14 @@ button.row:hover:not(:disabled) {
 .btn.ghost:disabled {
   background: transparent;
   opacity: 0.35;
+}
+/* An edged or filled kind that can't be used reads as off: its colours give way. (.btn:disabled alone sits above the
+   kinds at the same weight, so a disabled main button kept its look and seemed live) */
+.btn.primary:disabled,
+.btn.outline:disabled {
+  border-color: var(--border-strong);
+  background: transparent;
+  color: var(--fg-subtle);
 }
 .btn.sm {
   height: var(--control-h-sm);
@@ -693,14 +716,18 @@ button.row:hover:not(:disabled) {
 .bar-actions .btn:hover:not(:disabled) {
   background: color-mix(in srgb, var(--fg) 7%, transparent);
 }
-/* The main one keeps its edge, so the bar has one clear button */
+/* The main one keeps its blue, so the bar has one clear button */
 .bar-actions .btn.primary {
-  border: 2px solid var(--primary);
-  background: color-mix(in srgb, var(--primary) 12%, transparent);
-  color: var(--fg);
+  background: var(--action);
+  color: var(--on-action);
 }
 .bar-actions .btn.primary:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--primary) 20%, transparent);
+  background: var(--action-hover);
+}
+.bar-actions .btn.primary:disabled {
+  border: 1px solid var(--border-strong);
+  background: transparent;
+  color: var(--fg-subtle);
 }
 
 /* A switch, for one thing that's on or off (on the Cougars team): a button with role="switch" and aria-checked, its
@@ -791,15 +818,13 @@ button.row:hover:not(:disabled) {
 .seg > button:hover:not([aria-pressed="true"], [aria-selected="true"]) {
   color: var(--fg);
 }
-/* The chosen one: a raised tile in the track, cream text, not a cream block */
+/* The chosen one: a lighter tile in the track, cream text; no outline (no pill in a pill), not a cream block */
 .seg > button[aria-pressed="true"],
 .seg > button[aria-selected="true"] {
-  background: var(--surface-3);
+  background: color-mix(in srgb, var(--fg) 14%, var(--surface-2));
   color: var(--fg);
   font-weight: 600;
-  box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--fg) 30%, transparent),
-    0 1px 2px rgb(0 0 0 / 0.35);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.35);
 }
 .seg.red > button[aria-pressed="true"] {
   background: var(--red);
@@ -894,8 +919,8 @@ input[type="checkbox"] {
   color: var(--green-ink);
 }
 .badge.amber {
-  background: color-mix(in srgb, var(--amber) 18%, transparent);
-  color: var(--amber-ink);
+  background: color-mix(in srgb, var(--caution) 18%, transparent);
+  color: var(--caution-ink);
 }
 .badge.live::before {
   content: "";

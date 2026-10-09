@@ -1,6 +1,6 @@
 # 0074. A tournament's home in three acts, its state from its games
 
-- **Status:** Accepted. Changes the tournament landing page (Games.svelte) and its header (TournamentHead).
+- **Status:** Accepted. Changes the tournament landing page (Games.svelte) and its header (TournamentHead). Amended by [0086](0086-next-tournament-without-last-time.md) (no Last time, fewer words before).
 - **Date:** 2026-10-08
 
 ## Context

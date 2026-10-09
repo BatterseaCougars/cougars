@@ -1,15 +1,16 @@
 <script lang="ts">
   // A tournament series' landing page, for the edition the header shows (the latest, or one picked from the past). The
   // date is the header's; the page follows the day in three acts, from what's happened (lib/edition.ts):
-  //   Before: saying you're in, the draft and its date, the teams so far (not final till the day).
+  //   Before: saying you're in, the draft and its captains, the teams, the first game.
   //   During: your turn to keep score, the game on now and the next, the latest results.
   //   After: the champions, the final, every result, and the awards.
+  import { shortNameOf } from "../lib/names";
   import { can } from "../access/actions";
   import { granted, me } from "../demo/session.svelte";
   import { PLAYERS } from "../demo/data";
-  import { currentTournament, previousTournament, typeById } from "../demo/schedule.svelte";
+  import { currentTournament, typeById } from "../demo/schedule.svelte";
   import SignUpLine from "../lib/SignUpLine.svelte";
-  import { championOf, editionState, editionWhen } from "../lib/edition";
+  import { editionState } from "../lib/edition";
   import Kanji from "../lib/Kanji.svelte";
   import { kanjiFor } from "../lib/motif";
   import FixtureRow from "../lib/FixtureRow.svelte";
@@ -29,7 +30,7 @@
   const perms = $derived(granted());
   const type = $derived(typeById(typeId)!);
   const tournament = $derived(currentTournament(typeId));
-  const firstName = (id: number | null) => PLAYERS.find((p) => p.id === id)?.name.split(" ")[0] ?? "";
+  const firstName = (id: number | null) => shortNameOf(PLAYERS.find((p) => p.id === id));
   const teams = $derived(tournament?.teams ?? []);
   const teamName = (i: number) => teams[i].name || `Team ${firstName(teams[i].captainMemberId)}`;
   const manage = $derived(can(perms, "manage:Tournament"));
@@ -90,19 +91,6 @@
     const state = tournament ? editionState(tournament) : "planned";
     return state === "done" ? "after" : state === "live" ? "during" : "before";
   });
-  // Last time: the one before, played, with its champions (on the next one's page, so you see both)
-  const last = $derived(tournament && mode === "before" ? previousTournament(tournament) : undefined);
-  const lastChamp = $derived.by(() => {
-    if (!last) return undefined;
-    const id = championOf(last);
-    const i = last.teams.findIndex((t) => t.id === id);
-    if (i < 0) return undefined;
-    const t = last.teams[i];
-    const captain = PLAYERS.find((p) => p.id === t.captainMemberId)?.name.split(" ")[0] ?? "";
-    return { index: i, team: t, name: t.name || `Team ${captain}` };
-  });
-  const lastWhen = $derived(last ? editionWhen(last) : undefined);
-
   // The latest results, newest first; the final, last of the playoffs
   const results = $derived(games.filter((g) => g.status === "done").sort((a, b) => b.position - a.position));
   const final = $derived(
@@ -196,34 +184,23 @@
       </section>
     {/if}
   {:else if tournament}
-    <!-- Before: saying you're in, the draft, the teams so far, and how the last one ended -->
-    {#if tournament.status === "planned"}
-      <p class="lede">
-        {editionWhen(tournament).tbc ? "The date's being set." : "It's on."} Sign-up opens nearer the day{tournament.kind ===
-        "draft"
-          ? ", then the captains draft the teams"
-          : ""}.
-      </p>
-    {/if}
+    <!-- Before: saying you're in, the draft, the teams, the first game. Once the next one's set (even with its date
+         to come) the last one's in History, not here -->
     <SignUpLine {tournament} canSignUp={can(perms, "signup:Event")} />
     {#if tournament.kind === "draft"}
-      <section class="part">
-        <h2 class="section-title">Draft</h2>
-        <DraftStatus {type} {tournament} />
-      </section>
+      <DraftStatus {type} {tournament} />
     {/if}
     {#if teams.length}
       <section class="part">
         <div class="part-head">
-          <h2 class="section-title">The teams so far</h2>
+          <h2 class="section-title">Teams</h2>
           {#if !teamsHidden}<a class="btn ghost sm" href="/tournaments/{type.slug}/teams"
-              >See them all<Icon name="chevronRight" size={16} /></a
+              >See all<Icon name="chevronRight" size={16} /></a
             >{/if}
         </div>
         {#if teamsHidden}
           <p class="note">The captains pick the teams in the draft. They're out once it's done.</p>
         {:else}
-          <p class="hint">Not final till the day: names, logos and squads can still change.</p>
           <!-- Each team: its crest and name, yours marked; each opens the team -->
           <div class="teams-grid">
             {#each teams as t, i (t.id ?? i)}
@@ -231,7 +208,9 @@
                 <TeamCrest name={teamName(i)} logo={t.logo} tone={teamTone(i)} size="3.5rem" />
                 <span class="chip-text">
                   <span class="chip-name">{teamName(i)}</span>
-                  <span class="chip-sub">{i === mine ? "Your team" : `Captain ${firstName(t.captainMemberId)}`}</span>
+                  <!-- Only what the name doesn't say: that it's yours, or whose it is once it has a name of its own -->
+                  {#if i === mine}<span class="chip-sub">Your team</span>
+                  {:else if t.name}<span class="chip-sub">Captain {firstName(t.captainMemberId)}</span>{/if}
                 </span>
               </a>
             {/each}
@@ -250,55 +229,10 @@
     {:else if manage && teams.length >= 2}
       <p class="note">The fight card isn't out yet. <a href={schedule}>Make it</a></p>
     {/if}
-    {#if last && lastWhen}
-      <section class="part">
-        <div class="part-head">
-          <h2 class="section-title">Last time<Kanji text={kanjiFor(type, "blood")} /></h2>
-          <a class="btn ghost sm" href="/tournaments/{type.slug}/history"
-            >History<Icon name="chevronRight" size={16} /></a
-          >
-        </div>
-        <a class="last" href="/tournaments/{type.slug}/history/{last.id}">
-          {#if lastChamp}
-            <TeamCrest
-              name={lastChamp.name}
-              logo={lastChamp.team.logo}
-              tone={teamTone(lastChamp.index)}
-              size="3.5rem"
-            />
-          {/if}
-          <span class="last-text">
-            <span class="eyebrow">{lastWhen.day ?? lastWhen.season}</span>
-            <span class="last-name display">{lastChamp ? `${lastChamp.name} won it` : last.name}</span>
-          </span>
-        </a>
-      </section>
-    {/if}
   {/if}
 </div>
 
 <style>
-  .lede {
-    margin: 0;
-    color: var(--fg-body);
-    font-size: var(--text-md);
-  }
-  /* Last time: the champions and the day, on the page, opening that edition */
-  .last {
-    display: flex;
-    align-items: center;
-    gap: var(--s-4);
-    padding: var(--s-2) 0;
-    color: var(--fg);
-  }
-  .last-text {
-    display: grid;
-    gap: 0.2rem;
-  }
-  .last-name {
-    font-size: 1.6rem;
-    line-height: 1;
-  }
   .updates {
     display: flex;
     align-items: center;

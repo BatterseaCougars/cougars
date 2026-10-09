@@ -11,6 +11,7 @@
   // phone counts down by itself (and it survives a reload or a locked phone); only start, pause, a goal and full time
   // are sent. Everyone on the page checks for changes as often as the admins set (ADR 0072), the scorekeeper too (the
   // same person may have it open twice), while the page is in view.
+  import { goesBy, goesByOf, shortNameOf } from "../lib/names";
   import { db } from "../demo/store.svelte";
   import { onDestroy } from "svelte";
   import { can } from "../access/actions";
@@ -50,7 +51,7 @@
   const indexOf = (teamId: number | null) => teams.findIndex((t) => t.id === teamId);
   const teamName = (teamId: number | null) => {
     const t = teams[indexOf(teamId)];
-    return t ? t.name || `Team ${byId(t.captainMemberId)?.name.split(" ")[0] ?? ""}` : "";
+    return t ? t.name || `Team ${shortNameOf(byId(t.captainMemberId))}` : "";
   };
   const roster = (teamId: number): Player[] => {
     const t = teams[indexOf(teamId)];
@@ -347,8 +348,8 @@
                 />
                 <span class="who">
                   <span class="team-label">{teamName(g.teamId)}</span>
-                  <span class="scorer">{byId(g.scorerId)?.name ?? "Goal"}</span>
-                  {#if g.assistId}<span class="assist">Assist · {byId(g.assistId)?.name}</span>{/if}
+                  <span class="scorer">{goesByOf(byId(g.scorerId)) || "Goal"}</span>
+                  {#if g.assistId}<span class="assist">Assist · {goesByOf(byId(g.assistId))}</span>{/if}
                 </span>
               </span>
               {#if fixing}
@@ -393,7 +394,7 @@
                   {@const scored = (game.goals ?? []).filter((x) => x.scorerId === p.id).length}
                   <li>
                     <span class="c display">{p.id === teams[indexOf(teamId)]?.captainMemberId ? "C" : ""}</span>
-                    <span class="pname">{p.name}</span>
+                    <span class="pname">{goesBy(p)}</span>
                     {#if scored}<span class="badge">{scored > 1 ? `${scored} goals` : "Goal"}</span>{/if}
                     <span class="pos">{p.position}</span>
                   </li>
@@ -412,7 +413,7 @@
       {#if keeper}
         <!-- Stop scoring is in the tools -->
       {:else if holder}
-        <p class="hint">Score kept by {holder.name}.</p>
+        <p class="hint">Score kept by {goesBy(holder)}.</p>
         {#if admin}<button class="btn outline let-go" disabled={busy} onclick={letGo}>Let it go</button>{/if}
       {:else if over && canFix}
         <!-- An admin puts the result right: goals on and off -->
@@ -454,7 +455,7 @@
           <span class="tool-text"
             ><strong>Take back the last goal</strong><span
               >{lastGoal
-                ? `${byId(lastGoal.scorerId)?.name ?? teamName(lastGoal.teamId)} · ${mmss(lastGoal.atMs)}`
+                ? `${goesByOf(byId(lastGoal.scorerId)) || teamName(lastGoal.teamId)} · ${mmss(lastGoal.atMs)}`
                 : "No goals yet"}</span
             ></span
           >
@@ -560,7 +561,7 @@
     bind:open={() => !!picking, (v) => !v && (picking = null)}
     title={picking?.scorer === undefined ? "Who scored?" : picking?.assist === undefined ? "Who assisted?" : "When?"}
     sub={picking
-      ? `Goal ${teamName(picking.team)}${picking.scorer ? ` · ${byId(picking.scorer)?.name ?? ""}` : ""}`
+      ? `Goal ${teamName(picking.team)}${picking.scorer ? ` · ${goesByOf(byId(picking.scorer))}` : ""}`
       : undefined}
   >
     {#if picking && picking.scorer !== undefined && picking.assist !== undefined}
@@ -591,7 +592,7 @@
       <div class="names">
         {#each roster(picking.team).filter((p) => p.id !== picking?.scorer) as p (p.id)}
           <button class="name-pick" onclick={() => choose(p.id)}
-            ><span>{p.name}</span><small>{p.position}</small></button
+            ><span>{goesBy(p)}</span><small>{p.position}</small></button
           >
         {/each}
       </div>
@@ -804,7 +805,7 @@
   .control.full-time.confirming {
     border-color: var(--red);
     background: var(--red);
-    color: #fff;
+    color: var(--on-red);
   }
   .log {
     display: grid;
@@ -994,7 +995,7 @@
   }
   .tool.danger {
     background: var(--red);
-    color: #fff;
+    color: var(--on-red);
   }
   .tool-text {
     display: grid;
@@ -1007,7 +1008,7 @@
   }
   .tool.danger .tool-text strong,
   .tool.danger .tool-text span {
-    color: #fff;
+    color: var(--on-red);
   }
   .tool-text span {
     font-size: var(--text-sm);
