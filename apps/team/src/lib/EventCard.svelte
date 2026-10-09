@@ -496,7 +496,7 @@
   /* The session you're asked about, while you're not in: In pulses once, a soft ring. A shadow, so nothing moves. */
   .answer > .yes.beckon,
   .answer > .yes.beckon-again {
-    animation: beckon 1.2s 300ms var(--ease-in-out) 1 both;
+    animation: beckon 1.2s var(--beckon-delay, 300ms) var(--ease-in-out) 1 both;
   }
   @keyframes beckon {
     0%,
