@@ -1,5 +1,6 @@
 import "./app.css";
 import { ApiError, getBootstrap, running } from "./app/api";
+import { isStaleCode, recoverOnce } from "./app/stale-code";
 import { hydrate } from "./demo/data";
 
 // The club's data comes first: the store and the app's modules read it as they load, so they're imported only
@@ -16,8 +17,20 @@ try {
   if (e instanceof ApiError && e.status === 401) {
     const [{ mount }, { default: SignIn }] = await Promise.all([import("svelte"), import("./pages/SignIn.svelte")]);
     mount(SignIn, { target });
-  } else showError(e);
+  } else if (!(isStaleCode(e) && newCode())) showError(e);
   unsplash();
+}
+
+// Later too: a page opened after a deploy (or a dev server restart) asks for a file that's gone. Reload for the new code.
+window.addEventListener("vite:preloadError", (e) => {
+  if (newCode()) e.preventDefault();
+});
+window.addEventListener("unhandledrejection", (e) => {
+  if (isStaleCode(e.reason)) newCode();
+});
+
+function newCode() {
+  return recoverOnce(sessionStorage, () => location.reload());
 }
 
 // The page you're opening, so the app's first paint has it (each page is its own chunk: app/pages.svelte.ts)
@@ -43,7 +56,15 @@ function unsplash() {
 
 function showError(e: unknown) {
   // Resting (the day's free allowance is used up, ADR 0055) isn't broken: say when it's back
-  const title = e instanceof ApiError && e.status === 429 ? "Back soon" : "Can't reach the club's data";
+  const title =
+    e instanceof ApiError && e.status === 429
+      ? "Back soon"
+      : isStaleCode(e)
+        ? // A reload didn't help: in dev, the server is handing out its old bundle's addresses until it restarts
+          import.meta.env.DEV
+          ? "The dev server's files changed: restart it"
+          : "The app has changed: reload the page"
+        : "Can't reach the club's data";
   target.innerHTML = `<div class="boot-error"><p class="display"></p><p class="hint"></p></div>`;
   target.querySelector(".display")!.textContent = title;
   target.querySelector(".hint")!.textContent = e instanceof Error ? e.message : String(e);

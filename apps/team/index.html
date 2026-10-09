@@ -16,9 +16,12 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <!-- The splash's own styles, here so it paints before the stylesheet or any script arrives -->
     <style>
+      /* The page's colour on html, never body: an opaque body would cover the carbon mesh (app.css, body::before) */
+      html {
+        background: #0e0d0b;
+      }
       body {
         margin: 0;
-        background: #0e0d0b;
       }
       #splash {
         position: fixed;
