@@ -240,6 +240,8 @@
 
   // A payment of any amount (a lump sum): it pays the oldest charges first, and what's left over is credit
   let paying = $state(false);
+  // Below the details: their attendance, or (for whoever sees dues) their payments
+  let bodyTab = $state<"attendance" | "payments">("attendance");
   let payAmount = $state("");
   let payVia = $state<"transfer" | "cash">("transfer");
   function startPayment() {
@@ -530,73 +532,109 @@
       {/if}
       {#if ready}
         <div>
-          <section class="in">
-            <div class="head-row">
-              <h2>Attendance</h2>
-              <span class="steps" role="group" aria-label="Quarter">
+          {#if seesDues}
+            <!-- Attendance and payments each get the whole card below the details -->
+            <div class="seg tabs in" role="tablist" aria-label="{shortName(member.player)}'s record">
+              {#each [["attendance", "Attendance"], ["payments", "Payments"]] as [id, label] (id)}
                 <button
-                  class="btn ghost icon"
-                  aria-label="Quarter before"
-                  disabled={quarter <= firstQuarter}
-                  onclick={() => quarter--}
+                  type="button"
+                  role="tab"
+                  id="member-tab-{id}"
+                  aria-selected={bodyTab === id}
+                  aria-controls="member-panel"
+                  onclick={() => (bodyTab = id as typeof bodyTab)}
                 >
-                  <Icon name="chevronLeft" size={18} />
+                  {label}{#if id === "payments" && owed > 0}<span class="tab-owed num">{pounds(owed)}</span>{/if}
                 </button>
-                <span class="step-label num" aria-live="polite">{quarterLabel}</span>
-                <button
-                  class="btn ghost icon"
-                  aria-label="Quarter after"
-                  disabled={quarter >= thisQuarter}
-                  onclick={() => quarter++}
-                >
-                  <Icon name="chevronRight" size={18} />
-                </button>
-              </span>
-            </div>
-            <p class="legend hint">
-              <span><i class="dot came"></i>Came {inQuarter.filter(came).length}</span>
-              <span
-                ><i class="dot noshow"></i>No-show {inQuarter.filter((r) => r.signup === "in" && !came(r)).length}</span
-              >
-              <span><i class="dot"></i>Not there</span>
-              <span>Played {member.player.played ?? 0} in all</span>
-              <span class="tap">Tap a Friday to change it</span>
-            </p>
-            <!-- The quarter as a calendar: a row per month, its trainings across it week by week -->
-            <div class="months">
-              {#each months as [month, days] (month)}
-                <span class="month">{month}</span>
-                <div class="weeks">
-                  {#if attendance === null}
-                    <span class="hint">Loading…</span>
-                  {/if}
-                  {#each days as r (r.sessionId)}
-                    {@const o = outcome(r)}
-                    <button
-                      class="day {o.kind}"
-                      disabled={r.cancelled}
-                      title="{r.series}, {formatDayDate(londonISO(r.heldOn, '12:00'))}: {o.label}"
-                      aria-label="{r.series}, {formatDayDate(londonISO(r.heldOn, '12:00'))}: {o.label}"
-                      onclick={() => toggleCame(r)}
-                    >
-                      <span class="d num">{Number(r.heldOn.slice(8))}</span>
-                    </button>
-                  {:else}
-                    {#if attendance !== null}<span class="hint">No trainings</span>{/if}
-                  {/each}
-                </div>
               {/each}
             </div>
-          </section>
-
-          {#if seesDues}
-            <section class="in">
+          {/if}
+          {#if bodyTab === "attendance" || !seesDues}
+            <div class="part in" id="member-panel" role="tabpanel" aria-labelledby="member-tab-attendance">
               <div class="head-row">
-                <h2>Fees</h2>
-                <span class="totals hint num">
-                  Owes <b class:owes={owed > 0}>{pounds(owed)}</b> · Paid <b>{pounds(paidTotal)}</b>{#if credit}
-                    · Credit <b>{pounds(credit)}</b>{/if}
+                <h2>Attendance</h2>
+                <span class="steps" role="group" aria-label="Quarter">
+                  <button
+                    class="btn ghost icon"
+                    aria-label="Quarter before"
+                    disabled={quarter <= firstQuarter}
+                    onclick={() => quarter--}
+                  >
+                    <Icon name="chevronLeft" size={18} />
+                  </button>
+                  <span class="step-label num" aria-live="polite">{quarterLabel}</span>
+                  <button
+                    class="btn ghost icon"
+                    aria-label="Quarter after"
+                    disabled={quarter >= thisQuarter}
+                    onclick={() => quarter++}
+                  >
+                    <Icon name="chevronRight" size={18} />
+                  </button>
                 </span>
+              </div>
+              <p class="legend hint">
+                <span><i class="dot came"></i>Came {inQuarter.filter(came).length}</span>
+                <span
+                  ><i class="dot noshow"></i>No-show {inQuarter.filter((r) => r.signup === "in" && !came(r))
+                    .length}</span
+                >
+                <span><i class="dot"></i>Not there</span>
+                <span>Played {member.player.played ?? 0} in all</span>
+                <span class="tap">Tap a Friday to change it</span>
+              </p>
+              <!-- The quarter as a calendar: a row per month, its trainings across it week by week -->
+              <div class="months">
+                {#each months as [month, days] (month)}
+                  <span class="month">{month}</span>
+                  <div class="weeks">
+                    {#if attendance === null}
+                      <span class="hint">Loading…</span>
+                    {/if}
+                    {#each days as r (r.sessionId)}
+                      {@const o = outcome(r)}
+                      <button
+                        class="day {o.kind}"
+                        disabled={r.cancelled}
+                        title="{r.series}, {formatDayDate(londonISO(r.heldOn, '12:00'))}: {o.label}"
+                        aria-label="{r.series}, {formatDayDate(londonISO(r.heldOn, '12:00'))}: {o.label}"
+                        onclick={() => toggleCame(r)}
+                      >
+                        <span class="d num">{Number(r.heldOn.slice(8))}</span>
+                      </button>
+                    {:else}
+                      {#if attendance !== null}<span class="hint">No trainings</span>{/if}
+                    {/each}
+                  </div>
+                {/each}
+              </div>
+            </div>
+          {:else}
+            <div class="part in" id="member-panel" role="tabpanel" aria-labelledby="member-tab-payments">
+              <!-- What they owe, what they've paid, and the jobs, then the charges -->
+              <div class="money">
+                <div class="stat">
+                  <span class="eyebrow">Owes</span>
+                  <span class="value num" class:owes={owed > 0}>{pounds(owed)}</span>
+                </div>
+                <div class="stat">
+                  <span class="eyebrow">Paid</span>
+                  <span class="value num">{pounds(paidTotal)}</span>
+                </div>
+                <div class="stat">
+                  <span class="eyebrow">Credit</span>
+                  <span class="value num">{pounds(credit)}</span>
+                </div>
+                {#if recordsPayments}
+                  <span class="buttons">
+                    <button class="btn sm primary" aria-haspopup="dialog" onclick={startPayment}>
+                      <Icon name="pound" size={16} />Record a payment
+                    </button>
+                    <button class="btn sm" aria-haspopup="dialog" onclick={startCharge}>
+                      <Icon name="plus" size={16} />Charge a quarter
+                    </button>
+                  </span>
+                {/if}
               </div>
               <div class="head-row">
                 <h3 class="eyebrow">Not paid yet</h3>
@@ -612,28 +650,18 @@
                     All square.
                   </p>{/each}
               </div>
-              <h3 class="eyebrow">Paid</h3>
+              <h3 class="eyebrow">Payment history</h3>
               <div class="list">
                 {#each paid as c (c.id)}<ChargeRow charge={c} editable={recordsPayments} />{:else}<p class="row hint">
                     Nothing paid yet.
                   </p>{/each}
               </div>
-              {#if recordsPayments}
-                <div class="head-row">
-                  <p class="hint">
-                    {#if paid.length}Tap Paid to take a payment back if it was marked by mistake.{/if}
-                  </p>
-                  <span class="buttons">
-                    <button class="btn sm" aria-haspopup="dialog" onclick={startPayment}>
-                      <Icon name="pound" size={16} />Record a payment
-                    </button>
-                    <button class="btn sm" aria-haspopup="dialog" onclick={startCharge}>
-                      <Icon name="plus" size={16} />Charge a quarter
-                    </button>
-                  </span>
-                </div>
+              {#if recordsPayments && paid.length}
+                <p class="hint">Tap Paid to take a payment back if it was marked by mistake.</p>
               {/if}
-            </section>
+            </div>
+          {/if}
+          {#if seesDues}
             <Drawer bind:open={charging} wide title="Charge a quarter" sub={member.player.name}>
               <form class="form" onsubmit={addQuarter}>
                 <div class="field">
@@ -928,8 +956,9 @@
       overflow: visible;
     }
   }
-  /* Sections divided by a rule, not boxed */
-  section {
+  /* Sections divided by a rule, not boxed; the tab showing is one too */
+  section,
+  .part {
     display: grid;
     gap: var(--s-3);
     align-content: start;
@@ -948,7 +977,7 @@
   }
   /* The real fields fade in exactly where they'll stay, each in turn, along the header row then down the body */
   .details.in > *,
-  section.in {
+  .part.in {
     /* backwards, not both: a fill that outlives the fade keeps each field its own stacking context, and a later
        field would paint over an open Select menu */
     animation: field-in 320ms var(--ease) backwards;
@@ -971,11 +1000,8 @@
   .details.in > :nth-child(7) {
     animation-delay: 240ms;
   }
-  section.in {
+  .part.in {
     animation-delay: 140ms;
-  }
-  section.in + section.in {
-    animation-delay: 220ms;
   }
   @keyframes field-in {
     from {
@@ -984,7 +1010,7 @@
   }
   @media (prefers-reduced-motion: reduce) {
     .details.in > *,
-    section.in {
+    .part.in {
       animation: none;
     }
   }
@@ -1027,6 +1053,41 @@
   .ph.rows {
     height: 8rem;
   }
+  /* Attendance or payments: the tab showing brings its own space below */
+  .tabs {
+    margin-top: var(--s-5);
+  }
+  .tabs > button {
+    flex: none;
+    min-width: 8rem;
+    gap: var(--s-2);
+  }
+  .tab-owed {
+    color: var(--red-hot);
+    font-size: var(--text-sm);
+  }
+  /* Owes, paid and credit, big, with the jobs at the end of the row */
+  .money {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: var(--s-4) var(--s-7);
+  }
+  .money .stat {
+    display: grid;
+    gap: var(--s-1);
+  }
+  .money .value {
+    color: var(--fg);
+    font-size: 1.6rem;
+    font-weight: 600;
+  }
+  .money .value.owes {
+    color: var(--red-hot);
+  }
+  .money .buttons {
+    margin-left: auto;
+  }
   .buttons {
     display: flex;
     flex-wrap: wrap;
@@ -1050,13 +1111,6 @@
     color: var(--fg);
     font-weight: 600;
     text-align: center;
-  }
-  .totals b {
-    color: var(--fg);
-    font-weight: 600;
-  }
-  .totals b.owes {
-    color: var(--red-hot);
   }
   .legend {
     display: flex;
