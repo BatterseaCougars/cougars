@@ -2,7 +2,7 @@
 // (docs/adr/0028-turnstile-and-auto-reply.md). Every fact comes from the Studio (or the confirmed fallbacks), so it
 // never says anything the site doesn't. It goes to an address anyone can type, so nothing the sender wrote is
 // repeated except a cleaned-up first name.
-import type { Mail } from "../../../../../shared/email";
+import type { Mail } from "@cougars/shared/email";
 import type { SiteSettings } from "../sanity/types";
 import type { Enquiry } from "./enquiries";
 

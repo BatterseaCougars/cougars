@@ -3,7 +3,7 @@
 // generous limit per address, enough that no person notices, but a loop or a scraper can't spend the club's free
 // quotas (Workers requests, D1 reads, Sanity, YouTube). The join form has its own, tighter limit (pages/api/join.ts).
 import { defineMiddleware } from "astro:middleware";
-import { rateLimit, type CacheLike } from "../../../shared/rate-limit";
+import { rateLimit, type CacheLike } from "@cougars/shared/rate-limit";
 
 export const LIVE_LIMIT = { limit: 240, windowSeconds: 60 };
 

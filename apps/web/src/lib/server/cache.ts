@@ -6,7 +6,7 @@
 //   3. The source itself. Concurrent misses share one fetch.
 // If the source fails, the last good value is served for up to `staleMs`, so a YouTube outage or a spent quota
 // shows yesterday's list rather than nothing. Every live read goes through here (ADR 0053); the sources themselves
-// are behind circuit breakers (shared/breaker.ts, ADR 0055).
+// are behind circuit breakers (packages/shared/breaker.ts, ADR 0055).
 
 interface Entry<T> {
   value: T;

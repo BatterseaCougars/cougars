@@ -44,7 +44,7 @@ worker.
   - per address, best effort: 10 code requests in 10 minutes and 5 requests to join an hour;
   - asking to join stops while 50 people are waiting.
 - New people **request access**; an admin approves them ([0024](0024-action-based-authorization.md)).
-- The email goes through the Gmail API (`shared/email.ts`, [0027](0027-email-through-gmail-api.md)).
+- The email goes through the Gmail API (`packages/shared/email.ts`, [0027](0027-email-through-gmail-api.md)).
 - **Sign in with Google** (OAuth with PKCE, for a member whose verified Google email matches) is planned as a
   shortcut. It isn't built.
 

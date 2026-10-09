@@ -2,7 +2,7 @@
 // takes a snapshot (scripts/club-snapshot.mjs); a card asks /api/players/<id> for the latest when it's flipped.
 // Only the Cougars. The website is public, so only what's here leaves the database: the name they chose (first name
 // and initial unless they picked otherwise), position and bio.
-import { onTheWebsite } from "../../../../shared/names";
+import { onTheWebsite } from "@cougars/shared/names";
 import type { Player } from "./sanity/types";
 
 export interface RosterRow {

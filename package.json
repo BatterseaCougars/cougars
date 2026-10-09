@@ -9,7 +9,8 @@
   "workspaces": [
     "apps/web",
     "apps/studio",
-    "team/app"
+    "apps/team",
+    "packages/shared"
   ],
   "scripts": {
     "dev": "npm run dev -w @cougars/web",

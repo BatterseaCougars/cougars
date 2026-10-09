@@ -35,13 +35,13 @@ Two free projects, one per environment, like the two Cloudflare accounts
 | **Cougars**     | `ah165efl` | `production` (public) | The live site and the hosted Studio                          |
 | **Cougars Dev** | `zmg6rbe3` | `production` (public) | The dev site, PR previews, your machine and the local Studio |
 
-The IDs are in `shared/sanity.ts`; the environment picks the project, so nothing about them goes in Secrets
+The IDs are in `packages/shared/sanity.ts`; the environment picks the project, so nothing about them goes in Secrets
 Manager. Public datasets need no read token.
 
 To set up a project from scratch (or check one):
 
 1. `npx sanity login` with your own account, then create the project at <https://www.sanity.io/manage> (Free
-   plan) with one public dataset, `production`, and put its ID in `shared/sanity.ts`.
+   plan) with one public dataset, `production`, and put its ID in `packages/shared/sanity.ts`.
 2. **API → CORS origins**:
    - Cougars Dev: `http://localhost:4520` to `http://localhost:4523`, with credentials (local Studios, including
      worktrees).

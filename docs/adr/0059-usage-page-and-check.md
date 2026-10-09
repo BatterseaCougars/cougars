@@ -28,7 +28,7 @@ error 1102. The same applies to a cron run. Raising the limit needs Workers Paid
   one passes 80%, and once a day (metric `cpu`) when any request was stopped, with the count per Worker. It goes
   through the usual mail rules (outside production, only to the safe address). `usage_warnings` remembers what was
   sent each day, claimed before sending so two runs send one email.
-- Both read Cloudflare's GraphQL analytics in one query (`team/app/worker/usage.ts`): `workersInvocationsAdaptive`
+- Both read Cloudflare's GraphQL analytics in one query (`apps/team/worker/usage.ts`): `workersInvocationsAdaptive`
   sums and quantiles, the same dataset filtered to `status: "exceededResources"`, and the Durable Object datasets.
   They use a **read-only token**, `CLOUDFLARE_ANALYTICS_TOKEN` (Account Analytics Read), never the deploy token,
   which shouldn't live in a Worker. Without it the page says how to set it up and the check does nothing; if

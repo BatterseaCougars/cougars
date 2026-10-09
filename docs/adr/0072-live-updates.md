@@ -21,8 +21,8 @@ The club may one day pay for hosting, when checking more often costs next to not
 
 ## Decision
 
-- **One Durable Object per environment, `LiveHub`** (binding `LIVE`, `team/app/worker/live.ts`), declared with
-  `new_sqlite_classes` (migration `v1` in `team/app/wrangler.jsonc`) because the free plan requires it, **storing
+- **One Durable Object per environment, `LiveHub`** (binding `LIVE`, `apps/team/worker/live.ts`), declared with
+  `new_sqlite_classes` (migration `v1` in `apps/team/wrangler.jsonc`) because the free plan requires it, **storing
   nothing**: the open streams live in memory, D1 stays the only source of truth, and an object restart just drops
   the streams. The free-tiers rule ([0003](0003-free-tiers-only.md)) forbids Durable Objects that store rows; a
   fan-out object is fine.

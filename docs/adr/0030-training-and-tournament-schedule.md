@@ -36,7 +36,7 @@ The schedule lives in D1, edited only in the team app. Tables are in the
 
 - **`training_series` → `training_sessions`.** A series has a rule (every N weeks on chosen weekdays, from a first
   date to an optional last one) and the session defaults (start, end, place, places). Sessions are rows, made 12
-  weeks ahead by a daily Cron Trigger (`team/app/worker/schedule.ts`). A session's own columns are null unless it
+  weeks ahead by a daily Cron Trigger (`apps/team/worker/schedule.ts`). A session's own columns are null unless it
   differs ("this week we're at the other rink"). Cancelling keeps the row, so whoever signed up can be told; moving
   keeps the rule's original date (`moved_from`) so it isn't made again. Changing the rule removes future sessions it
   no longer makes, unless someone has signed up or an admin changed them.
@@ -74,7 +74,7 @@ Tournaments (the schedule, a card per tournament), Tournament Series (the series
 - **A date can be just a season**: spring, summer, autumn or winter and a year (the UK's, by month; winter is
   December to February), in `tournaments.season`. `held_on` stays required and holds the season's last day, which is
   never shown: it decides where the date sorts and keeps it coming up until the season is over. A season counts as
-  unconfirmed and shows as "Summer 2027". The rules are in `shared/seasons.ts`, used by the app, its API and the
+  unconfirmed and shows as "Summer 2027". The rules are in `packages/shared/seasons.ts`, used by the app, its API and the
   website.
 - **Sign-up closes** (`signup_closes_on`) at the end of that day (London). After it the server refuses "I'm in"
   (409); saying out is still fine, and an admin can still add someone. Empty: open up to the day. When it opens is
@@ -101,7 +101,7 @@ Tournaments (the schedule, a card per tournament), Tournament Series (the series
   longer used is hidden from the pickers, never deleted, so what has it keeps it.
 - Everything with a place (training series and sessions, tournament series and tournaments, club events) has
   `venue_id`, its own name (`venue`, or `location` on tournaments and series) and its own `map_url`.
-- **One rule**, `placeOf` in `shared/places.ts`, used by the app, the agenda and the website: the saved venue wins;
+- **One rule**, `placeOf` in `packages/shared/places.ts`, used by the app, the agenda and the website: the saved venue wins;
   else the name and link it has; else its series' place (a session's training, a tournament's series). A place with
   no link gets a map search for its name and address. Picking a venue clears the thing's own name and link.
 - Every editor's _Where_ is one picker: the saved venues, then _Somewhere else…_ (a name and a map link). A

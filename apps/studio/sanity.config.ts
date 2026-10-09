@@ -1,7 +1,7 @@
 import { defineConfig } from "sanity";
 import { structureTool } from "sanity/structure";
 import { visionTool } from "@sanity/vision";
-import { sanityProject } from "../../shared/sanity";
+import { sanityProject } from "@cougars/shared/sanity";
 import { schemaTypes } from "./schemaTypes";
 import { structure, SINGLETONS } from "./structure";
 

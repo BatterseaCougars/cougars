@@ -23,7 +23,7 @@ free rate-limiting rule blocks before the Worker, but only on a custom domain (#
 
 ## Decision
 
-**Circuit breakers.** Every call to Sanity, YouTube and Gmail goes through `guard()` in `shared/breaker.ts`.
+**Circuit breakers.** Every call to Sanity, YouTube and Gmail goes through `guard()` in `packages/shared/breaker.ts`.
 
 - A quota or rate-limit answer pauses the service until it resets:
 
@@ -44,12 +44,12 @@ free rate-limiting rule blocks before the Worker, but only on a custom domain (#
   same for members and strangers, instead of promising a code that can't come. A pause is logged once
   (`breaker.open`), not on every request.
 
-**Rate limits on every live route and API**, through `shared/rate-limit.ts` (Workers Cache API: free, per data centre,
+**Rate limits on every live route and API**, through `packages/shared/rate-limit.ts` (Workers Cache API: free, per data centre,
 best effort, not a security boundary).
 
 - The website limits each address to 240 live requests a minute (`src/middleware.ts`). Prerendered pages are static
   assets and never reach the Worker.
-- The team app's limits live in `team/app/worker/limits.ts`:
+- The team app's limits live in `apps/team/worker/limits.ts`:
 
   | What                      | Limit                    |
   | ------------------------- | ------------------------ |
@@ -62,7 +62,7 @@ best effort, not a security boundary).
 
 - Over a limit, the answer is a 429 (JSON) with a plain sentence saying to wait.
 
-**The team app brakes itself** (`team/app/src/app/brake.ts`). Every call to the Worker goes through it:
+**The team app brakes itself** (`apps/team/src/app/brake.ts`). Every call to the Worker goes through it:
 
 - Background checks for others' changes (live pages, catching up when you come back to the app) wait after a failure:
   10 s, doubling, up to 5 minutes; a success puts them back. A 403 or 409 isn't the server failing.

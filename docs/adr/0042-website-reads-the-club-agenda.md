@@ -20,7 +20,7 @@ cut-off times, and neither showed a tournament's draft night or sign-up deadline
 - **One `agenda` table**: one row per thing on a day (a training session, a tournament's day, its draft night, its
   sign-up deadline, a one-off event), with its time, place, TBC or season, public, cancelled, and who it's for
   (`everyone` or `captains`).
-- **Every change pushes its own rows** (`shared/agenda.ts`): a training's sessions when the series or a session
+- **Every change pushes its own rows** (`packages/shared/agenda.ts`): a training's sessions when the series or a session
   changes, a tournament's when it or its series changes or its draft opens or closes, an event's when it changes; all
   of them when a venue changes. The rules (own place else the series', seasons, finished tournaments off) live
   there, once. An empty agenda (a rebuilt database) fills itself on the first read.

@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 // vite.config.ts pre-bundles every package.json "dependencies" entry at startup, so the dev server never has to
 // rebundle mid-session (which 504s an open tab). That only holds if every library the browser imports is listed
 // there, not in devDependencies or missing. Svelte is bundled by its plugin.
-const root = new URL("../team/app/", import.meta.url).pathname;
+const root = new URL("../apps/team/", import.meta.url).pathname;
 const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
 const bundledByPlugin = new Set(["svelte"]);
 
@@ -33,7 +33,7 @@ describe("adding a library to the team app", () => {
       for (const m of code.matchAll(/import\(\s*["']([^"'./][^"']*)["']\s*\)/g)) imported.add(packageName(m[1]));
     }
     const missing = [...imported].filter((name) => !bundledByPlugin.has(name) && !(name in (pkg.dependencies ?? {})));
-    expect(missing, 'move these to team/app package.json "dependencies"').toEqual([]);
+    expect(missing, 'move these to apps/team package.json "dependencies"').toEqual([]);
     expect(imported.has("ag-grid-community")).toBe(true);
   });
 });

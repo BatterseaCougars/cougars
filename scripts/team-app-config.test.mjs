@@ -18,7 +18,7 @@ const jsonc = (text) =>
 
 describe("the team app's deployed config", () => {
   it("never carries the local-only switches", () => {
-    const config = jsonc(read("../team/app/wrangler.jsonc"));
+    const config = jsonc(read("../apps/team/wrangler.jsonc"));
     for (const name of LOCAL_ONLY) expect(config.vars?.[name], name).toBeUndefined();
     const target = read("./ci/target.mjs");
     for (const name of LOCAL_ONLY) expect(target, `target.mjs names ${name}`).not.toContain(name);

@@ -1,7 +1,7 @@
 // The website roster's query (scripts/club-snapshot.mjs, ADR 0043): active Cougars and their record.
 // Stats count what's been played (signed up in, not marked a no-show, not cancelled), as the team app does.
 const PLAYED = `a.signup = 'in' AND COALESCE(a.attended, 1) = 1`;
-// A tournament on the website (ADR 0100, shared/results.ts isDone): public, and marked finished or every game played.
+// A tournament on the website (ADR 0100, packages/shared/results.ts isDone): public, and marked finished or every game played.
 // Goals count from played games only, as on its result.
 const PUBLISHED = `t.public = 1 AND (t.status = 'finished' OR (
     EXISTS (SELECT 1 FROM tournament_games x WHERE x.tournament_id = t.id)

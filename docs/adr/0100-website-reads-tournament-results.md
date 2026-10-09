@@ -20,9 +20,9 @@ the Worker, a GitHub token, a result in two places). Or the website could read D
   live read: fresh a minute, the last good copy kept an hour ([0053](0053-live-reads-are-cached.md)). Nothing is
   written to Sanity, and no rebuild is needed.
 - **What's published:** a tournament that's public (`tournaments.public`) and done. Done is the app's rule, in
-  `shared/results.ts`: marked finished, or every game played. A tournament being played isn't shown here; that's the
+  `packages/shared/results.ts`: marked finished, or every game played. A tournament being played isn't shown here; that's the
   live page (#48).
-- **One rule set.** The table, the champion and "done" live in `shared/results.ts`, used by the Worker, the app and
+- **One rule set.** The table, the champion and "done" live in `packages/shared/results.ts`, used by the Worker, the app and
   the website, so they can't disagree.
 - **What a result shows** (`/results/<id>/`): the champions, the awards with their winners, the table, every game's
   score, and the scorers (goals and assists). Award winners show only once an admin has confirmed them; the app's
@@ -31,7 +31,7 @@ the Worker, a GitHub token, a result in two places). Or the website could read D
   `/kumite/` is a live fragment (`/honours/`) swapped in by script, like What's on; without JavaScript it's a link to
   `/results/`.
 - **Names.** Every player is shown by the name they chose on their profile (`members.web_name`), else first name and
-  initial (`publicName` in `shared/names.ts`, as on the roster, [0043](0043-roster-and-names.md)). That includes
+  initial (`publicName` in `packages/shared/names.ts`, as on the roster, [0043](0043-roster-and-names.md)). That includes
   members who aren't Cougars. A player from outside the club, who has no profile, is shown as first name and initial
   too. A team with no name of its own is "Team" and its captain's chosen name, else their first name. A full name
   never leaves the query.

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // The website's icons: a white Anton "C", slanted like the logo's COUGARS, on logo red (chosen 2026-10-06 over
 // cropping the logo, which can't be read at tab size). Re-run after a change: node scripts/favicons.mjs
-// The team app (team/app/public) gets the cougar's face from the logo on carbon for its tab and iPhone icons; its
+// The team app (apps/team/public) gets the cougar's face from the logo on carbon for its tab and iPhone icons; its
 // manifest icons keep the full logo.
 //   favicon.ico            16, 32 and 48 px, for browsers and Google Search (which asks for /favicon.ico)
 //   favicon.png            96 px (Google wants a multiple of 48)
@@ -59,7 +59,7 @@ async function icon(size, { height = 0.7, radius = 0.22 } = {}) {
 }
 
 // The team app's icons: the face, on carbon.
-const teamOut = (name) => new URL(`../team/app/public/${name}`, import.meta.url).pathname;
+const teamOut = (name) => new URL(`../apps/team/public/${name}`, import.meta.url).pathname;
 const CARBON = "#0d0d0f";
 // The face, ear to fangs: chosen by eye at 16 px (2026-10-06).
 const FACE = { left: 715, top: 15, width: 635, height: 635 };

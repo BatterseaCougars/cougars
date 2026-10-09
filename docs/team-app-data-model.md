@@ -2,7 +2,7 @@
 
 The D1 tables the team app needs, by area. Conventions are in [db/README.md](../db/README.md): snake_case
 plural tables, `INTEGER PRIMARY KEY AUTOINCREMENT`, ISO text dates (`*_on` a date, `*_at` an instant), `_pence`
-integers, 0/1 booleans, free-text status with a comment. The demo in `team/app/src/demo/model.ts` uses the same
+integers, 0/1 booleans, free-text status with a comment. The demo in `apps/team/src/demo/model.ts` uses the same
 shapes in memory.
 
 ## People and access
@@ -37,7 +37,7 @@ The calendar is a union of the three: sessions (with series defaults filled in),
 
 Where each is held ([ADR 0030](adr/0030-training-and-tournament-schedule.md)): `venue_id` (a saved venue) wins; else its own name
 (`venue`, or `location` on tournaments) and `map_url`; none of them, its series' place. One rule for both apps:
-`placeOf` in `shared/places.ts`.
+`placeOf` in `packages/shared/places.ts`.
 
 ## Sign-up, register and teams
 

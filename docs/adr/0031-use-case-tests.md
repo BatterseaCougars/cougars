@@ -19,7 +19,7 @@ We test the same way, in both projects, from now on.
   says they're in", "the door marks a walk-in") and check what that person would then see, and what reached the
   outside world (email sent, YouTube upload opened, Sanity document written). They call the real Worker handlers
   with a real request.
-- **One fake world** (`shared/testing/fake-world.ts`): D1 as in-memory SQLite with every migration applied
+- **One fake world** (`packages/shared/testing/fake-world.ts`): D1 as in-memory SQLite with every migration applied
   (`d1-sqlite.ts`), and in-memory Gmail, Sanity, YouTube, Turnstile and Google sign-in behind one global `fetch`.
   Any outside call the fake doesn't know **throws with its URL**, so a new integration shows up as a failing test,
   not a silent network call.

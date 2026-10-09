@@ -1,0 +1,9 @@
+{
+  "name": "@cougars/shared",
+  "private": true,
+  "type": "module",
+  "description": "Framework-free code the website and the team app both use (ADR 0006): D1 helpers, the club's agenda, results, names, dates and places, email.",
+  "exports": {
+    "./*": "./*.ts"
+  }
+}

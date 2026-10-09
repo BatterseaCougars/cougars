@@ -32,7 +32,7 @@ the website was "Sam Jones" in the app.
 - **One chosen name.** On their profile ("The name you go by: in the app, and on the website's roster") a member
   picks first name and initial (the default), full name, first name, or a nickname, stored in `members.web_name`.
   It's the name they go by everywhere the app shows them: cards, lists, teams, the Draft, scores, awards, greetings,
-  the account menu. One helper says it (`team/app/src/lib/names.ts`): `goesBy` (the chosen name, else the full name)
+  the account menu. One helper says it (`apps/team/src/lib/names.ts`): `goesBy` (the chosen name, else the full name)
   and `shortName` (the chosen name whole, else the first name, wherever the app said just a first name).
 - With nothing chosen, the app shows the full name (it's members only); the public website keeps first name and
   initial.

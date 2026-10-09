@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { createTestD1 } from "../../../../../shared/testing/d1-sqlite";
-import { publicName } from "../../../../../shared/names";
+import { createTestD1 } from "@cougars/shared/testing/d1-sqlite";
+import { publicName } from "@cougars/shared/names";
 import { memberId, toPlayer } from "../roster";
 import { livePlayer } from "./players";
 

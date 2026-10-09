@@ -25,7 +25,7 @@ taps to start and stop.
 
 **Actions and roles**
 
-- **Actions are code.** `team/app/src/access/actions.ts` is the catalog: each action (`verb:Subject`) with a
+- **Actions are code.** `apps/team/src/access/actions.ts` is the catalog: each action (`verb:Subject`) with a
   plain-English label for the admin screen. For example: `read:Event`, `create:Event`, `update:Event`,
   `signup:Event`, `record:Attendance`, `generate:Teams`, `publish:Teams`, `manage:Fees`, `record:Payment`,
   `read:Dues`, `score:Match`, `run:Draft`, `pick:Draft`, `upload:Photo`, `upload:Video`, `publish:Media`,

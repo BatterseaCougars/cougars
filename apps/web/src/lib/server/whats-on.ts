@@ -1,7 +1,7 @@
 // What's on, for the home page: the next few training sessions, tournaments and one-off events from the club's
 // agenda in D1, which the team app keeps (ADR 0042). Read live on the Worker, so a change in the app shows on the
 // next page load. Only what's marked public; cancelled ones stay listed, marked, so nobody turns up to nothing.
-import { readAgenda } from "../../../../../shared/agenda";
+import { readAgenda } from "@cougars/shared/agenda";
 import { londonDay } from "../dates";
 import { cached, type CacheDeps, type CacheOptions } from "./cache";
 

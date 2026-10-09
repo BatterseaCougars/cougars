@@ -20,7 +20,7 @@ with their own inbox, and changing a secret to fix that needs a deploy each time
 
 **Sending**
 
-- Email is sent with the **Gmail API** over HTTPS (`shared/email.ts`, for the website and the team app), authorised by
+- Email is sent with the **Gmail API** over HTTPS (`packages/shared/email.ts`, for the website and the team app), authorised by
   an **OAuth refresh token** with the send-only scope, from the club's Google Cloud project _Battersea Cougars_ (owned
   by the developer account cougars.dev). Setup and the four secrets: [README.md#gmail](../../README.md#gmail). Gmail
   sits behind a circuit breaker ([0055](0055-degrade-instead-of-break.md)).

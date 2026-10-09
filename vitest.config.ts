@@ -4,9 +4,8 @@ export default defineConfig({
   test: {
     include: [
       "apps/*/src/**/*.test.ts",
-      "team/*/src/**/*.test.ts",
-      "team/*/worker/**/*.test.ts",
-      "shared/**/*.test.ts",
+      "apps/team/worker/**/*.test.ts",
+      "packages/shared/**/*.test.ts",
       "scripts/**/*.test.mjs",
     ],
     environment: "node",

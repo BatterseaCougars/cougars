@@ -12,7 +12,7 @@ drag-and-drop teams, a door register. It may become a store app later. The websi
 Svelte 5 + Vite SPA with a phone shell (bottom tabs derived from one route tree, a More page, a desktop rail) that
 works well, and we know it.
 
-In dev, Vite bundles the browser's libraries into `team/app/node_modules/.vite/deps/` and serves them with a version
+In dev, Vite bundles the browser's libraries into `apps/team/node_modules/.vite/deps/` and serves them with a version
 stamp in the URL. Two things kept changing that stamp under an open tab, which then got 504s ("Outdated Optimize Dep")
 and a blank main screen: Vite found libraries lazily, so opening a screen the startup crawl hadn't reached made it
 rebundle mid-session; and a second `vite` in the same checkout (another session, a `--force` restart) rebuilds that
@@ -20,7 +20,7 @@ folder **before** it tries the port, so it broke the running server's page even 
 
 ## Decision
 
-- `team/app` is a **Svelte 5 + Vite single-page app** with client-side routing, served as static assets by its own
+- `apps/team` is a **Svelte 5 + Vite single-page app** with client-side routing, served as static assets by its own
   Cloudflare **Worker** (`cougars-team`, dev `cougars-team-dev`), which also answers `/api/*` with JSON. It deploys to
   dev from `main`, and to production only at launch ([ADR 0010](0010-environments-and-deploys.md)).
 - It binds the same D1 database as the website (`DB`); the schema stays in `db/`.
@@ -29,11 +29,11 @@ folder **before** it tries the port, so it broke the running server's page even 
 - **A PWA**: manifest, icons and a service worker that caches the app shell. Screens that must work offline (the game
   clock) keep their data in IndexedDB and sync when there's signal.
 - A store app, if we want one, wraps the same build with Capacitor (#26).
-- CLAUDE.md's Astro rules apply to the website only. Shared rules (D1 through `shared/d1.ts`, Europe/London dates,
+- CLAUDE.md's Astro rules apply to the website only. Shared rules (D1 through `packages/shared/d1.ts`, Europe/London dates,
   tests) apply to both.
-- **The dev server bundles every library up front** (`team/app/vite.config.ts`):
+- **The dev server bundles every library up front** (`apps/team/vite.config.ts`):
   - `optimizeDeps.entries` crawls every source file at startup, not just what `index.html` reaches.
-  - `optimizeDeps.include` is every package in team/app `package.json` **dependencies**, read from the file, so adding
+  - `optimizeDeps.include` is every package in apps/team `package.json` **dependencies**, read from the file, so adding
     a library configures dev with no config edit. Svelte's entry points come from the Svelte plugin.
   - A browser library goes in `dependencies`, never `devDependencies`. `scripts/team-app-deps.test.mjs` fails
     `npm test` if the app imports a package that isn't there.

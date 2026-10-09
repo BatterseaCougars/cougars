@@ -3,7 +3,7 @@
 // win; an email is filled in only where there's none yet; roles are added, never taken away. Safe to run on
 // every deploy.
 
-import { assignReferenceSql } from "../../shared/payment-reference.ts";
+import { assignReferenceSql } from "@cougars/shared/payment-reference";
 
 const POSITIONS = new Set(["F", "D", "G"]);
 

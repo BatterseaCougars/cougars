@@ -47,7 +47,7 @@ be checked before it goes live. Ark deploys `main` to dev and production from a 
 - We skip Ark's prod-preview-then-promote step: one site, one maintainer.
 - **A developer's machine is dev**: `scripts/env-pull.mjs` defaults to `--environment dev`. A production-only secret is
   always `NAME__PRODUCTION`, so the dev token can't see it.
-- **The environment picks the Sanity project**, the same way it picks the Cloudflare account: `shared/sanity.ts` maps
+- **The environment picks the Sanity project**, the same way it picks the Cloudflare account: `packages/shared/sanity.ts` maps
   `SITE_ENV=production` to Cougars and everything else to Cougars Dev. Each project has one public dataset,
   `production`. The website build reads `SITE_ENV` (set by `deploy.yml`); the Studio reads `SANITY_STUDIO_SITE_ENV`,
   set to `production` only by the Studio deploy job. Project IDs live in code: they aren't secret (every image URL

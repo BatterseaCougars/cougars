@@ -34,7 +34,7 @@ sending it is before anyone real signs in.
 
 **Rows and fields are filtered on the server, per caller.** A response holds only what the caller's actions allow.
 A new field or route starts private and is opened up deliberately. Filtering is in the club read
-(`team/app/worker/club.ts`): who's asking is a row of the statement, so what they may not see never leaves D1. The
+(`apps/team/worker/club.ts`): who's asking is a row of the statement, so what they may not see never leaves D1. The
 slices are made from it, so a change's reply (`changed`, [0057](0057-team-app-loading-and-changes.md)) is filtered
 exactly as the bootstrap is. Of anything
 personal, a member is sent **their own**, and everyone's only with the action that needs it:
@@ -87,7 +87,7 @@ of future sessions is idempotent).
 
 **Tests prove it**:
 
-- `team/app/worker/security.test.ts`: every route refuses someone who isn't signed in (401); every route refuses a
+- `apps/team/worker/security.test.ts`: every route refuses someone who isn't signed in (401); every route refuses a
   member whose role lacks its action (403); the grant rules hold; other sites' requests and non-JSON bodies are
   refused; and each row of the table above is a story: what a plain member sees, what they see of themselves, and
   what whoever runs the register sees. A new route is covered by the first two automatically. A new private field

@@ -1,4 +1,4 @@
-import { first, run } from "../../../../../shared/d1";
+import { first, run } from "@cougars/shared/d1";
 
 export const EXPERIENCE = {
   never: "Never played",

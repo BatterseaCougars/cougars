@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createTestD1 } from "../../../../../shared/testing/d1-sqlite";
-import { syncAll } from "../../../../../shared/agenda";
+import { createTestD1 } from "@cougars/shared/testing/d1-sqlite";
+import { syncAll } from "@cougars/shared/agenda";
 import { clearCache } from "./cache";
 import { cachedWhatsOn, whatsOn } from "./whats-on";
 

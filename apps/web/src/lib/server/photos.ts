@@ -3,7 +3,7 @@
 // (ADR 0055), and are cached for a minute (ADR 0053).
 // When Sanity can't be reached, callers get empty data and `unavailable: true` and show a friendly empty
 // state instead of an error page. With DEMO_CONTENT, the sample albums stand in until Sanity has some.
-import { HttpFailure, QuotaError, guard, retryAfter } from "../../../../../shared/breaker";
+import { HttpFailure, QuotaError, guard, retryAfter } from "@cougars/shared/breaker";
 import { cached, hashKey, type CacheOptions } from "./cache";
 import * as q from "../sanity/queries";
 import { demoAlbums as rawDemoAlbums } from "../sanity/demo";

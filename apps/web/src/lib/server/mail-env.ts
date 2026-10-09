@@ -1,4 +1,4 @@
-// Email settings for the Worker (shared/email.ts). SITE_ENV and CONTACT_EMAIL are wrangler vars: target.mjs makes
+// Email settings for the Worker (packages/shared/email.ts). SITE_ENV and CONTACT_EMAIL are wrangler vars: target.mjs makes
 // SITE_ENV "production" only on release. The Gmail values are Worker secrets (deploy.yml), read on each request.
 import { env } from "cloudflare:workers";
 import {
@@ -8,7 +8,7 @@ import {
   MAIL_SAFE_TO,
   TURNSTILE_SECRET_KEY,
 } from "astro:env/server";
-import type { MailConfig } from "../../../../../shared/email";
+import type { MailConfig } from "@cougars/shared/email";
 
 export const mailConfig = (): MailConfig => ({
   siteEnv: env.SITE_ENV,

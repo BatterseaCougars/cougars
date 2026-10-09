@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { resetBreakers } from "../../../../../shared/breaker";
+import { resetBreakers } from "@cougars/shared/breaker";
 import { clearCache } from "./cache";
 import { findAlbum, latestPhotos, listAlbums, type PhotosConfig } from "./photos";
 import { demoAlbums } from "../sanity/demo";

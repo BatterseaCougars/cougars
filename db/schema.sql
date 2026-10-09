@@ -376,7 +376,7 @@ CREATE INDEX tournament_team_players_team ON tournament_team_players (team_id);
 -- One number for "the club's data has changed": one more on every change through the team app, the seed and the
 -- roster, so the app's bootstrap can answer "nothing's changed" (ETag, ADR 0053). It starts from the time it was
 -- made, so a remade database never repeats an old version. Beside it, the London day the coming training sessions
--- were last made (team/app/worker/schedule.ts ensureSessions): the day's first open of the app makes them, the rest
+-- were last made (apps/team/worker/schedule.ts ensureSessions): the day's first open of the app makes them, the rest
 -- skip it, read in the same row (ADR 0057).
 CREATE TABLE data_version (
   id INTEGER PRIMARY KEY CHECK (id = 1),
@@ -384,7 +384,7 @@ CREATE TABLE data_version (
   sessions_made_on TEXT
 );
 
--- Who won a tournament's awards (team/app/worker/awards.ts, ADR 0044): a team (Champions) or a player on one of its
+-- Who won a tournament's awards (apps/team/worker/awards.ts, ADR 0044): a team (Champions) or a player on one of its
 -- teams (Top scorer). The award is one of the tournament's own, by name (tournaments.awards).
 CREATE TABLE tournament_award_winners (
   tournament_id INTEGER NOT NULL REFERENCES tournaments (id) ON DELETE CASCADE,
@@ -395,14 +395,14 @@ CREATE TABLE tournament_award_winners (
   PRIMARY KEY (tournament_id, award, position)
 );
 
--- The club's settings for the team app (team/app/worker/settings.ts, ADR 0072): one row, made on the first save.
+-- The club's settings for the team app (apps/team/worker/settings.ts, ADR 0072): one row, made on the first save.
 -- How often live pages (a game being scored, a tournament's home, the draft room) check for updates, in seconds.
 CREATE TABLE club_settings (
   id INTEGER PRIMARY KEY CHECK (id = 1),
   live_refresh_seconds INTEGER NOT NULL DEFAULT 10 CHECK (live_refresh_seconds BETWEEN 5 AND 120)
 );
 
--- Dev tools (team/app/worker/devtools.ts, ADR 0027): outside production, who gets their own email instead of the
+-- Dev tools (apps/team/worker/devtools.ts, ADR 0027): outside production, who gets their own email instead of the
 -- safe inbox. Never read in production.
 CREATE TABLE dev_mail_recipients (
   email TEXT PRIMARY KEY,
@@ -410,7 +410,7 @@ CREATE TABLE dev_mail_recipients (
   added_at TEXT NOT NULL
 );
 
--- The usage check's warnings (team/app/worker/usage.ts, ADR 0059): one email per metric per day (UTC)
+-- The usage check's warnings (apps/team/worker/usage.ts, ADR 0059): one email per metric per day (UTC)
 CREATE TABLE usage_warnings (
   day TEXT NOT NULL,
   metric TEXT NOT NULL,
@@ -462,7 +462,7 @@ CREATE INDEX tournament_goals_game ON tournament_goals (game_id, id);
 
 
 -- The club's agenda (ADR 0042): what's on and when, one row per thing on a day. Every part of the club pushes its own
--- rows when it changes (shared/agenda.ts): each training session, a tournament's day, its draft night and its sign-up
+-- rows when it changes (packages/shared/agenda.ts): each training session, a tournament's day, its draft night and its sign-up
 -- deadline, each one-off event. The website's What's on and the app's calendar both read it.
 CREATE TABLE agenda (
   id INTEGER PRIMARY KEY AUTOINCREMENT,

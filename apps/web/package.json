@@ -13,6 +13,7 @@
   "dependencies": {
     "@astrojs/cloudflare": "^14.3.3",
     "@astrojs/sitemap": "^3.7.4",
+    "@cougars/shared": "*",
     "@portabletext/to-html": "^6.0.0",
     "@portabletext/types": "^4.0.2",
     "@sanity/client": "^8.9.0",

@@ -28,7 +28,7 @@ History line, never a quiet edit; a new topic (a service, a rule, a pattern, a t
 
 ## Web app (apps/web)
 
-These rules are for the website only. The team app (`team/app`) is a Svelte 5 SPA on its own
+These rules are for the website only. The team app (`apps/team`) is a Svelte 5 SPA on its own
 Worker ([ADR 0022](docs/adr/0022-team-app-svelte-pwa.md)); its permissions follow
 [ADR 0024](docs/adr/0024-action-based-authorization.md). The roadmap is [GitHub milestones](https://github.com/das974/cougars/milestones): new work is an issue in one ([ADR 0006](docs/adr/0006-one-repo-two-projects.md)).
 
@@ -38,19 +38,19 @@ Worker ([ADR 0022](docs/adr/0022-team-app-svelte-pwa.md)); its permissions follo
   Run `npx wrangler types` in apps/web after changing `wrangler.jsonc`.
 - Content comes from Sanity at build time via `src/lib/sanity/content.ts`. All GROQ lives in `queries.ts`,
   types in `types.ts`. Studio schema field names must match the GROQ projections.
-- SQL: plain SQL through `shared/d1.ts` helpers. One module per domain under `src/lib/server/`.
+- SQL: plain SQL through `packages/shared/d1.ts` helpers. One module per domain under `src/lib/server/`.
 - Forms must work without JavaScript (POST + 303 redirect), enhanced with fetch + JSON.
 - Dates: always format in Europe/London via `src/lib/dates.ts`.
 - Images: Sanity CDN via `src/lib/sanity/images.ts`; local assets in `src/assets/` (no `public/` except favicons).
 
-## Team app (team/app)
+## Team app (apps/team)
 
 - **Admin actions live on the thing's own page**, opening over it (sheet, drawer, editor panel), not buried under
   Settings; Settings is for setting up and reuses the same editors ([ADR 0065](docs/adr/0065-page-frame-and-admin-actions.md)).
 
-## Team app dev server (team/app)
+## Team app dev server (apps/team)
 
-- A library the browser imports goes in team/app `package.json` **dependencies** (not devDependencies). Vite
+- A library the browser imports goes in apps/team `package.json` **dependencies** (not devDependencies). Vite
   pre-bundles exactly that list at startup; `scripts/team-app-deps.test.mjs` enforces it ([ADR 0022](docs/adr/0022-team-app-svelte-pwa.md)).
 - One dev server on 4510. A second `vite` is refused; stop the running one to restart. Never `--force` beside it.
 
@@ -59,7 +59,7 @@ Worker ([ADR 0022](docs/adr/0022-team-app-svelte-pwa.md)); its permissions follo
 - **Use cases first** ([ADR 0031](docs/adr/0031-use-case-tests.md), [docs/testing.md](docs/testing.md)): tests
   describe what someone does, drive the real handlers, and fake outside services in one fake world. Unit tests only
   for tricky pure logic. Known bugs stay as `it.fails("… (known bug #N)")`.
-- Vitest, colocated `*.test.ts`. D1 is in-memory SQLite with all migrations applied (`shared/testing/d1-sqlite.ts`).
+- Vitest, colocated `*.test.ts`. D1 is in-memory SQLite with all migrations applied (`packages/shared/testing/d1-sqlite.ts`).
   Don't mock our own code.
 - Before pushing: `npm run lint && npm test && npm run check -w @cougars/web && npm run build`.
 

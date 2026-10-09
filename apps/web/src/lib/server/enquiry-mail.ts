@@ -1,6 +1,6 @@
 // The email the club gets for each "Try a session" enquiry (pages/api/join.ts). Reply-To is the enquirer, so the
-// club answers by replying. Sent through shared/email.ts, which keeps it away from real inboxes outside production.
-import type { Mail } from "../../../../../shared/email";
+// club answers by replying. Sent through packages/shared/email.ts, which keeps it away from real inboxes outside production.
+import type { Mail } from "@cougars/shared/email";
 import { EXPERIENCE, type Enquiry } from "./enquiries";
 
 /** `autoReply`: what happened to the auto-reply, so the club knows whether the person has heard back. */

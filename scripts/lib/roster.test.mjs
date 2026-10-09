@@ -1,6 +1,6 @@
 // The roster seed, as it runs on deploy: it adds the club's players once, and never undoes what admins change.
 import { describe, expect, it } from "vitest";
-import { createTestD1 } from "../../shared/testing/d1-sqlite.ts";
+import { createTestD1 } from "@cougars/shared/testing/d1-sqlite";
 import { parseRoster, rosterSql } from "./roster.mjs";
 
 const ROSTER = JSON.stringify([

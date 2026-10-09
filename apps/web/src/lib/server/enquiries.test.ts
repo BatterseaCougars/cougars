@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { createTestD1 } from "../../../../../shared/testing/d1-sqlite";
+import { createTestD1 } from "@cougars/shared/testing/d1-sqlite";
 import { readFileSync } from "node:fs";
 import { AUTO_REPLY_CAPS, autoReplyAllowed, isSpam, markAutoReplied, parseEnquiry, saveEnquiry } from "./enquiries";
 

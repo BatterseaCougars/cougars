@@ -23,7 +23,7 @@ Most of this is decided but **not built yet** (#46). What exists today: the
 `subscriptions` table, `members.cougar`, `members.payment_reference` and its rules, `tournament_types.default_fee_pence`
 and `tournaments.fee_pence`, and the register (`training_sessions.register_closed_at`, `attendance.attended` and
 `walk_in`). The dues screens (a member's tab, Unpaid fees, charges on the member sheet) run on demo data only
-(`team/app/src/demo/dues.svelte.ts`, with the sums in `team/app/src/lib/dues.ts`). `series_fees`, `subscription_fees`,
+(`apps/team/src/demo/dues.svelte.ts`, with the sums in `apps/team/src/lib/dues.ts`). `series_fees`, `subscription_fees`,
 `charges`, `payments`, `payment_allocations` and `training_sessions.fee_pence` are planned in
 docs/team-app-data-model.md but aren't in `db/schema.sql`, and nothing charges anyone yet.
 
@@ -40,8 +40,8 @@ docs/team-app-data-model.md but aren't in `db/schema.sql`, and nothing charges a
     `COUGARS` and their id.
 - The reference is set once, when the member is made (a join request, an admin adding them, or the roster seed), and
   never changed after, not even when their name is edited: it's what their standing order quotes. Someone without one
-  gets it the next time they sign in. `shared/payment-reference.ts` holds the rules and the SQL, used by both the
-  Worker (`giveReference` in team/app/worker/auth.ts) and the roster seed (scripts/lib/roster.mjs).
+  gets it the next time they sign in. `packages/shared/payment-reference.ts` holds the rules and the SQL, used by both the
+  Worker (`giveReference` in apps/team/worker/auth.ts) and the roster seed (scripts/lib/roster.mjs).
 
 **Fees** (not built)
 

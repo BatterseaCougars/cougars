@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
-import type { CacheLike } from "../../../shared/rate-limit";
-import { parseHeadersFile } from "../../../shared/testing/headers-file";
+import type { CacheLike } from "@cougars/shared/rate-limit";
+import { parseHeadersFile } from "@cougars/shared/testing/headers-file";
 
 vi.mock("astro:middleware", () => ({ defineMiddleware: (fn: unknown) => fn }));
 const { LIVE_LIMIT, SITE_HEADERS, secured, tooMany } = await import("./middleware");

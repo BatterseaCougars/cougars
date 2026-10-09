@@ -26,7 +26,7 @@ if (team) target.worker = target.worker.replace("cougars", "cougars-team");
 
 const cwd = new URL("../../apps/web/", import.meta.url);
 const GENERATED = team
-  ? new URL("../../team/app/dist/cougars_team/wrangler.json", import.meta.url)
+  ? new URL("../../apps/team/dist/cougars_team/wrangler.json", import.meta.url)
   : new URL("dist/server/wrangler.json", cwd);
 const wrangler = (...args) => execFileSync("npx", ["wrangler", ...args], { encoding: "utf8", cwd });
 const find = () => JSON.parse(wrangler("d1", "list", "--json")).find((d) => d.name === target.db);

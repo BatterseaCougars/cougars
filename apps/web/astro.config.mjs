@@ -2,7 +2,7 @@
 import { defineConfig, envField, fontProviders } from "astro/config";
 import cloudflare from "@astrojs/cloudflare";
 import sitemap from "@astrojs/sitemap";
-import { sanityProject } from "../../shared/sanity";
+import { sanityProject } from "@cougars/shared/sanity";
 
 // The Sanity project for this build: production on `release`, otherwise dev (docs/adr/0010-environments-and-deploys.md).
 // SITE_ENV is set by deploy.yml; a laptop and scripts/deploy-dev.sh are dev.
@@ -40,7 +40,7 @@ export default defineConfig({
       SANITY_API_TOKEN: envField.string({ context: "server", access: "secret", optional: true }),
       // The club's YouTube videos, read live on the Worker (lib/server/videos.ts). Without it: Sanity videos only.
       YOUTUBE_API_KEY: envField.string({ context: "server", access: "secret", optional: true }),
-      // Enquiry emails through the Gmail API (shared/email.ts, README.md#gmail). Worker secrets; without them the
+      // Enquiry emails through the Gmail API (packages/shared/email.ts, README.md#gmail). Worker secrets; without them the
       // email is logged instead of sent.
       GMAIL_CLIENT_ID: envField.string({ context: "server", access: "secret", optional: true }),
       GMAIL_CLIENT_SECRET: envField.string({ context: "server", access: "secret", optional: true }),

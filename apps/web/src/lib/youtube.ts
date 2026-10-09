@@ -1,4 +1,4 @@
-import { HttpFailure, QuotaError, guard, nextMidnight, retryAfter } from "../../../../shared/breaker";
+import { HttpFailure, QuotaError, guard, nextMidnight, retryAfter } from "@cougars/shared/breaker";
 import { londonDay } from "./dates";
 import type { Video, VideoOverride } from "./sanity/types";
 

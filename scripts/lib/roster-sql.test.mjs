@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createTestD1 } from "../../shared/testing/d1-sqlite";
+import { createTestD1 } from "@cougars/shared/testing/d1-sqlite";
 import { ROSTER_SQL } from "./roster-sql.mjs";
 
 describe("the website roster's record", () => {

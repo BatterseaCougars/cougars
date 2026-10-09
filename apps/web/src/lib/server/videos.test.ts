@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import fixtures from "../fixtures/youtube.json";
-import { resetBreakers } from "../../../../../shared/breaker";
+import { resetBreakers } from "@cougars/shared/breaker";
 import { clearCache } from "./cache";
 import { liveVideos, type VideosConfig } from "./videos";
 import { DEMO_VIDEOS } from "../sanity/demo";

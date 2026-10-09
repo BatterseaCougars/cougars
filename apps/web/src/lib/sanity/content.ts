@@ -10,7 +10,7 @@ import { liveVideos } from "../server/videos";
 import { videosConfig } from "../server/sanity-env";
 import { demoAlbums, DEMO_EVENTS, DEMO_PLAYERS } from "./demo";
 import { sanityError, toAlbum } from "../server/photos";
-import { guard } from "../../../../../shared/breaker";
+import { guard } from "@cougars/shared/breaker";
 import { toPlayer, type RosterRow } from "../roster";
 import { listOr, mergeClub, mergeFridays, mergeKumite, mergePub, mergeTeam } from "./merge";
 import type { Album, ClubEvent, Player, SiteSettings, Sponsor, Award } from "./types";

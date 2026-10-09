@@ -29,7 +29,7 @@ eventually edit events, players and Kumite results, so it's the natural owner of
 - **No Sanity publish webhook.** The team app will start production rebuilds when content changes, batched, holding
   its own GitHub token. The `repository_dispatch: sanity-publish` trigger stays in `deploy.yml` for it.
 - Photos and videos don't wait for a rebuild: they're read live ([ADR 0016](0016-photos-and-videos-read-live.md)).
-- **D1** holds operational data. Plain SQL through `shared/d1.ts`, no ORM. Until launch the database is
+- **D1** holds operational data. Plain SQL through `packages/shared/d1.ts`, no ORM. Until launch the database is
   `db/schema.sql` plus seed, with no migrations ([ADR 0050](0050-schema-and-seed-until-launch.md)).
 
 ## Consequences

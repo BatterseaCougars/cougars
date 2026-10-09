@@ -11,7 +11,7 @@ Website and team app for the Battersea Cougars inline hockey club: two projects 
 | `db/`                  | D1 (SQLite) migrations                                                    |                       |
 | `shared/`              | Code used by more than one app (D1 helpers, test fixtures)                |                       |
 | `scripts/`             | Secrets loading (Bitwarden) and CI helpers                                |                       |
-| `team/app`             | Team app: mobile-first Svelte PWA (clickable demo shell for now)          | http://localhost:4510 |
+| `apps/team`            | Team app: mobile-first Svelte PWA (clickable demo shell for now)          | http://localhost:4510 |
 | `archive/team-manager` | The old Next.js + Airtable team picker, kept as **reference only**        |                       |
 
 Running cost is £0: every service is on a free tier (see [ADR 0003](docs/adr/0003-free-tiers-only.md)).
@@ -48,7 +48,7 @@ Rules ([ADR 0002](docs/adr/0002-secrets-in-bitwarden.md), [ADR 0010](docs/adr/00
   machine, PR previews and `scripts/deploy-dev.sh` are dev.
 - **Two Sanity projects** to match: **Cougars** (`ah165efl`, production) and **Cougars Dev** (`zmg6rbe3`), each
   with one public `production` dataset ([ADR 0010](docs/adr/0010-environments-and-deploys.md)). Their IDs aren't
-  secret (`shared/sanity.ts`), and public datasets need no read token.
+  secret (`packages/shared/sanity.ts`), and public datasets need no read token.
 - **Naming:** `NAME` applies to both; `NAME__PRODUCTION` / `NAME__DEV` override it for one. Code reads `NAME`.
   Production values sit in the Secrets Manager project `cougars`; dev and shared values in `cougars-dev`. Every
   app shares these two projects ([ADR 0002](docs/adr/0002-secrets-in-bitwarden.md)); _Used by_ says which app
@@ -144,7 +144,7 @@ Never the deploy token: this one lives in the Worker.
   | ---------------------------- | ---------------------- | ----------------------------------- |
   | Entire Cougars (Dev) account | Account Analytics Read | Today's Worker requests and D1 rows |
 
-- **Used by:** the team Worker (`team/app/worker/usage.ts`), with `CLOUDFLARE_ACCOUNT_ID`.
+- **Used by:** the team Worker (`apps/team/worker/usage.ts`), with `CLOUDFLARE_ACCOUNT_ID`.
 - **Gets there by:** a Worker secret when the team app deploys; locally, `node scripts/env-pull.mjs -- npm run dev
 -w @cougars/team` passes it to the dev server (`vite.config.ts`), never to a file.
 - **Expires:** no, unless you set a TTL.
@@ -281,7 +281,7 @@ enquiries are still saved and emailed to the club, but nobody gets an auto-reply
 | -------------------------------------- | --------------------------- | ---------------------------------------------------------------- |
 | `SITE_URL`                             | `deploy.yml`                | `https://batterseacougars.com` on production; dev's workers.dev  |
 | `BWS_SERVER_URL`                       | GitHub variable, your shell | `https://vault.bitwarden.eu` if the vault is on the EU server    |
-| `SANITY_PROJECT_ID` / `SANITY_DATASET` | `shared/sanity.ts`          | Picked from `SITE_ENV`: Cougars on production, Cougars Dev else  |
+| `SANITY_PROJECT_ID` / `SANITY_DATASET` | `packages/shared/sanity.ts` | Picked from `SITE_ENV`: Cougars on production, Cougars Dev else  |
 | `SANITY_STUDIO_SITE_ENV`               | CI (Studio deploy)          | `production` builds the live Studio; unset is the dev project    |
 | `DEMO_CONTENT`                         | `.env`, GitHub variable     | Sample content + `noindex`; `true` on production only pre-launch |
 | `PUBLIC_BUILD_VERSION`                 | Set by CI                   | Shown in `<meta name="generator">`; checked by the smoke test    |

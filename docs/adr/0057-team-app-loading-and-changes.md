@@ -22,7 +22,7 @@ already loaded only when shown, but registered all of its community modules: 1.1
 
 - Every round trip to D1 is one the app waits on before it can show anything: read part by part, opening the app was
   29 statements one after another, 668 ms on the dev site. Now it's one statement for the whole club
-  (`readClub` in `team/app/worker/club.ts`), plus who's asking and the data version.
+  (`readClub` in `apps/team/worker/club.ts`), plus who's asking and the data version.
 - Each part is a query whose rows SQLite turns into JSON (`json_group_array`), side by side in one `SELECT`. The
   domain modules shape the rows (`membersFrom`, `tournamentsFrom`, `gamesFrom`, ...), so the JSON the app gets is
   unchanged.
@@ -33,7 +33,7 @@ already loaded only when shown, but registered all of its community modules: 1.1
 
 **Changes reply with what they touched.**
 
-- The club is read in named parts (`SLICES` in `team/app/worker/api.ts`): everydayRole, members, roles, venues,
+- The club is read in named parts (`SLICES` in `apps/team/worker/api.ts`): everydayRole, members, roles, venues,
   series, sessions (with sign-ups and teams), tournamentTypes, tournaments, clubEvents, quips,
   settings, agenda. The bootstrap is all of them.
 - Every route that isn't a GET declares `changes`: the parts it can touch. A test fails if one doesn't. For example,

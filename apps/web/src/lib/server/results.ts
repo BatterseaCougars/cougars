@@ -1,10 +1,10 @@
 // Tournament results on the website (ADR 0100): what the team app recorded, read live from D1. Only a tournament
-// that's public and done (shared/results.ts), and only award winners an admin confirmed (ADR 0044). People go by the
-// name they chose, else first name and initial (shared/names.ts): no full name leaves this module.
-import { all, type Param } from "../../../../../shared/d1";
-import { onTheWebsite, publicName, shortOnTheWebsite } from "../../../../../shared/names";
-import { champion, isDone, table } from "../../../../../shared/results";
-import { isSeason, seasonLabel, seasonOf } from "../../../../../shared/seasons";
+// that's public and done (packages/shared/results.ts), and only award winners an admin confirmed (ADR 0044). People go by the
+// name they chose, else first name and initial (packages/shared/names.ts): no full name leaves this module.
+import { all, type Param } from "@cougars/shared/d1";
+import { onTheWebsite, publicName, shortOnTheWebsite } from "@cougars/shared/names";
+import { champion, isDone, table } from "@cougars/shared/results";
+import { isSeason, seasonLabel, seasonOf } from "@cougars/shared/seasons";
 import { cached, type CacheDeps, type CacheOptions } from "./cache";
 
 export interface PublishedAward {
