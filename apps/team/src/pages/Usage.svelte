@@ -31,6 +31,7 @@
     resetsAt: string;
     metrics: Metric[];
     cpu?: { limitMs: number; workers: WorkerCpu[] };
+    backup: { takenAt: string; why: string; bytes: number } | null;
   }
 
   const ABOUT: Record<string, string> = {
@@ -78,6 +79,21 @@
   const cpuPct = (w: WorkerCpu, limit: number) => Math.min(100, Math.round((w.p99Ms / limit) * 100));
   const cpuLevel = (w: WorkerCpu, limit: number) =>
     w.stopped || w.p99Ms >= limit * 0.8 ? "high" : w.p99Ms >= limit * 0.5 ? "mid" : "low";
+  // Nightly, so a day and a half without one means the backup job has stopped (ADR 0106)
+  const STALE_MS = 36 * 3600_000;
+  const backedUp = $derived(
+    usage?.backup
+      ? new Intl.DateTimeFormat("en-GB", {
+          weekday: "short",
+          day: "numeric",
+          month: "short",
+          hour: "2-digit",
+          minute: "2-digit",
+          timeZone: "Europe/London",
+        }).format(new Date(usage.backup.takenAt))
+      : "",
+  );
+  const stale = $derived(!usage?.backup || Date.now() - Date.parse(usage.backup.takenAt) > STALE_MS);
   const resets = $derived(
     usage
       ? new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/London" }).format(
@@ -167,6 +183,26 @@
       Resets at {resets} (midnight UTC). If anything reaches its limit, this app stops working until then; the admins get
       an email at 80%. Sanity's allowance is on sanity.io/manage.
     </p>
+  {/if}
+
+  {#if usage}
+    <!-- The database's backups (ADR 0106): nightly, kept for 90 days as GitHub artifacts -->
+    <section class="live">
+      <h2 class="section">Backups</h2>
+      {#if usage.backup}
+        <p class:high={stale}>
+          Last backed up {backedUp} ({usage.backup.why}), {n(Math.round(usage.backup.bytes / 1024))} KB.
+        </p>
+      {:else}
+        <p class="high">Not backed up yet.</p>
+      {/if}
+      <p class="hint small">
+        Every night, and before a deploy changes the database, it's copied, sealed with the club's backup key and kept
+        for 90 days in GitHub (Actions, Back up).{stale
+          ? " More than a day without one means that job has stopped."
+          : ""}
+      </p>
+    </section>
   {/if}
 
   <!-- Live updates: how often, and what it costs the free day -->

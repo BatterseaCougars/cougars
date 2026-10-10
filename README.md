@@ -79,6 +79,8 @@ Rules ([ADR 0002](docs/adr/0002-secrets-in-bitwarden.md), [ADR 0010](docs/adr/00
 | [`TEAM_ROSTER__PRODUCTION`](#team-roster)                                 | `cougars`     | (the admins only)           | Deploys (D1 seed)              |
 | [`TEAM_ROSTER`](#team-roster)                                             | `cougars-dev` | (the club's roster)         | Deploys (D1 seed)              |
 | [`GITHUB_APP_PRIVATE_KEY`](#github_app_private_key)                       | `cougars-dev` | GitHub, `Cougars rebuilds`  | Team app (both): rebuilds      |
+| [`BACKUP_KEY__PRODUCTION`](#backup_key)                                   | `cougars`     | (random, made once)         | Database backups (production)  |
+| [`BACKUP_KEY`](#backup_key)                                               | `cougars-dev` | (random, made once)         | Database backups (dev)         |
 
 ### Bitwarden tokens
 
@@ -298,6 +300,23 @@ One key for both environments: production reads `cougars-dev` too, and nothing n
 - **Gets there by:** a Worker secret when the team app deploys.
 - **Expires:** no.
 - **Rotate:** generate a new key on the App, store it as above, redeploy, then delete the old key on the App.
+
+### `BACKUP_KEY`
+
+The key that seals the database's backups ([ADR 0106](docs/adr/0106-database-backups.md)). A backup is the whole
+database, members' names and emails included, kept as an artifact on this public repo, so it's encrypted
+(`scripts/lib/backup.mjs`). One per environment, so a dev key can't open production's backups.
+
+- **Made by:** 32 random bytes, never seen by anyone:
+  `node -e 'process.stdout.write(require("crypto").randomBytes(32).toString("base64url"))' | node scripts/secret-set.mjs BACKUP_KEY__PRODUCTION`
+  (and `BACKUP_KEY` for dev).
+- **Used by:** `scripts/db-backup.mjs` (`backup.yml` nightly, and `deploy.yml` before it changes the schema) and
+  `scripts/db-restore.mjs`, which opens one ([db/README.md](db/README.md#backups)).
+- **Gets there by:** CI pull from Secrets Manager. Locally, `node scripts/env-pull.mjs -- node scripts/db-restore.mjs …`
+  (`--environment production` for a production backup).
+- **Expires:** no.
+- **Rotate:** only if it leaks. A new key can't open the old backups: keep the old one (as `BACKUP_KEY_OLD…`) until
+  they've aged out, 90 days.
 
 ### Settings that aren't secret
 

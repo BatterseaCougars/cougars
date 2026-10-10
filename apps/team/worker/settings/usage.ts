@@ -4,7 +4,7 @@
 // also stops any request that computes for more than 10 ms; the page shows each Worker's CPU time against that, and
 // the check emails when a request was stopped (ADR 0059).
 // Read with a read-only token (Account Analytics: Read), CLOUDFLARE_ANALYTICS_TOKEN, never the deploy token.
-import { all, run } from "@cougars/shared/d1";
+import { all, first, run } from "@cougars/shared/d1";
 import { sendMail, type Mail } from "@cougars/shared/email";
 import { mailSetup } from "../auth/auth";
 import type { Env } from "../api/api";
@@ -34,6 +34,14 @@ export interface Usage {
   resetsAt: string;
   metrics: Metric[];
   cpu?: { limitMs: number; workers: WorkerCpu[] };
+  /** The database's last backup (ADR 0106), or null before the first. Ours, so it's there without the token. */
+  backup: Backup | null;
+}
+
+export interface Backup {
+  takenAt: string;
+  why: string;
+  bytes: number;
 }
 
 /** The Workers free plan's daily limits (ADR 0003); the live hub's (ADR 0072) are Durable Objects' */
@@ -92,7 +100,11 @@ interface Answer {
 export async function readUsage(env: Env, now: Date): Promise<Usage> {
   const day = now.toISOString().slice(0, 10);
   const resetsAt = new Date(Date.parse(day) + 86_400_000).toISOString();
-  const none = { day, resetsAt, metrics: [] };
+  const backup = await first<Backup>(
+    env.DB,
+    "SELECT taken_at takenAt, why, bytes FROM backups ORDER BY taken_at DESC LIMIT 1",
+  );
+  const none = { day, resetsAt, metrics: [], backup };
   if (!env.CLOUDFLARE_ANALYTICS_TOKEN || !env.CLOUDFLARE_ACCOUNT_ID) return { configured: false, ...none };
   try {
     const res = await fetch("https://api.cloudflare.com/client/v4/graphql", {
@@ -129,7 +141,7 @@ export async function readUsage(env: Env, now: Date): Promise<Usage> {
         (s) => s.sum.requests,
       ),
     }));
-    return { configured: true, day, resetsAt, metrics, cpu: { limitMs: CPU_LIMIT_MS, workers } };
+    return { configured: true, day, resetsAt, metrics, cpu: { limitMs: CPU_LIMIT_MS, workers }, backup };
   } catch (e) {
     console.warn(JSON.stringify({ event: "usage.unavailable", error: String(e) }));
     return { configured: true, unavailable: true, ...none };

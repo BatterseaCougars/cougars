@@ -11,7 +11,8 @@
 //   node scripts/ci/target.mjs production|dev team (the team app, after `npm run build -w @cougars/team`: worker
 //                                                   `team` on the same D1, ADR 0010)
 //   node scripts/ci/target.mjs production|dev db   (no build: writes apps/web/dist/d1/wrangler.json, naming only the
-//                                                   database, for the D1 scripts in deploy.yml's `database` job)
+//                                                   database and its migrations, for deploy.yml's `database` job and
+//                                                   backup.yml)
 //
 // Needs CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID for that environment's account.
 import { execFileSync } from "node:child_process";
@@ -47,7 +48,13 @@ if (!db?.uuid) throw new Error(`D1 database ${target.db} not found after create`
 if (dbOnly) {
   const d1 = new URL("dist/d1/", cwd);
   mkdirSync(d1, { recursive: true });
-  const binding = { binding: "DB", database_name: target.db, database_id: db.uuid };
+  // After launch, `wrangler d1 migrations apply` reads the migrations from here (relative to this file, ADR 0050)
+  const binding = {
+    binding: "DB",
+    database_name: target.db,
+    database_id: db.uuid,
+    migrations_dir: "../../../../db/migrations",
+  };
   writeFileSync(
     new URL("wrangler.json", d1),
     JSON.stringify({ name: "d1", compatibility_date: "2026-10-01", d1_databases: [binding] }),

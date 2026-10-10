@@ -9,9 +9,16 @@
 // The rows are personal data: the backup goes in a private temp folder, never the repo, and its path is printed.
 import Database from "better-sqlite3";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+
+// After launch the database changes by migrations only, and a rebuild would rewrite live members' rows (ADR 0050)
+const migrations = join(import.meta.dirname, "../db/migrations");
+if (existsSync(migrations) && readdirSync(migrations).some((f) => f.endsWith(".sql"))) {
+  console.error("Launched: db/migrations/ is the database now. Add a migration; don't rebuild (db/README.md).");
+  process.exit(1);
+}
 
 const argv = process.argv.slice(2);
 const remote = argv.includes("--remote");

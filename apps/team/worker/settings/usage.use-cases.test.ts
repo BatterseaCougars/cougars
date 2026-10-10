@@ -111,6 +111,18 @@ describe("an admin checks the club's free Cloudflare allowance", () => {
     expect(res.body.metrics).toEqual([]);
   });
 
+  it("sees when the club's database was last backed up, and why, even without the analytics token (ADR 0106)", async () => {
+    delete (w.env as Json).CLOUDFLARE_ANALYTICS_TOKEN;
+    expect((await usageAs("dana@example.com")).body.backup).toBeNull();
+    w.db.raw.exec(`INSERT INTO backups (taken_at, why, bytes) VALUES
+      ('2026-10-05T03:15:00.000Z', 'nightly', 40000), ('2026-10-06T03:15:00.000Z', 'nightly', 41000)`);
+    expect((await usageAs("dana@example.com")).body.backup).toEqual({
+      takenAt: "2026-10-06T03:15:00.000Z",
+      why: "nightly",
+      bytes: 41000,
+    });
+  });
+
   it("says Cloudflare can't be read right now, rather than failing", async () => {
     cloudflare({ ok: false });
     const res = await usageAs("dana@example.com");

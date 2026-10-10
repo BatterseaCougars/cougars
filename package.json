@@ -20,6 +20,7 @@
     "lint": "eslint . && prettier --check .",
     "format": "prettier --write .",
     "db:rebuild:local": "node scripts/db-rebuild.mjs --local",
+    "db:migrate:local": "node scripts/db-migrate.mjs --local",
     "db:seed:local": "node scripts/seed-roster.mjs --local",
     "env:pull": "node scripts/env-pull.mjs",
     "team": "npm run dev -w @cougars/team"

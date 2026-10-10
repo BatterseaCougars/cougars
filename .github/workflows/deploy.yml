@@ -94,7 +94,7 @@ jobs:
             [web]="^(apps/web/|scripts/|$shared)"
             [team]="^(apps/team/|scripts/ci/|$shared)"
             [studio]="^(apps/studio/|$shared)"
-            [database]="^(db/|scripts/db-rebuild\.mjs|scripts/seed-roster\.mjs|scripts/lib/roster|scripts/ci/target\.mjs|\.github/workflows/deploy\.yml)"
+            [database]="^(db/|scripts/db-(rebuild|backup|migrate)\.mjs|scripts/seed-roster\.mjs|scripts/lib/roster|scripts/ci/target\.mjs|\.github/workflows/deploy\.yml)"
           )
           # A PR is checked out as a merge commit: its first parent is the base. A new branch has no `before`.
           base=
@@ -114,9 +114,11 @@ jobs:
             echo "$app=$on" >> "$GITHUB_OUTPUT"
           done
 
-  # Not live yet, so no migrations (ADR 0050): the database is rebuilt from db/schema.sql, keeping its data, topped up
-  # with the club's seed and the team roster. Each environment has its own database, so a PR rebuilds dev, never
-  # production. Both apps read it, so they wait for this job when it runs.
+  # Backed up first (sealed, kept 90 days as an artifact: ADR 0106), then brought up to date. Until launch there are no
+  # migrations (ADR 0050): dev is rebuilt from db/schema.sql, keeping its data, topped up with the club's seed. Production
+  # never rebuilds: it starts at launch from the migrations scripts/db-launch.mjs makes, and only ever migrates. Then the
+  # team roster. Each environment has its own database, so a PR changes dev, never production. Both apps read it, so
+  # they wait for this job when it runs.
   database:
     needs: changes
     if: needs.changes.outputs.database == 'true'
@@ -139,9 +141,29 @@ jobs:
       - name: Target ${{ env.SITE_ENV }}
         run: node scripts/ci/target.mjs "$SITE_ENV" db
 
-      - name: Rebuild D1 from the schema
+      - name: Back up before changing it
         working-directory: apps/web
-        run: node ../../scripts/db-rebuild.mjs --remote -c dist/d1/wrangler.json
+        run: node ../../scripts/db-backup.mjs --remote -c dist/d1/wrangler.json --why "before deploy" --out ../../backups
+
+      - name: Keep the backup
+        uses: actions/upload-artifact@v4
+        with:
+          name: d1-${{ env.SITE_ENV }}-before-deploy-${{ github.run_id }}
+          path: backups/
+          retention-days: 90
+          if-no-files-found: error
+
+      - name: Migrate, or rebuild before launch
+        working-directory: apps/web
+        run: |
+          if ls ../../db/migrations/*.sql >/dev/null 2>&1; then
+            node ../../scripts/db-migrate.mjs --remote -c dist/d1/wrangler.json
+          elif [ "$SITE_ENV" = production ]; then
+            echo "::error::Production never rebuilds its database (ADR 0050). Launch it first: node scripts/db-launch.mjs"
+            exit 1
+          else
+            node ../../scripts/db-rebuild.mjs --remote -c dist/d1/wrangler.json
+          fi
 
       # The team roster: personal data, so it lives in Secrets Manager (TEAM_ROSTER), never in this public repo
       # (ADR 0029). Adds players who aren't there yet and changes no one.

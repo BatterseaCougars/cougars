@@ -485,6 +485,15 @@ CREATE TABLE usage_warnings (
   PRIMARY KEY (day, metric)
 );
 
+-- Backups of this database (scripts/db-backup.mjs, ADR 0106): when, why (nightly, before a deploy changes the schema)
+-- and how big, sealed. The file itself is a CI artifact; this is so the Usage page can say when the last one was.
+CREATE TABLE backups (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  taken_at TEXT NOT NULL,
+  why TEXT NOT NULL,
+  bytes INTEGER NOT NULL
+);
+
 -- A tournament's games (ADR 0061): its round robin, then its playoffs, which know their seeds (1st v 2nd) until the
 -- table fills them in. Scores are the final ones; goal by goal comes with live scoring (T5).
 CREATE TABLE tournament_games (

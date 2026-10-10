@@ -18,6 +18,8 @@
     {
       "binding": "DB",
       "database_name": "cougars",
+      // After launch, the database's migrations (ADR 0050); until then db/schema.sql
+      "migrations_dir": "../../db/migrations",
     },
   ],
 }
