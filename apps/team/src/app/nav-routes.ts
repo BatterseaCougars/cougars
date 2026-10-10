@@ -106,6 +106,17 @@ const STATIC_TAIL: Route[] = [
     hint: "Your details, position and photo",
   },
   { id: "more", path: "/more", name: "More", tab: "more", page: "more", action: "authenticated", icon: "more" },
+  // The app's privacy notice (#30): from Profile → Your data, and on the sign-in screen
+  {
+    id: "privacy",
+    path: "/privacy",
+    name: "Privacy",
+    tab: "more",
+    page: "privacy",
+    action: "authenticated",
+    icon: "user",
+    hidden: true,
+  },
   {
     id: "teammates",
     path: "/more/teammates",

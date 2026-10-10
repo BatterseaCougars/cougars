@@ -26,6 +26,7 @@ const LOADERS: Record<string, () => Promise<{ default: Page }>> = {
   upload: () => import("../pages/Upload.svelte"),
   more: () => import("../pages/More.svelte"),
   profile: () => import("../pages/Profile.svelte"),
+  privacy: () => import("../pages/Privacy.svelte"),
   tab: () => import("../pages/MyTab.svelte"),
   roles: () => import("../pages/Roles.svelte"),
   usage: () => import("../pages/Usage.svelte"),

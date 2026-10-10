@@ -6,9 +6,11 @@
   import { POSITION_ICONS } from "../demo/data";
   import { api } from "../app/api";
   import mark from "../assets/cougars-mark.webp";
+  import PrivacyNotice from "../lib/PrivacyNotice.svelte";
 
-  type Step = "email" | "code" | "join" | "asked";
-  let step = $state<Step>("email");
+  // The app's privacy notice is readable before signing in too (#30): at /privacy, or from the link at the foot
+  type Step = "email" | "code" | "join" | "asked" | "privacy";
+  let step = $state<Step>(location.pathname === "/privacy" ? "privacy" : "email");
   // The link in a new member's welcome email fills in their address (ADR 0069)
   let email = $state(new URLSearchParams(location.search).get("email") ?? "");
   let code = $state("");
@@ -56,11 +58,13 @@
   function go(to: Step) {
     error = "";
     step = to;
+    const path = to === "privacy" ? "/privacy" : "/";
+    if (location.pathname !== path) history.replaceState(null, "", path);
   }
 </script>
 
 <main class="signin">
-  <div class="panel rise">
+  <div class="panel rise" class:wide={step === "privacy"}>
     <img class="mark" src={mark} alt="" width="72" height="72" />
     <p class="eyebrow">Battersea Cougars</p>
 
@@ -151,6 +155,10 @@
         <button class="btn primary block" disabled={busy}>Ask to join</button>
       </form>
       <p class="hint">Already a member? <button class="link" onclick={() => go("email")}>Sign in</button></p>
+    {:else if step === "privacy"}
+      <h1 class="display">Privacy</h1>
+      <PrivacyNotice />
+      <button class="btn outline block" onclick={() => go("email")}>Back to sign in</button>
     {:else}
       <h1 class="display">Asked</h1>
       <p class="hint">{note}</p>
@@ -159,6 +167,9 @@
 
     <!-- Room for one line, kept, so an error doesn't push the page about -->
     <p class="error" role="alert">{error}</p>
+    {#if step !== "privacy"}
+      <p class="hint small"><button class="link" onclick={() => go("privacy")}>Privacy</button></p>
+    {/if}
   </div>
 </main>
 
@@ -177,6 +188,10 @@
     border-radius: var(--r-xl);
     background: var(--surface-1);
     box-shadow: 0 30px 80px -30px rgb(0 0 0 / 0.8);
+  }
+  /* The privacy notice reads at a comfortable measure */
+  .panel.wide {
+    width: min(42rem, 100%);
   }
   .mark {
     justify-self: center;

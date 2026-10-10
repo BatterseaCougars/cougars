@@ -49,12 +49,15 @@ admin does the same for a member who asks by email (their member sheet → Delet
   or roles. Their sessions and sign-in codes go, so they're signed out everywhere; places for what's still to come are
   given up; earlier audit entries stop naming them (`apps/team/worker/members/members.erase.ts`). The audit log records
   the deletion as a change of standing only. The club's last admin can't delete their account.
-- The download is everything the app holds about them as JSON, except their skill rating, which is the organisers'
+- The download is everything the app holds about them as JSON, except their rating, the information the organisers keep to help pick teams, which is the organisers'
   opinion and hidden from members (the club's choice, 2026-10-10).
 - **Sign-in records are kept no longer than needed**, by the team app's hourly cron (`settings/retention.ts`): sign-in
   codes 30 days, a session 30 days after it ended, audit entries 2 years.
-- Backups keep a deleted account for up to 90 days ([ADR 0106](0106-database-backups.md)); the privacy page says so.
-- The privacy page covers the team app: what it holds, who sees it, how long, and how to delete it.
+- Backups keep a deleted account for up to 90 days ([ADR 0106](0106-database-backups.md)); the app's privacy notice says so.
+- **The team app has its own privacy notice**, not the website's (members' details don't belong on the public site):
+  `apps/team/src/lib/PrivacyNotice.svelte`, at `/privacy` in the app and on the sign-in screen, so anyone can read it
+  before signing in. What it holds, who sees it, how long, and how to delete it. The website's `/privacy` covers the
+  website only.
 
 ## Consequences
 
@@ -70,7 +73,7 @@ admin does the same for a member who asks by email (their member sheet → Delet
 - Nothing sets `joined` yet, so every enquiry goes after 12 months; the team app will mark joiners when it turns
   enquiries into members.
 - Changing the retention period means changing `KEEP_ENQUIRIES_MONTHS`, the privacy page and this record together;
-  the same for the team app's (`retention.ts`).
+  the same for the team app's (`retention.ts` and the app's notice).
 - The roster seed adds players by name, so someone who deleted their account comes back on the next deploy if they're
   still in `TEAM_ROSTER`: take them off it (both names) too.
 
@@ -86,3 +89,5 @@ admin does the same for a member who asks by email (their member sheet → Delet
 - 2026-10-10: Members can delete their account (erased in place, as a Former member) and download their data; sign-in
   codes, ended sessions and audit entries are forgotten after 30 days, 30 days and 2 years; the privacy page covers
   the team app (#30).
+- 2026-10-10: The team app's privacy notice moves into the app (`/privacy`, and the sign-in screen); the website's covers
+  the website only.

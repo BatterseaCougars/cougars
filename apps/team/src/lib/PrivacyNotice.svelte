@@ -1,0 +1,85 @@
+<script lang="ts">
+  // The team app's privacy notice (#30, ADR 0029): what the app holds about members, who sees it, how long it's kept,
+  // and how to get it or delete it. The website's /privacy covers the website only. Shown on the sign-in screen
+  // (anyone, before they sign in) and at /privacy in the app. Every line describes something the code does: change it
+  // with the behaviour (worker/settings/retention.ts, members/members.erase.ts, ADR 0106 for backups).
+  const CLUB_EMAIL = "batterseahockey@gmail.com";
+</script>
+
+<div class="notice">
+  <h2>Who we are</h2>
+  <p>
+    Battersea Cougars Inline Hockey Club. This app is how members sign up for training and tournaments, and how the club
+    runs them and keeps track of fees. Questions about your details go to
+    <a href="mailto:{CLUB_EMAIL}">{CLUB_EMAIL}</a>.
+  </p>
+
+  <h2>What the app holds about you</h2>
+  <p>
+    Your name and the name you go by, your email address (to sign in), your phone number if you give it, your position
+    and the bio on your player card; which sessions, tournaments and events you signed up for and played; what you owe
+    and have paid, and the reference your bank transfers use; and information the club's organisers keep to help pick
+    teams, which other members don't see.
+  </p>
+
+  <h2>Who sees it</h2>
+  <p>
+    Other members see the name you go by, your position, your bio and what you've signed up for. Your email and phone
+    are seen only by you and the club's admins. Sign-in codes and the club's notices are emailed through Google's Gmail.
+  </p>
+
+  <h2>Signing in</h2>
+  <p>
+    The app sets two cookies, which it needs to work: one while you sign in, one to keep you signed in. It remembers
+    which browser each sign-in is on, so you can tell your devices apart. Sign-in codes are kept for 30 days, and a
+    sign-in for 30 days after you sign out or it runs out. A record of who changed what in the app (who was made an
+    admin, say) is kept for 2 years.
+  </p>
+
+  <h2>Where it's kept, and for how long</h2>
+  <p>
+    On Cloudflare, in Western Europe, for as long as you're in the club, until you delete your account or ask us to. The
+    club's database is backed up every night, encrypted, on GitHub, and each backup is kept for 90 days, so a deleted
+    account is gone from the backups 90 days later.
+  </p>
+
+  <h2>Your data, and deleting your account</h2>
+  <p>
+    In the app, Profile → Your data: download everything the app holds about you, or delete your account. Deleting
+    removes your name, email, phone and everything else that says who you are, straight away. What the club must keep
+    for its accounts (payments) and its numbers (that someone played a session) stays, about a "Former member" nobody
+    can name.
+  </p>
+
+  <h2>Your rights</h2>
+  <p>
+    You can ask to see, correct or delete what we hold about you: email <a href="mailto:{CLUB_EMAIL}">{CLUB_EMAIL}</a>.
+    If you're unhappy with how we've handled it, the
+    <a href="https://ico.org.uk/make-a-complaint/" target="_blank" rel="noopener">Information Commissioner's Office</a>
+    takes complaints from anyone in the UK.
+  </p>
+</div>
+
+<style>
+  .notice {
+    display: grid;
+    gap: var(--s-2);
+    max-width: 42rem;
+  }
+  h2 {
+    margin: var(--s-4) 0 0;
+    font-size: var(--text-md);
+  }
+  h2:first-child {
+    margin-top: 0;
+  }
+  p {
+    margin: 0;
+    color: var(--fg-body);
+  }
+  a {
+    color: var(--fg);
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+  }
+</style>

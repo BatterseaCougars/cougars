@@ -8,9 +8,6 @@
 
   let { disabled = false }: { disabled?: boolean } = $props();
 
-  // On the club's website, which covers the app too (ADR 0029)
-  const PRIVACY = "https://batterseacougars.com/privacy/";
-
   let asking = $state(false);
   let busy = $state(false);
   let error = $state("");
@@ -40,8 +37,7 @@
   <h2 class="section-title">Your data</h2>
   <p class="hint">
     Everything the app holds about you, as a file: your details, sign-ups, payments and the devices you've signed in on.
-    What the club keeps, who sees it and for how long:
-    <a href={PRIVACY} target="_blank" rel="noopener">the privacy page</a>.
+    What the club keeps, who sees it and for how long: <a href="/privacy">Privacy</a>.
   </p>
   <div class="actions">
     <button class="btn outline sm" type="button" {disabled} onclick={download}
