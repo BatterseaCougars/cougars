@@ -79,6 +79,12 @@ be checked before it goes live. Ark deploys `main` to dev and production from a 
   `contents: read` and a job widens only what it needs, the PR comment goes through GitHub's own `gh`, and Dependabot
   proposes updates weekly, grouped, checked by `pr.yml`. `main` and `release` refuse force-pushes and deletion (a
   repository ruleset).
+- **Production is behind Cloudflare Access until launch**, so it can be deployed and tried for real first: the site,
+  `www.` and the team app ask for an email and a one-time code and let in only production's admins
+  (`scripts/access-setup.mjs`, docs/setup.md). CI gets past it with a service token
+  (`CF_ACCESS_CLIENT_ID/SECRET__PRODUCTION`) for the smoke tests. Until the `production` environment's variable
+  `LAUNCHED` is `true`, production's database rebuilds like dev's ([ADR 0050](0050-schema-and-seed-until-launch.md)).
+  Launch: `db-launch.mjs`, `access-setup.mjs --remove`, `LAUNCHED=true`.
 - **Rolling back is a workflow too**: Actions → _Roll back_ (`.github/workflows/rollback.yml`), run on `release` for
   production or `main` for dev, puts one worker (`web` or `team`) back to the version before the last deploy, or to a
   version id, with a reason. It is code only: the database stays as it is. The next deploy from that branch replaces
@@ -131,3 +137,4 @@ be checked before it goes live. Ark deploys `main` to dev and production from a 
   D1; rollback through `rollback.yml` (#27).
 - 2026-10-10: Actions pinned by SHA, the Bitwarden CLI checksummed, least-privilege permissions, Dependabot; `main`
   and `release` protected from force-push and deletion (#70, #71).
+- 2026-10-10: Production deployed before launch, behind Cloudflare Access (admins and CI's service token only).

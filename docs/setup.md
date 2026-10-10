@@ -129,6 +129,13 @@ separate Cloudflare account, and a domain can only point at workers in its own.
 The form rate limit and the edge cache start working on the domain: Cloudflare's Cache API is disabled on
 `*.workers.dev`. At launch, switch the Google Auth Platform **Branding** URLs to the domain (README.md#gmail).
 
+**Before launch, behind Cloudflare Access**: `batterseacougars.com`, `www.` and `team.` ask for an email and a
+one-time code, and let in only the admins in `TEAM_ROSTER__PRODUCTION`, plus CI's service token for the deploy's smoke
+tests. Zero Trust is on (Free plan); the rest is
+`node scripts/env-pull.mjs --environment production -- node scripts/access-setup.mjs`, which can be run again (after a
+roster change, say) and stores the service token in Secrets Manager. At launch, the same with `--remove`, then set the
+`production` environment's variable `LAUNCHED` to `true` (ADR 0010, ADR 0050). The service token lasts a year.
+
 **Rate limiting** (#57): the zone's one free rate-limiting rule blocks an address that sends more than 150 requests in
 10 seconds (per Cloudflare data centre) for 10 seconds, on the site, `www.` and the team app, before a scraper costs a
 Worker request. The Workers' own limits on forms and sign-in still apply behind it. 150 leaves room for a whole club on

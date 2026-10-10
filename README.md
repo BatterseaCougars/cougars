@@ -56,31 +56,33 @@ Rules ([ADR 0002](docs/adr/0002-secrets-in-bitwarden.md), [ADR 0010](docs/adr/00
 - **Every secret has an entry below.** Adding one: create the token with its secret name, add it to Secrets
   Manager with `node scripts/secret-set.mjs NAME` (hidden prompt; it picks the project from the name), add it here.
 
-| Secret                                                                    | Project       | Issued by                   | Used by                        |
-| ------------------------------------------------------------------------- | ------------- | --------------------------- | ------------------------------ |
-| [`BWS_ACCESS_TOKEN__PRODUCTION`](#bitwarden-tokens)                       | (GitHub)      | Bitwarden, `cougars-ci`     | Production deploys             |
-| [`BWS_ACCESS_TOKEN__DEV`](#bitwarden-tokens)                              | (GitHub)      | Bitwarden, `cougars-ci-dev` | PR previews                    |
-| [`COUGARS_LOCAL_BW_TOKEN`](#bitwarden-tokens)                             | (your vault)  | Bitwarden, `cougars-local`  | Your machine                   |
-| [`CLOUDFLARE_API_TOKEN__PRODUCTION`](#cloudflare_api_token__production)   | `cougars`     | Cloudflare, Cougars         | Production deploys             |
-| [`CLOUDFLARE_ACCOUNT_ID__PRODUCTION`](#cloudflare_account_id__production) | `cougars`     | Cloudflare, Cougars         | Production deploys             |
-| [`CLOUDFLARE_API_TOKEN__DEV`](#cloudflare_api_token__dev)                 | `cougars-dev` | Cloudflare, Cougars Dev     | PR previews, `deploy-dev.sh`   |
-| [`CLOUDFLARE_ACCOUNT_ID__DEV`](#cloudflare_account_id__dev)               | `cougars-dev` | Cloudflare, Cougars Dev     | PR previews, `deploy-dev.sh`   |
-| [`CLOUDFLARE_ANALYTICS_TOKEN__PRODUCTION`](#cloudflare_analytics_token)   | `cougars`     | Cloudflare, Cougars         | Team app Usage page            |
-| [`CLOUDFLARE_ANALYTICS_TOKEN__DEV`](#cloudflare_analytics_token)          | `cougars-dev` | Cloudflare, Cougars Dev     | Team app Usage page (dev)      |
-| [`SANITY_DEPLOY_TOKEN__PRODUCTION`](#sanity_deploy_token__production)     | `cougars`     | Sanity                      | Studio deploys                 |
-| [`YOUTUBE_API_KEY__PRODUCTION`](#youtube-api-keys)                        | `cougars`     | Google Cloud                | Website (production)           |
-| [`YOUTUBE_API_KEY__DEV`](#youtube-api-keys)                               | `cougars-dev` | Google Cloud                | Website (dev)                  |
-| [`GMAIL_CLIENT_ID`](#gmail)                                               | `cougars-dev` | Google Cloud                | Website, team app (both)       |
-| [`GMAIL_CLIENT_SECRET`](#gmail)                                           | `cougars-dev` | Google Cloud                | Website, team app (both)       |
-| [`GMAIL_REFRESH_TOKEN__PRODUCTION`](#gmail)                               | `cougars`     | Google, club Gmail          | Website, team app (production) |
-| [`GMAIL_REFRESH_TOKEN`](#gmail)                                           | `cougars-dev` | Google, dev Gmail           | Website, team app (dev)        |
-| [`TURNSTILE_SECRET_KEY__PRODUCTION`](#turnstile)                          | `cougars`     | Cloudflare, Cougars         | Website (production)           |
-| [`TURNSTILE_SECRET_KEY`](#turnstile)                                      | `cougars-dev` | Cloudflare, Cougars Dev     | Website (dev)                  |
-| [`TEAM_ROSTER__PRODUCTION`](#team-roster)                                 | `cougars`     | (the admins only)           | Deploys (D1 seed)              |
-| [`TEAM_ROSTER`](#team-roster)                                             | `cougars-dev` | (the club's roster)         | Deploys (D1 seed)              |
-| [`GITHUB_APP_PRIVATE_KEY`](#github_app_private_key)                       | `cougars-dev` | GitHub, `Cougars rebuilds`  | Team app (both): rebuilds      |
-| [`BACKUP_KEY__PRODUCTION`](#backup_key)                                   | `cougars`     | (random, made once)         | Database backups (production)  |
-| [`BACKUP_KEY`](#backup_key)                                               | `cougars-dev` | (random, made once)         | Database backups (dev)         |
+| Secret                                                                    | Project       | Issued by                   | Used by                              |
+| ------------------------------------------------------------------------- | ------------- | --------------------------- | ------------------------------------ |
+| [`BWS_ACCESS_TOKEN__PRODUCTION`](#bitwarden-tokens)                       | (GitHub)      | Bitwarden, `cougars-ci`     | Production deploys                   |
+| [`BWS_ACCESS_TOKEN__DEV`](#bitwarden-tokens)                              | (GitHub)      | Bitwarden, `cougars-ci-dev` | PR previews                          |
+| [`COUGARS_LOCAL_BW_TOKEN`](#bitwarden-tokens)                             | (your vault)  | Bitwarden, `cougars-local`  | Your machine                         |
+| [`CLOUDFLARE_API_TOKEN__PRODUCTION`](#cloudflare_api_token__production)   | `cougars`     | Cloudflare, Cougars         | Production deploys                   |
+| [`CLOUDFLARE_ACCOUNT_ID__PRODUCTION`](#cloudflare_account_id__production) | `cougars`     | Cloudflare, Cougars         | Production deploys                   |
+| [`CLOUDFLARE_API_TOKEN__DEV`](#cloudflare_api_token__dev)                 | `cougars-dev` | Cloudflare, Cougars Dev     | PR previews, `deploy-dev.sh`         |
+| [`CLOUDFLARE_ACCOUNT_ID__DEV`](#cloudflare_account_id__dev)               | `cougars-dev` | Cloudflare, Cougars Dev     | PR previews, `deploy-dev.sh`         |
+| [`CLOUDFLARE_ANALYTICS_TOKEN__PRODUCTION`](#cloudflare_analytics_token)   | `cougars`     | Cloudflare, Cougars         | Team app Usage page                  |
+| [`CLOUDFLARE_ANALYTICS_TOKEN__DEV`](#cloudflare_analytics_token)          | `cougars-dev` | Cloudflare, Cougars Dev     | Team app Usage page (dev)            |
+| [`SANITY_DEPLOY_TOKEN__PRODUCTION`](#sanity_deploy_token__production)     | `cougars`     | Sanity                      | Studio deploys                       |
+| [`YOUTUBE_API_KEY__PRODUCTION`](#youtube-api-keys)                        | `cougars`     | Google Cloud                | Website (production)                 |
+| [`YOUTUBE_API_KEY__DEV`](#youtube-api-keys)                               | `cougars-dev` | Google Cloud                | Website (dev)                        |
+| [`GMAIL_CLIENT_ID`](#gmail)                                               | `cougars-dev` | Google Cloud                | Website, team app (both)             |
+| [`GMAIL_CLIENT_SECRET`](#gmail)                                           | `cougars-dev` | Google Cloud                | Website, team app (both)             |
+| [`GMAIL_REFRESH_TOKEN__PRODUCTION`](#gmail)                               | `cougars`     | Google, club Gmail          | Website, team app (production)       |
+| [`GMAIL_REFRESH_TOKEN`](#gmail)                                           | `cougars-dev` | Google, dev Gmail           | Website, team app (dev)              |
+| [`TURNSTILE_SECRET_KEY__PRODUCTION`](#turnstile)                          | `cougars`     | Cloudflare, Cougars         | Website (production)                 |
+| [`TURNSTILE_SECRET_KEY`](#turnstile)                                      | `cougars-dev` | Cloudflare, Cougars Dev     | Website (dev)                        |
+| [`TEAM_ROSTER__PRODUCTION`](#team-roster)                                 | `cougars`     | (the admins only)           | Deploys (D1 seed)                    |
+| [`TEAM_ROSTER`](#team-roster)                                             | `cougars-dev` | (the club's roster)         | Deploys (D1 seed)                    |
+| [`GITHUB_APP_PRIVATE_KEY`](#github_app_private_key)                       | `cougars-dev` | GitHub, `Cougars rebuilds`  | Team app (both): rebuilds            |
+| [`CF_ACCESS_CLIENT_ID__PRODUCTION`](#cf_access_client_id__production)     | `cougars`     | Cloudflare Access           | Production smoke tests, until launch |
+| [`CF_ACCESS_CLIENT_SECRET__PRODUCTION`](#cf_access_client_id__production) | `cougars`     | Cloudflare Access           | Production smoke tests, until launch |
+| [`BACKUP_KEY__PRODUCTION`](#backup_key)                                   | `cougars`     | (random, made once)         | Database backups (production)        |
+| [`BACKUP_KEY`](#backup_key)                                               | `cougars-dev` | (random, made once)         | Database backups (dev)               |
 
 ### Bitwarden tokens
 
@@ -115,16 +117,17 @@ Deploys the `cougars` worker and migrates the `cougars` D1 database on the **Cou
 
   Account API tokens use role-style permissions, grouped by what they apply to:
 
-  | Applies to             | Permission           | Why                                                     |
-  | ---------------------- | -------------------- | ------------------------------------------------------- |
-  | Entire Cougars account | Workers Admin        | Deploy the `cougars` worker (Editor can't create it)    |
-  | Entire Cougars account | Workers Editor       | (also on the token; Admin covers it)                    |
-  | Entire Cougars account | D1 Write             | Create and migrate the `cougars` database               |
-  | Entire Cougars account | Turnstile Write      | Make the Turnstile widget (`turnstile-setup.mjs`)       |
-  | All zones in Cougars   | Zone WAF Write       | The domain's rate-limiting rule (`ratelimit-setup.mjs`) |
-  | All zones in Cougars   | Zone Read            | Find the batterseacougars.com zone                      |
-  | All zones in Cougars   | DNS Write            | The deploy creates the domain's DNS records             |
-  | All zones in Cougars   | Workers Routes Write | Attach the domain to the worker (`target.mjs`)          |
+  | Applies to             | Permission                                                       | Why                                                     |
+  | ---------------------- | ---------------------------------------------------------------- | ------------------------------------------------------- |
+  | Entire Cougars account | Workers Admin                                                    | Deploy the `cougars` worker (Editor can't create it)    |
+  | Entire Cougars account | Workers Editor                                                   | (also on the token; Admin covers it)                    |
+  | Entire Cougars account | D1 Write                                                         | Create and migrate the `cougars` database               |
+  | Entire Cougars account | Turnstile Write                                                  | Make the Turnstile widget (`turnstile-setup.mjs`)       |
+  | All zones in Cougars   | Zone WAF Write                                                   | The domain's rate-limiting rule (`ratelimit-setup.mjs`) |
+  | Entire Cougars account | Access: Identity Providers, Apps, Policies, Service Tokens Write | The gate before launch (`access-setup.mjs`)             |
+  | All zones in Cougars   | Zone Read                                                        | Find the batterseacougars.com zone                      |
+  | All zones in Cougars   | DNS Write                                                        | The deploy creates the domain's DNS records             |
+  | All zones in Cougars   | Workers Routes Write                                             | Attach the domain to the worker (`target.mjs`)          |
 
 - **Used by:** `deploy.yml` on `release` and Studio publishes only (`target.mjs`, migrations, `wrangler deploy`).
 - **Gets there by:** CI pull from Secrets Manager (code reads `CLOUDFLARE_API_TOKEN`).
@@ -312,6 +315,18 @@ One key for both environments: production reads `cougars-dev` too, and nothing n
 - **Gets there by:** a Worker secret when the team app deploys.
 - **Expires:** no.
 - **Rotate:** generate a new key on the App, store it as above, redeploy, then delete the old key on the App.
+
+### `CF_ACCESS_CLIENT_ID__PRODUCTION`
+
+With `CF_ACCESS_CLIENT_SECRET__PRODUCTION`, CI's Cloudflare Access service token: until launch production is behind
+Access (docs/setup.md), and the deploy's smoke tests send these two as headers to get past it.
+
+- **Made by:** `node scripts/env-pull.mjs --environment production -- node scripts/access-setup.mjs`, which creates
+  the token and stores both straight in Secrets Manager (nobody sees the secret). Run again with the secret missing,
+  it rotates the token and stores the new one.
+- **Used by:** `scripts/ci/smoke-test.mjs` and the team job's smoke test in `deploy.yml`.
+- **Expires:** a year after it's made; run the script again to rotate.
+- **At launch:** `access-setup.mjs --remove` deletes the token; delete both secrets.
 
 ### `BACKUP_KEY`
 

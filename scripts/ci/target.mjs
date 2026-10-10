@@ -74,6 +74,9 @@ if (environment === "production") {
     throw new Error(`SITE_URL isn't production's domain: "${process.env.SITE_URL}"`);
   const hosts = team ? [`team.${host}`] : [host, `www.${host}`];
   config.routes = hosts.map((pattern) => ({ pattern, custom_domain: true }));
+  // Only the domain: a workers.dev address would get round Cloudflare Access before launch (ADR 0010)
+  config.workers_dev = false;
+  config.preview_urls = false;
 }
 config.d1_databases = config.d1_databases.map((d) => ({ ...d, database_name: target.db, database_id: db.uuid }));
 writeFileSync(GENERATED, JSON.stringify(config));

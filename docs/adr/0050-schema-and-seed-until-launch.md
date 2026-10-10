@@ -25,8 +25,10 @@ settings, entered in the app, which will become production.
   `db/migrations/0001_launch.sql`, and the two files go. Production's first deploy builds its database from that
   migration, and the roster (`TEAM_ROSTER__PRODUCTION`) holds only the admins. They bring the members in with Import
   members ([0069](0069-members.md)). Dev keeps its data for trying things.
+- **Before launch production is deployed behind Cloudflare Access** ([0010](0010-environments-and-deploys.md)) and
+  rebuilds like dev, keeping its rows, until the `production` environment's variable `LAUNCHED` is `true`.
 - **After launch, migrations only**, additive (the rule before this ADR): `deploy.yml` runs
-  `wrangler d1 migrations apply` once `db/migrations/` has any, and refuses to rebuild production when it hasn't;
+  `wrangler d1 migrations apply` once `db/migrations/` has any, and refuses to rebuild production once launched;
   `db-rebuild.mjs` refuses once it has; the tests build their database from the migrations.
 - Every deploy that changes the database backs it up first ([0106](0106-database-backups.md)).
 
@@ -45,3 +47,4 @@ settings, entered in the app, which will become production.
   becoming a copy of dev's data.
 - 2026-10-10: The switch is built: `scripts/db-launch.mjs` makes migration 0001; CI migrates once there are migrations
   and never rebuilds production; a backup before every schema change (#76, ADR 0106).
+- 2026-10-10: Production is deployed before launch, behind Cloudflare Access, and rebuilds until `LAUNCHED` is set.
