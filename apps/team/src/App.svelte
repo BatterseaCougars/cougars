@@ -29,6 +29,10 @@
   // attendance and flickered.
   const paramsKey = $derived(JSON.stringify(route.params ?? {}));
   const params = $derived(JSON.parse(paramsKey) as Record<string, unknown>);
+  // A page keeps its own route's params while it leaves: keyed by route, the one going is dropped, never handed the
+  // next route's. Handed them, The Kumite read its type as gone (no typeId on Calendar) in the Manage button it lends
+  // the phone bar, which sits outside the page, and the error stopped the next page from showing.
+  const view = $derived({ id: route.id, Page, params });
 
   $effect(() => {
     if (!route.focus && !route.hidden) remember(route.tab, route.path);
@@ -39,5 +43,7 @@
 <svelte:document onclick={interceptLinks} />
 
 <Shell {route}>
-  {#if Page}<Page {...params} />{/if}
+  {#each [view] as v (v.id)}
+    {#if v.Page}<v.Page {...v.params} />{/if}
+  {/each}
 </Shell>

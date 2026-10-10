@@ -2,6 +2,8 @@
 // club's data before anything that reads it is imported (main.ts).
 import type { Bootstrap } from "../demo/data";
 import { Brake } from "./brake";
+import { BUILD_HEADER } from "./build";
+import { heardBuild } from "./update.svelte";
 
 /** Keeps a tab that's gone wrong from spending the club's free allowance (ADR 0055). */
 export const brake = new Brake();
@@ -64,6 +66,7 @@ export async function getBootstrap(): Promise<Bootstrap> {
   const res = await send("/api/bootstrap");
   const data = await read<Bootstrap>(res, "/api/bootstrap");
   bootstrapTag = res.headers.get("etag");
+  heardBuild(res.headers.get(BUILD_HEADER));
   return data;
 }
 

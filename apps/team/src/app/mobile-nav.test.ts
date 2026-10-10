@@ -91,8 +91,8 @@ describe("the Draft page", () => {
 
 describe("buildTabs", () => {
   it("names the tab after the only training or tournament", () => {
-    expect(buildTabs(one).map((t) => t.label)).toEqual(["Home", "Friday", "Calendar", "Kumite", "More"]);
-    expect(buildTabs(many).map((t) => t.label)).toEqual(["Home", "Training", "Calendar", "Tournaments", "More"]);
+    expect(buildTabs(one).map((t) => t.label)).toEqual(["Home", "Friday", "Calendar", "Kumite", "You"]);
+    expect(buildTabs(many).map((t) => t.label)).toEqual(["Home", "Training", "Calendar", "Tournaments", "You"]);
   });
 });
 
@@ -137,6 +137,12 @@ describe("tabHref", () => {
       "/tournaments/kumite/standings",
     );
     expect(tabHref(routes, "training", member, { training: "/training/sunday" })).toBe("/training/friday");
+  });
+
+  it("the You tab always opens your profile, with everything else listed under it", () => {
+    const routes = buildRoutes(one);
+    expect(tabHref(routes, "more", admin, { more: "/settings/venues" })).toBe("/me");
+    expect(tabRoutes(routes, "more", member)[0].path).toBe("/me");
   });
 });
 

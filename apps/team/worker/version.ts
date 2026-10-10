@@ -7,6 +7,7 @@
 // own view, ADR 0036), the day (a view depends on it: what's upcoming, who's a Quarterly Member) and the deploy (a new
 // build may send a different shape).
 import { first, run } from "@cougars/shared/d1";
+import { APP_BUILD, BUILD_HEADER } from "../src/app/build";
 
 // On your own machine, the Worker's code reloads on every change, and with it this
 const STARTED = Date.now().toString(36);
@@ -53,8 +54,13 @@ const REVALIDATE = "private, no-cache";
 export function tagged(res: Response, tag: string): Response {
   res.headers.set("etag", tag);
   res.headers.set("cache-control", REVALIDATE);
+  // Which build answered: an app left open sees a newer one is out and offers to reload (ADR 0104)
+  res.headers.set(BUILD_HEADER, APP_BUILD);
   return res;
 }
 
 export const notModified = (tag: string) =>
-  new Response(null, { status: 304, headers: { etag: tag, "cache-control": REVALIDATE } });
+  new Response(null, {
+    status: 304,
+    headers: { etag: tag, "cache-control": REVALIDATE, [BUILD_HEADER]: APP_BUILD },
+  });

@@ -150,7 +150,7 @@
   /* ─── Layout ─── */
   --gutter: 1rem;
   --page-max: 42rem;
-  --tab-h: calc(3.75rem + env(safe-area-inset-bottom, 0px));
+  --tab-h: calc(3.25rem + env(safe-area-inset-bottom, 0px));
   --strip-h: 2.875rem;
   --topbar-h: 3.5rem;
   --scrollbar-size: 8px;
@@ -764,6 +764,18 @@ button.row:hover:not(:disabled) {
   width: var(--control-h-sm);
   height: var(--control-h-sm);
   padding: 0;
+}
+/* Closing a sheet, drawer or panel: a finger's size on a phone (44px, the platforms' minimum), the ✕ a size up */
+.btn.close-x svg {
+  width: 22px;
+  height: 22px;
+}
+@media (max-width: 900px) {
+  .btn.close-x {
+    width: 2.75rem;
+    height: 2.75rem;
+    margin: calc(-1 * var(--s-1));
+  }
 }
 .btn.block {
   width: 100%;

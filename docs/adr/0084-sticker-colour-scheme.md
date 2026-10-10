@@ -28,8 +28,9 @@ The **Sticker** scheme, one system the whole app follows:
   live, and danger. Red fills only an armed "are you sure" and a count on the dock.
 - **One action colour**: the website's sticker yellow (`--action: #ffd60a`, `--action-hover: #ffe03d`) with carbon
   words (13.8:1), for the main button only: one per group, nothing else. It doesn't mark state, links or anything
-  else, so it always means "tap here". Every main-button look uses it: `.btn.primary`, the one in a bar, the floating
-  action button (Fab) and the Draft's Pick when pointed at. The calls to action that were red fills (Watch a live game,
+  else, so it always means "tap here". Every main-button look uses it: `.btn.primary`, the one in a bar and the Draft's
+  Pick when pointed at. No floating buttons: a page's add (+ Event, + Rate) sits in its bar on a phone as on a
+  desktop, so the poster title stays the one loud thing and nothing covers the page. The calls to action that were red fills (Watch a live game,
   Go to the draft on your turn, End turn) are main buttons.
 - **A disabled main or outline button gives up its colours**: a faint edge and `--fg-subtle` words, so it never seems
   live (`.btn:disabled` alone sat above the kinds at the same weight).
@@ -60,3 +61,5 @@ The **Sticker** scheme, one system the whole app follows:
 - 2026-10-08: The Sticker scheme replaced it: the main button became sticker yellow, the whole palette moved to one
   warm ramp, one red, three statuses and six tones as tokens, and amber became caution (was 0084).
 - 2026-10-09: Pick (red-lit tiles with icons) and Tabs (italic capitals, the red slash) replaced the segmented control.
+- 2026-10-10: The floating action button went: Calendar's + Event and Fees' + Rate moved into the phone bar, as on a
+  desktop; a yellow button always over the page shouted on every scroll and covered cards.

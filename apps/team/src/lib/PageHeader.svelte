@@ -29,8 +29,9 @@
     onclear,
   }: {
     title: string;
+    /** What the page is, in a line: desktop only (phones are short of room). */
     subtitle?: string;
-    /** The line under the title, when it needs links. */
+    /** The line under the title, when it needs links. Shown on phones too, unlike `subtitle`. */
     sub?: Snippet;
     /** Above the title: the section this page belongs to. Coloured with --tone, when the page sets one. */
     eyebrow?: string;
@@ -126,7 +127,11 @@
       <h1 class="poster">{title}</h1>
       {#if badge && !phone.current}{@render badge()}{/if}
     </div>
-    {#if sub}<p class="line hint">{@render sub()}</p>{:else if subtitle}<p class="line hint">{subtitle}</p>{/if}
+    <!-- A phone has no room for a page describing itself: the plain subtitle is desktop's; `sub` (a tournament's day and
+         place) is what the page is about, so it stays -->
+    {#if sub}<p class="line hint">{@render sub()}</p>{:else if subtitle && !phone.current}<p class="line hint">
+        {subtitle}
+      </p>{/if}
   </div>
 </header>
 <!-- A sibling of the header, not a child: a sticky element can only pin within its parent, and the header scrolls away -->

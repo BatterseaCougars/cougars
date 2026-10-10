@@ -1,14 +1,37 @@
 <script lang="ts">
   // Your profile. You change your phone, position and bio (the back of your player card), and how your name shows
   // on the website's roster; your name and email are an admin's to change, since sign-in and the roster go by them.
+  // On a phone it's the last tab (You): your card on top opens your account (Switch to your full role, View as, Sign
+  // out), the club's pages are listed under your details, and an admin's Settings open from the gear in the bar.
   import Icon from "../app/shell/Icon.svelte";
   import { goesBy, shortName } from "../lib/names";
   import { POSITIONS, POSITION_ICONS, emailFor, phoneFor, type Position } from "../demo/data";
-  import { fullRole, impersonating, me, realGranted, session, setElevated, shownRoles } from "../demo/session.svelte";
+  import {
+    fullRole,
+    granted,
+    impersonating,
+    me,
+    realGranted,
+    session,
+    setElevated,
+    shownRoles,
+  } from "../demo/session.svelte";
   import { db } from "../demo/store.svelte";
   import Choice from "../lib/Choice.svelte";
   import { initials } from "../lib/initials";
   import { saveEverydayRole, saveProfile } from "../app/backend.svelte";
+  import AccountMenu from "../app/shell/AccountMenu.svelte";
+  import MoreLinks from "../lib/MoreLinks.svelte";
+  import { phone } from "../lib/viewport.svelte";
+  import PageHeader from "../lib/PageHeader.svelte";
+  import { APP_BUILD, APP_VERSION } from "../app/build";
+  import Sheet from "../lib/Sheet.svelte";
+  import { routes } from "../app/routes.svelte";
+  import { can } from "../access/actions";
+
+  // An admin's Settings, behind one gear in the phone bar: a sheet of every settings page
+  const hasSettings = $derived(routes().some((r) => r.group === "Settings" && can(granted(), r.action)));
+  let settingsOpen = $state(false);
 
   const who = me();
   let form = $state({ phone: phoneFor(who.id) ?? "", position: who.position, bio: who.bio ?? "" });
@@ -63,16 +86,33 @@
 </script>
 
 <div class="page">
-  <header class="head">
-    <span class="avatar big">{initials(goesBy(who))}</span>
-    <div>
-      <h1>{goesBy(who)}</h1>
-      {#if goesBy(who) !== who.name}<p class="hint">{who.name}</p>{/if}
-      <p class="roles">
-        {#each shownRoles(who.id) as r (r)}<span class="badge" class:red={r === "Admin"}>{r}</span>{/each}
-      </p>
-    </div>
-  </header>
+  {#if phone.current}
+    <PageHeader title="Profile">
+      {#snippet actions()}
+        {#if hasSettings}
+          <button
+            class="btn sm ghost icon"
+            aria-haspopup="dialog"
+            aria-label="Settings"
+            title="Settings"
+            onclick={() => (settingsOpen = true)}><Icon name="settings" size={18} /></button
+          >
+        {/if}
+      {/snippet}
+    </PageHeader>
+    <AccountMenu card />
+  {:else}
+    <header class="head">
+      <span class="avatar big">{initials(goesBy(who))}</span>
+      <div>
+        <h1>{goesBy(who)}</h1>
+        {#if goesBy(who) !== who.name}<p class="hint">{who.name}</p>{/if}
+        <p class="roles">
+          {#each shownRoles(who.id) as r (r)}<span class="badge" class:red={r === "Admin"}>{r}</span>{/each}
+        </p>
+      </div>
+    </header>
+  {/if}
   <form class="form" onsubmit={save}>
     <fieldset disabled={locked}>
       <label class="field">
@@ -136,11 +176,24 @@
         />
       </label>
       <p class="hint">
-        Handy when you show someone the app: ratings and {full} screens stay hidden. The {full} button beside your badge switches
-        you up until you switch back or close the app.
+        Handy when you show someone the app: ratings and {full} screens stay hidden. {phone.current
+          ? "Your card at the top"
+          : `The ${full} button beside your badge`} switches you up until you switch back or close the app.
       </p>
     </section>
   {/if}
+
+  {#if phone.current}
+    <MoreLinks except="profile" parts={["You", "Club"]} />
+    {#if hasSettings}
+      <Sheet bind:open={settingsOpen} title="Settings">
+        <MoreLinks parts={["Settings"]} />
+      </Sheet>
+    {/if}
+  {/if}
+
+  <!-- Which build you're on (ADR 0104): the version for people, the build for finding the exact code -->
+  <p class="version hint num">Cougars Fresh Meat {APP_VERSION} · {APP_BUILD}</p>
 </div>
 
 <style>
@@ -174,6 +227,11 @@
   }
   .everyday .section-title {
     margin: var(--s-4) 0 0;
+  }
+  .version {
+    margin: var(--s-6) 0 0;
+    font-size: var(--text-xs);
+    text-align: center;
   }
   fieldset {
     display: grid;

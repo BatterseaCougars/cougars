@@ -500,7 +500,7 @@
             {/if}{emailFor(member.player)} · <span class="num">{referenceFor(memberId)}</span>
           </p>
         </div>
-        <button class="btn ghost icon close" aria-label="Close" onclick={close}>
+        <button class="btn ghost icon close close-x" aria-label="Close" onclick={close}>
           <Icon name="x" size={18} />
         </button>
       </div>

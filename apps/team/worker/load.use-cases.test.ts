@@ -5,6 +5,7 @@ import { QuotaError, guard, resetBreakers } from "@cougars/shared/breaker";
 import type { CacheLike } from "@cougars/shared/rate-limit";
 import { LIMITS } from "./limits";
 import { NOW, testWorld } from "./testing";
+import { APP_BUILD } from "../src/app/build";
 
 const ROSTER = [
   { name: "Dana Admin", position: "D", rating: 75, email: "dana@example.com", roles: ["Admin"] },
@@ -41,6 +42,18 @@ describe("reopening the app", () => {
     const after = await reg.call("GET", "/api/bootstrap", undefined, { headers: { "if-none-match": tag } });
     expect(after.status).toBe(200);
     expect(after.headers.get("etag")).not.toBe(tag);
+  });
+
+  it("hears which build of the app answered, so an app left open knows a newer one is out (ADR 0104)", async () => {
+    const reg = await w.signedIn("reg@example.com");
+    const first = await reg.call("GET", "/api/bootstrap");
+    expect(first.headers.get("x-app-build")).toBe(APP_BUILD);
+    // Nothing's changed: still says which build, as the browser keeps the first reply's headers
+    const again = await reg.call("GET", "/api/bootstrap", undefined, {
+      headers: { "if-none-match": first.headers.get("etag")! },
+    });
+    expect(again.status).toBe(304);
+    expect(again.headers.get("x-app-build")).toBe(APP_BUILD);
   });
 
   it("is never told 'nothing's changed' with another member's tag, or the next day", async () => {

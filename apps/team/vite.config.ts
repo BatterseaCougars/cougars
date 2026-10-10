@@ -1,3 +1,4 @@
+import { execSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { defineConfig, type Plugin } from "vite";
@@ -13,6 +14,13 @@ const pkg = JSON.parse(readFileSync(new URL("package.json", import.meta.url), "u
 // The Worker (worker/, the API) runs inside Vite on the same port. Local D1 is the website's
 // (apps/web/.wrangler), so `npm run db:rebuild:local` and the roster seed serve both.
 export default defineConfig(({ command }) => ({
+  // Which build this is (ADR 0104, src/app/build.ts), in the app and its Worker alike: the release's version, and the
+  // commit as the build id (CI's PUBLIC_BUILD_VERSION ends "+<commit>"; a build on your machine asks git). The dev
+  // server is "dev", so it never offers a reload.
+  define: {
+    __APP_VERSION__: JSON.stringify(pkg.version),
+    __APP_BUILD__: JSON.stringify(command === "serve" ? "dev" : buildId()),
+  },
   plugins: [
     oneDevServer(PORT),
     waitForDepsCache(),
@@ -88,4 +96,15 @@ function waitForDepsCache(): Plugin {
       });
     },
   };
+}
+
+/** The commit being built: CI's stamp, else git's, else "dev" (no git: a tarball). */
+function buildId(): string {
+  const stamped = process.env.PUBLIC_BUILD_VERSION?.split("+")[1];
+  if (stamped) return stamped;
+  try {
+    return execSync("git rev-parse --short HEAD", { encoding: "utf8" }).trim() || "dev";
+  } catch {
+    return "dev";
+  }
 }

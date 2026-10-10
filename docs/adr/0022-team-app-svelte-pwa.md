@@ -28,7 +28,9 @@ with a throwaway hash, and the new server kept that transform, so every load 504
   dev from `main`, and to production only at launch ([ADR 0010](0010-environments-and-deploys.md)).
 - It binds the same D1 database as the website (`DB`); the schema stays in `db/`.
 - **Mobile first.** The shell follows Gwenda ops: one route tree, five bottom tabs at ≤900px with safe-area insets, a
-  full-page More, a collapsible rail on desktop.
+  collapsible rail on desktop. The last tab is You (your avatar): it always opens your profile, with your account
+  (Switch to your full role, View as, Sign out) on your card at the top and the club's pages and Settings listed
+  under your details. Phones keep chrome slim: a 40px top bar, an opaque tab bar, no page subtitles.
 - **A PWA**: manifest, icons and a service worker that caches the app shell. Screens that must work offline (the game
   clock) keep their data in IndexedDB and sync when there's signal.
 - A store app, if we want one, wraps the same build with Capacitor (#26).
@@ -68,3 +70,5 @@ with a throwaway hash, and the new server kept that transform, so every load 504
 - 2026-10-08: Deployed to dev from `main` now that sign-in exists, not held back until launch (ADR 0010).
 - 2026-10-09: Starting a dev server takes over its port instead of being refused, so whoever runs it owns it; after
   Vite restarts itself, cached transforms are dropped, after the same stale-stamp 504s from a reload during the restart.
+- 2026-10-10: On phones the More tab became You (your avatar, opening your profile with the lists under it), replacing
+  the account badge on Home; the top bar slimmed and the tab bar went opaque, as Android barely blurred it.

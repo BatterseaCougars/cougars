@@ -6,6 +6,7 @@
   // section's strip of pages), its actions, and its filters: inline when they fit, otherwise a Filters button that
   // opens them in a sheet. Home has neither: it starts with the greeting.
   import { goesBy, shortName } from "../../lib/names";
+  import { initials } from "../../lib/initials";
   import { type Snippet } from "svelte";
   import { can } from "../../access/actions";
   import { granted, impersonating, me, realMember, rolesOf, viewAs } from "../../demo/session.svelte";
@@ -17,6 +18,7 @@
   import { easeOut, eject, fadeMs, flyMs, prefersReducedMotion, zoom } from "../motion";
   import type { IconName } from "./icons";
   import AccountMenu from "./AccountMenu.svelte";
+  import PullToRefresh from "./PullToRefresh.svelte";
   import Icon from "./Icon.svelte";
   import logo from "../../assets/cougars-mark.webp";
   import { owedBy } from "../../demo/dues.svelte";
@@ -25,6 +27,7 @@
   import { phone } from "../../lib/viewport.svelte";
   import { pageBar } from "./page-bar.svelte";
   import { saving } from "../backend.svelte";
+  import { update } from "../update.svelte";
 
   let { route, children }: { route: Route; children: Snippet } = $props();
 
@@ -116,6 +119,10 @@
     const first = settingsNav[0]?.routes[0];
     if (!phone.current && route.id === "more" && first) navigate(first.path, { replace: true });
   });
+  // A phone's More is your profile now (the avatar tab, with the lists under your details)
+  $effect(() => {
+    if (phone.current && route.id === "more") navigate("/me", { replace: true });
+  });
   // Each row's place in the list, so they arrive one after another
   const settingsOrder = $derived(new Map(settingsNav.flatMap((s) => s.routes).map((r, i) => [r.id, i])));
 
@@ -201,9 +208,9 @@
   }
 
   // Full-screen pages zoom in from a blur. The page leaving goes at once, so the two never show through each other.
-  // Pages slide in from the way you went: down the dock (or along the phone's tabs, or across a section's strip)
-  // they come from below (or the right); back up, from above (or the left). Transform only: a parent below full
-  // opacity stops the browser blurring behind the glass cards inside it.
+  // Desktop pages slide in from the way you went: down the dock (or across a section's strip) they come from below
+  // (or the right); back up, from above (or the left). Transform only: a parent below full opacity stops the browser
+  // blurring behind the glass cards inside it. Phones just fade in, briefly, so that pause in the blur goes unseen.
   //
   // Desktop, between the pages of one section (a tournament's home, Fight card, The board, Teams, Draft): the header and the
   // strip stay exactly where they were, as tabs do. The new page goes in at once, at the same scroll (so a docked
@@ -228,7 +235,7 @@
   });
   function enter(node: Element, { focus }: { focus?: boolean }) {
     const index = all.findIndex((r) => r.id === route.id);
-    const sideways = phone.current || (prevTab === route.tab && strip.length > 1);
+    const sideways = prevTab === route.tab && strip.length > 1;
     const within = !phone.current && !!route.fold && prevFold === route.fold && strip.length > 1;
     const dir = prevIndex < 0 ? 1 : Math.sign(index - prevIndex) || 1;
     prevIndex = index;
@@ -252,6 +259,8 @@
     }
     lastScroll = 0;
     if (prefersReducedMotion) return { duration: 0 };
+    // Phones: a quick fade in place, as phone apps do; a slide across a small screen reads as the whole app moving
+    if (phone.current) return { duration: 150, css: (t: number) => `opacity: ${t.toFixed(3)}` };
     const axis = sideways ? "X" : "Y";
     const distance = sideways ? 56 : 44;
     return {
@@ -356,9 +365,9 @@
             {#if strip.length}
               {@render stripNav()}
             {:else}
-              <!-- Pages opened from More lead back to it -->
-              {#if route.tab === "more" && route.id !== "more"}
-                <a class="bar-back" href="/more" aria-label="Back to More"><Icon name="chevronLeft" size={22} /></a>
+              <!-- Pages opened from your profile lead back to it -->
+              {#if route.tab === "more" && route.id !== "profile"}
+                <a class="bar-back" href="/me" aria-label="Back to Profile"><Icon name="chevronLeft" size={22} /></a>
               {/if}
               <!-- The short name where there is one (Friday), as the tabs and the dock call it: the bar is narrow -->
               <p class="bar-title" bind:this={lead}>{route.short ?? route.name}</p>
@@ -421,6 +430,8 @@
     {/if}
 
     <div class="content" bind:this={content} style:--chrome-h="{chromeH}px">
+      <!-- Phones: pull down from the top to read the club again. Not on a full-screen page (the game clock) -->
+      {#if phone.current && !route.focus}<PullToRefresh {content} top={chromeH} />{/if}
       {#key route.id}
         <div
           class="view"
@@ -451,12 +462,36 @@
           aria-current={on ? "true" : undefined}
           onclick={(e) => onTab(tab.id, e)}
         >
-          <span class="tab-icon"><Icon name={tab.icon} size={22} /></span>
+          <span class="tab-icon">
+            {#if tab.id === "more"}
+              <!-- You: your initials, as your badge shows them -->
+              <span class="avatar tab-avatar" aria-hidden="true">{initials(goesBy(me()))}</span>
+            {:else}
+              <Icon name={tab.icon} size={22} />
+            {/if}
+          </span>
           <span class="tab-label">{tab.label}</span>
         </a>
       {/each}
     </nav>
   </main>
+
+  <!-- A newer build is out (ADR 0104): offered, never forced, in the save note's place; a save's note goes first -->
+  {#if update.ready && !update.dismissed && !note && !route.focus}
+    <div
+      class="save-note update-note"
+      use:onBody
+      role="status"
+      in:fly={{ y: 64, duration: flyMs, easing: easeOut, opacity: 0 }}
+      out:fly={{ y: 64, duration: fadeMs, opacity: 0 }}
+    >
+      <span>A new version's out</span>
+      <button class="btn sm primary" onclick={() => location.reload()}>Reload</button>
+      <button class="btn sm ghost icon" aria-label="Not now" onclick={() => (update.dismissed = true)}
+        ><Icon name="x" size={16} /></button
+      >
+    </div>
+  {/if}
 
   <!-- What the last save did: "Saved", or what went wrong. Floats over the page, so nothing moves. -->
   {#if note}
@@ -633,6 +668,14 @@
     font-size: var(--text-sm);
     font-weight: 500;
     translate: -50% 0;
+  }
+  /* Room for its buttons: a slimmer pill edge on the right */
+  .update-note {
+    gap: var(--s-3);
+    padding: var(--s-1) var(--s-1) var(--s-1) var(--s-4);
+  }
+  .update-note .btn {
+    border-radius: 999px;
   }
   .note-icon {
     display: grid;
@@ -945,8 +988,8 @@
       display: flex;
       align-items: center;
       gap: var(--s-2);
-      height: 3rem;
-      padding: 0 var(--s-3) 0 var(--gutter);
+      height: 2.5rem;
+      padding: 0 var(--s-2) 0 var(--gutter);
       background: var(--chrome-bg-solid);
       backdrop-filter: var(--blur);
       -webkit-backdrop-filter: var(--blur);
@@ -960,6 +1003,7 @@
       width: 2rem;
       height: 2.5rem;
       margin-left: calc(-1 * var(--s-2));
+      margin-right: calc(-1 * var(--s-1));
       color: var(--red-hot);
     }
     /* The page title's face, smaller: heavy italic capitals, so the bar reads as the page's title */
@@ -970,7 +1014,7 @@
       overflow: hidden;
       color: var(--fg);
       font-family: var(--font-display);
-      font-size: 1.45rem;
+      font-size: 1.2rem;
       font-style: italic;
       font-weight: 400;
       letter-spacing: 0.005em;
@@ -986,7 +1030,16 @@
       flex-wrap: nowrap;
     }
     .bar-filters :global(.filter) {
+      height: 1.75rem;
+    }
+    /* The bar's buttons (Filters, a page's actions), to the slimmer bar */
+    .phone-bar :global(.btn.sm) {
       height: 2rem;
+      padding: 0 var(--s-2);
+    }
+    .phone-bar :global(.btn.sm.icon) {
+      width: 2rem;
+      padding: 0;
     }
     /* Laid out but unseen, in a box of no size so it can't widen the page: it only tells the bar how wide the
        filters are */
@@ -1029,10 +1082,9 @@
       grid-auto-flow: column;
       grid-auto-columns: minmax(0, 1fr);
       height: var(--tab-h);
-      padding: var(--s-2) var(--s-2) env(safe-area-inset-bottom, 0px);
-      background: var(--chrome-bg);
-      backdrop-filter: var(--blur);
-      -webkit-backdrop-filter: var(--blur);
+      padding: var(--s-1) var(--s-2) env(safe-area-inset-bottom, 0px);
+      /* Solid: phones (Android especially) blur thinly or not at all, and the page read through the tabs */
+      background: var(--bg);
       transform: translateY(0);
       transition:
         transform var(--t-slow) var(--ease),
@@ -1050,12 +1102,37 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 0.3rem;
+      gap: 0.2rem;
       min-height: 2.75rem;
       color: var(--fg-muted);
       font-size: var(--text-2xs);
       font-weight: 600;
       transition: color var(--t-fast) var(--ease-in-out);
+    }
+    /* Pressed: a soft grey glow swells behind the tab and fades as you let go (a phone's press state). Only while
+       the finger's down, so the tab you're on still has no fill */
+    .tab::before {
+      content: "";
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      z-index: -1;
+      width: 3.25rem;
+      height: 3.25rem;
+      translate: -50% -50%;
+      border-radius: 50%;
+      background: color-mix(in srgb, var(--fg) 12%, transparent);
+      opacity: 0;
+      scale: 0.6;
+      transition:
+        opacity 360ms var(--ease),
+        scale 360ms var(--ease);
+      pointer-events: none;
+    }
+    .tab:active::before {
+      opacity: 1;
+      scale: 1;
+      transition-duration: 90ms;
     }
     .tab-icon {
       position: relative;
@@ -1067,24 +1144,29 @@
     .tab.on .tab-icon {
       color: var(--red-hot);
     }
-    /* The current tab: a soft pill behind its icon */
-    .tab.on .tab-icon::before {
-      content: "";
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      z-index: -1;
-      width: 56px;
-      height: 30px;
-      translate: -50% -50%;
-      border-radius: var(--r-pill);
-      background: color-mix(in srgb, var(--fg) 10%, transparent);
+    /* The current tab: its icon filled, red over a red tint (the icons are strokes, some open, so a solid fill would
+       blot them out), and no pill behind it */
+    .tab.on .tab-icon :global(path) {
+      fill: currentColor;
+      fill-opacity: 0.22;
     }
     .tab:focus-visible {
       outline-offset: -2px;
     }
     .tab-label {
       line-height: 1;
+    }
+    /* The same 22px as the icons beside it, so the row lines up */
+    /* You: teal initials on the plain disc, so it reads as you; lit, the disc fills teal */
+    .tab-avatar {
+      width: 22px;
+      height: 22px;
+      font-size: 0.55rem;
+      color: var(--tone-teal);
+    }
+    .tab.on .tab-avatar {
+      background: var(--tone-teal);
+      color: var(--bg);
     }
     .ghost-word {
       font-size: clamp(4.5rem, 22vw, 6rem);

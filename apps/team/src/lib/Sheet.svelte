@@ -51,7 +51,7 @@
   <div class="body">
     <div class="head">
       <h2 class="title">{title}</h2>
-      <button class="btn ghost icon" aria-label="Close" onclick={() => (open = false)}
+      <button class="btn ghost icon close-x" aria-label="Close" onclick={() => (open = false)}
         ><Icon name="x" size={18} /></button
       >
     </div>

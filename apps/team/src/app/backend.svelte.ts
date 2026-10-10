@@ -109,6 +109,22 @@ export async function refreshIfChanged() {
   copyAll();
 }
 
+/**
+ * Pulled down to refresh: what others changed, now. You asked, so it doesn't wait out the background checks' pause
+ * after a failure (the brake still counts it, and still stops it once the day's allowance is spent); it says when it
+ * can't reach the club, and is quiet when it can.
+ */
+export async function pullToRefresh() {
+  try {
+    const b = await bootstrapIfChanged();
+    if (!b) return;
+    hydrate(b);
+    copyAll();
+  } catch (e) {
+    say(e instanceof Error ? e.message : "Couldn't refresh.", true);
+  }
+}
+
 // Back to the app (another tab, the phone unlocked): what others changed meanwhile. Not in the middle of a save,
 // whose own reply is on its way.
 if (typeof document !== "undefined")

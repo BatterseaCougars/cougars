@@ -5,7 +5,6 @@
   import { owedBy } from "../demo/dues.svelte";
   import { granted, me } from "../demo/session.svelte";
   import { db } from "../demo/store.svelte";
-  import AccountMenu from "../app/shell/AccountMenu.svelte";
   import Icon from "../app/shell/Icon.svelte";
   import EventCard from "../lib/EventCard.svelte";
   import { formatDayDate, formatTime, londonToday, pounds } from "../lib/dates";
@@ -287,10 +286,9 @@
 
 <div class="page">
   <header class="hello">
-    <!-- Phones have no top bar, so your badge sits here; desktop keeps it in the corner -->
+    <!-- Your badge: the last tab on a phone (your profile), the corner on a desktop -->
     <div class="hello-top">
       <p class="kicker">Battersea Cougars</p>
-      <span class="badge-slot"><AccountMenu /></span>
     </div>
     <h1 class="display poster">{hello}</h1>
   </header>
@@ -409,26 +407,33 @@
   .hello-top {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: var(--s-4);
-    min-height: 2.25rem;
+    min-height: 1.5rem;
   }
   @media (min-width: 901px) {
-    .badge-slot {
-      display: none;
-    }
     /* Your badge is in the corner, so the kicker is just an eyebrow: the title lands where every page's does */
     .hello {
       padding-top: 0;
     }
     .hello-top {
-      min-height: 1.5rem;
       margin-bottom: calc(var(--s-2) - var(--s-3));
     }
   }
   .hello h1 {
     font-size: clamp(2.6rem, 10vw, 3.4rem);
     letter-spacing: 0.005em;
+  }
+  /* Phones are short of height: the greeting gets straight to it (no kicker, a smaller poster), and Friday's card
+     comes up into the first screen */
+  @media (max-width: 900px) {
+    .hello {
+      padding-top: 0;
+    }
+    .hello-top {
+      display: none;
+    }
+    .hello h1 {
+      font-size: clamp(1.9rem, 8vw, 2.4rem);
+    }
   }
   section {
     display: grid;
@@ -437,6 +442,11 @@
   /* Bigger breaks between blocks than within them */
   .page {
     gap: var(--s-8);
+  }
+  @media (max-width: 900px) {
+    .page {
+      gap: var(--s-6);
+    }
   }
   /* The lead card's entrance: it lands (up from below, blurred to sharp), then a single glint of rink light crosses
      it. Only this card: everything else on Home just rises. A transform and a filter, so nothing moves the page. */

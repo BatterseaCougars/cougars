@@ -2,13 +2,11 @@
   import PageHeader from "../lib/PageHeader.svelte";
   import Drawer from "../lib/Drawer.svelte";
   import DateField from "../lib/DateField.svelte";
-  import Fab from "../lib/Fab.svelte";
   import Icon from "../app/shell/Icon.svelte";
   import { db } from "../demo/store.svelte";
   import { setSubscriptionFee } from "../app/backend.svelte";
   import { formatDayDate, londonToday, pounds } from "../lib/dates";
   import { feeOn } from "../lib/dues";
-  import { phone } from "../lib/viewport.svelte";
 
   // The quarterly rate (ADR 0007). Session fees are set on each training, tournament fees on each tournament.
   // A new rate is set in a side drawer, as every quick form is: the page stays where it is
@@ -41,11 +39,9 @@
       <a href="/settings/tournaments">tournament</a>.
     {/snippet}
     {#snippet actions()}
-      {#if !phone.current}
-        <button class="btn sm primary" aria-haspopup="dialog" onclick={() => (adding = true)}>
-          <Icon name="plus" size={16} />Rate
-        </button>
-      {/if}
+      <button class="btn sm primary" aria-haspopup="dialog" onclick={() => (adding = true)}>
+        <Icon name="plus" size={16} />Rate
+      </button>
     {/snippet}
   </PageHeader>
 
@@ -76,9 +72,6 @@
     <p class="hint">No rate set yet, so Quarterly Members aren't charged.</p>
   {/if}
 
-  {#if phone.current}
-    <Fab label="Rate" aria-haspopup="dialog" onclick={() => (adding = true)} />
-  {/if}
   <Drawer bind:open={adding} title="New quarterly rate">
     <form class="form" onsubmit={add}>
       <div class="two">

@@ -90,7 +90,7 @@
       </div>
       <div class="head-actions">
         {@render actions?.()}
-        <button class="btn ghost icon" aria-label="Close" onclick={close}><Icon name="x" size={18} /></button>
+        <button class="btn ghost icon close-x" aria-label="Close" onclick={close}><Icon name="x" size={18} /></button>
       </div>
     </header>
     <div class="body">{@render children()}</div>

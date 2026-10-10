@@ -16,7 +16,10 @@ export function stripRoutes(routes: Route[], current: Route, granted: ReadonlySe
   return list.length > 1 ? list : [];
 }
 
-/** Where a tab goes: the last page used in it, if the member can still see it, else its first page. */
+/**
+ * Where a tab goes: the last page used in it, if the member can still see it, else its first page. Profile always
+ * opens your profile: the page you asked for, not the settings page you last left.
+ */
 export function tabHref(
   routes: Route[],
   tab: TabId,
@@ -24,7 +27,7 @@ export function tabHref(
   last: Partial<Record<TabId, string>>,
 ): string {
   const list = tabRoutes(routes, tab, granted);
-  const remembered = last[tab];
+  const remembered = tab === "more" ? undefined : last[tab];
   if (remembered && list.some((r) => r.path === remembered)) return remembered;
   return list[0]?.path ?? "/";
 }

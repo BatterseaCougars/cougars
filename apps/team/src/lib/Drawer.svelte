@@ -57,7 +57,7 @@
           {#if sub}<p class="hint">{sub}</p>{/if}
         </div>
         {@render head?.()}
-        <button class="btn ghost icon" aria-label="Close" onclick={() => (open = false)}>
+        <button class="btn ghost icon close-x" aria-label="Close" onclick={() => (open = false)}>
           <Icon name="x" size={18} />
         </button>
       </header>

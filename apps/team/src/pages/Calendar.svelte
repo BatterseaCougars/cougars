@@ -15,8 +15,6 @@
   import { granted } from "../demo/session.svelte";
   import { db } from "../demo/store.svelte";
   import EventCard from "../lib/EventCard.svelte";
-  import Fab from "../lib/Fab.svelte";
-  import { phone } from "../lib/viewport.svelte";
   import { londonISO, londonTime, londonToday } from "../lib/dates";
   import type { Bookable, OneOff } from "../demo/model";
   import PlacePicker from "../lib/PlacePicker.svelte";
@@ -146,8 +144,8 @@
     onclear={() => setFilter("all")}
   >
     {#snippet actions()}
-      <!-- + Event: in the toolbar row on desktop, a floating button on a phone -->
-      {#if can(perms, "create:Event") && !phone.current}
+      <!-- + Event: in the toolbar row on desktop, the bar on a phone (no floating buttons: ADR 0084) -->
+      {#if can(perms, "create:Event")}
         <button class="btn sm primary" aria-haspopup="dialog" onclick={startAdding}>
           <Icon name="plus" size={16} />Event
         </button>
@@ -195,9 +193,6 @@
   {:else}
     <p class="hint">Nothing coming up{filter === "all" ? "" : " for this one"}.</p>
   {/each}
-  {#if can(perms, "create:Event") && phone.current}
-    <Fab label="Event" aria-haspopup="dialog" onclick={startAdding} />
-  {/if}
   <!-- A one-off event, in a sheet (a modal on desktop): the list stays where it is -->
   <Sheet bind:open={adding} title={editing ? "Edit event" : "Add an event"}>
     <form class="form" onsubmit={save}>

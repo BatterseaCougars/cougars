@@ -92,7 +92,19 @@ const DEV_TOOLS_ROUTE: Route = {
   hint: "Not in production: who gets their own email here",
 };
 
+// Profile first: it's the phone's last tab (your avatar), with everything else listed under your details
 const STATIC_TAIL: Route[] = [
+  {
+    id: "profile",
+    path: "/me",
+    name: "Profile",
+    tab: "more",
+    page: "profile",
+    action: "authenticated",
+    icon: "user",
+    group: "You",
+    hint: "Your details, position and photo",
+  },
   { id: "more", path: "/more", name: "More", tab: "more", page: "more", action: "authenticated", icon: "more" },
   {
     id: "teammates",
@@ -116,17 +128,6 @@ const STATIC_TAIL: Route[] = [
     icon: "upload",
     group: "Club",
     hint: "Photos to the website; videos on YouTube",
-  },
-  {
-    id: "profile",
-    path: "/me",
-    name: "Profile",
-    tab: "more",
-    page: "profile",
-    action: "authenticated",
-    icon: "user",
-    group: "You",
-    hint: "Your details, position and photo",
   },
   {
     id: "tab",
@@ -462,7 +463,10 @@ export function buildRoutes(config: NavConfig): Route[] {
 export const buildFolds = (config: NavConfig): Fold[] =>
   config.types.filter((t) => t.active).map((t) => ({ id: `type:${t.id}`, name: t.name, icon: t.icon }));
 
-/** Phone tabs. With one training or one tournament type, the tab takes its short name ("Friday", "Kumite"). */
+/**
+ * Phone tabs. With one training or one tournament type, the tab takes its short name ("Friday", "Kumite"). The last
+ * is you: your avatar, opening your profile, with the club's pages and Settings listed under it.
+ */
 export function buildTabs(config: NavConfig): { id: TabId; label: string; icon: IconName }[] {
   const series = config.series.filter((s) => s.active);
   const types = config.types.filter((t) => t.active);
@@ -487,7 +491,7 @@ export function buildTabs(config: NavConfig): { id: TabId; label: string; icon: 
           },
         ]
       : []),
-    { id: "more", label: "More", icon: "more" },
+    { id: "more", label: "You", icon: "user" },
   ];
 }
 

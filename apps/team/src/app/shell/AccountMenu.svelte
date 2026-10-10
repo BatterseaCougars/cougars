@@ -162,12 +162,12 @@
       <!-- A tap outside the drawer closes it -->
       <div class="scrim" aria-hidden="true" onclick={() => close(true)} transition:fade={{ duration: fadeMs }}></div>
       <div class="menu" class:picking role="menu" aria-label="Account" bind:this={menu} transition:slide>
-        <button class="btn ghost icon menu-close" aria-label="Close" onclick={() => close(true)}>
+        <button class="btn ghost icon close-x menu-close" aria-label="Close" onclick={() => close(true)}>
           <Icon name="x" size={18} />
         </button>
         {#if picking}
           <div class="pick-head">
-            <button class="btn ghost icon" aria-label="Back" onclick={() => (picking = false)}>
+            <button class="btn ghost icon close-x" aria-label="Back" onclick={() => (picking = false)}>
               <Icon name="chevronLeft" size={18} />
             </button>
             <span class="title">View as a member</span>

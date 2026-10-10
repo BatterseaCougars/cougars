@@ -30,6 +30,7 @@ export const ICONS = {
   plus: "M12 5v14M5 12h14",
   chat: "M4 5h16v11H9l-5 4z",
   undo: "M9 14 4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3",
+  refresh: "M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5",
   play: "M7 4v16l13-8z",
   pause: "M7 4h3v16H7zM14 4h3v16h-3z",
   search: "M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM20 20l-4-4",
