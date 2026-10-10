@@ -136,3 +136,9 @@ the rink's Wi-Fi (one address) opening the app at once. It's written by
 `node scripts/env-pull.mjs --environment production -- node scripts/ratelimit-setup.mjs`, which needs **Zone WAF
 Write** on the production token; change the number there and run it again. Seen under Security → WAF → Rate limiting
 rules.
+
+**Web Analytics**: on for batterseacougars.com (added 2026-10-10 in the dashboard: Analytics & Logs → Web Analytics),
+with automatic setup, so Cloudflare adds its script to the site's pages and there's nothing in the code. A rule keeps it
+off `team.batterseacougars.com`. It counts page views without cookies (the privacy page says so). Its API refuses the
+account tokens we use, so it's set up by hand. When the website gets a real CSP (#78), allow
+`https://static.cloudflareinsights.com` (script) and `https://cloudflareinsights.com` (connect).
