@@ -138,7 +138,8 @@ Write** on the production token; change the number there and run it again. Seen 
 rules.
 
 **Web Analytics**: on for batterseacougars.com (added 2026-10-10 in the dashboard: Analytics & Logs → Web Analytics),
-with automatic setup, so Cloudflare adds its script to the site's pages and there's nothing in the code. A rule keeps it
-off `team.batterseacougars.com`. It counts page views without cookies (the privacy page says so). Its API refuses the
+with automatic setup, so Cloudflare adds its script to the site's pages and there's nothing in the code. It also reaches
+`team.batterseacougars.com`, whose CSP refuses it (harmless console errors): excluding it needs a paid rule, so it's
+tracked in #92. It counts page views without cookies (the privacy page says so). Its API refuses the
 account tokens we use, so it's set up by hand. When the website gets a real CSP (#78), allow
 `https://static.cloudflareinsights.com` (script) and `https://cloudflareinsights.com` (connect).
