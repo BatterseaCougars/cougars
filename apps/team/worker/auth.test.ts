@@ -3,6 +3,7 @@
 // so the code comes back in the reply; elsewhere it only goes by email.
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Env } from "./api";
+import { first } from "@cougars/shared/d1";
 import { minutes, testWorld } from "./testing";
 
 const ROSTER = [
@@ -228,6 +229,43 @@ describe("signing out and being let go", () => {
       "http://[::1]:4510",
     ])
       expect((await w.browser().call("GET", "/api/bootstrap", undefined, { host })).status, host).toBe(200);
+  });
+});
+
+describe("signing in on your own machine, for scripts and tests (ADR 0023)", () => {
+  const devSignIn = (b: ReturnType<typeof w.browser>, email: string, opts?: { host?: string }) =>
+    b.call("POST", "/api/auth/dev", { email }, opts);
+
+  it("signs any active member straight in, as often as asked: no code, no caps", async () => {
+    const reg = await first<{ id: number }>(w.db, "SELECT id FROM members WHERE email = ?", ["reg@example.com"]);
+    // More than a day's codes (10) and an hour's (5): a test run or an agent signs in as often as it needs
+    for (let i = 0; i < 12; i++) {
+      const b = w.browser();
+      expect((await devSignIn(b, "Reg@Example.com")).status).toBe(200);
+      const boot = await b.call("GET", "/api/bootstrap");
+      expect(boot.status).toBe(200);
+      expect(boot.body.me).toBe(reg!.id);
+    }
+    // A member's own sign-in still works alongside
+    const phone = w.browser();
+    const { devCode } = await w.ask(phone, "dana@example.com");
+    expect((await verify(phone, devCode)).status).toBe(200);
+  });
+
+  it("lets in only an active member; with no email, the first admin", async () => {
+    expect((await devSignIn(w.browser(), "nobody@example.com")).status).toBe(404);
+    const b = w.browser();
+    expect((await b.call("POST", "/api/auth/dev", {})).status).toBe(200);
+    const dana = await first<{ id: number }>(w.db, "SELECT id FROM members WHERE email = ?", ["dana@example.com"]);
+    expect((await b.call("GET", "/api/bootstrap")).body.me).toBe(dana!.id);
+  });
+
+  it("isn't there on a deployed server, nor on a public address (ADR 0023)", async () => {
+    env.TEAM_ENV = "dev";
+    expect((await devSignIn(w.browser(), "reg@example.com")).status).toBe(404);
+    env.TEAM_ENV = "local";
+    const deployed = { host: "https://cougars-team.example.workers.dev" };
+    expect((await devSignIn(w.browser(), "reg@example.com", deployed)).status).toBe(404);
   });
 });
 

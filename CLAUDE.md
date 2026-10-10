@@ -62,6 +62,9 @@ Worker ([ADR 0022](docs/adr/0022-team-app-svelte-pwa.md)); its permissions follo
 - Vitest, colocated `*.test.ts`. D1 is in-memory SQLite with all migrations applied (`packages/shared/testing/d1-sqlite.ts`).
   Don't mock our own code.
 - Before pushing: `npm run lint && npm test && npm run check -w @cougars/web && npm run build`.
+- **Signed in, headless**: `node scripts/dev-sign-in.mjs [email]` (no email: the first admin) writes a Playwright
+  storage state to `.auth/team.json`. Use it for every screenshot or browser check; never ask for a code (ADR 0023,
+  docs/testing.md).
 
 ## Ports
 

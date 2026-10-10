@@ -65,7 +65,13 @@ worker.
   code in `/api/auth/start`'s reply (nothing is emailed from a laptop), and `TEAM_AUTO_ADMIN=1` in the shell makes
   any request without a session the first admin, for screenshots and tests. Only `vite`'s serve config sets them; a
   build carries neither, and `scripts/ci/target.mjs` writes only `SITE_ENV`.
-- **Both switches also need a private address.** `localHere(env, request)` (`worker/auth.ts`) is true only when
+- **Signing in without a code, for scripts, tests and agents**: `POST /api/auth/dev` with an active member's email
+  (none: the first admin) starts a real session at once, with no code and none of sign-in's caps, as often as asked.
+  `node scripts/dev-sign-in.mjs [email]` calls it and writes a Playwright storage state (`.auth/team.json`, ignored by
+  git), so a headless browser opens signed in, each run a session of its own that never touches yours. It's on the
+  record as `sign_in` with method `dev`. Anywhere but your own machine the route isn't there (404), and the team
+  smoke test checks that.
+- **All three also need a private address.** `localHere(env, request)` (`worker/auth.ts`) is true only when
   `TEAM_ENV` is `local` _and_ the request's host is loopback, a private range (10/8, 172.16/12, 192.168/16),
   `localhost`, or a `.test` name (reserved, never public; the tests' host). A deployed worker is reached by its
   public name, so on it the switches do nothing even if set. A phone on the house wifi still reaches the laptop by
@@ -104,3 +110,5 @@ worker.
 - 2026-10-09: The same review found one browser holding codes for two members let guesses count against the wrong
   member; asking for another member's code now starts a fresh nonce (was 0094).
 - 2026-10-09: The code email is branded HTML with the code big and split in two (123 456), beside the plain text.
+- 2026-10-10: Signing in without a code on your own machine (`/api/auth/dev`, `scripts/dev-sign-in.mjs`), after
+  headless sessions kept running into the code caps (five an hour, ten a day) and screenshots needed a member's code.

@@ -22,3 +22,4 @@ airtable.md
 
 # Private keys (a GitHub App key belongs in Bitwarden, never here)
 *.pem
+.auth/

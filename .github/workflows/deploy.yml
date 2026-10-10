@@ -312,6 +312,9 @@ jobs:
           live=$(curl -s -o /dev/null -w '%{http_code}' "$url/api/live")
           echo "$url/api/live without a session answered $live"
           [ "$live" = 401 ]
+          dev=$(curl -s -o /dev/null -w '%{http_code}' -X POST -H "origin: $url" -H 'content-type: application/json' -d '{}' "$url/api/auth/dev")
+          echo "$url/api/auth/dev (local sign-in) answered $dev"
+          [ "$dev" != 200 ]
           framed=$(curl -s -o /dev/null -D - "$url/" | grep -ic "^x-frame-options: DENY")
           echo "$url/ carries X-Frame-Options: $framed"
           [ "$framed" = 1 ]

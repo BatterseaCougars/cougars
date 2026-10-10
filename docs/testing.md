@@ -17,6 +17,20 @@ next to the code runs without editing config.
 
 Before pushing: `npm run lint && npm test && npm run check -w @cougars/web && npm run build`.
 
+## Signed in, in a real browser
+
+For a headless browser (Playwright, an agent's screenshots) against your own dev server, sign in without a code:
+
+```sh
+node scripts/dev-sign-in.mjs                    # the first admin
+node scripts/dev-sign-in.mjs reg@example.com    # any active member
+```
+
+It writes `.auth/team.json` (ignored by git): open the browser with `newContext({ storageState: ".auth/team.json" })`.
+Each run is a fresh session of its own, with no code and no caps, so it never signs you out or locks anyone out. Only
+a local server answers it ([ADR 0023](adr/0023-sign-in-and-sessions.md)). Don't change shared local data to stage a
+screen; pick a member who already shows it.
+
 ## Use cases first
 
 The most important tests describe **what someone does** and check what they'd see and what reached the outside

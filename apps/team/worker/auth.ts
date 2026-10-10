@@ -15,6 +15,7 @@ import { londonToday } from "../src/lib/dates";
 import { HttpError, body, json, oneOf, text } from "./http";
 import { signInEmail } from "./sign-in-email";
 import { audit } from "./audit";
+import { firstAdmin } from "./people";
 
 export interface AuthEnv {
   DB: D1Database;
@@ -215,6 +216,8 @@ export async function handleAuth(
   if (pathname === "/api/auth/verify" && m === "POST") return verify(request, env, now);
   if (pathname === "/api/auth/sign-out" && m === "POST") return signOut(request, env, now);
   if (pathname === "/api/auth/request" && m === "POST") return requestAccess(request, env, now);
+  // Your own machine only: anywhere else it isn't there at all (null: the API's 404)
+  if (pathname === "/api/auth/dev" && m === "POST" && localHere(env, request)) return devSignIn(request, env, now);
   return null;
 }
 
@@ -379,6 +382,23 @@ async function verify(request: Request, env: AuthEnv, now: Date): Promise<Respon
     400,
     n > 0 ? `That's not the code. ${n} ${n === 1 ? "try" : "tries"} left.` : "Too many tries. Ask for a new code.",
   );
+}
+
+/**
+ * Signing in on your own machine without a code (ADR 0023), for scripts, tests and agents driving a headless browser
+ * (`node scripts/dev-sign-in.mjs`): any active member, by email (none: the first admin), as often as asked. No code, no caps: the caps guard a
+ * member's inbox and their account, and on your own machine there's neither. A real session, so the app behaves as
+ * it does for anyone; on the record as `sign_in` with method `dev`. Only ever answered by localHere.
+ */
+async function devSignIn(request: Request, env: AuthEnv, now: Date): Promise<Response> {
+  // No email: the first admin, as TEAM_AUTO_ADMIN does, so a script needs nobody's address written into it
+  const b = await body(request);
+  const memberId = b.email
+    ? (await first<{ id: number }>(env.DB, `SELECT id FROM members WHERE email = ? AND status = 'active'`, [email(b)]))
+        ?.id
+    : await firstAdmin(env.DB);
+  if (memberId == null) throw new HttpError(404, "No active member has that email.");
+  return withCookies(json({ ok: true, memberId }), await startSession(request, env, now, memberId, "dev"));
 }
 
 async function signOut(request: Request, env: AuthEnv, now: Date): Promise<Response> {
