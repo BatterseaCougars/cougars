@@ -288,10 +288,15 @@ One key for both environments: production reads `cougars-dev` too, and nothing n
 - **Issued by:** GitHub → `battersea-cougars` → Settings → Developer settings → GitHub Apps → Cougars rebuilds →
   Private keys → Generate. Installed on `battersea-cougars/ark` only, webhook off.
 
-  | Applies to              | Permission           | Why                              |
-  | ----------------------- | -------------------- | -------------------------------- |
-  | `battersea-cougars/ark` | Contents: read/write | Sending a `repository_dispatch`  |
-  | `battersea-cougars/ark` | Metadata: read       | Required by GitHub for every App |
+  | Applies to              | Permission          | Why                                                |
+  | ----------------------- | ------------------- | -------------------------------------------------- |
+  | `battersea-cougars/ark` | Actions: read/write | Running `deploy.yml` for the website (`apps: web`) |
+  | `battersea-cougars/ark` | Metadata: read      | Required by GitHub for every App                   |
+
+  **What a leaked key could do:** start or cancel workflow runs, and delete runs and their artifacts (old backups,
+  [ADR 0106](docs/adr/0106-database-backups.md)). Not push code, not read secrets, not change settings. Each token the
+  Worker takes asks for Actions: write on this repo alone. `main` and `release` refuse force-pushes and deletion
+  (repository ruleset), and only `release` deploys production.
 
 - **Format:** PKCS#8 (`-----BEGIN PRIVATE KEY-----`), which the Workers runtime's WebCrypto imports. GitHub hands
   out PKCS#1, so convert when storing (never save the file in the repo; `*.pem` is gitignored):

@@ -1,7 +1,8 @@
 // The website's results are pages built from a snapshot of D1 (ADR 0100), so a result that changes in the app asks
 // for a rebuild: once the last game of a tournament is played, an award is confirmed or a finished one is changed.
 // The Worker waits for five quiet minutes, so a results day is one rebuild, then asks GitHub (as the club's GitHub
-// App) to rebuild its own environment's website. Driven through the real Worker handlers (ADR 0031), GitHub faked.
+// App) to run the website's deploy from its own environment's branch, with a token that can do only that (#71).
+// Driven through the real Worker handlers (ADR 0031), GitHub faked.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { rebuildWebsite } from "./website";
 import { NOW, minutes, testWorld } from "../testing";
@@ -15,8 +16,10 @@ const ROSTER = [
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Json = any;
 let w: ReturnType<typeof testWorld>;
-/** What GitHub was asked: each dispatch's body, and the App's signed request, checked against its public key. */
+/** What GitHub was asked: each run of the deploy workflow, the App's signed request, checked against its public key,
+ * and what the token it asked for may do. */
 let dispatches: Json[];
+let scopes: Json[];
 let github: "up" | "down";
 let publicKey: CryptoKey;
 let privatePem: string;
@@ -25,6 +28,7 @@ beforeEach(async () => {
   vi.spyOn(console, "log").mockImplementation(() => {});
   w = testWorld(ROSTER);
   dispatches = [];
+  scopes = [];
   github = "up";
   const pair = (await crypto.subtle.generateKey(
     { name: "RSASSA-PKCS1-v1_5", modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: "SHA-256" },
@@ -49,9 +53,10 @@ beforeEach(async () => {
       );
       const claims = JSON.parse(Buffer.from(body, "base64url").toString());
       if (!signed || claims.iss !== "Iv23liuUhxYcTesso0TW") return new Response("bad JWT", { status: 401 });
+      scopes.push(JSON.parse(String(init?.body)));
       return Response.json({ token: "ghs_installation", expires_at: "2026-10-06T12:00:00Z" }, { status: 201 });
     }
-    if (url === "https://api.github.com/repos/battersea-cougars/ark/dispatches") {
+    if (url === "https://api.github.com/repos/battersea-cougars/ark/actions/workflows/deploy.yml/dispatches") {
       if (auth !== "Bearer ghs_installation") return new Response("no", { status: 401 });
       dispatches.push(JSON.parse(String(init?.body)));
       return new Response(null, { status: 204 });
@@ -113,7 +118,9 @@ describe("a result that changes in the app rebuilds the website", () => {
     expect(await rebuildWebsite(deployed(), minutes(4))).toBe("waiting");
     expect(dispatches).toEqual([]);
     expect(await rebuildWebsite(deployed(), minutes(6))).toBe("sent");
-    expect(dispatches).toEqual([{ event_type: "website-rebuild", client_payload: { environment: "dev" } }]);
+    expect(dispatches).toEqual([{ ref: "main", inputs: { apps: "web" } }]);
+    // A token for that alone: it can start a workflow, never push to the repo
+    expect(scopes).toEqual([{ repositories: ["ark"], permissions: { actions: "write" } }]);
     // Done: the next check has nothing to do
     expect(await rebuildWebsite(deployed(), minutes(11))).toBe("nothing");
     expect(dispatches).toHaveLength(1);
@@ -151,6 +158,13 @@ describe("a result that changes in the app rebuilds the website", () => {
     github = "up";
     expect(await rebuildWebsite(deployed(), minutes(11))).toBe("sent");
     expect(dispatches).toHaveLength(1);
+  });
+
+  it("production rebuilds production's site, from release", async () => {
+    const { score } = await cup();
+    await score();
+    expect(await rebuildWebsite({ ...deployed(), SITE_ENV: "production" }, minutes(6))).toBe("sent");
+    expect(dispatches).toEqual([{ ref: "release", inputs: { apps: "web" } }]);
   });
 
   it("a laptop's server never asks GitHub", async () => {

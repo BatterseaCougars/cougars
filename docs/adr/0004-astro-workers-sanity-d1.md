@@ -27,7 +27,7 @@ eventually edit events, players and Kumite results, so it's the natural owner of
   ([ADR 0010](0010-environments-and-deploys.md)). A Studio change is live the next morning. Anything urgent is rebuilt
   by hand: **Actions → Deploy → Run workflow → `release`** (or `gh workflow run deploy.yml --ref release`).
 - **No Sanity publish webhook.** The team app starts rebuilds when a tournament result changes, batched, as the
-  club's GitHub App (`repository_dispatch: website-rebuild`, [ADR 0100](0100-website-reads-tournament-results.md)).
+  club's GitHub App (running `deploy.yml` for the website, [ADR 0100](0100-website-reads-tournament-results.md)).
 - Photos and videos don't wait for a rebuild: they're read live ([ADR 0016](0016-photos-and-videos-read-live.md)).
 - **D1** holds operational data. Plain SQL through `packages/shared/d1.ts`, no ORM. Until launch the database is
   `db/schema.sql` plus seed, with no migrations ([ADR 0050](0050-schema-and-seed-until-launch.md)).

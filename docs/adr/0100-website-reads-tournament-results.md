@@ -39,10 +39,11 @@ Three ways were open:
 - **A changed result rebuilds the website.** Any change through the team app's API to a tournament that's done before
   or after it (the last game scored, a goal corrected, awards confirmed, renamed, made private, deleted) marks a
   rebuild wanted (`website_rebuild`, `apps/team/worker/website/website.ts`). A cron every five minutes sends it once there's
-  been no change for five minutes, so a results day is one rebuild. It sends a `repository_dispatch`
-  (`website-rebuild`, with the environment) as the club's GitHub App, **Cougars rebuilds**, owned by the organisation
-  so it outlives any maintainer (README#github_app_private_key). `deploy.yml` rebuilds dev from `main` or production
-  from `release`. If GitHub can't be reached, the next check tries again. A laptop's server never asks.
+  been no change for five minutes, so a results day is one rebuild. As the club's GitHub App, **Cougars rebuilds**,
+  owned by the organisation so it outlives any maintainer (README#github_app_private_key), it runs `deploy.yml` for
+  the website (`workflow_dispatch`, `apps: web`) from its environment's branch: `main` for dev, `release` for
+  production. The App can start workflows and nothing else, and each token it takes asks for only that: a leaked key
+  can't push code (#71). If GitHub can't be reached, the next check tries again. A laptop's server never asks.
 - **Names.** Every player is shown by the name they chose on their profile (`members.web_name`), else first name and
   initial (`@cougars/shared/names`, as on the roster). That includes members who aren't Cougars, and players from
   outside the club, who have no profile. A team with no name of its own is "Team" and its captain's chosen name, else
@@ -70,3 +71,5 @@ Three ways were open:
 - 2026-10-09: Results are read from D1 live instead of written to Sanity; `kumiteResult` retired.
 - 2026-10-09: Results are built into the pages from the snapshot instead of read live, so visits can't spend the
   account's Worker requests; the team app rebuilds the website through the club's GitHub App when a result changes.
+- 2026-10-10: The rebuild runs `deploy.yml` directly (`workflow_dispatch`) instead of a `repository_dispatch`, so the
+  App needs Actions: write, not Contents: write (#71).

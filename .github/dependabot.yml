@@ -1,0 +1,22 @@
+# Dependency updates (#70): weekly, grouped so a week's updates are one PR per ecosystem, not dozens. PR checks
+# (pr.yml) run on each; merge when green. Security updates come as soon as they're published, ungrouped.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      npm:
+        patterns: ["*"]
+        update-types: [minor, patch]
+  - package-ecosystem: github-actions
+    directories: ["/", "/.github/actions/*"]
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      actions:
+        patterns: ["*"]

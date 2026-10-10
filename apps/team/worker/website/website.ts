@@ -1,8 +1,8 @@
 // The website's results are built from a snapshot of D1 (ADR 0100), so a change to a result asks for a rebuild. A
 // change marks one wanted (`wantRebuild`, from the API's change pipeline); the five-minute cron (`rebuildWebsite`)
 // sends it once things have been quiet for five minutes, so a results day is one rebuild. It asks GitHub as the
-// club's GitHub App (README#github_app_private_key): a JWT signed with the App's key buys an hour's installation token,
-// which sends a `repository_dispatch` that deploy.yml turns into a rebuild of this environment's website.
+// club's GitHub App (README#github_app_private_key): a JWT signed with the App's key buys an hour's installation token
+// that can only start workflows, which runs deploy.yml for the website from this environment's branch.
 import { first, run } from "@cougars/shared/d1";
 import { isDone } from "@cougars/shared/results";
 
@@ -73,16 +73,19 @@ async function dispatch(env: WebsiteEnv, now: Date) {
   const { GITHUB_APP_CLIENT_ID: app, GITHUB_APP_INSTALLATION_ID: installation, GITHUB_APP_PRIVATE_KEY: pem } = env;
   if (!app || !installation || !pem) throw new Error("The GitHub App isn't set up for this Worker.");
   const headers = { Accept: "application/vnd.github+json", "User-Agent": "cougars-team" };
+  // A token for this alone, whatever else the App may do: start a workflow in this one repo (#71)
   const tokenRes = await fetch(`https://api.github.com/app/installations/${installation}/access_tokens`, {
     method: "POST",
-    headers: { ...headers, Authorization: `Bearer ${await appJwt(app, pem, now)}` },
+    headers: { ...headers, Authorization: `Bearer ${await appJwt(app, pem, now)}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ repositories: [REPO.split("/")[1]], permissions: { actions: "write" } }),
   });
   if (!tokenRes.ok) throw new Error(`GitHub installation token: ${tokenRes.status}`);
   const { token } = (await tokenRes.json()) as { token: string };
-  const res = await fetch(`https://api.github.com/repos/${REPO}/dispatches`, {
+  // The website's deploy, from this environment's branch: release is production (ADR 0010)
+  const res = await fetch(`https://api.github.com/repos/${REPO}/actions/workflows/deploy.yml/dispatches`, {
     method: "POST",
     headers: { ...headers, Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ event_type: "website-rebuild", client_payload: { environment: env.SITE_ENV } }),
+    body: JSON.stringify({ ref: env.SITE_ENV === "production" ? "release" : "main", inputs: { apps: "web" } }),
   });
   if (!res.ok) throw new Error(`GitHub dispatch: ${res.status}`);
 }

@@ -50,7 +50,7 @@ jobs:
       SITE_ENV: ${{ github.ref == 'refs/heads/release' && 'production' || 'dev' }}
       BWS_SERVER_URL: ${{ vars.BWS_SERVER_URL }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - uses: ./.github/actions/setup
       - uses: ./.github/actions/secrets
         with:
@@ -68,7 +68,7 @@ jobs:
           WHY: ${{ inputs.why || 'nightly' }}
 
       - name: Keep it
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: d1-${{ env.SITE_ENV }}-${{ github.run_id }}
           path: backups/

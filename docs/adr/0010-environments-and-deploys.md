@@ -74,6 +74,11 @@ be checked before it goes live. Ark deploys `main` to dev and production from a 
 - **Every deploy is smoke-tested.** The team app's `/api/health` reads the database, so a broken D1 binding fails the
   deploy; without a session the club answers 401, and the local sign-in doesn't answer at all
   ([ADR 0023](0023-sign-in-and-sessions.md)).
+- **CI trusts as little as it can** (#70): every action is pinned to a commit SHA (its tag in a comment), the
+  Bitwarden CLI is checked against its published checksum before it runs, each workflow starts with
+  `contents: read` and a job widens only what it needs, the PR comment goes through GitHub's own `gh`, and Dependabot
+  proposes updates weekly, grouped, checked by `pr.yml`. `main` and `release` refuse force-pushes and deletion (a
+  repository ruleset).
 - **Rolling back is a workflow too**: Actions → _Roll back_ (`.github/workflows/rollback.yml`), run on `release` for
   production or `main` for dev, puts one worker (`web` or `team`) back to the version before the last deploy, or to a
   version id, with a reason. It is code only: the database stays as it is. The next deploy from that branch replaces
@@ -124,3 +129,5 @@ be checked before it goes live. Ark deploys `main` to dev and production from a 
   for the website.
 - 2026-10-10: The team app deploys to production from `release` at team.batterseacougars.com; PRs check it; health reads
   D1; rollback through `rollback.yml` (#27).
+- 2026-10-10: Actions pinned by SHA, the Bitwarden CLI checksummed, least-privilege permissions, Dependabot; `main`
+  and `release` protected from force-push and deletion (#70, #71).
