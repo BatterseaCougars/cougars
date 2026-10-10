@@ -2,10 +2,15 @@
 // The text version says the same.
 import { EMAIL, emailPage } from "@cougars/shared/email-html";
 
-export function signInEmail(code: string, minutes: number): { subject: string; text: string; html: string } {
+export function signInEmail(
+  code: string,
+  minutes: number,
+): { subject: string; text: string; html: string; secrets: string[] } {
   const spaced = `${code.slice(0, 3)} ${code.slice(3)}`;
   const { carbon, bone, muted, yellow, body, mono } = EMAIL;
   return {
+    // The code, as written and as shown: never in a log (#74)
+    secrets: [code, spaced],
     subject: `Your Cougars sign-in code: ${code}`,
     text: [
       `Your code is ${code}`,

@@ -21,13 +21,8 @@ beforeEach(() => {
 
 const verify = (b: ReturnType<typeof w.browser>, code: string, now?: Date) =>
   b.call("POST", "/api/auth/verify", { code }, { now });
-/** The emails the app wrote (logged, with no Gmail in tests). */
-const loggedEmails = () =>
-  vi
-    .mocked(console.log)
-    .mock.calls.map((c) => String(c[0]))
-    .filter((l) => l.includes("mail.logged"))
-    .map((l) => JSON.parse(l) as { to: string[]; subject: string; text: string; html?: string });
+/** The emails the app wrote: the fake world's outbox (with no Gmail in tests, nothing is sent). */
+const loggedEmails = () => w.mails;
 const lastEmail = () => loggedEmails().at(-1)!;
 
 describe("signing in with the code", () => {
@@ -153,6 +148,10 @@ describe("signing in with the code", () => {
     expect(email.text).not.toMatch(/https?:/);
     // The HTML version shows the same code, big, split in two for reading, and still has no link
     expect(email.html).toContain(`${code.slice(0, 3)} ${code.slice(3)}`);
+    // ...and the code is never written to a log, in either form, even with no Gmail set up (#74)
+    const logged = vi.mocked(console.log).mock.calls.map((c) => String(c[0]));
+    expect(logged.some((l) => l.includes(code) || l.includes(`${code.slice(0, 3)} ${code.slice(3)}`))).toBe(false);
+    expect(logged.some((l) => l.includes("mail.logged") && l.includes("[redacted]"))).toBe(true);
     expect(email.html).not.toMatch(/https?:|<a\b/);
     expect((await verify(phone, code)).status).toBe(200);
   });
@@ -170,7 +169,7 @@ describe("signing in with the code", () => {
     Object.assign(env, { TEAM_ENV: undefined, SITE_ENV: "dev", MAIL_SAFE_TO: "dev@example.com" });
     await w.ask(w.browser(), "reg@example.com");
     expect(loggedEmails().map((e) => e.to)).toEqual([["dev@example.com"]]);
-    vi.mocked(console.log).mockClear();
+    w.mails.length = 0;
     Object.assign(env, { SITE_ENV: "production" });
     await w.ask(w.browser(), "dana@example.com");
     expect(loggedEmails().map((e) => e.to)).toEqual([["dana@example.com"]]);

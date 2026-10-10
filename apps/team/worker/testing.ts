@@ -1,6 +1,7 @@
 // The fake world the Worker's tests run in (ADR 0031): an in-memory D1 with every migration and a small roster,
 // and browsers that keep the cookies the app sets. On a "local" server nothing is emailed, so a sign-in code comes
 // back in the reply; tests sign in with it the way a member types it.
+import { outbox, type Mail } from "@cougars/shared/email";
 import { createTestD1 } from "@cougars/shared/testing/d1-sqlite";
 import { parseRoster, rosterSql } from "../../../scripts/lib/roster.mjs";
 import { handleApi, type Env } from "./api";
@@ -31,6 +32,9 @@ export function testWorld(roster: object[]) {
   // The live hub (ADR 0072) as the Worker reaches it: one object, behind a namespace that always finds it
   const live = new LiveHub();
   const env: Env = { DB: db, TEAM_ENV: "local", LIVE: liveNamespace(live) };
+  // The club's email, faked: each one the app would have sent, whole, in order (packages/shared/email.ts outbox)
+  const mails: Mail[] = [];
+  outbox.capture = (m) => void mails.push(m);
 
   interface Options {
     now?: Date;
@@ -94,5 +98,5 @@ export function testWorld(roster: object[]) {
     return b;
   }
 
-  return { db, env, live, browser, ask, signedIn };
+  return { db, env, live, browser, ask, signedIn, mails };
 }

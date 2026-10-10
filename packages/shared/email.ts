@@ -23,6 +23,20 @@ export interface Mail {
   /** An HTML version beside the text one, for clients that show it; the text one is always sent too. */
   html?: string;
   replyTo?: string;
+  /** Values never written to a log, in any part of the mail (a sign-in code): a logged copy says [redacted]. */
+  secrets?: string[];
+}
+
+/**
+ * The fake world's inbox (the Worker's tests, ADR 0031): each mail that isn't sent, whole, as it would have gone.
+ * Nothing sets it in a deployed Worker, where an unsent mail is only logged, with its secrets redacted.
+ */
+export const outbox: { capture?: (mail: Mail) => void } = {};
+
+/** A mail's text with its secrets taken out, for a log. */
+function redact(value: string | undefined, secrets: readonly string[] = []): string | undefined {
+  if (value === undefined) return value;
+  return secrets.filter(Boolean).reduce((v, secret) => v.split(secret).join("[redacted]"), value);
 }
 
 export interface GmailCredentials {
@@ -150,8 +164,17 @@ export async function sendMail(
       safeTo: config.safeTo ?? "nobody@example.invalid",
       allow: config.allow,
     });
+    outbox.capture?.(safe);
+    // Never a secret in a log (#74): a deploy missing its Gmail secrets would otherwise log live sign-in codes
+    const hide = (v: string | undefined) => redact(v, mail.secrets);
     console.log(
-      JSON.stringify({ event: "mail.logged", to: safe.to, subject: safe.subject, text: safe.text, html: safe.html }),
+      JSON.stringify({
+        event: "mail.logged",
+        to: safe.to,
+        subject: hide(safe.subject),
+        text: hide(safe.text),
+        html: hide(safe.html),
+      }),
     );
     return { status: "logged", to: safe.to };
   }

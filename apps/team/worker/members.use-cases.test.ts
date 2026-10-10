@@ -16,12 +16,7 @@ beforeEach(() => {
 
 /** The last email the app wrote. */
 function lastEmail() {
-  const logged = vi
-    .mocked(console.log)
-    .mock.calls.map((c) => String(c[0]))
-    .filter((l) => l.includes("mail.logged"))
-    .at(-1);
-  return logged ? (JSON.parse(logged) as { to: string[]; subject: string; text: string }) : null;
+  return w.mails.at(-1) ?? null;
 }
 
 const NEWBIE = { name: "Nina New", email: "Nina@Example.com ", position: "G" };
