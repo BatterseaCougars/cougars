@@ -120,6 +120,7 @@ Deploys the `cougars` worker and migrates the `cougars` D1 database on the **Cou
   | Entire Cougars account | Workers Admin        | Deploy the `cougars` worker (Editor can't create it) |
   | Entire Cougars account | Workers Editor       | (also on the token; Admin covers it)                 |
   | Entire Cougars account | D1 Write             | Create and migrate the `cougars` database            |
+  | Entire Cougars account | Turnstile Write      | Make the Turnstile widget (`turnstile-setup.mjs`)    |
   | All zones in Cougars   | Zone Read            | Find the batterseacougars.com zone                   |
   | All zones in Cougars   | DNS Write            | The deploy creates the domain's DNS records          |
   | All zones in Cougars   | Workers Routes Write | Attach the domain to the worker (`target.mjs`)       |
@@ -158,7 +159,8 @@ Deploys the `web` worker and migrates the `cougars-dev` D1 database on the **Cou
 Can't touch production: it is a different account.
 
 - **Issued by:** Cloudflare, Cougars Dev account → Manage Account → **Account API Tokens**. Scope **Entire
-  Cougars Dev account**; permissions **Workers Admin** (Editor can't create a new worker), **D1 Write**. Token name: `CLOUDFLARE_API_TOKEN__DEV`.
+  Cougars Dev account**; permissions **Workers Admin** (Editor can't create a new worker), **D1 Write**, **Turnstile Write**
+  (`scripts/turnstile-setup.mjs`). Token name: `CLOUDFLARE_API_TOKEN__DEV`.
 - **Used by:** `deploy.yml` on `main` and pull requests (preview versions), `scripts/deploy-dev.sh`.
 - **Gets there by:** CI pull, or `node scripts/env-pull.mjs -- bash scripts/deploy-dev.sh`.
 - **Expires:** no, unless you set a TTL.
@@ -252,7 +254,11 @@ Cloudflare Turnstile on the "Try a session" form: it tells people from bots, and
 reply ([ADR 0028](docs/adr/0028-turnstile-and-auto-reply.md)). Free. Without the secret nobody counts as verified:
 enquiries are still saved and emailed to the club, but nobody gets an auto-reply.
 
-- **Issued by:** Cloudflare, one widget per account. Sidebar **Turnstile** (under _Application security_ in the new
+- **Issued by:** Cloudflare, one widget per account, named `cougars`, made by
+  `node scripts/env-pull.mjs [--environment production] -- node scripts/turnstile-setup.mjs dev|production`. It
+  stores the secret key straight in Secrets Manager (nobody sees it) and prints the site key, which goes in
+  `deploy.yml`. The account's `CLOUDFLARE_API_TOKEN` needs **Turnstile Write** for it. By hand instead: sidebar
+  **Turnstile** (under _Application security_ in the new
   dashboard) → **Add widget**: name `cougars-website`, hostname the site's (Cougars Dev: `cougars-dev.workers.dev`, which covers `web.` and its PR previews;
   Cougars: `batterseacougars.com`), widget mode **Managed**, pre-clearance **No** → **Create**. It shows a **site
   key** (public: it goes in `deploy.yml` as `TURNSTILE_SITE_KEY` for that environment) and a **secret key**:
