@@ -1,7 +1,8 @@
-// Members (ADR 0024, ADR 0069): adding, importing and editing them, their contact, roles and attendance.
+// Members (ADR 0024, ADR 0069): adding, importing, editing and erasing them, their contact, roles and attendance.
 import { id, ok, theMember, type Route } from "../api/api.route";
 import { HttpError, body, json } from "../api/api.http";
 import { checkImport, importMembers } from "./members.import";
+import { eraseMember } from "./members.erase";
 import {
   addMember,
   attendanceOf,
@@ -97,5 +98,19 @@ export const MEMBERS_ROUTES: Route[] = [
     action: "manage:Member",
     changes: ["members"],
     handle: async (c) => (await updateMember(c.env.DB, id(c), await body(c.request), c), ok()),
+  },
+  {
+    method: "DELETE",
+    path: /^\/api\/members\/(\d+)$/,
+    // On the record as a change of standing only: nothing that says who they were
+    audit: {
+      event: "member.erased",
+      subject: (c) => memberStanding(c.env.DB, id(c)),
+      about: (c) => ({ memberId: id(c) }),
+    },
+    action: "manage:Member",
+    changes: ["members"],
+    // A member who asked the club, by email, to delete their account (#30): as if they'd done it themselves
+    handle: async (c) => (await eraseMember(c.env.DB, id(c), c.today, c.now), ok()),
   },
 ];

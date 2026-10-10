@@ -287,6 +287,10 @@ export const saveMember = (m: MemberRow) =>
     }),
   );
 
+/** An admin deletes the account of a member who asked (#30): the server keeps only what the club must, unnamed. */
+export const eraseMember = (memberId: number) =>
+  save(() => api("DELETE", `/api/members/${memberId}`), "Account deleted");
+
 /** An admin sets a member's email (what they sign in with) and phone. */
 export const saveContact = (memberId: number, email: string, phone: string) =>
   save(() => api("PUT", `/api/members/${memberId}/contact`, { email, phone }));

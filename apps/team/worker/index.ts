@@ -2,6 +2,7 @@
 // binding falls back to index.html, so the app's own router takes any path).
 import { handleApi, type Env } from "./api/api";
 import { chargeDue } from "./dues/dues";
+import { forgetOld } from "./settings/retention";
 import { checkUsage } from "./settings/usage";
 import { rebuildWebsite } from "./website/website";
 // The live hub (ADR 0072): Cloudflare finds the Durable Object class here
@@ -48,12 +49,22 @@ export default {
   async scheduled(controller: ScheduledController, env: Env) {
     const now = new Date(controller.scheduledTime);
     // Every five minutes (wrangler.jsonc triggers): a wanted website rebuild, once it's quiet (ADR 0100)
-    if (controller.cron === "*/5 * * * *") await rebuildWebsite(env, now);
-    // Hourly: charge what a new day or quarter makes due (ADR 0007), and warn the admins before the free allowance
-    // runs out (ADR 0059)
+    if (controller.cron === "*/5 * * * *") await task("website.rebuild", () => rebuildWebsite(env, now));
+    // Hourly: charge what a new day or quarter makes due (ADR 0007), warn the admins before the free allowance runs
+    // out (ADR 0059), and forget old sign-in records (#30). Each on its own, so one failing doesn't stop the rest.
     else {
-      await chargeDue(env, now);
-      await checkUsage(env, now);
+      await task("dues.charge", () => chargeDue(env, now));
+      await task("usage.check", () => checkUsage(env, now));
+      await task("retention.forget", () => forgetOld(env.DB, now));
     }
   },
 } satisfies ExportedHandler<Env & { ASSETS: Fetcher }>;
+
+/** One cron job, run on its own: a failure is logged and the next job still runs. */
+async function task(name: string, job: () => Promise<unknown>) {
+  try {
+    await job();
+  } catch (e) {
+    console.error(JSON.stringify({ event: "cron.failed", task: name, error: String(e) }));
+  }
+}

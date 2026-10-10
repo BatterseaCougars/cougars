@@ -1,7 +1,7 @@
-# 0029. Personal data stays out of the repo, the roster is seeded from Secrets Manager, and enquiries go after 12 months
+# 0029. Personal data stays out of the repo, the roster is seeded from Secrets Manager, and nothing is kept longer than needed
 
 - **Status:** Accepted
-- **Date:** 2026-10-06 · updated 2026-10-09
+- **Date:** 2026-10-06 · updated 2026-10-10
 - **Merges:** 0033
 
 ## Context
@@ -41,6 +41,21 @@ page says so.
 - The copies in the club's Gmail (enquiry emails and auto-replies) are deleted by hand once a month: the website's
   Gmail access can only send. The steps are in docs/editing.md.
 
+**A member can delete their account, and download their data** (#30), in the team app: Profile → Your data. An
+admin does the same for a member who asks by email (their member sheet → Delete their account).
+
+- Deleting erases, now: the member's row stays, so the club's records still add up (payments, who played a session,
+  goals), but becomes a nameless **Former member** (`status = 'erased'`): no email, phone, bio, photo, bank reference
+  or roles. Their sessions and sign-in codes go, so they're signed out everywhere; places for what's still to come are
+  given up; earlier audit entries stop naming them (`apps/team/worker/members/members.erase.ts`). The audit log records
+  the deletion as a change of standing only. The club's last admin can't delete their account.
+- The download is everything the app holds about them as JSON, except their skill rating, which is the organisers'
+  opinion and hidden from members; the privacy page says to ask for it.
+- **Sign-in records are kept no longer than needed**, by the team app's hourly cron (`settings/retention.ts`): sign-in
+  codes 30 days, a session 30 days after it ended, audit entries 2 years.
+- Backups keep a deleted account for up to 90 days ([ADR 0106](0106-database-backups.md)); the privacy page says so.
+- The privacy page covers the team app: what it holds, who sees it, how long, and how to delete it.
+
 ## Consequences
 
 - Names, ratings and emails never appear in the repo, its history, or CI logs (the value is masked). Production gets
@@ -54,7 +69,10 @@ page says so.
   the team app, so it runs before the team app is in production.
 - Nothing sets `joined` yet, so every enquiry goes after 12 months; the team app will mark joiners when it turns
   enquiries into members.
-- Changing the retention period means changing `KEEP_ENQUIRIES_MONTHS`, the privacy page and this record together.
+- Changing the retention period means changing `KEEP_ENQUIRIES_MONTHS`, the privacy page and this record together;
+  the same for the team app's (`retention.ts`).
+- The roster seed adds players by name, so someone who deleted their account comes back on the next deploy if they're
+  still in `TEAM_ROSTER`: take them off it (both names) too.
 
 ## History
 
@@ -65,3 +83,6 @@ page says so.
   the scripts run after the rebuild ([ADR 0050](0050-schema-and-seed-until-launch.md)).
 - 2026-10-09: Enquiries deleted by a daily cron on the website's Worker, not a SQL file run on deploys: deploys are per
   app and only on change now (ADR 0010), so they're no clock.
+- 2026-10-10: Members can delete their account (erased in place, as a Former member) and download their data; sign-in
+  codes, ended sessions and audit entries are forgotten after 30 days, 30 days and 2 years; the privacy page covers
+  the team app (#30).

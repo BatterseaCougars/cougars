@@ -34,7 +34,7 @@ CREATE TABLE members (
   rating INTEGER NOT NULL DEFAULT 50,
   cougar INTEGER NOT NULL DEFAULT 0,
   photo TEXT,
-  -- pending (asked to join), active, inactive
+  -- pending (asked to join), active, inactive, erased (deleted their account: a nameless Former member, #30)
   status TEXT NOT NULL DEFAULT 'active',
   -- The bank-transfer reference, the name as a bank shows it: COUGARS ADRIAN K (ADR 0007)
   payment_reference TEXT UNIQUE,

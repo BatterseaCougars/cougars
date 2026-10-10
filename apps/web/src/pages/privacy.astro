@@ -9,7 +9,7 @@ const s = await getSettings();
 const email = s.contactEmail;
 ---
 
-<Base title="Privacy" description="What the Battersea Cougars website does with your details.">
+<Base title="Privacy" description="What the Battersea Cougars website and team app do with your details.">
   <PageHeader eyebrow="Small print" title="Privacy" lede="Short, because the site collects very little." />
   <div class="wrap page-body">
     <div class="prose">
@@ -38,17 +38,45 @@ const email = s.contactEmail;
         the club keeps off the website isn't shown.
       </p>
 
+      <h2>Members: the team app</h2>
+      <p>
+        Members use the club's team app to sign up for training and tournaments, and the club uses it to run them and to
+        keep track of fees. For that it holds your name, the name you go by, your email address (to sign in), your phone
+        number if you give it, your position and the bio on your player card; which sessions, tournaments and events you
+        signed up for and played; what you owe and have paid, and the reference your bank transfers use; and a skill
+        rating the club's organisers set to balance teams, which other members don't see (ask us for yours).
+      </p>
+      <p>
+        Other members see the name you go by, your position, your bio and what you've signed up for. Your email and
+        phone are seen only by you and the club's admins. Your sign-in emails and the club's notices go through Google's
+        Gmail.
+      </p>
+      <p>
+        To sign you in and keep you signed in, the app sets two cookies, which it needs to work, and remembers which
+        browser each sign-in is on so you can tell your devices apart. Sign-in codes are kept 30 days, and a sign-in 30
+        days after you sign out or it runs out. A record of who changed what in the app (who was made an admin, say) is
+        kept for 2 years.
+      </p>
+      <p>
+        You can download everything the app holds about you, or delete your account, in the app: Profile, then Your
+        data. Deleting removes your name, email, phone and everything else that says who you are, straight away. What
+        the club must keep for its accounts (payments) and its numbers (that someone played a session) stays, about a
+        "Former member" nobody can name.
+      </p>
+
       <h2>Where it's kept, and for how long</h2>
       <p>
-        On Cloudflare, which runs this website, and in the club's Gmail inbox. To stop spam, the site briefly remembers
-        the internet address a form came from (for 15 minutes). We delete your enquiry 12 months after you send it,
-        unless you've joined the club.
+        On Cloudflare, which runs this website and the team app, in Western Europe, and in the club's Gmail inbox. To
+        stop spam, the site briefly remembers the internet address a form came from (for 15 minutes). We delete your
+        enquiry 12 months after you send it, unless you've joined the club. A member's details are kept while they're in
+        the club, until they delete their account or ask us to. The club's database is backed up every night, encrypted,
+        on GitHub, and each backup is kept for 90 days, so a deleted account is gone from the backups 90 days later.
       </p>
 
       <h2>Cookies</h2>
       <p>
-        The site itself doesn't set cookies or track you, and stores nothing in your browser. Videos come from YouTube's
-        privacy-enhanced player, and only load when you press play.
+        The website itself doesn't set cookies or track you, and stores nothing in your browser (the team app's sign-in
+        cookies are above). Videos come from YouTube's privacy-enhanced player, and only load when you press play.
       </p>
       <p>
         To keep spam bots out, the <a href="/join/">Try a session</a> form uses Cloudflare Turnstile, which checks your

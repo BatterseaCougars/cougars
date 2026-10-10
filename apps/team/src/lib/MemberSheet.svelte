@@ -20,6 +20,7 @@
     recordPayment,
     adjustDues,
     saveContact,
+    eraseMember,
     saveMember,
     setQuarterly,
     setMemberEveryday,
@@ -28,7 +29,7 @@
   import { POSITIONS, REAL_ID, emailFor, phoneFor, referenceFor, type Position } from "../demo/data";
   import { chargesFor, creditOf, owedBy } from "../demo/dues.svelte";
   import { db } from "../demo/store.svelte";
-  import { granted, session } from "../demo/session.svelte";
+  import { granted, me, session } from "../demo/session.svelte";
   import { can } from "../access/actions";
   import Ledger from "./Ledger.svelte";
   import Sheet from "./Sheet.svelte";
@@ -409,6 +410,16 @@
     grow.onfinish = () => (ready = true);
   });
 
+  // Deleting their account, when they've asked (#30): done, the sheet closes with nothing left to save
+  let erasing = $state(false);
+  async function erase() {
+    busy = true;
+    const done = await eraseMember(member.player.id);
+    busy = false;
+    erasing = false;
+    if (done) shut();
+  }
+
   // Closing with changes asks first (the footer); Discard or Save goes on to close
   function close() {
     if (changed) return void (asking = true);
@@ -643,6 +654,29 @@
                   </div>
                 </div>
               </div>
+              {#if member.player.id !== me().id}
+                <!-- A member who asked the club by email to delete their account (#30): as if they'd done it -->
+                <div class="group">
+                  <h3 class="eyebrow">Their account</h3>
+                  <button
+                    class="btn ghost sm danger"
+                    type="button"
+                    aria-haspopup="dialog"
+                    onclick={() => (erasing = true)}>Delete their account</button
+                  >
+                  <Sheet bind:open={erasing} title="Delete {shortName(member.player)}'s account?">
+                    <p class="erase-note">
+                      Only when they've asked. Their name, email, phone and roles go now, and they're signed out
+                      everywhere. What the club must keep (that someone played, payments) stays, about a "Former
+                      member".
+                    </p>
+                    {#snippet footer()}
+                      <button class="btn ghost" type="button" onclick={() => (erasing = false)}>Keep it</button>
+                      <button class="btn delete" type="button" disabled={busy} onclick={erase}>Delete it</button>
+                    {/snippet}
+                  </Sheet>
+                </div>
+              {/if}
             </div>
           {/if}
         </div>
@@ -1325,5 +1359,20 @@
   .day.cancelled {
     opacity: 0.35;
     text-decoration: line-through;
+  }
+  /* Deleting their account: red words, and the one red fill is the tap that does it */
+  .danger {
+    justify-self: start;
+    color: var(--red-hot);
+  }
+  .delete {
+    background: var(--red);
+    color: var(--on-red);
+  }
+  .delete:hover:not(:disabled) {
+    background: var(--red-hot);
+  }
+  .erase-note {
+    margin: 0;
   }
 </style>

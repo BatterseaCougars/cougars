@@ -22,6 +22,7 @@
   import { saveEverydayRole, saveProfile } from "../app/backend.svelte";
   import AccountMenu from "../app/shell/AccountMenu.svelte";
   import MoreLinks from "../lib/MoreLinks.svelte";
+  import YourData from "../lib/YourData.svelte";
   import { phone } from "../lib/viewport.svelte";
   import PageHeader from "../lib/PageHeader.svelte";
   import { APP_BUILD, APP_VERSION } from "../app/build";
@@ -182,6 +183,8 @@
       </p>
     </section>
   {/if}
+
+  <YourData disabled={locked} />
 
   {#if phone.current}
     <MoreLinks except="profile" parts={["You", "Club"]} />
