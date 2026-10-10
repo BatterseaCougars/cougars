@@ -34,14 +34,16 @@ worker.
 - **One browser, one member, any of its codes.** A browser keeps its nonce while it asks again for the same member,
   so any code it asked for in the last 15 minutes works there, and using one spends all of them. Asking for a
   _different_ member's code starts a fresh nonce, and the earlier member's codes die with the old one. So every live
-  code under a nonce is one member's, and every guess and every cap below is that member's, whoever is typing. Two
+  code under a nonce is one member's, and every guess is against that member's code, whoever is typing. Two
   people signing in one after the other on a shared browser each get their own code.
 - **Guesses are counted before they're checked**, in one statement, and a code is spent the same way, so requests
   sent all at once can't get extra tries or two sessions. The limits:
   - 5 wrong codes per code;
-  - 5 codes an hour and 10 a day per member;
-  - 20 wrong codes a day per member, after which no codes are sent or accepted until the day has passed (logged as
-    `sign_in.capped`);
+  - 5 codes an hour and 10 a day per member **per browser** (its nonce);
+  - 20 wrong codes a day per browser, after which that browser is sent and accepts no codes until the day has passed;
+  - 30 codes a day per member across every browser, their inbox's limit (logged as `sign_in.capped`).
+    The limits count against the browser asking, not the member: someone who knows a member's email can't use them up
+    and lock the member out of their own browser (#69).
   - per address, best effort: 10 code requests in 10 minutes and 5 requests to join an hour;
   - asking to join stops while 50 people are waiting.
 - New people **request access**; an admin approves them ([0024](0024-action-based-authorization.md)).
@@ -88,8 +90,10 @@ worker.
 - A stolen database can't sign anyone in, because it holds only hashes. A stolen cookie works until the session is
   revoked or the member is made inactive, the same as with a signed cookie.
 - Each API request makes one indexed D1 read for the session, well inside the free tier for a club.
-- The limits mean what they say: 5 wrong per code, 20 a day per member. The odds of guessing are negligible (a
-  million codes, 15 minutes, ten codes a day).
+- The limits mean what they say: 5 wrong per code, 20 a day per browser, 30 codes a day per member. The odds of
+  guessing are negligible (at most 150 tries a day against a one-in-a-million code that lasts 15 minutes).
+- Someone rotating browsers and addresses can still use up a member's 30 codes for a day. Turnstile on sign-in (#13)
+  closes that; until then the per-address limit and the higher ceiling make it slow and noisy (`sign_in.capped`).
 - For a deploy to open up the local switches, three independent things now have to go wrong: the config, the config
   test and the smoke test.
 - A tunnel to your laptop (a public name onto a local server) doesn't get the code on screen or the auto admin; sign
@@ -112,3 +116,5 @@ worker.
 - 2026-10-09: The code email is branded HTML with the code big and split in two (123 456), beside the plain text.
 - 2026-10-10: Signing in without a code on your own machine (`/api/auth/dev`, `scripts/dev-sign-in.mjs`), after
   headless sessions kept running into the code caps (five an hour, ten a day) and screenshots needed a member's code.
+- 2026-10-10: The code limits count per browser (its nonce), with a ceiling of 30 a day per member, after a review
+  showed 20 wrong guesses from anywhere locked a member out for a day (#69).

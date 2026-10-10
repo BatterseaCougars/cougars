@@ -109,29 +109,50 @@ describe("signing in with the code", () => {
     expect(stranger.devCode).toBeUndefined();
   });
 
-  it("sends at most five codes an hour and ten a day", async () => {
+  it("sends one browser at most five codes an hour and ten a day; another browser still gets one", async () => {
     const phone = w.browser();
     for (let i = 0; i < 5; i++) expect((await w.ask(phone, "reg@example.com", minutes(i))).devCode).toBeDefined();
     expect((await w.ask(phone, "reg@example.com", minutes(6))).devCode).toBeUndefined();
+    expect((await w.ask(w.browser(), "reg@example.com", minutes(7))).devCode).toBeDefined();
     for (let i = 0; i < 5; i++)
       expect((await w.ask(phone, "reg@example.com", minutes(61 + i * 61))).devCode).toBeDefined();
     expect((await w.ask(phone, "reg@example.com", minutes(600))).devCode).toBeUndefined();
     expect((await w.ask(phone, "reg@example.com", minutes(24 * 60 + 10))).devCode).toBeDefined();
   });
 
-  it("stops for the day after 20 wrong codes against one member", async () => {
+  it("never lets a stranger's wrong guesses lock the member out (#69)", async () => {
+    // Someone who knows Reg's email guesses wrong 25 times, a fresh browser each round
+    for (let round = 0; round < 5; round++) {
+      const attacker = w.browser();
+      const { devCode } = await w.ask(attacker, "reg@example.com", minutes(round));
+      const wrong = devCode === "000000" ? "111111" : "000000";
+      for (let i = 0; i < 5; i++) await verify(attacker, wrong, minutes(round));
+    }
+    // Reg, in his own browser, still gets a code and signs in
+    const phone = w.browser();
+    const { devCode } = await w.ask(phone, "reg@example.com", minutes(10));
+    expect(devCode).toBeDefined();
+    expect((await verify(phone, devCode, minutes(11))).status).toBe(200);
+  });
+
+  it("stops a browser for the day after 20 wrong codes", async () => {
     const attacker = w.browser();
     for (let round = 0; round < 4; round++) {
       const { devCode } = await w.ask(attacker, "reg@example.com", minutes(round * 61));
       const wrong = devCode === "000000" ? "111111" : "000000";
       for (let i = 0; i < 5; i++) await verify(attacker, wrong, minutes(round * 61 + 1));
     }
-    // The member themselves can't get a code either, until tomorrow: it's logged for an admin to see
-    const phone = w.browser();
-    expect((await w.ask(phone, "reg@example.com", minutes(300))).devCode).toBeUndefined();
+    expect((await w.ask(attacker, "reg@example.com", minutes(300))).devCode).toBeUndefined();
+    expect((await w.ask(attacker, "reg@example.com", minutes(25 * 60))).devCode).toBeDefined();
+  });
+
+  it("sends one member at most 30 codes a day across every browser, and puts that on the record", async () => {
+    for (let i = 0; i < 30; i++)
+      expect((await w.ask(w.browser(), "reg@example.com", minutes(i))).devCode).toBeDefined();
+    expect((await w.ask(w.browser(), "reg@example.com", minutes(31))).devCode).toBeUndefined();
     const capped = w.db.raw.prepare("SELECT count(*) AS n FROM audit_log WHERE action = 'sign_in.capped'").get();
     expect(capped).toEqual({ n: 1 });
-    expect((await w.ask(phone, "reg@example.com", minutes(25 * 60))).devCode).toBeDefined();
+    expect((await w.ask(w.browser(), "reg@example.com", minutes(25 * 60))).devCode).toBeDefined();
   });
 
   it("emails the code instead of showing it anywhere but a local server", async () => {

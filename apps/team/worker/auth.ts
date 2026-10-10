@@ -31,10 +31,15 @@ export interface AuthEnv {
 const CHALLENGE_MINUTES = 15;
 /** Wrong codes allowed against one emailed code. */
 const MAX_ATTEMPTS = 5;
-/** New codes a member may ask for in an hour, and in a day. */
+// The limits count against the browser asking (its nonce), not the member (#69): a stranger who knows someone's email
+// can't use them up and lock the member out. Guessing stays bounded by the member-wide ceiling: 30 codes × 5 tries
+// a day, against a code that's one in a million.
+/** New codes one browser may ask for, for one member, in an hour and in a day. */
 const MAX_CHALLENGES_PER_HOUR = 5;
 const MAX_CHALLENGES_PER_DAY = 10;
-/** Wrong codes a member's account takes in a day before it stops taking any (and sending new ones). */
+/** Codes one member is sent in a day, across every browser: their inbox's limit. */
+const MAX_CHALLENGES_PER_MEMBER_DAY = 30;
+/** Wrong codes one browser may type in a day before it stops taking any (and being sent new ones). */
 const MAX_FAILURES_PER_DAY = 20;
 const SESSION_DAYS = 180;
 /** A session's expiry moves on at most once a day, so most requests don't write. */
@@ -229,12 +234,12 @@ export function email(o: Record<string, unknown>): string {
   return e;
 }
 
-/** Wrong codes against a member's account in the last day. */
-async function failuresToday(db: D1Database, memberId: number, now: Date) {
+/** Wrong codes typed in one browser (by its nonce) in the last day. */
+async function failuresToday(db: D1Database, nonceHash: string, now: Date) {
   const row = await first<{ n: number | null }>(
     db,
-    `SELECT sum(attempts) AS n FROM login_challenges WHERE member_id = ? AND created_at > ?`,
-    [memberId, addMs(now, -86_400_000)],
+    `SELECT sum(attempts) AS n FROM login_challenges WHERE nonce_hash = ? AND created_at > ?`,
+    [nonceHash, addMs(now, -86_400_000)],
   );
   return row?.n ?? 0;
 }
@@ -271,16 +276,19 @@ async function start(request: Request, env: AuthEnv, now: Date, waitUntil?: Wait
     [await sha256(nonce), now.toISOString(), member.id],
   );
   if (another) nonce = token();
-  const counts = await first<{ hour: number; day: number }>(
+  const nonceHash = await sha256(nonce);
+  const counts = await first<{ hour: number; day: number; everywhere: number }>(
     env.DB,
-    `SELECT sum(created_at > ?) AS hour, count(*) AS day FROM login_challenges WHERE member_id = ? AND created_at > ?`,
-    [addMs(now, -3600_000), member.id, addMs(now, -86_400_000)],
+    `SELECT coalesce(sum(nonce_hash = ? AND created_at > ?), 0) AS hour,
+            coalesce(sum(nonce_hash = ?), 0) AS day, count(*) AS everywhere
+     FROM login_challenges WHERE member_id = ? AND created_at > ?`,
+    [nonceHash, addMs(now, -3600_000), nonceHash, member.id, addMs(now, -86_400_000)],
   );
-  if ((counts?.hour ?? 0) >= MAX_CHALLENGES_PER_HOUR) return res();
-  if (
-    (counts?.day ?? 0) >= MAX_CHALLENGES_PER_DAY ||
-    (await failuresToday(env.DB, member.id, now)) >= MAX_FAILURES_PER_DAY
-  ) {
+  // This browser's own limits: it waits, and nobody else does
+  if ((counts?.hour ?? 0) >= MAX_CHALLENGES_PER_HOUR || (counts?.day ?? 0) >= MAX_CHALLENGES_PER_DAY) return res();
+  if ((await failuresToday(env.DB, nonceHash, now)) >= MAX_FAILURES_PER_DAY) return res();
+  // The member's inbox has had enough for today: on the record, for an admin to see
+  if ((counts?.everywhere ?? 0) >= MAX_CHALLENGES_PER_MEMBER_DAY) {
     await audit(env.DB, now, member.id, "sign_in.capped");
     return res();
   }
@@ -289,7 +297,7 @@ async function start(request: Request, env: AuthEnv, now: Date, waitUntil?: Wait
   await run(
     env.DB,
     `INSERT INTO login_challenges (member_id, code_hash, nonce_hash, expires_at, created_at) VALUES (?, ?, ?, ?, ?)`,
-    [member.id, await sha256(theCode), await sha256(nonce), addMs(now, CHALLENGE_MINUTES * 60_000), now.toISOString()],
+    [member.id, await sha256(theCode), nonceHash, addMs(now, CHALLENGE_MINUTES * 60_000), now.toISOString()],
   );
   // On your own machine nothing is emailed, even with Gmail set up: the code comes back to the screen
   if (local) return res(theCode);
@@ -349,8 +357,7 @@ async function verify(request: Request, env: AuthEnv, now: Date): Promise<Respon
   const live = await liveChallenges(request, env, now);
   if (!live) throw new HttpError(400, ELSEWHERE);
   const [nonceHash, challenges] = live;
-  const memberId = challenges[0].member_id;
-  if ((await failuresToday(env.DB, memberId, now)) >= MAX_FAILURES_PER_DAY)
+  if ((await failuresToday(env.DB, nonceHash, now)) >= MAX_FAILURES_PER_DAY)
     throw new HttpError(429, "Too many wrong codes today. Try again tomorrow.");
   // Count the guess before looking at it, in one statement, so a burst of guesses can't all see "no tries yet"
   const counted = await first<{ id: number }>(
