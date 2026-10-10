@@ -50,7 +50,7 @@ admin does the same for a member who asks by email (their member sheet → Delet
   given up; earlier audit entries stop naming them (`apps/team/worker/members/members.erase.ts`). The audit log records
   the deletion as a change of standing only. The club's last admin can't delete their account.
 - The download is everything the app holds about them as JSON, except their skill rating, which is the organisers'
-  opinion and hidden from members; the privacy page says to ask for it.
+  opinion and hidden from members (the club's choice, 2026-10-10).
 - **Sign-in records are kept no longer than needed**, by the team app's hourly cron (`settings/retention.ts`): sign-in
   codes 30 days, a session 30 days after it ended, audit entries 2 years.
 - Backups keep a deleted account for up to 90 days ([ADR 0106](0106-database-backups.md)); the privacy page says so.
