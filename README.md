@@ -115,15 +115,16 @@ Deploys the `cougars` worker and migrates the `cougars` D1 database on the **Cou
 
   Account API tokens use role-style permissions, grouped by what they apply to:
 
-  | Applies to             | Permission           | Why                                                  |
-  | ---------------------- | -------------------- | ---------------------------------------------------- |
-  | Entire Cougars account | Workers Admin        | Deploy the `cougars` worker (Editor can't create it) |
-  | Entire Cougars account | Workers Editor       | (also on the token; Admin covers it)                 |
-  | Entire Cougars account | D1 Write             | Create and migrate the `cougars` database            |
-  | Entire Cougars account | Turnstile Write      | Make the Turnstile widget (`turnstile-setup.mjs`)    |
-  | All zones in Cougars   | Zone Read            | Find the batterseacougars.com zone                   |
-  | All zones in Cougars   | DNS Write            | The deploy creates the domain's DNS records          |
-  | All zones in Cougars   | Workers Routes Write | Attach the domain to the worker (`target.mjs`)       |
+  | Applies to             | Permission           | Why                                                     |
+  | ---------------------- | -------------------- | ------------------------------------------------------- |
+  | Entire Cougars account | Workers Admin        | Deploy the `cougars` worker (Editor can't create it)    |
+  | Entire Cougars account | Workers Editor       | (also on the token; Admin covers it)                    |
+  | Entire Cougars account | D1 Write             | Create and migrate the `cougars` database               |
+  | Entire Cougars account | Turnstile Write      | Make the Turnstile widget (`turnstile-setup.mjs`)       |
+  | All zones in Cougars   | Zone WAF Write       | The domain's rate-limiting rule (`ratelimit-setup.mjs`) |
+  | All zones in Cougars   | Zone Read            | Find the batterseacougars.com zone                      |
+  | All zones in Cougars   | DNS Write            | The deploy creates the domain's DNS records             |
+  | All zones in Cougars   | Workers Routes Write | Attach the domain to the worker (`target.mjs`)          |
 
 - **Used by:** `deploy.yml` on `release` and Studio publishes only (`target.mjs`, migrations, `wrangler deploy`).
 - **Gets there by:** CI pull from Secrets Manager (code reads `CLOUDFLARE_API_TOKEN`).

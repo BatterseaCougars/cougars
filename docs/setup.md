@@ -128,3 +128,11 @@ separate Cloudflare account, and a domain can only point at workers in its own.
 
 The form rate limit and the edge cache start working on the domain: Cloudflare's Cache API is disabled on
 `*.workers.dev`. At launch, switch the Google Auth Platform **Branding** URLs to the domain (README.md#gmail).
+
+**Rate limiting** (#57): the zone's one free rate-limiting rule blocks an address that sends more than 150 requests in
+10 seconds (per Cloudflare data centre) for 10 seconds, on the site, `www.` and the team app, before a scraper costs a
+Worker request. The Workers' own limits on forms and sign-in still apply behind it. 150 leaves room for a whole club on
+the rink's Wi-Fi (one address) opening the app at once. It's written by
+`node scripts/env-pull.mjs --environment production -- node scripts/ratelimit-setup.mjs`, which needs **Zone WAF
+Write** on the production token; change the number there and run it again. Seen under Security → WAF → Rate limiting
+rules.
