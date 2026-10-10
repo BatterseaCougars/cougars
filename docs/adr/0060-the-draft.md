@@ -56,7 +56,7 @@ goes wrong needs a way back, and who was picked first or last is the stuff of a 
 
 ### Who sees what
 
-- The server decides, in the `tournaments` slice (`draftSeenBy` in `worker/api.ts`). A draft's captains, whoever runs
+- The server decides, in the `tournaments` slice (`draftSeenBy` in `worker/api.slices.ts`). A draft's captains, whoever runs
   it (`run:Draft`) and admins who edit teams (`manage:Tournament`) see everything, live.
 - Anyone else, while it's scheduled or open: the captains and no players.
 - Once it's closed: the teams with no pick numbers, each team's players in an order that says nothing (a hash of team

@@ -1,0 +1,101 @@
+// Training (ADR 0030, ADR 0076): series and their sessions, the register, and the night's teams.
+import { can } from "../src/access/actions";
+import { id, memberIdIn, ok, type Route } from "./api.route";
+import { setSeriesFees } from "./dues";
+import { mark } from "./entries";
+import { HttpError, body, json } from "./http";
+import { createSeries, moreSessions, setSessionCancelled, updateSeries } from "./schedule";
+import { publishTeams, removeTeams, resetSession, sessionSignups } from "./teams";
+
+export const TRAINING_ROUTES: Route[] = [
+  {
+    method: "POST",
+    path: /^\/api\/series$/,
+    audit: false,
+    action: "manage:Training",
+    changes: ["series", "sessions", "charges", "credits", "payments"],
+    handle: async (c) => {
+      const b = await body(c.request);
+      const made = await createSeries(c.env.DB, b, c.today);
+      // A new training is free until whoever sets fees says otherwise
+      if (can(c.actions, "manage:Fees")) await setSeriesFees(c.env.DB, made.id, b.fees, c.actions);
+      return json(made, 201);
+    },
+  },
+  {
+    method: "PUT",
+    path: /^\/api\/series\/(\d+)$/,
+    audit: false,
+    action: "manage:Training",
+    changes: ["series", "sessions", "charges", "credits", "payments"],
+    // Its fees too, for whoever sets fees (ADR 0007)
+    handle: async (c) => {
+      const b = await body(c.request);
+      await setSeriesFees(c.env.DB, id(c), b.fees, c.actions);
+      await updateSeries(c.env.DB, id(c), b, c.today);
+      return ok();
+    },
+  },
+  {
+    method: "POST",
+    path: /^\/api\/series\/(\d+)\/more$/,
+    audit: false,
+    action: "manage:Training",
+    changes: ["sessions"],
+    handle: async (c) => (await moreSessions(c.env.DB, id(c), c.today), ok()),
+  },
+  {
+    method: "POST",
+    path: /^\/api\/sessions\/(\d+)\/cancelled$/,
+    audit: false,
+    action: "manage:Training",
+    changes: ["sessions", "members", "charges", "credits", "payments"],
+    handle: async (c) => {
+      const b = await body(c.request);
+      if (typeof b.cancelled !== "boolean") throw new HttpError(400, "cancelled should be true or false.");
+      await setSessionCancelled(c.env.DB, id(c), b.cancelled, c.now);
+      return ok();
+    },
+  },
+  {
+    method: "POST",
+    path: /^\/api\/sessions\/(\d+)\/teams$/,
+    audit: false,
+    action: "publish:Teams",
+    changes: ["sessions"],
+    handle: async (c) => (await publishTeams(c.env.DB, id(c), await body(c.request), c.memberId, c.now), ok()),
+  },
+  {
+    method: "DELETE",
+    path: /^\/api\/sessions\/(\d+)\/teams$/,
+    audit: false,
+    action: "publish:Teams",
+    changes: ["sessions"],
+    // Take the teams down; the sign-ups stay
+    handle: async (c) => (await removeTeams(c.env.DB, id(c)), ok()),
+  },
+  {
+    method: "POST",
+    path: /^\/api\/sessions\/(\d+)\/reset$/,
+    audit: { event: "session.reset", subject: (c) => sessionSignups(c.env.DB, id(c)) },
+    action: "update:Event",
+    changes: ["sessions", "charges", "credits", "payments"],
+    // Start the session again: no sign-ups, no teams
+    handle: async (c) => (await resetSession(c.env.DB, id(c)), ok()),
+  },
+  {
+    method: "POST",
+    path: /^\/api\/sessions\/(\d+)\/register$/,
+    audit: false,
+    action: "record:Attendance",
+    // Who came is who's charged (ADR 0007)
+    changes: ["sessions", "members", "charges", "credits", "payments"],
+    // The register on the night: here or not
+    handle: async (c) => {
+      const { b, memberId } = await memberIdIn(c);
+      if (typeof b.here !== "boolean") throw new HttpError(400, "here should be true or false.");
+      await mark(c.env.DB, id(c), memberId, b.here, c.memberId, c.now);
+      return ok();
+    },
+  },
+];

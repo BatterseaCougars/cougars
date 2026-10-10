@@ -33,7 +33,7 @@ already loaded only when shown, but registered all of its community modules: 1.1
 
 **Changes reply with what they touched.**
 
-- The club is read in named parts (`SLICES` in `apps/team/worker/api.ts`): everydayRole, members, roles, venues,
+- The club is read in named parts (`SLICES` in `apps/team/worker/api.slices.ts`): everydayRole, members, roles, venues,
   series, sessions (with sign-ups and teams), tournamentTypes, tournaments, clubEvents, quips,
   settings, agenda. The bootstrap is all of them.
 - Every route that isn't a GET declares `changes`: the parts it can touch. A test fails if one doesn't. For example,
