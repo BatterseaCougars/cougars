@@ -21,7 +21,7 @@ be checked before it goes live. Ark deploys `main` to dev and production from a 
 | ------------------- | -------------------------------------------------- | -------------------------------------------------------------------- |
 | Cloudflare account  | **Cougars**                                        | **Cougars Dev** (free)                                               |
 | Website worker / D1 | `web` / `cougars`, at batterseacougars.com         | `web` / `cougars-dev`, at `web.cougars-dev.workers.dev`              |
-| Team app worker     | none until launch                                  | `team`, on dev's D1, at `team.cougars-dev.workers.dev`               |
+| Team app worker     | `team`, at team.batterseacougars.com               | `team`, on dev's D1, at `team.cougars-dev.workers.dev`               |
 | Deploys from        | `release`, the daily rebuild, by `deploy.yml` only | `main`, PRs (preview versions), `scripts/deploy-dev.sh`              |
 | Secret names        | `NAME__PRODUCTION`                                 | `NAME__DEV`                                                          |
 | Bitwarden project   | `cougars`                                          | `cougars-dev` (also holds shared plain `NAME`s)                      |
@@ -35,7 +35,7 @@ be checked before it goes live. Ark deploys `main` to dev and production from a 
 | ------------------------ | ----------- | --------------------------------------------------------------------------- |
 | Pull request into `main` | dev         | a preview version of `web` (`pr-<n>` alias), linked on the PR               |
 | Push to `main`           | dev         | `web`, then the team app as `team`                                          |
-| Push to `release`        | production  | `web` and the hosted Studio                                                 |
+| Push to `release`        | production  | `web`, the team app as `team`, and the hosted Studio                        |
 | Daily, 04:30 UTC         | production  | `web`, rebuilt from `release` ([ADR 0004](0004-astro-workers-sanity-d1.md)) |
 
 - **One job per app, and only the apps a change touches.** `deploy.yml`'s `changes` job reads the files a push or PR
@@ -45,7 +45,7 @@ be checked before it goes live. Ark deploys `main` to dev and production from a 
   the roster), run only when `db/` or its scripts change, or on a manual `all`; both apps wait for it then, and
   otherwise deploy side by side.
 - **Every app is linked from GitHub's Deployments page**, under its own name: `web (dev)`, `web (PR preview)`,
-  `web (production)`, `team (dev)`, `studio (production)` (`scripts/ci/link-deployment.sh`), and each run's summary
+  `web (production)`, `team (dev)`, `team (production)`, `studio (production)` (`scripts/ci/link-deployment.sh`), and each run's summary
   lists them. Jobs read their GitHub environment's secrets with `deployment: false`, so `preview` and `production`
   list nothing of their own.
 - **Never deploy production by hand.** Going live is on purpose: fast-forward `release` to `main`
@@ -64,12 +64,20 @@ be checked before it goes live. Ark deploys `main` to dev and production from a 
   contains one), and public datasets need no read token.
 - **Workers are named for the app, not the club**: `web` and `team` in both accounts, since the account's workers.dev
   subdomain already says which environment (`cougars-dev`). Databases and Bitwarden projects keep their names.
-- **The team app deploys to dev only**, in the same job as the site, after the site has rebuilt dev's database and
-  seeded the roster (`scripts/ci/target.mjs dev team`). Its secrets come from dev's project (`GMAIL_*`,
-  `CLOUDFLARE_ANALYTICS_TOKEN`); a missing one is skipped. `SITE_ENV` is `dev`, so every email goes to the safe address
-  ([ADR 0027](0027-email-through-gmail-api.md)). No production deploy, no PR previews and no custom domain for it until
-  launch, which gets its own ADR. It deploys with `wrangler deploy`, not a previews-only upload, so the live hub's
-  Durable Object migration is applied ([ADR 0072](0072-live-updates.md)).
+- **The team app deploys like the website**, as its own job: `main` to dev, `release` to production at
+  `team.<the site's domain>`, a Workers custom domain (`scripts/ci/target.mjs <environment> team`). Its secrets come
+  from that environment's project (`GMAIL_*`, `CLOUDFLARE_ANALYTICS_TOKEN`, `GITHUB_APP_PRIVATE_KEY`); a missing one is
+  skipped. On dev `SITE_ENV` is `dev`, so every email goes to the safe address
+  ([ADR 0027](0027-email-through-gmail-api.md)). No PR previews: it deploys with `wrangler deploy`, not a
+  previews-only upload, so the live hub's Durable Object migration is applied ([ADR 0072](0072-live-updates.md)), and
+  `pr.yml` checks PRs instead (`svelte-check`, the Worker's `tsc`, a build).
+- **Every deploy is smoke-tested.** The team app's `/api/health` reads the database, so a broken D1 binding fails the
+  deploy; without a session the club answers 401, and the local sign-in doesn't answer at all
+  ([ADR 0023](0023-sign-in-and-sessions.md)).
+- **Rolling back is a workflow too**: Actions → _Roll back_ (`.github/workflows/rollback.yml`), run on `release` for
+  production or `main` for dev, puts one worker (`web` or `team`) back to the version before the last deploy, or to a
+  version id, with a reason. It is code only: the database stays as it is. The next deploy from that branch replaces
+  it, so revert the bad commit on `main` too, then release again.
 - **Team-app screens still on demo data are dev-only.** Dues, Fees, Unpaid fees and Upload have no backend yet; the
   bootstrap's `unfinished` flag (true unless `SITE_ENV` is `production`) shows them on dev and locally to try, and
   production leaves them, and every link to them, out ([#63](https://github.com/battersea-cougars/ark/issues/63)). Each comes
@@ -114,3 +122,5 @@ be checked before it goes live. Ark deploys `main` to dev and production from a 
   is listed as its own environment, and the jobs no longer list `preview` or `production` deploys.
 - 2026-10-09: The database rebuild and roster seed move to their own `database` job, so the team app no longer waits
   for the website.
+- 2026-10-10: The team app deploys to production from `release` at team.batterseacougars.com; PRs check it; health reads
+  D1; rollback through `rollback.yml` (#27).

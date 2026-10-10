@@ -4,7 +4,7 @@ name: Deploy
 # (docs/adr/0010-environments-and-deploys.md):
 # pull request    -> dev: a preview version of `web`, commented on the PR
 # main            -> dev: workers `web` and `team`, Cougars Dev account
-# release         -> production: worker `web` and the hosted Studio, Cougars account
+# release         -> production: workers `web` and `team` and the hosted Studio, Cougars account
 # website-rebuild -> that environment's website rebuilt: a result changed in the team app (ADR 0100), sent by its
 #                    GitHub App with client_payload.environment "dev" or "production"
 # schedule        -> daily production rebuild, so Studio changes go live (docs/adr/0004)
@@ -244,27 +244,30 @@ jobs:
         with:
           message: "Preview: ${{ steps.preview.outputs.url }} (`${{ env.PUBLIC_BUILD_VERSION }}`)"
 
-  # The team app (ADR 0010): its own worker on dev's account and D1, from main only. Production waits for launch, and
-  # PRs get no preview (a Worker with a Durable Object can't have preview versions).
+  # The team app (ADR 0010): its own worker `team` on the environment's account and D1, from main (dev) or release
+  # (production, at team.<the site's domain>). PRs get no preview (a Worker with a Durable Object can't have preview
+  # versions); pr.yml checks them.
   team:
     needs: [changes, database]
     if: >-
       !cancelled() && needs.changes.outputs.team == 'true' && needs.database.result != 'failure' &&
-      github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+      github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/release')
     runs-on: ubuntu-latest
     environment:
-      name: preview
+      name: ${{ github.ref == 'refs/heads/release' && 'production' || 'preview' }}
       deployment: false
     env:
-      SITE_ENV: dev
+      SITE_ENV: ${{ github.ref == 'refs/heads/release' && 'production' || 'dev' }}
+      # Production's site; target.mjs puts the team app on team.<its domain>. Dev stays on workers.dev.
+      SITE_URL: ${{ github.ref == 'refs/heads/release' && 'https://batterseacougars.com' || '' }}
       BWS_SERVER_URL: ${{ vars.BWS_SERVER_URL }}
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
       - uses: ./.github/actions/secrets
         with:
-          environment: dev
-          token: ${{ secrets.BWS_ACCESS_TOKEN__DEV }}
+          environment: ${{ env.SITE_ENV }}
+          token: ${{ secrets.BWS_ACCESS_TOKEN__PRODUCTION || secrets.BWS_ACCESS_TOKEN__DEV }}
 
       - name: Build version
         run: echo "PUBLIC_BUILD_VERSION=$(date -u +%Y.%m.%d)+$(git rev-parse --short HEAD)" >> "$GITHUB_ENV"
@@ -272,8 +275,8 @@ jobs:
       - name: Build
         run: npm run build -w @cougars/team
 
-      - name: Target dev
-        run: node scripts/ci/target.mjs dev team
+      - name: Target ${{ env.SITE_ENV }}
+        run: node scripts/ci/target.mjs "$SITE_ENV" team
 
       # `wrangler deploy`, not a previews-only upload, so the live hub's Durable Object migration is applied (ADR 0072)
       - name: Deploy
@@ -281,7 +284,9 @@ jobs:
         working-directory: apps/team
         run: |
           out=$(npx wrangler deploy -c dist/cougars_team/wrangler.json --message "$PUBLIC_BUILD_VERSION" 2>&1 | tee /dev/stderr)
-          echo "url=$(echo "$out" | grep -oE 'https://[^ ]+\.workers\.dev' | head -1)" >> "$GITHUB_OUTPUT"
+          url=$(echo "$out" | grep -oE 'https://[^ ]+\.workers\.dev' | head -1)
+          [ -n "$SITE_URL" ] && url="https://team.${SITE_URL#https://}"
+          echo "url=$url" >> "$GITHUB_OUTPUT"
 
       - name: Worker secrets
         working-directory: apps/team
@@ -294,17 +299,18 @@ jobs:
             fi
           done
 
-      # A brand-new worker's workers.dev address can take a few seconds to answer. Then, with no session, the club is
-      # closed (401): the local-only switches (ADR 0023) are off, as a deploy must have them.
+      # A brand-new address can take a while to answer (a workers.dev name seconds, a new domain's certificate
+      # minutes). Health reads the database, so a broken binding fails here. Then, with no session, the club is closed
+      # (401): the local-only switches (ADR 0023) are off, as a deploy must have them.
       - name: Smoke test
         run: |
           url="${{ steps.deploy.outputs.url }}"
-          for i in $(seq 12); do
+          for i in $(seq 30); do
             code=$(curl -s -o /dev/null -w '%{http_code}' "$url/api/health")
             echo "$url/api/health answered $code"
             [ "$code" = 200 ] && break
-            [ "$i" = 12 ] && exit 1
-            sleep 5
+            [ "$i" = 30 ] && exit 1
+            sleep 10
           done
           closed=$(curl -s -o /dev/null -w '%{http_code}' "$url/api/bootstrap")
           echo "$url/api/bootstrap without a session answered $closed"
@@ -322,7 +328,9 @@ jobs:
       - name: Link the team app
         env:
           GH_TOKEN: ${{ github.token }}
-        run: scripts/ci/link-deployment.sh "team (dev)" "${{ steps.deploy.outputs.url }}"
+        run: |
+          scripts/ci/link-deployment.sh "team (${{ env.SITE_ENV }})" "${{ steps.deploy.outputs.url }}" \
+            ${{ env.SITE_ENV == 'production' && 'production' || '' }}
 
   # The Studio (https://battersea-cougars.sanity.studio) ships with production: from `release` only
   # (docs/adr/0010-environments-and-deploys.md). Cougars Dev's Studio runs locally (port 4520), not hosted.

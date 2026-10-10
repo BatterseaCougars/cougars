@@ -24,6 +24,10 @@ beforeEach(() => {
   env = { DB: db, TEAM_ENV: "local", TEAM_AUTO_ADMIN: "1" };
 });
 
+// The tests read whatever the API sent back; its shapes are checked by the assertions themselves.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Body = Record<string, any>;
+
 async function call(method: string, path: string, payload?: unknown, e: Env = env, now = NOW) {
   const res = await handleApi(
     new Request(`http://team.test${path}`, {
@@ -34,13 +38,11 @@ async function call(method: string, path: string, payload?: unknown, e: Env = en
     e,
     now,
   );
-  // The tests read whatever the API sent back; its shapes are checked by the assertions themselves.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return { status: res.status, body: (await res.json()) as Record<string, any> };
+  return { status: res.status, body: (await res.json()) as Body };
 }
 const boot = async () => (await call("GET", "/api/bootstrap")).body;
 /** The sessions still to come (bootstrap also sends the last four weeks, for what's just been held). */
-const ahead = (b: { sessions: { heldOn: string }[] }) => b.sessions.filter((s) => s.heldOn >= "2026-10-06");
+const ahead = (b: Body) => b.sessions.filter((s: { heldOn: string }) => s.heldOn >= "2026-10-06");
 
 describe("opening the app", () => {
   it("shows every Friday for the next 12 weeks at Battersea Sports Centre, 21 skaters and 3 goalies", async () => {
@@ -731,6 +733,14 @@ describe("teams, quips, profiles and attendance", () => {
     });
     await call("POST", `/api/sessions/${march.sessionId}/register`, { memberId: reg, here: false });
     expect(await played()).toBe(0);
+  });
+});
+
+describe("is it up", () => {
+  it("says it's up only when it can read the club's database, so a deploy with a broken binding fails its check", async () => {
+    expect(await call("GET", "/api/health")).toEqual({ status: 200, body: { ok: true } });
+    const broken = { ...env, DB: { prepare: () => ({ first: () => Promise.reject(new Error("no such binding")) }) } };
+    expect((await call("GET", "/api/health", undefined, broken as unknown as Env)).status).toBe(503);
   });
 });
 

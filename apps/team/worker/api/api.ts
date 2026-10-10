@@ -65,6 +65,16 @@ async function whoIs(request: Request, env: Env, now: Date): Promise<{ memberId:
   return null;
 }
 
+async function health(env: Env): Promise<Response> {
+  try {
+    await env.DB.prepare("SELECT 1").first();
+    return json({ ok: true });
+  } catch (e) {
+    console.error(JSON.stringify({ event: "health.failed", error: String(e) }));
+    return json({ ok: false }, 503);
+  }
+}
+
 export async function handleApi(
   request: Request,
   env: Env,
@@ -72,7 +82,8 @@ export async function handleApi(
   waitUntil?: (p: Promise<unknown>) => void,
 ): Promise<Response> {
   const url = new URL(request.url);
-  if (url.pathname === "/api/health") return json({ ok: true });
+  // Up means it can read the database: a deploy whose D1 binding is broken fails its smoke test (ADR 0010)
+  if (url.pathname === "/api/health") return health(env);
   if (!sameOrigin(request)) return json({ error: "That came from somewhere else." }, 403);
   try {
     // A generous limit per address (ADR 0055); sign-in and changes have tighter ones of their own

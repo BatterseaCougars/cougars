@@ -52,6 +52,10 @@ export function text(o: Record<string, unknown>, key: string, { optional = false
   if (typeof v !== "string" || v.length > max) throw new HttpError(400, `${key} should be text (up to ${max}).`);
   return v.trim();
 }
+type IntRange = { min?: number; max?: number };
+/** A whole number from the request, in range; null only when it may be left out (`nullable`). */
+export function int(o: Record<string, unknown>, key: string, range: IntRange & { nullable: true }): number | null;
+export function int(o: Record<string, unknown>, key: string, range?: IntRange & { nullable?: false }): number;
 export function int(o: Record<string, unknown>, key: string, { min = 0, max = 1_000_000, nullable = false } = {}) {
   const v = o[key];
   if (v == null || v === "") {

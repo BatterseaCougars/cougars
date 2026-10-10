@@ -4,11 +4,12 @@
 // `astro build` generated (apps/web/dist/server/wrangler.json, which `wrangler
 // deploy` uses) with its worker name, database and SITE_ENV. The workers are `web` and `team` in both accounts, so
 // dev is at web.<dev subdomain>.workers.dev and team.<dev subdomain>.workers.dev (ADR 0010). Production also gets its domain (from SITE_URL) as a
-// Workers custom domain: the deploy creates the DNS records and certificate, on both the bare domain and www.
+// Workers custom domain: the deploy creates the DNS records and certificate, on both the bare domain and www (the
+// team app on team.<domain>).
 //
 //   node scripts/ci/target.mjs production|dev      (after `npm run build`)
-//   node scripts/ci/target.mjs dev team            (the team app, after `npm run build -w @cougars/team`: worker
-//                                                   `team` on the same D1, ADR 0010; no domain yet)
+//   node scripts/ci/target.mjs production|dev team (the team app, after `npm run build -w @cougars/team`: worker
+//                                                   `team` on the same D1, ADR 0010)
 //   node scripts/ci/target.mjs production|dev db   (no build: writes apps/web/dist/d1/wrangler.json, naming only the
 //                                                   database, for the D1 scripts in deploy.yml's `database` job)
 //
@@ -60,11 +61,12 @@ config.name = target.worker;
 config.vars = { ...config.vars, SITE_ENV: environment };
 // The team app's Usage page reads this account's analytics (worker/settings/usage.ts); the id isn't secret
 if (team && process.env.CLOUDFLARE_ACCOUNT_ID) config.vars.CLOUDFLARE_ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID;
-if (environment === "production" && !team) {
+if (environment === "production") {
   const host = URL.canParse(process.env.SITE_URL ?? "") ? new URL(process.env.SITE_URL).hostname : "";
   if (!host || host.endsWith(".workers.dev"))
     throw new Error(`SITE_URL isn't production's domain: "${process.env.SITE_URL}"`);
-  config.routes = [host, `www.${host}`].map((pattern) => ({ pattern, custom_domain: true }));
+  const hosts = team ? [`team.${host}`] : [host, `www.${host}`];
+  config.routes = hosts.map((pattern) => ({ pattern, custom_domain: true }));
 }
 config.d1_databases = config.d1_databases.map((d) => ({ ...d, database_name: target.db, database_id: db.uuid }));
 writeFileSync(GENERATED, JSON.stringify(config));

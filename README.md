@@ -56,29 +56,29 @@ Rules ([ADR 0002](docs/adr/0002-secrets-in-bitwarden.md), [ADR 0010](docs/adr/00
 - **Every secret has an entry below.** Adding one: create the token with its secret name, add it to Secrets
   Manager with `node scripts/secret-set.mjs NAME` (hidden prompt; it picks the project from the name), add it here.
 
-| Secret                                                                    | Project       | Issued by                   | Used by                      |
-| ------------------------------------------------------------------------- | ------------- | --------------------------- | ---------------------------- |
-| [`BWS_ACCESS_TOKEN__PRODUCTION`](#bitwarden-tokens)                       | (GitHub)      | Bitwarden, `cougars-ci`     | Production deploys           |
-| [`BWS_ACCESS_TOKEN__DEV`](#bitwarden-tokens)                              | (GitHub)      | Bitwarden, `cougars-ci-dev` | PR previews                  |
-| [`COUGARS_LOCAL_BW_TOKEN`](#bitwarden-tokens)                             | (your vault)  | Bitwarden, `cougars-local`  | Your machine                 |
-| [`CLOUDFLARE_API_TOKEN__PRODUCTION`](#cloudflare_api_token__production)   | `cougars`     | Cloudflare, Cougars         | Production deploys           |
-| [`CLOUDFLARE_ACCOUNT_ID__PRODUCTION`](#cloudflare_account_id__production) | `cougars`     | Cloudflare, Cougars         | Production deploys           |
-| [`CLOUDFLARE_API_TOKEN__DEV`](#cloudflare_api_token__dev)                 | `cougars-dev` | Cloudflare, Cougars Dev     | PR previews, `deploy-dev.sh` |
-| [`CLOUDFLARE_ACCOUNT_ID__DEV`](#cloudflare_account_id__dev)               | `cougars-dev` | Cloudflare, Cougars Dev     | PR previews, `deploy-dev.sh` |
-| [`CLOUDFLARE_ANALYTICS_TOKEN__PRODUCTION`](#cloudflare_analytics_token)   | `cougars`     | Cloudflare, Cougars         | Team app Usage page          |
-| [`CLOUDFLARE_ANALYTICS_TOKEN__DEV`](#cloudflare_analytics_token)          | `cougars-dev` | Cloudflare, Cougars Dev     | Team app Usage page (dev)    |
-| [`SANITY_DEPLOY_TOKEN__PRODUCTION`](#sanity_deploy_token__production)     | `cougars`     | Sanity                      | Studio deploys               |
-| [`YOUTUBE_API_KEY__PRODUCTION`](#youtube-api-keys)                        | `cougars`     | Google Cloud                | Website (production)         |
-| [`YOUTUBE_API_KEY__DEV`](#youtube-api-keys)                               | `cougars-dev` | Google Cloud                | Website (dev)                |
-| [`GMAIL_CLIENT_ID`](#gmail)                                               | `cougars-dev` | Google Cloud                | Website (both)               |
-| [`GMAIL_CLIENT_SECRET`](#gmail)                                           | `cougars-dev` | Google Cloud                | Website (both)               |
-| [`GMAIL_REFRESH_TOKEN__PRODUCTION`](#gmail)                               | `cougars`     | Google, club Gmail          | Website (production)         |
-| [`GMAIL_REFRESH_TOKEN`](#gmail)                                           | `cougars-dev` | Google, dev Gmail           | Website (dev)                |
-| [`TURNSTILE_SECRET_KEY__PRODUCTION`](#turnstile)                          | `cougars`     | Cloudflare, Cougars         | Website (production)         |
-| [`TURNSTILE_SECRET_KEY`](#turnstile)                                      | `cougars-dev` | Cloudflare, Cougars Dev     | Website (dev)                |
-| [`TEAM_ROSTER__PRODUCTION`](#team-roster)                                 | `cougars`     | (the admins only)           | Deploys (D1 seed)            |
-| [`TEAM_ROSTER`](#team-roster)                                             | `cougars-dev` | (the club's roster)         | Deploys (D1 seed)            |
-| [`GITHUB_APP_PRIVATE_KEY`](#github_app_private_key)                       | `cougars-dev` | GitHub, `Cougars rebuilds`  | Team app (both): rebuilds    |
+| Secret                                                                    | Project       | Issued by                   | Used by                        |
+| ------------------------------------------------------------------------- | ------------- | --------------------------- | ------------------------------ |
+| [`BWS_ACCESS_TOKEN__PRODUCTION`](#bitwarden-tokens)                       | (GitHub)      | Bitwarden, `cougars-ci`     | Production deploys             |
+| [`BWS_ACCESS_TOKEN__DEV`](#bitwarden-tokens)                              | (GitHub)      | Bitwarden, `cougars-ci-dev` | PR previews                    |
+| [`COUGARS_LOCAL_BW_TOKEN`](#bitwarden-tokens)                             | (your vault)  | Bitwarden, `cougars-local`  | Your machine                   |
+| [`CLOUDFLARE_API_TOKEN__PRODUCTION`](#cloudflare_api_token__production)   | `cougars`     | Cloudflare, Cougars         | Production deploys             |
+| [`CLOUDFLARE_ACCOUNT_ID__PRODUCTION`](#cloudflare_account_id__production) | `cougars`     | Cloudflare, Cougars         | Production deploys             |
+| [`CLOUDFLARE_API_TOKEN__DEV`](#cloudflare_api_token__dev)                 | `cougars-dev` | Cloudflare, Cougars Dev     | PR previews, `deploy-dev.sh`   |
+| [`CLOUDFLARE_ACCOUNT_ID__DEV`](#cloudflare_account_id__dev)               | `cougars-dev` | Cloudflare, Cougars Dev     | PR previews, `deploy-dev.sh`   |
+| [`CLOUDFLARE_ANALYTICS_TOKEN__PRODUCTION`](#cloudflare_analytics_token)   | `cougars`     | Cloudflare, Cougars         | Team app Usage page            |
+| [`CLOUDFLARE_ANALYTICS_TOKEN__DEV`](#cloudflare_analytics_token)          | `cougars-dev` | Cloudflare, Cougars Dev     | Team app Usage page (dev)      |
+| [`SANITY_DEPLOY_TOKEN__PRODUCTION`](#sanity_deploy_token__production)     | `cougars`     | Sanity                      | Studio deploys                 |
+| [`YOUTUBE_API_KEY__PRODUCTION`](#youtube-api-keys)                        | `cougars`     | Google Cloud                | Website (production)           |
+| [`YOUTUBE_API_KEY__DEV`](#youtube-api-keys)                               | `cougars-dev` | Google Cloud                | Website (dev)                  |
+| [`GMAIL_CLIENT_ID`](#gmail)                                               | `cougars-dev` | Google Cloud                | Website, team app (both)       |
+| [`GMAIL_CLIENT_SECRET`](#gmail)                                           | `cougars-dev` | Google Cloud                | Website, team app (both)       |
+| [`GMAIL_REFRESH_TOKEN__PRODUCTION`](#gmail)                               | `cougars`     | Google, club Gmail          | Website, team app (production) |
+| [`GMAIL_REFRESH_TOKEN`](#gmail)                                           | `cougars-dev` | Google, dev Gmail           | Website, team app (dev)        |
+| [`TURNSTILE_SECRET_KEY__PRODUCTION`](#turnstile)                          | `cougars`     | Cloudflare, Cougars         | Website (production)           |
+| [`TURNSTILE_SECRET_KEY`](#turnstile)                                      | `cougars-dev` | Cloudflare, Cougars Dev     | Website (dev)                  |
+| [`TEAM_ROSTER__PRODUCTION`](#team-roster)                                 | `cougars`     | (the admins only)           | Deploys (D1 seed)              |
+| [`TEAM_ROSTER`](#team-roster)                                             | `cougars-dev` | (the club's roster)         | Deploys (D1 seed)              |
+| [`GITHUB_APP_PRIVATE_KEY`](#github_app_private_key)                       | `cougars-dev` | GitHub, `Cougars rebuilds`  | Team app (both): rebuilds      |
 
 ### Bitwarden tokens
 
@@ -233,7 +233,7 @@ inbox, and dev can only ever send from its own test account, never the club's.
   The script opens Google's consent page, catches the answer on `http://localhost:4590` and saves the token straight
   to Secrets Manager; nothing is printed.
 
-- **Used by:** the website's enquiry form (Worker), to send mail. The refresh token can send mail as its account
+- **Used by:** the website's enquiry form (Worker) and the team app's sign-in codes and notices, to send mail. The refresh token can send mail as its account
   and nothing else: it can't read the mailbox.
 - **Gets there by:** CI pull from Secrets Manager (`GMAIL_REFRESH_TOKEN__PRODUCTION` becomes `GMAIL_REFRESH_TOKEN`),
   then `deploy.yml` pushes all three to the Worker as secrets on every deploy. Locally,

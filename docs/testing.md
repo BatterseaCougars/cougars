@@ -15,7 +15,7 @@ next to the code runs without editing config.
 | `npx vitest run -t "walk-in"`  | tests whose name matches            |
 | VS Code test explorer (Vitest) | any file or single test             |
 
-Before pushing: `npm run lint && npm test && npm run check -w @cougars/web && npm run build`.
+Before pushing: `npm run lint && npm test && npm run check -w @cougars/web && npm run check -w @cougars/team && npm run build`.
 
 ## Signed in, in a real browser
 

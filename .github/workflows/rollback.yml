@@ -1,0 +1,54 @@
+name: Roll back
+
+# Put one app's worker back to its version before the last deploy, or to a version you name (ADR 0010). For when a
+# deploy breaks something and a revert through `main` and `release` would take too long. It goes through CI like every
+# deploy, so production is still never touched by hand. Run it from the Actions tab on `release` for production, or on
+# `main` for dev. The database stays as it is: a rollback puts back code, not data (backups: #31).
+#
+# The next deploy from that branch replaces it again, so revert the bad commit on `main` too.
+on:
+  workflow_dispatch:
+    inputs:
+      app:
+        description: Which worker to roll back
+        type: choice
+        options: [web, team]
+      version:
+        description: A version id to go back to (blank for the one before the last deploy)
+        type: string
+        default: ""
+      reason:
+        description: Why (kept with the deploy on Cloudflare)
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  rollback:
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/release'
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.ref == 'refs/heads/release' && 'production' || 'preview' }}
+      deployment: false
+    env:
+      SITE_ENV: ${{ github.ref == 'refs/heads/release' && 'production' || 'dev' }}
+      BWS_SERVER_URL: ${{ vars.BWS_SERVER_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - uses: ./.github/actions/secrets
+        with:
+          environment: ${{ env.SITE_ENV }}
+          token: ${{ secrets.BWS_ACCESS_TOKEN__PRODUCTION || secrets.BWS_ACCESS_TOKEN__DEV }}
+
+      - name: Roll back ${{ inputs.app }} (${{ env.SITE_ENV }})
+        env:
+          APP: ${{ inputs.app }}
+          VERSION: ${{ inputs.version }}
+          REASON: ${{ inputs.reason }}
+        run: |
+          npx wrangler deployments list --name "$APP" | tail -40
+          npx wrangler rollback $VERSION --name "$APP" --message "$REASON" --yes
+          echo "- **$APP ($SITE_ENV)** rolled back${VERSION:+ to $VERSION}: $REASON" >> "$GITHUB_STEP_SUMMARY"
