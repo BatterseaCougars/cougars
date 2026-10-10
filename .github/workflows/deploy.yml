@@ -148,13 +148,17 @@ jobs:
           retention-days: 90
           if-no-files-found: error
 
+      # Production rebuilds like dev until it's launched (the production environment's variable LAUNCHED, ADR 0050):
+      # before that it's behind Cloudflare Access with only the admins' data, which a rebuild keeps
       - name: Migrate, or rebuild before launch
         working-directory: apps/web
+        env:
+          LAUNCHED: ${{ github.ref == 'refs/heads/release' && vars.LAUNCHED || '' }}
         run: |
           if ls ../../db/migrations/*.sql >/dev/null 2>&1; then
             node ../../scripts/db-migrate.mjs --remote -c dist/d1/wrangler.json
-          elif [ "$SITE_ENV" = production ]; then
-            echo "::error::Production never rebuilds its database (ADR 0050). Launch it first: node scripts/db-launch.mjs"
+          elif [ "$LAUNCHED" = true ]; then
+            echo "::error::Production is launched, so it never rebuilds its database (ADR 0050): node scripts/db-launch.mjs"
             exit 1
           else
             node ../../scripts/db-rebuild.mjs --remote -c dist/d1/wrangler.json
@@ -332,27 +336,32 @@ jobs:
 
       # A brand-new address can take a while to answer (a workers.dev name seconds, a new domain's certificate
       # minutes). Health reads the database, so a broken binding fails here. Then, with no session, the club is closed
-      # (401): the local-only switches (ADR 0023) are off, as a deploy must have them.
+      # (401): the local-only switches (ADR 0023) are off, as a deploy must have them. Before launch production is
+      # behind Cloudflare Access; CI gets past it with its service token (CF_ACCESS_CLIENT_ID/SECRET, ADR 0010).
       - name: Smoke test
         run: |
           url="${{ steps.deploy.outputs.url }}"
+          access=()
+          [ -n "$CF_ACCESS_CLIENT_ID" ] &&
+            access=(-H "CF-Access-Client-Id: $CF_ACCESS_CLIENT_ID" -H "CF-Access-Client-Secret: $CF_ACCESS_CLIENT_SECRET")
+          c() { curl -s "${access[@]}" "$@"; }
           for i in $(seq 30); do
-            code=$(curl -s -o /dev/null -w '%{http_code}' "$url/api/health")
+            code=$(c -o /dev/null -w '%{http_code}' "$url/api/health")
             echo "$url/api/health answered $code"
             [ "$code" = 200 ] && break
             [ "$i" = 30 ] && exit 1
             sleep 10
           done
-          closed=$(curl -s -o /dev/null -w '%{http_code}' "$url/api/bootstrap")
+          closed=$(c -o /dev/null -w '%{http_code}' "$url/api/bootstrap")
           echo "$url/api/bootstrap without a session answered $closed"
           [ "$closed" = 401 ]
-          live=$(curl -s -o /dev/null -w '%{http_code}' "$url/api/live")
+          live=$(c -o /dev/null -w '%{http_code}' "$url/api/live")
           echo "$url/api/live without a session answered $live"
           [ "$live" = 401 ]
-          dev=$(curl -s -o /dev/null -w '%{http_code}' -X POST -H "origin: $url" -H 'content-type: application/json' -d '{}' "$url/api/auth/dev")
+          dev=$(c -o /dev/null -w '%{http_code}' -X POST -H "origin: $url" -H 'content-type: application/json' -d '{}' "$url/api/auth/dev")
           echo "$url/api/auth/dev (local sign-in) answered $dev"
           [ "$dev" != 200 ]
-          framed=$(curl -s -o /dev/null -D - "$url/" | grep -ic "^x-frame-options: DENY")
+          framed=$(c -o /dev/null -D - "$url/" | grep -ic "^x-frame-options: DENY")
           echo "$url/ carries X-Frame-Options: $framed"
           [ "$framed" = 1 ]
 

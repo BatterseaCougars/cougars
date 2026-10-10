@@ -3,6 +3,9 @@
 //   node scripts/ci/smoke-test.mjs <base-url> <expected-version>
 const [base, version] = process.argv.slice(2);
 if (!base || !version) throw new Error("usage: smoke-test.mjs <base-url> <expected-version>");
+// Before launch production is behind Cloudflare Access; CI gets past it with its service token (ADR 0010)
+const { CF_ACCESS_CLIENT_ID: accessId, CF_ACCESS_CLIENT_SECRET: accessSecret } = process.env;
+const access = accessId ? { "CF-Access-Client-Id": accessId, "CF-Access-Client-Secret": accessSecret } : {};
 
 const checks = [
   [
@@ -22,7 +25,7 @@ const checks = [
       const res = await fetch(new URL("/api/join", base), {
         method: "POST",
         // Same-origin, like a browser: Astro rejects form posts from other origins with 403
-        headers: { Accept: "application/json", Origin: new URL(base).origin },
+        headers: { ...access, Accept: "application/json", Origin: new URL(base).origin },
         body: new FormData(), // empty: must be rejected, so no row is written
       });
       if (res.status !== 400) throw new Error(`expected 400, got ${res.status}`);
@@ -31,7 +34,7 @@ const checks = [
 ];
 
 async function get(path) {
-  const res = await fetch(new URL(path, base), { redirect: "follow" });
+  const res = await fetch(new URL(path, base), { redirect: "follow", headers: access });
   if (!res.ok) throw new Error(`${path} -> ${res.status}`);
   return res;
 }
