@@ -1,6 +1,7 @@
 // Client-side history routing. Links are plain <a href>; the shell intercepts same-origin clicks.
 import { untrack } from "svelte";
 import type { TabId } from "./nav-routes";
+import { walk, type Move } from "./trail";
 
 const LAST_KEY = "team.mobile.last";
 
@@ -12,15 +13,28 @@ function readLast(): Partial<Record<TabId, string>> {
   }
 }
 
-/** `from`: the page this one was opened from, in the app (null after a reload or the browser's back and forward). */
-export const router = $state({ path: location.pathname, last: readLast(), from: null as string | null });
+/**
+ * `from`: the page this one was opened from, in the app, along the trail (#86); null after a reload, or once Back has
+ * walked the trail to its start. `back`: this page was reached by going back, so it opens where you left it.
+ */
+export const router = $state({ path: location.pathname, last: readLast(), from: null as string | null, back: false });
+
+let trail: string[] = [];
+function moved(move: Move) {
+  const next = walk(trail, move);
+  trail = next.trail;
+  router.from = trail.at(-1) ?? null;
+  router.back = next.back;
+}
 
 export function navigate(path: string, { replace = false } = {}) {
   if (path === router.path) return;
-  if (replace) history.replaceState({}, "", path);
-  else {
+  if (replace) {
+    history.replaceState({}, "", path);
+    moved({ kind: "replace" });
+  } else {
     history.pushState({}, "", path);
-    router.from = router.path;
+    moved({ kind: "open", from: router.path });
   }
   router.path = path;
 }
@@ -45,8 +59,8 @@ export function remember(tab: TabId, path: string) {
 }
 
 addEventListener("popstate", () => {
+  moved({ kind: "pop", to: location.pathname, from: router.path });
   router.path = location.pathname;
-  router.from = null;
 });
 
 /** Delegated click handler: route same-origin links without a reload. */

@@ -11,7 +11,7 @@
   import { can } from "../../access/actions";
   import { granted, impersonating, me, realMember, rolesOf, viewAs } from "../../demo/session.svelte";
   import { stripRoutes, tabHref, tabRoutes } from "../mobile-nav";
-  import { type Route, type TabId } from "../nav-routes";
+  import { routeFor, type Route, type TabId } from "../nav-routes";
   import { folds, routes, stayIfAllowed, tabs } from "../routes.svelte";
   import { navigate, router } from "../router.svelte";
   import { fly } from "svelte/transition";
@@ -160,6 +160,20 @@
   });
   const showBar = $derived(!route.focus && route.id !== "home");
 
+  // A page reached from another (a team, a matchup, a past Kumite, a member): Back, named for where you were, along
+  // the trail (#86). Opened from outside the app or after a reload, back to the page it belongs under.
+  const backTo = $derived.by(() => {
+    if (!route.hidden || route.focus) return null;
+    const from = router.from ? routeFor(all, router.from) : undefined;
+    const to = from ?? all.find((r) => r.id === route.under) ?? all.find((r) => r.tab === route.tab && !r.hidden);
+    return to ? { href: to.path, label: to.short ?? to.name, history: !!from } : null;
+  });
+  function back(e: MouseEvent) {
+    if (!backTo?.history || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    e.preventDefault();
+    history.back();
+  }
+
   // Phone bar: the filters sit in the bar when they fit beside the name and the actions. A hidden copy gives
   // their natural width, so the answer doesn't flip-flop as the Filters button comes and goes.
   let bar = $state<HTMLElement | undefined>();
@@ -224,11 +238,16 @@
   // svelte-ignore state_referenced_locally
   let prevFold: string | undefined = route.fold;
   let lastScroll = 0;
+  // Where each page was scrolled to, so going back opens it there (#86). Not state: only read as a page opens
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity
+  const scrolls = new Map<string, number>();
   $effect(() => {
     if (!content) return;
     const track = (e: Event) => {
       const el = e.target as HTMLElement;
-      if (el.classList?.contains("view")) lastScroll = el.scrollTop;
+      if (!el.classList?.contains("view")) return;
+      lastScroll = el.scrollTop;
+      scrolls.set(router.path, el.scrollTop);
     };
     content.addEventListener("scroll", track, true);
     return () => content?.removeEventListener("scroll", track, true);
@@ -241,6 +260,9 @@
     prevIndex = index;
     prevTab = route.tab;
     prevFold = route.fold;
+    // Back to a page: where you left it, once it's laid out
+    const saved = router.back ? scrolls.get(router.path) : undefined;
+    if (saved) requestAnimationFrame(() => ((node as HTMLElement).scrollTop = saved));
     if (focus) return zoom(node);
     if (within) {
       const view = node as HTMLElement;
@@ -362,7 +384,12 @@
         {#if showBar}
           <!-- Phones: the page's name or its section's pages, then its actions and filters -->
           <div class="phone-bar" bind:this={bar}>
-            {#if strip.length}
+            {#if backTo}
+              <a class="bar-back named" href={backTo.href} onclick={back}
+                ><Icon name="chevronLeft" size={20} /><span>{backTo.label}</span></a
+              >
+              <p class="bar-title" bind:this={lead}>{route.short ?? route.name}</p>
+            {:else if strip.length}
               {@render stripNav()}
             {:else}
               <!-- Pages opened from your profile lead back to it -->
@@ -1005,6 +1032,23 @@
       margin-left: calc(-1 * var(--s-2));
       margin-right: calc(-1 * var(--s-1));
       color: var(--red-hot);
+    }
+    /* Back, named for where you were: "‹ The board" */
+    .bar-back.named {
+      display: flex;
+      align-items: center;
+      gap: 0.1rem;
+      flex-shrink: 0;
+      width: auto;
+      max-width: 45%;
+      margin-right: var(--s-1);
+      font-size: var(--text-sm);
+      font-weight: 600;
+    }
+    .bar-back.named span {
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
     }
     /* The page title's face, smaller: heavy italic capitals, so the bar reads as the page's title */
     .bar-title {
