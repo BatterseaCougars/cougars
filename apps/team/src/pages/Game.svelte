@@ -79,7 +79,7 @@
   const running = $derived(!!game?.clockStartedAt);
   const over = $derived(game?.status === "done");
   const timeUp = $derived(game?.status === "live" && left === 0);
-  // A playoff can't end level (worker/scoring.ts): level at time up, it plays on and the next goal wins
+  // A playoff can't end level (worker/tournaments/scoring.ts): level at time up, it plays on and the next goal wins
   const level = $derived(!!game && game.stage === "playoff" && (game.homeGoals ?? 0) === (game.awayGoals ?? 0));
   // A buzz when time runs out on the scorekeeper's phone
   let buzzed = false;

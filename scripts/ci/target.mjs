@@ -58,7 +58,7 @@ if (dbOnly) {
 const config = JSON.parse(readFileSync(GENERATED, "utf8"));
 config.name = target.worker;
 config.vars = { ...config.vars, SITE_ENV: environment };
-// The team app's Usage page reads this account's analytics (worker/usage.ts); the id isn't secret
+// The team app's Usage page reads this account's analytics (worker/settings/usage.ts); the id isn't secret
 if (team && process.env.CLOUDFLARE_ACCOUNT_ID) config.vars.CLOUDFLARE_ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID;
 if (environment === "production" && !team) {
   const host = URL.canParse(process.env.SITE_URL ?? "") ? new URL(process.env.SITE_URL).hostname : "";

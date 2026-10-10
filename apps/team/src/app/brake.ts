@@ -10,7 +10,7 @@
 
 const FIRST_WAIT_MS = 10_000;
 const MAX_WAIT_MS = 5 * 60_000;
-/** Our own per-minute limit (worker/limits.ts): try again once the minute's up. */
+/** Our own per-minute limit (worker/api/api.limits.ts): try again once the minute's up. */
 const LIMITED_WAIT_MS = 60_000;
 const DAY_MS = 86_400_000;
 

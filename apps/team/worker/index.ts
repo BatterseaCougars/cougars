@@ -1,11 +1,11 @@
 // The team app's Worker (ADR 0022): the JSON API under /api, and the built app for everything else (the assets
 // binding falls back to index.html, so the app's own router takes any path).
-import { handleApi, type Env } from "./api";
-import { chargeDue } from "./dues";
-import { checkUsage } from "./usage";
-import { rebuildWebsite } from "./website";
+import { handleApi, type Env } from "./api/api";
+import { chargeDue } from "./dues/dues";
+import { checkUsage } from "./settings/usage";
+import { rebuildWebsite } from "./website/website";
 // The live hub (ADR 0072): Cloudflare finds the Durable Object class here
-export { LiveHub } from "./live";
+export { LiveHub } from "./live/live";
 
 // On every response the Worker sends. The app's pages and files are mostly served by the asset layer without the
 // Worker (wrangler.jsonc: run_worker_first is /api/* only), so public/_headers carries the same set for them; a test

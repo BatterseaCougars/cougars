@@ -1,0 +1,244 @@
+// Training (ADR 0030): series and their sessions. Sessions are rows, made 12 weeks ahead from each active series'
+// rule, so each can be cancelled on its own.
+import { syncSeries } from "@cougars/shared/agenda";
+import { all, first, run, type Param } from "@cougars/shared/d1";
+import { SCHEDULE_ICONS, TONES } from "../../src/demo/model";
+import { WEEKDAYS, addDays, datesToMake, type Weekday } from "../../src/lib/recurrence";
+import { HttpError, bool, date, int, oneOf, text, time } from "../api/api.http";
+import { freeSlug, slugify } from "../api/api.slugs";
+import { placeFields } from "../settings/venues";
+
+interface SeriesRow {
+  id: number;
+  slug: string;
+  name: string;
+  short_name: string;
+  icon: string;
+  tone: string;
+  repeat_every: number;
+  weekdays: string;
+  starts_on: string;
+  ends_on: string | null;
+  start_time: string;
+  end_time: string;
+  venue_id: number | null;
+  venue: string;
+  map_url: string;
+  capacity: number | null;
+  goalie_capacity: number | null;
+  public: number;
+  active: number;
+}
+
+const seriesJson = (s: SeriesRow, fees: { seriesId: number; pence: number; from: string }[]) => ({
+  id: s.id,
+  slug: s.slug,
+  name: s.name,
+  shortName: s.short_name,
+  icon: s.icon,
+  tone: s.tone,
+  repeatEvery: s.repeat_every,
+  weekdays: s.weekdays.split(",").filter(Boolean) as Weekday[],
+  startsOn: s.starts_on,
+  endsOn: s.ends_on,
+  startTime: s.start_time,
+  endTime: s.end_time,
+  venueId: s.venue_id,
+  venue: s.venue,
+  mapUrl: s.map_url,
+  capacity: s.capacity,
+  goalieCapacity: s.goalie_capacity,
+  public: Boolean(s.public),
+  active: Boolean(s.active),
+  // The fee per session, from each date (ADR 0007)
+  fees: fees.filter((f) => f.seriesId === s.id).map(({ pence, from }) => ({ pence, from })),
+});
+
+/** Training series as read (api.club.ts), each with its fees. */
+export const seriesFrom = (rows: SeriesRow[], fees: { seriesId: number; pence: number; from: string }[]) =>
+  rows.map((s) => seriesJson(s, fees));
+
+/** Make each active series' sessions up to the horizon. Dates already made (even cancelled or moved) are skipped. */
+export async function ensureSessions(db: D1Database, today: string) {
+  const series = await all<SeriesRow>(db, "SELECT * FROM training_series WHERE active = 1");
+  for (const s of series) {
+    const existing = await all<{ heldOn: string; movedFrom: string | null }>(
+      db,
+      "SELECT held_on heldOn, moved_from movedFrom FROM training_sessions WHERE series_id = ?",
+      [s.id],
+    );
+    const rule = {
+      repeatEvery: s.repeat_every,
+      weekdays: s.weekdays.split(",") as Weekday[],
+      startsOn: s.starts_on,
+      endsOn: s.ends_on,
+    };
+    const made = datesToMake(rule, existing, today);
+    for (const d of made)
+      await run(db, "INSERT OR IGNORE INTO training_sessions (series_id, held_on) VALUES (?, ?)", [s.id, d]);
+    // Only when there are new ones: this runs on every load of the app
+    if (made.length) await syncSeries(db, s.id);
+  }
+}
+
+/**
+ * An admin looks further ahead: the next 12 weeks of a training's sessions past the last one made, so a far-off
+ * date can be cancelled early. At most two years ahead.
+ */
+export async function moreSessions(db: D1Database, seriesId: number, today: string) {
+  const s = await first<SeriesRow>(db, "SELECT * FROM training_series WHERE id = ?", [seriesId]);
+  if (!s) throw new HttpError(404, "No such training.");
+  const existing = await all<{ heldOn: string; movedFrom: string | null }>(
+    db,
+    "SELECT held_on heldOn, moved_from movedFrom FROM training_sessions WHERE series_id = ?",
+    [s.id],
+  );
+  const last = existing.reduce((m, x) => (x.heldOn > m ? x.heldOn : m), today);
+  const limit = addDays(today, 2 * 365);
+  const to = addDays(last, 12 * 7) < limit ? addDays(last, 12 * 7) : limit;
+  const rule = {
+    repeatEvery: s.repeat_every,
+    weekdays: s.weekdays.split(",") as Weekday[],
+    startsOn: s.starts_on,
+    endsOn: s.ends_on,
+  };
+  for (const d of datesToMake(rule, existing, today, to))
+    await run(db, "INSERT OR IGNORE INTO training_sessions (series_id, held_on) VALUES (?, ?)", [s.id, d]);
+  await syncSeries(db, s.id);
+}
+
+/** A training session as read (api.club.ts), before its answers and teams. */
+export interface SessionRow {
+  id: number;
+  seriesId: number;
+  heldOn: string;
+  movedFrom: string | null;
+  startTime: string | null;
+  endTime: string | null;
+  venueId: number | null;
+  venue: string | null;
+  mapUrl: string | null;
+  capacity: number | null;
+  note: string | null;
+  cancelledAt: string | null;
+  registerClosedAt: string | null;
+}
+
+async function seriesFields(db: D1Database, o: Record<string, unknown>) {
+  const weekdays = o.weekdays;
+  if (!Array.isArray(weekdays) || !weekdays.length || weekdays.some((d) => !WEEKDAYS.includes(d as Weekday)))
+    throw new HttpError(400, "weekdays should list at least one day.");
+  const startsOn = date(o, "startsOn")!;
+  const endsOn = date(o, "endsOn", { nullable: true });
+  if (endsOn && endsOn < startsOn) throw new HttpError(400, "The last session can't be before the first.");
+  return {
+    name: text(o, "name", { max: 60 }),
+    shortName: text(o, "shortName", { max: 12 }),
+    icon: oneOf(o, "icon", SCHEDULE_ICONS),
+    tone: oneOf(o, "tone", TONES),
+    repeatEvery: int(o, "repeatEvery", { min: 1, max: 8 })!,
+    weekdays: WEEKDAYS.filter((d) => weekdays.includes(d)).join(","),
+    startsOn,
+    endsOn,
+    startTime: time(o, "startTime"),
+    endTime: time(o, "endTime"),
+    place: await placeFields(db, o, "venue"),
+    capacity: int(o, "capacity", { min: 1, max: 500, nullable: true }),
+    goalieCapacity: int(o, "goalieCapacity", { min: 0, max: 50, nullable: true }),
+    public: bool(o, "public"),
+    active: bool(o, "active"),
+  };
+}
+
+const seriesParams = (f: Awaited<ReturnType<typeof seriesFields>>): Param[] => [
+  f.name,
+  f.shortName,
+  f.icon,
+  f.tone,
+  f.repeatEvery,
+  f.weekdays,
+  f.startsOn,
+  f.endsOn,
+  f.startTime,
+  f.endTime,
+  ...f.place,
+  f.capacity,
+  f.goalieCapacity,
+  f.public ? 1 : 0,
+  f.active ? 1 : 0,
+];
+
+export async function createSeries(db: D1Database, o: Record<string, unknown>, today: string) {
+  const f = await seriesFields(db, o);
+  const slug = await freeSlug(db, "training_series", slugify(f.shortName || f.name));
+  const res = await run(
+    db,
+    `INSERT INTO training_series (name, short_name, icon, tone, repeat_every, weekdays, starts_on, ends_on, start_time,
+       end_time, venue_id, venue, map_url, capacity, goalie_capacity, public, active, slug)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [...seriesParams(f), slug],
+  );
+  await ensureSessions(db, today);
+  await syncSeries(db, Number(res.meta.last_row_id));
+  return { id: Number(res.meta.last_row_id), slug };
+}
+
+/**
+ * Change a series. Future sessions the new rule no longer makes go, unless they were moved or cancelled (an admin
+ * touched them) or, once sign-ups exist, someone has signed up. Then the rule fills in what's missing.
+ */
+export async function updateSeries(db: D1Database, id: number, o: Record<string, unknown>, today: string) {
+  if (!(await first(db, "SELECT 1 FROM training_series WHERE id = ?", [id])))
+    throw new HttpError(404, "No such training.");
+  const f = await seriesFields(db, o);
+  await run(
+    db,
+    `UPDATE training_series SET name = ?, short_name = ?, icon = ?, tone = ?, repeat_every = ?, weekdays = ?,
+       starts_on = ?, ends_on = ?, start_time = ?, end_time = ?, venue_id = ?, venue = ?, map_url = ?, capacity = ?, goalie_capacity = ?,
+       public = ?, active = ? WHERE id = ?`,
+    [...seriesParams(f), id],
+  );
+  const keep = new Set(
+    f.active
+      ? datesToMake(
+          {
+            repeatEvery: f.repeatEvery,
+            weekdays: f.weekdays.split(",") as Weekday[],
+            startsOn: f.startsOn,
+            endsOn: f.endsOn,
+          },
+          [],
+          today,
+        )
+      : [],
+  );
+  // A session someone has answered (or that was moved or cancelled) isn't untouched: it stays for them
+  const future = await all<{
+    id: number;
+    held_on: string;
+    moved_from: string | null;
+    cancelled_at: string | null;
+    answered: number;
+  }>(
+    db,
+    `SELECT s.id, s.held_on, s.moved_from, s.cancelled_at,
+            EXISTS (SELECT 1 FROM attendance a WHERE a.session_id = s.id) answered
+     FROM training_sessions s WHERE s.series_id = ? AND s.held_on >= ?`,
+    [id, today],
+  );
+  for (const s of future)
+    if (!keep.has(s.held_on) && !s.moved_from && !s.cancelled_at && !s.answered)
+      await run(db, "DELETE FROM training_sessions WHERE id = ?", [s.id]);
+  await ensureSessions(db, today);
+  await syncSeries(db, id);
+}
+
+/** Cancel one session (Christmas, Easter), or restore it. It stays a row, so whoever signed up can be told. */
+export async function setSessionCancelled(db: D1Database, id: number, cancelled: boolean, now: string) {
+  const res = await run(db, "UPDATE training_sessions SET cancelled_at = ? WHERE id = ?", [cancelled ? now : null, id]);
+  if (!res.meta.changes) throw new HttpError(404, "No such session.");
+  const s = await first<{ seriesId: number }>(db, "SELECT series_id seriesId FROM training_sessions WHERE id = ?", [
+    id,
+  ]);
+  if (s) await syncSeries(db, s.seriesId);
+}

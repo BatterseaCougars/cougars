@@ -49,7 +49,7 @@ best effort, not a security boundary).
 
 - The website limits each address to 240 live requests a minute (`src/middleware.ts`). Prerendered pages are static
   assets and never reach the Worker.
-- The team app's limits live in `apps/team/worker/limits.ts`:
+- The team app's limits live in `apps/team/worker/api/api.limits.ts`:
 
   | What                      | Limit                    |
   | ------------------------- | ------------------------ |

@@ -36,7 +36,7 @@ The schedule lives in D1, edited only in the team app. Tables are in the
 
 - **`training_series` → `training_sessions`.** A series has a rule (every N weeks on chosen weekdays, from a first
   date to an optional last one) and the session defaults (start, end, place, places). Sessions are rows, made 12
-  weeks ahead by a daily Cron Trigger (`apps/team/worker/schedule.ts`). A session's own columns are null unless it
+  weeks ahead by a daily Cron Trigger (`apps/team/worker/training/training.ts`). A session's own columns are null unless it
   differs ("this week we're at the other rink"). Cancelling keeps the row, so whoever signed up can be told; moving
   keeps the rule's original date (`moved_from`) so it isn't made again. Changing the rule removes future sessions it
   no longer makes, unless someone has signed up or an admin changed them.

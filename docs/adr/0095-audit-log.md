@@ -29,16 +29,16 @@ in a table. A decorator around a handler would also see only the request and the
 - **A declaration is data**: an `event` name, a `subject` (one read of the thing the change is to: a member's
   standing, a role's actions, a sign-in email) and optionally `about` (the member or role, by id, for the page to
   name).
-- **The wrapper does the rest** (`handleApi` in `worker/api.ts`): it reads the subject before the handler and after
+- **The wrapper does the rest** (`handleApi` in `worker/api/api.ts`): it reads the subject before the handler and after
   it, and when the two differ writes one entry with who did it, `from`, `to` and `about`. A refused or failed change
   writes nothing; a change that changes nothing (the same roles saved again) writes nothing.
-- **Readers live with their domain** (`memberStanding`, `roleSummary` in people.ts; `sessionSignups` in teams.ts;
-  `draftProgress` in draft.ts; `tournamentSummary` in schedule.ts), so "what does this change touch" is answered once.
+- **Readers live with their domain** (`memberStanding`, `roleSummary` in members/members.ts; `sessionSignups` in training/training.teams.ts;
+  `draftProgress` in tournaments/draft.ts; `tournamentSummary` in tournaments/tournaments.ts), so "what does this change touch" is answered once.
 - On the record from declarations: `member.updated` (status, roles), `member.email`, `member.added`,
   `member.quarterly`, `role.created`, `role.updated`, `dev_mail.changed`, `tournament.deleted`, `session.reset`,
   `draft.reset`. From the wrapper itself: `refused` (every 403, with the method, path and missing action).
 - **Not declarative, and staying that way:** sign-in's own events (`sign_in`, `sign_out`, `sign_in.capped`,
-  `access.requested`), written by explicit `audit()` calls in `worker/auth.ts`. Sign-in routes run before anyone is
+  `access.requested`), written by explicit `audit()` calls in `worker/auth/auth.ts`. Sign-in routes run before anyone is
   known and aren't in the route table; their events are what happened, not a change to compare.
 
 **Reading**

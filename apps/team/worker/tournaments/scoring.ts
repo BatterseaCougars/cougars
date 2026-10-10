@@ -1,0 +1,224 @@
+// Scoring a game as it's played (ADR 0061). Each game suggests a team sitting it out to keep score (scorekeepers in
+// lib/fixtures.ts), but one person keeps it: whoever presses Start scoring holds the scoresheet, and nobody else can
+// score that game until they let it go, or an admin does (someone had to leave: anyone can take it on from there).
+// The holder starts and pauses the clock, logs each goal as it goes in (who scored, who assisted, when in game
+// time), takes back the last one, and calls full time, which makes the score the result. One game at a time. The
+// score is on the game as it changes, so everyone sees it as it happens.
+import { first, run } from "@cougars/shared/d1";
+import { can, type Action } from "../../src/access/actions";
+import { fillPlayoffs, listGames, tournamentOf, type Game } from "./fixtures";
+import { HttpError, int, oneOf } from "../api/api.http";
+
+interface Who {
+  memberId: number;
+  actions: ReadonlySet<Action>;
+}
+
+/** The game, if this member holds its scoresheet. */
+async function scorable(db: D1Database, tournamentId: number, gameId: number, who: Who) {
+  const game = await gameOf(db, tournamentId, gameId);
+  if (game.keeperId !== who.memberId)
+    throw new HttpError(403, game.keeperId ? "Someone else is keeping score." : "Press Start scoring first.");
+  return game;
+}
+
+async function gameOf(db: D1Database, tournamentId: number, gameId: number) {
+  const game = (await listGames(db, tournamentId)).find((g) => g.id === gameId);
+  if (!game) throw new HttpError(404, "No such game.");
+  return game;
+}
+
+/**
+ * Start scoring (take the scoresheet, while nobody has it, for the game up next) or let it go (whoever holds it, or
+ * an admin). A game that's over has nothing left to score.
+ */
+export async function holdScoresheet(
+  db: D1Database,
+  tournamentId: number,
+  gameId: number,
+  o: Record<string, unknown>,
+  who: Who,
+) {
+  const action = oneOf(o, "action", ["claim", "release"] as const);
+  const game = await gameOf(db, tournamentId, gameId);
+  if (action === "claim") {
+    if (game.keeperId === who.memberId) return;
+    if (game.keeperId) throw new HttpError(409, "Someone else is keeping score.");
+    if (game.status === "done") throw new HttpError(409, "That game's over.");
+    // The game up next (or on now): the first in the day's order that isn't over
+    const upNext = (await listGames(db, tournamentId)).find((g) => g.status !== "done");
+    if (upNext?.id !== gameId) throw new HttpError(409, `Game ${upNext?.position ?? ""} is up next: score that one.`);
+    // Only if nobody's taken it in the meantime
+    const res = await run(
+      db,
+      "UPDATE tournament_games SET keeper_member_id = ? WHERE id = ? AND keeper_member_id IS NULL",
+      [who.memberId, gameId],
+    );
+    if (!res.meta.changes) throw new HttpError(409, "Someone else is keeping score.");
+    return;
+  }
+  if (game.keeperId !== who.memberId && !can(who.actions, "manage:Tournament"))
+    throw new HttpError(403, "Only whoever's keeping score, or an admin, can let it go.");
+  await run(db, "UPDATE tournament_games SET keeper_member_id = NULL WHERE id = ?", [gameId]);
+}
+
+/** Time left on the clock now. */
+const leftNow = (g: Game, now: Date) =>
+  Math.max(0, (g.clockLeftMs ?? 0) - (g.clockStartedAt ? now.getTime() - Date.parse(g.clockStartedAt) : 0));
+
+/**
+ * The clock: start (or start again), pause, set (the time left, by the scorekeeper's watch: paused, or running on from
+ * there), or end (full time: the score's the result).
+ */
+export async function clockGame(
+  db: D1Database,
+  tournamentId: number,
+  gameId: number,
+  o: Record<string, unknown>,
+  who: Who,
+  now: Date,
+) {
+  const action = oneOf(o, "action", ["start", "pause", "set", "end"] as const);
+  const game = await scorable(db, tournamentId, gameId, who);
+  const t = await tournamentOf(db, tournamentId);
+  if (action === "start") {
+    if (game.status === "done") throw new HttpError(409, "That game's over.");
+    // The game up next (or on now): the first in the day's order that isn't over
+    const upNext = (await listGames(db, tournamentId)).find((g) => g.status !== "done");
+    if (upNext?.id !== gameId) throw new HttpError(409, `Game ${upNext?.position ?? ""} is up next: score that one.`);
+    if (game.homeTeamId === null || game.awayTeamId === null)
+      throw new HttpError(409, "This game's teams aren't known yet.");
+    if (game.clockStartedAt) throw new HttpError(409, "The clock's already running.");
+    if (game.status === "next") {
+      const other = (await listGames(db, tournamentId)).find((g) => g.status === "live");
+      if (other) throw new HttpError(409, `Game ${other.position}'s still on. Call full time on it first.`);
+      await run(
+        db,
+        `UPDATE tournament_games SET status = 'live', home_goals = 0, away_goals = 0, clock_left_ms = ?,
+           clock_started_at = ? WHERE id = ?`,
+        [t.gameMinutes * 60_000, now.toISOString(), gameId],
+      );
+    } else await run(db, "UPDATE tournament_games SET clock_started_at = ? WHERE id = ?", [now.toISOString(), gameId]);
+    return;
+  }
+  if (game.status !== "live") throw new HttpError(409, "That game isn't on.");
+  if (action === "set") {
+    const leftMs = int(o, "leftMs", { max: 60 * 60_000 })!;
+    await run(db, "UPDATE tournament_games SET clock_left_ms = ?, clock_started_at = ? WHERE id = ?", [
+      leftMs,
+      game.clockStartedAt ? now.toISOString() : null,
+      gameId,
+    ]);
+    return;
+  }
+  if (action === "pause") {
+    if (!game.clockStartedAt) return;
+    await run(db, "UPDATE tournament_games SET clock_left_ms = ?, clock_started_at = NULL WHERE id = ?", [
+      leftNow(game, now),
+      gameId,
+    ]);
+    return;
+  }
+  // Full time. A playoff needs a winner: level, it plays on and the next goal wins (it's then a full time like any other)
+  if (game.stage === "playoff" && (game.homeGoals ?? 0) === (game.awayGoals ?? 0))
+    throw new HttpError(409, "It's level, and a playoff needs a winner: play on, next goal wins.");
+  await run(
+    db,
+    "UPDATE tournament_games SET status = 'done', clock_left_ms = ?, clock_started_at = NULL WHERE id = ?",
+    [leftNow(game, now), gameId],
+  );
+  if (game.stage === "group") await fillPlayoffs(db, tournamentId, t);
+}
+
+/** Someone on this team: its captain or one of its players. */
+const onTeam = (db: D1Database, teamId: number, memberId: number) =>
+  first(
+    db,
+    `SELECT 1 FROM tournament_teams t WHERE t.id = ? AND (t.captain_member_id = ? OR EXISTS
+       (SELECT 1 FROM tournament_team_players p WHERE p.team_id = t.id AND p.member_id = ?))`,
+    [teamId, memberId, memberId],
+  );
+
+/** A finished game, if this member can put its result right: an admin's job, on the game's page. */
+async function correctable(db: D1Database, tournamentId: number, gameId: number, who: Who) {
+  const game = await gameOf(db, tournamentId, gameId);
+  if (!can(who.actions, "manage:Tournament")) throw new HttpError(403, "Only an admin can change a result.");
+  if (game.status !== "done") throw new HttpError(409, "That game isn't over yet.");
+  return game;
+}
+
+/** After an admin's change to a finished game: the score from its goals, and the playoffs from the table. */
+async function corrected(db: D1Database, tournamentId: number, game: Game) {
+  await recount(db, game);
+  if (game.stage === "group") await fillPlayoffs(db, tournamentId, await tournamentOf(db, tournamentId));
+}
+
+/**
+ * A goal: as it goes in (the scorekeeper, the game on, timed by the clock), or one missed on the day (an admin, the
+ * game over, at the time they say or none). Its team, who scored and who assisted (both optional, both on that team).
+ */
+export async function addGoal(
+  db: D1Database,
+  tournamentId: number,
+  gameId: number,
+  o: Record<string, unknown>,
+  who: Who,
+  now: Date,
+) {
+  const done = (await gameOf(db, tournamentId, gameId)).status === "done";
+  const game = done ? await correctable(db, tournamentId, gameId, who) : await scorable(db, tournamentId, gameId, who);
+  if (!done && game.status !== "live") throw new HttpError(409, "That game isn't on.");
+  const teamId = int(o, "teamId")!;
+  if (teamId !== game.homeTeamId && teamId !== game.awayTeamId) throw new HttpError(400, "That team isn't playing.");
+  const scorerId = o.scorerId == null ? null : int(o, "scorerId");
+  const assistId = o.assistId == null ? null : int(o, "assistId");
+  for (const m of [scorerId, assistId])
+    if (m !== null && !(await onTeam(db, teamId, m))) throw new HttpError(400, "They're not on that team.");
+  if (scorerId !== null && scorerId === assistId) throw new HttpError(400, "Nobody assists their own goal.");
+  const t = await tournamentOf(db, tournamentId);
+  const atMs = done
+    ? o.atMs == null
+      ? null
+      : int(o, "atMs", { max: t.gameMinutes * 60_000 })
+    : t.gameMinutes * 60_000 - leftNow(game, now);
+  await run(
+    db,
+    `INSERT INTO tournament_goals (game_id, team_id, scorer_member_id, assist_member_id, at_ms, created_at)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [gameId, teamId, scorerId, assistId, atMs, now.toISOString()],
+  );
+  if (done) await corrected(db, tournamentId, game);
+  else await recount(db, game);
+}
+
+/** Any goal off a finished game: it wasn't one, or it was the other side's. */
+export async function removeGoal(db: D1Database, tournamentId: number, gameId: number, goalId: number, who: Who) {
+  const game = await correctable(db, tournamentId, gameId, who);
+  const res = await run(db, "DELETE FROM tournament_goals WHERE id = ? AND game_id = ?", [goalId, gameId]);
+  if (!res.meta.changes) throw new HttpError(404, "No such goal.");
+  await corrected(db, tournamentId, game);
+}
+
+/** The last goal comes off: logged by mistake. */
+export async function undoGoal(db: D1Database, tournamentId: number, gameId: number, who: Who) {
+  const game = await scorable(db, tournamentId, gameId, who);
+  if (game.status !== "live") throw new HttpError(409, "That game isn't on.");
+  const res = await run(
+    db,
+    "DELETE FROM tournament_goals WHERE id = (SELECT max(id) FROM tournament_goals WHERE game_id = ?)",
+    [gameId],
+  );
+  if (!res.meta.changes) throw new HttpError(409, "No goals to take back.");
+  await recount(db, game);
+}
+
+/** The score on the game, from its goals: what everyone sees. */
+const recount = (db: D1Database, game: Game) =>
+  run(
+    db,
+    `UPDATE tournament_games SET
+       home_goals = (SELECT count(*) FROM tournament_goals WHERE game_id = ? AND team_id = ?),
+       away_goals = (SELECT count(*) FROM tournament_goals WHERE game_id = ? AND team_id = ?)
+     WHERE id = ?`,
+    [game.id, game.homeTeamId, game.id, game.awayTeamId, game.id],
+  );

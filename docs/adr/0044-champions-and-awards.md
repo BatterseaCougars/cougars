@@ -37,7 +37,7 @@ who won most of them.
   can't decide asks the admin to pick.
 - The page shows the data's picks as Provisional; **Confirm the awards** (the Awards section, or Manage, built for a
   phone) saves them.
-- Saved in `tournament_award_winners` (`worker/awards.ts`): a team or a player on one of the tournament's teams, for one
+- Saved in `tournament_award_winners` (`worker/tournaments/awards.ts`): a team or a player on one of the tournament's teams, for one
   of its own awards, the whole list set at once (`PUT /api/tournaments/:id/winners`, `manage:Tournament`). Everyone
   gets it with the tournament (`winners`).
 

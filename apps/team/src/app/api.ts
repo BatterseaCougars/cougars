@@ -1,4 +1,4 @@
-// Fetching from the team app's Worker (apps/team/worker/api.ts). Kept apart from the store so the app can load the
+// Fetching from the team app's Worker (apps/team/worker/api/api.ts). Kept apart from the store so the app can load the
 // club's data before anything that reads it is imported (main.ts).
 import type { Bootstrap } from "../demo/data";
 import { Brake } from "./brake";

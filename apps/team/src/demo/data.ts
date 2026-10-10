@@ -90,7 +90,7 @@ export const PAYMENTS: Payment[] = [];
 /** Money paid in and not yet spent on a charge, by member: it pays their next one (ADR 0007). */
 export const CREDITS: { memberId: number; pence: number }[] = [];
 
-/** What /api/bootstrap sends (apps/team/worker/api.ts). */
+/** What /api/bootstrap sends (apps/team/worker/api/api.ts). */
 export interface Bootstrap {
   me: number;
   actions: Action[];
@@ -141,7 +141,7 @@ export const TEAMS: Record<number, Team[]> = {};
 
 const fill = <T>(list: T[], items: T[]) => list.splice(0, list.length, ...items);
 
-/** The parts of the club's data that a change sends back (worker/api.ts SLICES): all of it but who you are. */
+/** The parts of the club's data that a change sends back (worker/api/api.ts SLICES): all of it but who you are. */
 export type Slices = Partial<Omit<Bootstrap, "me" | "actions" | "devTools" | "unfinished">>;
 
 /** Put the club's data in place. Runs before the app mounts, and again whenever the whole club is reloaded. */

@@ -38,7 +38,7 @@ Three ways were open:
   out from the games.
 - **A changed result rebuilds the website.** Any change through the team app's API to a tournament that's done before
   or after it (the last game scored, a goal corrected, awards confirmed, renamed, made private, deleted) marks a
-  rebuild wanted (`website_rebuild`, `apps/team/worker/website.ts`). A cron every five minutes sends it once there's
+  rebuild wanted (`website_rebuild`, `apps/team/worker/website/website.ts`). A cron every five minutes sends it once there's
   been no change for five minutes, so a results day is one rebuild. It sends a `repository_dispatch`
   (`website-rebuild`, with the environment) as the club's GitHub App, **Cougars rebuilds**, owned by the organisation
   so it outlives any maintainer (README#github_app_private_key). `deploy.yml` rebuilds dev from `main` or production

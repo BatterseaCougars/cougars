@@ -27,7 +27,7 @@ worker.
 - A member enters their email. The Worker sets a private **nonce cookie** on that browser and emails a **6-digit
   code**, and nothing else: no link. The code signs in only alongside the nonce cookie, so a forwarded email signs no
   one in ("open this on the device you signed in from"). The email shows the code first and huge, in the club's
-  colours (`apps/team/worker/sign-in-email.ts`), with a plain-text version saying the same.
+  colours (`apps/team/worker/auth/auth.email.ts`), with a plain-text version saying the same.
 - Codes are sent only to the email on the member's own account. An unknown email gets the same reply, so the form
   doesn't reveal who's a member.
 - Codes are stored hashed (SHA-256), are single-use and expire after 15 minutes.
@@ -73,7 +73,7 @@ worker.
   git), so a headless browser opens signed in, each run a session of its own that never touches yours. It's on the
   record as `sign_in` with method `dev`. Anywhere but your own machine the route isn't there (404), and the team
   smoke test checks that.
-- **All three also need a private address.** `localHere(env, request)` (`worker/auth.ts`) is true only when
+- **All three also need a private address.** `localHere(env, request)` (`worker/auth/auth.ts`) is true only when
   `TEAM_ENV` is `local` _and_ the request's host is loopback, a private range (10/8, 172.16/12, 192.168/16),
   `localhost`, or a `.test` name (reserved, never public; the tests' host). A deployed worker is reached by its
   public name, so on it the switches do nothing even if set. A phone on the house wifi still reaches the laptop by

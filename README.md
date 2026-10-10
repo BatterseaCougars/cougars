@@ -144,7 +144,7 @@ Never the deploy token: this one lives in the Worker.
   | ---------------------------- | ---------------------- | ----------------------------------- |
   | Entire Cougars (Dev) account | Account Analytics Read | Today's Worker requests and D1 rows |
 
-- **Used by:** the team Worker (`apps/team/worker/usage.ts`), with `CLOUDFLARE_ACCOUNT_ID`.
+- **Used by:** the team Worker (`apps/team/worker/settings/usage.ts`), with `CLOUDFLARE_ACCOUNT_ID`.
 - **Gets there by:** a Worker secret when the team app deploys; locally, `node scripts/env-pull.mjs -- npm run dev
 -w @cougars/team` passes it to the dev server (`vite.config.ts`), never to a file.
 - **Expires:** no, unless you set a TTL.

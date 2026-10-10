@@ -20,7 +20,7 @@ quarterly rate; **the Cougars** are the club's official team, who play together 
 training teams are made (as the old app did).
 
 Built in #46: fees, charges, payments, a member's Dues, Unpaid fees and the charges on the member sheet all read and
-write D1 (`apps/team/worker/dues.ts`, with the sums in `apps/team/src/lib/dues.ts`). Not built yet: the bank-statement
+write D1 (`apps/team/worker/dues/dues.ts`, with the sums in `apps/team/src/lib/dues.ts`). Not built yet: the bank-statement
 upload, reminder emails, and an override of one session's fee.
 
 ## Decision
@@ -37,7 +37,7 @@ upload, reminder emails, and an override of one session's fee.
 - The reference is set once, when the member is made (a join request, an admin adding them, or the roster seed), and
   never changed after, not even when their name is edited: it's what their standing order quotes. Someone without one
   gets it the next time they sign in. `packages/shared/payment-reference.ts` holds the rules and the SQL, used by both the
-  Worker (`giveReference` in apps/team/worker/auth.ts) and the roster seed (scripts/lib/roster.mjs).
+  Worker (`giveReference` in apps/team/worker/auth/auth.ts) and the roster seed (scripts/lib/roster.mjs).
 
 **Fees**
 

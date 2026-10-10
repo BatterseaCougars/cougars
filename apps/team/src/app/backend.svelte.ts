@@ -1,4 +1,4 @@
-// Talking to the team app's Worker (apps/team/worker/api.ts). Every change goes to D1 first; its reply carries the
+// Talking to the team app's Worker (apps/team/worker/api/api.ts). Every change goes to D1 first; its reply carries the
 // parts of the club it touched (`changed`), which replace those parts of the app's working copy
 // (demo/store.svelte.ts), so what you see is what's stored. Screens change the copy at once for a quick answer, then
 // the reply brings back what the server decided (the waitlist, say). The whole club is read when the app opens, when
@@ -248,7 +248,7 @@ export const addMember = async (name: string, email: string, position: string) =
   return r;
 };
 
-/** What an import file would do (worker/member-import.ts): who'd be added, who's in already, what's wrong. */
+/** What an import file would do (worker/members/members.import.ts): who'd be added, who's in already, what's wrong. */
 export interface ImportCheck {
   add: {
     row: number;

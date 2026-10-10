@@ -23,7 +23,7 @@ const email = args[0];
 
 const res = await fetch(new URL("/api/auth/dev", url), {
   method: "POST",
-  // The API takes a change only from its own page (http.ts sameOrigin)
+  // The API takes a change only from its own page (api/api.http.ts sameOrigin)
   headers: { "content-type": "application/json", origin: url.origin },
   body: JSON.stringify(email ? { email } : {}),
 }).catch((e) => {

@@ -4,8 +4,8 @@
 import { outbox, type Mail } from "@cougars/shared/email";
 import { createTestD1 } from "@cougars/shared/testing/d1-sqlite";
 import { parseRoster, rosterSql } from "../../../scripts/lib/roster.mjs";
-import { handleApi, type Env } from "./api";
-import { LiveHub } from "./live";
+import { handleApi, type Env } from "./api/api";
+import { LiveHub } from "./live/live";
 
 /** A namespace with one object in it, for the fake world: what `env.LIVE` is on a real Worker. */
 const liveNamespace = (hub: LiveHub) =>
